@@ -1,261 +1,107 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <title>Витрина Разбита</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
-
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#181818" />
-
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Витрина Разбита">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-
-  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
-
-  <link rel="preload" href="img/logo.png" as="image">
-  
-  <!-- Фундамент и UI Kit -->
-  <link rel="stylesheet" href="styles/base.css">
-  <link rel="stylesheet" href="styles/ui-core.css">
-  
-  <!-- Основные стили (в процессе распила) -->
-  <link rel="stylesheet" href="styles/main.css">
-  
-  <!-- Модули -->
-  <link rel="stylesheet" href="styles/player.css">
-  <link rel="stylesheet" href="styles/showcase.css">
-  <link rel="stylesheet" href="styles/offline.css">
-  <link rel="stylesheet" href="styles/profile.css">
-  
-  <!-- Карантин (мёртвые стили на проверку) -->
-  <link rel="stylesheet" href="styles/quarantine.css">
-
-  <!-- R0 streaming hardening — оба источника preconnect для мгновенного fallback -->
-  <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin>
-  <link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
-  <link rel="dns-prefetch" href="https://storage.yandexcloud.net">
-  <link rel="dns-prefetch" href="https://apel-s-in.github.io">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-
-  <!-- Howler first -->
-  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
-
-  <!-- Core -->
-  <script src="./scripts/core/utils.js"></script>
-  <script src="./scripts/core/bootstrap.js"></script>
-  <script src="./scripts/core/config.js" type="module"></script>
-  <script src="./scripts/utils/sw-manager.js" defer></script>
-
-  <!-- Player Core -->
-  <script src="./src/PlayerCore.js" type="module"></script>
-
-  <!-- UI Modules -->
-  <script src="./scripts/ui/icon-utils.js" type="module"></script>
-  <script src="./scripts/ui/notify.js" defer></script>
-  <script src="./scripts/ui/modals.js" defer></script>
-  <script src="./scripts/ui/sleep-timer.js" type="module"></script>
-  <script src="./scripts/ui/lyrics-modal.js" defer></script>
-  <script src="./scripts/ui/sysinfo.js" defer></script>
-
-  <!-- App Modules -->
-  <script src="./scripts/app/promocode.js" defer></script>
-  <script src="./scripts/app/player-ui/lyrics.js" defer></script>
-  <script src="./scripts/app/player/favorites-only-resolver.js" type="module"></script>
-  <script src="./scripts/app/player/playback-context-source.js" type="module"></script>
-  <script src="./scripts/app/player/favorites-only-actions.js" type="module"></script>
-  <script src="./scripts/app/player-ui.js" defer></script>
-  <script src="./scripts/app/gallery.js" type="module"></script>
-  <script src="./scripts/app/albums.js" type="module"></script>
-
-  <script src="./scripts/analytics/device-registry.js" type="module"></script>
-  <script src="./scripts/app.js" type="module"></script>
-
-</head>
-<body>
-  <!-- Promocode Screen -->
-  <div id="promocode-block">
-    <div class="promo-inner">
-      <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
-      <h2>Вход по промокоду</h2>
-      <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
-      <button id="promo-btn">Войти</button>
-      <div id="promo-error"></div>
+<!DOCTYPE html><html lang="ru"><head>
+<meta charset="UTF-8"><title>Витрина Разбита</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#181818">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Витрина Разбита">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="preload" href="img/logo.png" as="image">
+<link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
+<link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
+<link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/quarantine.css">
+<link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
+<link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+<script src="./scripts/core/utils.js"></script><script src="./scripts/core/bootstrap.js"></script>
+<script src="./scripts/core/config.js" type="module"></script><script src="./scripts/utils/sw-manager.js" defer></script>
+<script src="./src/PlayerCore.js" type="module"></script><script src="./scripts/ui/icon-utils.js" type="module"></script>
+<script src="./scripts/ui/notify.js" defer></script><script src="./scripts/ui/modals.js" defer></script>
+<script src="./scripts/ui/sleep-timer.js" type="module"></script><script src="./scripts/ui/lyrics-modal.js" defer></script>
+<script src="./scripts/ui/sysinfo.js" defer></script><script src="./scripts/app/promocode.js" defer></script>
+<script src="./scripts/app/player-ui/lyrics.js" defer></script><script src="./scripts/app/player/favorites-only-resolver.js" type="module"></script>
+<script src="./scripts/app/player/playback-context-source.js" type="module"></script><script src="./scripts/app/player/favorites-only-actions.js" type="module"></script>
+<script src="./scripts/app/player-ui.js" defer></script><script src="./scripts/app/gallery.js" type="module"></script>
+<script src="./scripts/app/albums.js" type="module"></script><script src="./scripts/analytics/device-registry.js" type="module"></script>
+<script src="./scripts/app.js" type="module"></script>
+</head><body>
+<div id="promocode-block"><div class="promo-inner">
+  <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
+  <h2>Вход по промокоду</h2>
+  <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
+  <button id="promo-btn">Войти</button><div id="promo-error"></div>
+</div></div>
+<div id="main-block" class="hidden">
+  <header>
+    <div id="active-album-title" class="active-album-title">—</div>
+    <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
+    <div id="cover-wrap">
+      <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" title="Назад" aria-label="Предыдущая обложка"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-gallery-left"></use></svg></button>
+      <div id="cover-slot" aria-label="Обложка альбома"></div>
+      <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" title="Вперёд" aria-label="Следующая обложка"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-gallery-right"></use></svg></button>
     </div>
+    <div id="social-links" class="socials-under-cover"></div>
+    <div class="ach-hint-bubble" id="ach-hint-bubble" role="status" title="Открыть список достижений"><span id="ach-hint-bubble-text">✨ Подгружаем статистику...</span></div>
+  </header>
+  <div id="now-playing" class="now-playing-inline"></div><div class="track-list" id="track-list"></div>
+  <div class="bottom-controls-center" id="app-shell-controls">
+    <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
+    <button id="install-pwa-btn"><span style="font-size:18px;line-height:1">📱</span> УСТАНОВИТЬ ПРИЛОЖЕНИЕ</button>
+    <button class="hotkeys-btn hotkeys-hidden" id="hotkeys-btn">ГОРЯЧИЕ КЛАВИШИ</button>
+    <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
+    <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
+    <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
+    <button class="offline-btn" id="offline-btn">OFFLINE</button>
   </div>
-
-  <!-- Main Application -->
-  <div id="main-block" class="hidden">
-    <header>
-      <div id="active-album-title" class="active-album-title">—</div>
-      <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
-
-      <div id="cover-wrap">
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-left"
-                title="Назад" aria-label="Предыдущая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-gallery-left"></use></svg>
-        </button>
-
-        <div id="cover-slot" aria-label="Обложка альбома"></div>
-
-        <button class="cover-gallery-arrow" id="cover-gallery-arrow-right"
-                title="Вперёд" aria-label="Следующая обложка">
-          <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-gallery-right"></use></svg>
-        </button>
-      </div>
-
-      <div id="social-links" class="socials-under-cover"></div>
-      
-      <div class="ach-hint-bubble" id="ach-hint-bubble" role="status" title="Открыть список достижений">
-        <span id="ach-hint-bubble-text">✨ Подгружаем статистику...</span>
-      </div>
-      
-    </header>
-
-    <div id="now-playing" class="now-playing-inline"></div>
-    <div class="track-list" id="track-list"></div>
-
-    <div class="bottom-controls-center" id="app-shell-controls">
-      <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
-
-      <button id="install-pwa-btn"><span style="font-size:18px;line-height:1">📱</span> УСТАНОВИТЬ ПРИЛОЖЕНИЕ</button>
-      <button class="hotkeys-btn hotkeys-hidden" id="hotkeys-btn">ГОРЯЧИЕ КЛАВИШИ</button>
-      <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
-
-      <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
-      <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
-      <button class="offline-btn" id="offline-btn">OFFLINE</button>
-    </div>
+</div>
+<div id="modals-container"></div>
+<template id="mini-header-template">
+  <div class="mini-now" id="mini-now" title="Вернуться к альбому">
+    <div class="mini-progress-fill" id="mini-now-progress"></div>
+    <div class="mini-text-switcher"><span class="mini-track-title" id="mini-now-title">—</span><span class="mini-track-hint">Нажми чтобы вернуться к альбому</span></div>
+    <span class="like-star like-star-svg" id="mini-now-star" data-liked="0" aria-label="звезда"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
   </div>
-
-  <div id="modals-container"></div>
-
-  <template id="mini-header-template">
-    <div class="mini-now" id="mini-now" title="Вернуться к альбому">
-      <div class="mini-progress-fill" id="mini-now-progress"></div>
-      <div class="mini-text-switcher">
-        <span class="mini-track-title" id="mini-now-title">—</span>
-        <span class="mini-track-hint">Нажми чтобы вернуться к альбому</span>
-      </div>
-      <span class="like-star like-star-svg" id="mini-now-star" data-liked="0" aria-label="звезда"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
-    </div>
-  </template>
-
+</template>
 <template id="player-template">
-    <div class="lyrics-player-block" id="lyricsplayerblock">
-      <div id="lyrics-window" class="lyrics-normal">
-        <div class="lyrics-animated-bg"></div>
-        <div class="lyrics-scroll" id="lyrics">
-          <div class="lyrics-placeholder lyrics-spinner"></div>
-        </div>
+  <div class="lyrics-player-block" id="lyricsplayerblock">
+    <div id="lyrics-window" class="lyrics-normal"><div class="lyrics-animated-bg"></div><div class="lyrics-scroll" id="lyrics"><div class="lyrics-placeholder lyrics-spinner"></div></div></div>
+    <div class="player-progress-wrapper"><div class="player-progress-bar" id="player-progress-bar"><div class="player-progress-fill" id="player-progress-fill"><div class="player-progress-handle"></div></div></div></div>
+    <div class="player-controls">
+      <div class="player-controls-row">
+        <span class="time-in-controls" id="time-elapsed">00:00</span>
+        <button class="player-control-btn" id="prev-btn" title="Предыдущий трек (P)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-prev"></use></svg></button>
+        <button class="player-control-btn main" id="play-pause-btn" title="Воспроизведение/Пауза (K)"><svg id="play-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-play"></use></svg></button>
+        <button class="player-control-btn" id="stop-btn" title="Стоп (X)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stop"></use></svg></button>
+        <button class="player-control-btn" id="next-btn" title="Следующий трек (N)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-next"></use></svg></button>
+        <span class="time-in-controls" id="time-remaining">--:--</span>
       </div>
-
-      <div class="player-progress-wrapper">
-        <div class="player-progress-bar" id="player-progress-bar">
-          <div class="player-progress-fill" id="player-progress-fill">
-            <div class="player-progress-handle"></div>
-          </div>
-        </div>
+      <div class="player-controls-row">
+        <button class="player-control-btn" id="pq-btn" title="Качество (Hi/Lo)"><span class="pq-btn-label" id="pq-btn-label">Hi</span></button>
+        <button class="player-control-btn" id="mute-btn" title="Без звука (M)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-mute"></use></svg></button>
+        <button class="player-control-btn" id="shuffle-btn" title="Случайный порядок (U)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-shuffle"></use></svg></button>
+        <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-repeat"></use></svg></button>
+        <button class="sleep-timer-btn" id="sleep-timer-btn" data-testid="sleep-open" title="Таймер сна (T)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-sleep"></use></svg><span class="sleep-timer-badge sleep-badge-hidden" id="sleep-timer-badge">0</span></button>
+        <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)"><span id="favorites-btn-icon" class="like-star like-star-svg" data-liked="0" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span></button>
       </div>
-
-      <div class="player-controls">
-        <div class="player-controls-row">
-          <span class="time-in-controls" id="time-elapsed">00:00</span>
-
-          <button class="player-control-btn" id="prev-btn" title="Предыдущий трек (P)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-prev"></use></svg>
-          </button>
-
-          <button class="player-control-btn main" id="play-pause-btn" title="Воспроизведение/Пауза (K)">
-            <svg id="play-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-play"></use></svg>
-          </button>
-
-          <button class="player-control-btn" id="stop-btn" title="Стоп (X)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stop"></use></svg>
-          </button>
-
-          <button class="player-control-btn" id="next-btn" title="Следующий трек (N)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-next"></use></svg>
-          </button>
-
-          <span class="time-in-controls" id="time-remaining">--:--</span>
-        </div>
-
-        <div class="player-controls-row">
-          <button class="player-control-btn" id="pq-btn" title="Качество (Hi/Lo)">
-            <span class="pq-btn-label" id="pq-btn-label">Hi</span>
-          </button>
-
-          <button class="player-control-btn" id="mute-btn" title="Без звука (M)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-mute"></use></svg>
-          </button>
-
-          <button class="player-control-btn" id="shuffle-btn" title="Случайный порядок (U)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-shuffle"></use></svg>
-          </button>
-
-          <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-repeat"></use></svg>
-          </button>
-
-          <button class="sleep-timer-btn" id="sleep-timer-btn" data-testid="sleep-open" title="Таймер сна (T)">
-            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-sleep"></use></svg>
-            <span class="sleep-timer-badge sleep-badge-hidden" id="sleep-timer-badge">0</span>
-          </button>
-
-          <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)">
-            <span id="favorites-btn-icon" class="like-star like-star-svg" data-liked="0" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
-          </button>
-        </div>
-      </div>
-
-      <div class="volume-control-wrapper">
-        <div class="volume-track" id="volume-track">
-          <div class="volume-fill" id="volume-fill"></div>
-          <div class="volume-handle" id="volume-handle"></div>
-        </div>
-        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость">
-      </div>
-
-      <div class="player-buttons-wrapper">
-        <div class="player-extra-buttons-row">
-          <button class="lyrics-toggle-btn lyrics-normal" id="lyrics-toggle-btn" title="Режим лирики (Y)">
-            <span class="lyrics-toggle-btn-visual">Т</span>
-          </button>
-
-          <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
-
-          <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-lyrics"></use></svg></button>
-
-          <button class="stats-btn" id="stats-btn" title="Статистика"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
-
-          <div class="source-indicator" id="source-indicator" title="Источник потока"></div>
-
-          <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа">
-            <span id="pulse-heart">🤍</span>
-          </button>
-
-          <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-download"></use></svg></a>
-        </div>
-      </div>
-  </template>
-
-  <script>
-    const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.50');
-    const BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
-
-    // Legacy globals removed — SleepTimer uses playerCore.setSleepTimer
-
-    window.VERSION = VERSION;
-    window.BUILD_DATE = BUILD_DATE;
-
-    console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
-  </script>
-</body>
-</html>
+    </div>
+    <div class="volume-control-wrapper"><div class="volume-track" id="volume-track"><div class="volume-fill" id="volume-fill"></div><div class="volume-handle" id="volume-handle"></div></div><input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость"></div>
+    <div class="player-buttons-wrapper"><div class="player-extra-buttons-row">
+      <button class="lyrics-toggle-btn lyrics-normal" id="lyrics-toggle-btn" title="Режим лирики (Y)"><span class="lyrics-toggle-btn-visual">Т</span></button>
+      <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
+      <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-lyrics"></use></svg></button>
+      <button class="stats-btn" id="stats-btn" title="Статистика"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
+      <div class="source-indicator" id="source-indicator" title="Источник потока"></div>
+      <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа"><span id="pulse-heart">🤍</span></button>
+      <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-download"></use></svg></a>
+    </div></div>
+  </div>
+</template>
+<script>
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.50'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
+  window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
+  console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
+</script>
+</body></html>
