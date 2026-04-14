@@ -72,7 +72,7 @@ export class AchievementEngine {
           window.NotificationSystem?.success(`🎉 ПОЗДРАВЛЯЕМ! Ваш уровень повышен до ${nLvl}!`);
           const ya = window.YandexAuth;
           if (ya && ya.getSessionStatus() !== 'active' && window.Modals?.confirm) {
-            setTimeout(() => window.Modals.confirm({ title: '☁️ Сохраните ваш прогресс', textHtml: `Вы достигли <b>${nLvl} уровня</b>! Ваш прогресс, достижения и плейлисты пока хранятся только в браузере.<br><br>Рекомендуем подключить Яндекс Аккаунт, чтобы не потерять данные при очистке кэша. Это бесплатно и безопасно.`, confirmText: 'Подключить', cancelText: 'Позже', onConfirm: () => ya.login() }), 1000);
+            setTimeout(() => window.Modals.confirm({ title: '☁️ Сохраните ваш прогресс', textHtml: `Вы достигли <b>${nLvl} уровня</b>! Ваш прогресс, достижения и плейлисты пока хранятся только в браузере.<br><br>При желании можно подключить Яндекс Аккаунт, чтобы сохранить backup и восстановить его на другом устройстве. Это не обязательно.`, confirmText: 'Подключить', cancelText: 'Позже', onConfirm: () => ya.login() }), 1000);
           }
         }, 2000); 
       }
