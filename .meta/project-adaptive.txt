@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-14 14:42:09 UTC
+Сгенерировано: 2026-04-14 14:42:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -701,32 +701,7 @@ jobs:
 
 //=================================================
 // FILE: /manifest.json
-{
-  "name": "Витрина Разбита",
-  "short_name": "Vi3na1bita",
-  "description": "Официальные альбомы группы Витрина Разбита",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#181818",
-  "theme_color": "#181818",
-  "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["music", "entertainment"],
-  "screenshots": []
-}
+{"name":"Витрина Разбита","short_name":"Vi3na1bita","description":"Официальные альбомы группы Витрина Разбита","start_url":"./","display":"standalone","background_color":"#181818","theme_color":"#181818","orientation":"portrait-primary","icons":[{"src":"icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}],"categories":["music","entertainment"],"screenshots":[]}
 
 //=================================================
 // FILE: /service-worker.js
