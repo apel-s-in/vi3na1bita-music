@@ -94,7 +94,7 @@ export const YandexAuth = {
 
       await new Promise(r => setTimeout(r, 200));
       const profile = await this.fetchYandexProfile(token);
-      if (profile) await this._onFirstLogin(profile);
+      if (profile) await this._onFirstLogin(profile, token);
     };
 
     window.addEventListener('message', onMsg);
@@ -140,7 +140,7 @@ export const YandexAuth = {
     }
   },
 
-  async _onFirstLogin(yProfile) {
+  async _onFirstLogin(yProfile, token) {
     const yandexId = String(yProfile.id || '').trim();
     const realName = String(yProfile.real_name || yProfile.display_name || yProfile.login || '').trim();
     const login = String(yProfile.login || '').trim();
@@ -148,15 +148,37 @@ export const YandexAuth = {
       ? `https://avatars.yandex.net/get-yapic/${yProfile.default_avatar_id}/islands-200`
       : null;
 
-    const existing = read(LS_PROFILE);
-    if (existing?.yandexId === yandexId && existing?.displayName) {
-      write(LS_PROFILE, { ...existing, realName, login, avatar, lastSync: Date.now() });
-      window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'active', profile: read(LS_PROFILE) } }));
-      window.NotificationSystem?.success(`С возвращением, ${existing.displayName}! 👋`);
-      return;
+    write(LS_PROFILE, { yandexId, displayName: realName || login, realName, login, avatar, lastSync: Date.now() });
+
+    // АВТОМАТИЧЕСКОЕ ВОССТАНОВЛЕНИЕ СРАЗУ ПОСЛЕ ВХОДА БЕЗ МОДАЛОК
+    try {
+      window.NotificationSystem?.info('Поиск резервной копии в облаке...');
+      const { YandexDisk } = await import('./yandex-disk.js');
+      const meta = await YandexDisk.getMeta(token).catch(() => null);
+      if (meta) {
+        window.NotificationSystem?.info('Скачивание профиля...');
+        const data = await YandexDisk.download(token).catch(() => null);
+        if (data) {
+          const { BackupVault } = await import('../analytics/backup-vault.js');
+          await BackupVault.importData(new Blob([JSON.stringify(data)]), 'all');
+          
+          localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
+          localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
+          localStorage.setItem('yandex:last_backup_local_ts', String(Number(data.revision?.timestamp || data.createdAt || Date.now())));
+          
+          const { markSyncReady, markRestoreOrSkipDone } = await import('../analytics/backup-sync-engine.js');
+          markSyncReady('auto_restore');
+          markRestoreOrSkipDone('auto_restore');
+          
+          window.NotificationSystem?.success('Прогресс автоматически восстановлен! Перезагрузка...');
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
+      }
+    } catch (e) {
+      console.debug('[AutoRestore] skip:', e);
     }
 
-    write(LS_PROFILE, { yandexId, displayName: realName || login, realName, login, avatar, lastSync: Date.now() });
     window.dispatchEvent(new CustomEvent('yandex:auth:changed', { detail: { status: 'active', profile: read(LS_PROFILE) } }));
     this._showNamePickModal(realName, login);
   },
