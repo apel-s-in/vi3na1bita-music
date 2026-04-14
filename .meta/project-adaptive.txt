@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-14 13:58:23 UTC
+Сгенерировано: 2026-04-14 13:59:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1540,179 +1540,45 @@ import { safeJsonParse, safeString, safeNum } from './backup-summary.js';
 
 const LS_REGISTRY = 'backup:device_registry:v1';
 
-export function getDeviceRegistry() {
-  const reg = safeJsonParse(localStorage.getItem(LS_REGISTRY) || '[]', []);
-  return Array.isArray(reg) ? reg.filter(Boolean) : [];
-}
+export const getDeviceRegistry = () => (safeJsonParse(localStorage.getItem(LS_REGISTRY), [])||[]).filter(Boolean);
 
-export function normalizeDeviceRow(row = {}) {
-  const seenHashes = Array.isArray(row?.seenHashes)
-    ? [...new Set(row.seenHashes.map(x => safeString(x)).filter(Boolean))]
-    : [];
-  const deviceHash = safeString(row?.deviceHash || '');
-  if (deviceHash && !seenHashes.includes(deviceHash)) seenHashes.push(deviceHash);
+export const normalizeDeviceRow = (r = {}) => { const sH=Array.isArray(r?.seenHashes)?[...new Set(r.seenHashes.map(safeString).filter(Boolean))]:[], dH=safeString(r?.deviceHash||''); if(dH&&!sH.includes(dH)) sH.push(dH); return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:safeString(r?.platform||'web')||'web', userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), seenHashes:sH }; };
 
-  return {
-    ...row,
-    deviceHash,
-    deviceStableId: safeString(row?.deviceStableId || ''),
-    platform: safeString(row?.platform || 'web') || 'web',
-    userAgent: safeString(row?.userAgent || ''),
-    firstSeenAt: safeNum(row?.firstSeenAt || 0),
-    lastSeenAt: safeNum(row?.lastSeenAt || 0),
-    seenHashes
-  };
-}
+export const normalizeDeviceRegistry = rows => { const bK=new Map(); (Array.isArray(rows)?rows:[]).map(normalizeDeviceRow).filter(r=>r.deviceStableId||r.deviceHash).forEach(r => { const k=r.deviceStableId||r.deviceHash, p=bK.get(k); if(!p) return bK.set(k, r); bK.set(k, normalizeDeviceRow({ ...p, ...r, firstSeenAt: Math.min(...[safeNum(p.firstSeenAt), safeNum(r.firstSeenAt)].filter(v=>v>0))||0, lastSeenAt: Math.max(safeNum(p.lastSeenAt), safeNum(r.lastSeenAt)), seenHashes: [...new Set([...(p.seenHashes||[]), ...(r.seenHashes||[]), p.deviceHash, r.deviceHash].filter(Boolean))] })); }); return [...bK.values()].sort((a,b)=>safeNum(a.firstSeenAt)-safeNum(b.firstSeenAt)); };
 
-export function normalizeDeviceRegistry(rows) {
-  const src = Array.isArray(rows) ? rows : [];
-  const byKey = new Map();
+export const saveDeviceRegistry = r => { const o = normalizeDeviceRegistry(r); localStorage.setItem(LS_REGISTRY, JSON.stringify(o)); return o; };
 
-  src.map(normalizeDeviceRow).forEach(row => {
-    const key = row.deviceStableId || row.deviceHash;
-    if (!key) return;
+export const getCurrentDeviceIdentity = () => normalizeDeviceRow({ deviceHash: localStorage.getItem('deviceHash')||'', deviceStableId: localStorage.getItem('deviceStableId')||'' });
 
-    const prev = byKey.get(key);
-    if (!prev) {
-      byKey.set(key, row);
-      return;
-    }
+export const isSameDevice = (a, b) => { const aa=normalizeDeviceRow(a||{}), bb=normalizeDeviceRow(b||{}); return (aa.deviceStableId&&bb.deviceStableId) ? aa.deviceStableId===bb.deviceStableId : (aa.deviceHash&&bb.deviceHash ? aa.deviceHash===bb.deviceHash : false); };
 
-    byKey.set(key, normalizeDeviceRow({
-      ...prev,
-      ...row,
-      firstSeenAt: (() => {
-        const vals = [safeNum(prev.firstSeenAt), safeNum(row.firstSeenAt)].filter(v => v > 0);
-        return vals.length ? Math.min(...vals) : 0;
-      })(),
-      lastSeenAt: Math.max(safeNum(prev.lastSeenAt), safeNum(row.lastSeenAt)),
-      seenHashes: [...new Set([...(prev.seenHashes || []), ...(row.seenHashes || []), prev.deviceHash, row.deviceHash].filter(Boolean))]
-    }));
-  });
+export const isCurrentDevice = (r, c = getCurrentDeviceIdentity()) => isSameDevice(r, c);
 
-  return [...byKey.values()].sort((a, b) => safeNum(a.firstSeenAt) - safeNum(b.firstSeenAt));
-}
+export const getOtherDevices = (r, c = getCurrentDeviceIdentity()) => normalizeDeviceRegistry(r).filter(x => !isCurrentDevice(x, c));
 
-export function saveDeviceRegistry(rows) {
-  const out = normalizeDeviceRegistry(rows);
-  localStorage.setItem(LS_REGISTRY, JSON.stringify(out));
-  return out;
-}
+export const countDeviceStableIds = r => new Set(normalizeDeviceRegistry(r).map(d => safeString(d?.deviceStableId)).filter(Boolean)).size;
 
-export function getCurrentDeviceIdentity() {
-  return normalizeDeviceRow({
-    deviceHash: localStorage.getItem('deviceHash') || '',
-    deviceStableId: localStorage.getItem('deviceStableId') || ''
-  });
-}
+export const removeDevicesFromRegistry = (r, sR) => { const sD=normalizeDeviceRegistry(sR), stI=new Set(sD.map(d=>safeString(d?.deviceStableId)).filter(Boolean)), hsI=new Set(sD.map(d=>safeString(d?.deviceHash)).filter(Boolean)); return normalizeDeviceRegistry(r).filter(d => !(safeString(d?.deviceStableId) && stI.has(safeString(d?.deviceStableId))) && !(!safeString(d?.deviceStableId) && safeString(d?.deviceHash) && hsI.has(safeString(d?.deviceHash)))); };
 
-export function isSameDevice(a, b) {
-  const aa = normalizeDeviceRow(a || {});
-  const bb = normalizeDeviceRow(b || {});
-  if (aa.deviceStableId && bb.deviceStableId) return aa.deviceStableId === bb.deviceStableId;
-  if (!aa.deviceStableId && !bb.deviceStableId && aa.deviceHash && bb.deviceHash) return aa.deviceHash === bb.deviceHash;
-  return false;
-}
+const DeviceRegistry = { getDeviceRegistry, normalizeDeviceRow, normalizeDeviceRegistry, saveDeviceRegistry, getCurrentDeviceIdentity, isSameDevice, isCurrentDevice, getOtherDevices, countDeviceStableIds, removeDevicesFromRegistry };
 
-export function isCurrentDevice(row, current = getCurrentDeviceIdentity()) {
-  return isSameDevice(row, current);
-}
-
-export function getOtherDevices(rows, current = getCurrentDeviceIdentity()) {
-  return normalizeDeviceRegistry(rows).filter(row => !isCurrentDevice(row, current));
-}
-
-export function countDeviceStableIds(rows) {
-  return new Set(
-    normalizeDeviceRegistry(rows)
-      .map(d => safeString(d?.deviceStableId || ''))
-      .filter(Boolean)
-  ).size;
-}
-
-export function removeDevicesFromRegistry(rows, selectedRows) {
-  const stableIdsToDelete = new Set(
-    normalizeDeviceRegistry(selectedRows)
-      .map(d => safeString(d?.deviceStableId || ''))
-      .filter(Boolean)
-  );
-  const hashesToDelete = new Set(
-    normalizeDeviceRegistry(selectedRows)
-      .map(d => safeString(d?.deviceHash || ''))
-      .filter(Boolean)
-  );
-
-  return normalizeDeviceRegistry(rows).filter(d => {
-    const stable = safeString(d?.deviceStableId || '');
-    const hash = safeString(d?.deviceHash || '');
-    if (stable && stableIdsToDelete.has(stable)) return false;
-    if (!stable && hash && hashesToDelete.has(hash)) return false;
-    return true;
-  });
-}
-
-const DeviceRegistry = {
-  getDeviceRegistry,
-  normalizeDeviceRow,
-  normalizeDeviceRegistry,
-  saveDeviceRegistry,
-  getCurrentDeviceIdentity,
-  isSameDevice,
-  isCurrentDevice,
-  getOtherDevices,
-  countDeviceStableIds,
-  removeDevicesFromRegistry
-};
-
-if (typeof window !== 'undefined') {
-  window.DeviceRegistry = DeviceRegistry;
-}
-
+if(typeof window!=='undefined') window.DeviceRegistry = DeviceRegistry;
 export default DeviceRegistry;
 
 //=================================================
 // FILE: /scripts/analytics/event-logger.js
+// scripts/analytics/event-logger.js
 // UID.003_(Event log truth)_(оставить события источником правды)_(все долгоживущие user states должны выводиться отсюда или из кэша поверх этого слоя) // UID.017_(Launch source stats)_(подготовить логирование discovery source)_(future track launches/recommendation/provider actions должны иметь source-aware events) // UID.056_(Recommendation reasons)_(готовить explainable rec telemetry)_(shown/clicked/accepted/dismissed reason-aware rec events логировать здесь) // UID.072_(Provider consents)_(не логировать лишнее без разрешений)_(future external-exportable events должны отличаться от полного локального event log) // UID.081_(Telemetry mapper)_(развести raw events и external payloads)_(event-logger пишет локальную truth, mapper позже решает что можно экспортировать) // UID.083_(Yandex Metrica safe export)_(не слать сырые local events напрямую наружу)_(метрика должна получать только mapped whitelist layer) // UID.094_(No-paralysis rule)_(event logging не должен зависеть от intel/providers)_(любые новые event types additive и безопасные)
+
 import { metaDB } from './meta-db.js';
 
 class EventLogger {
-  constructor() {
-    this.queue = [];
-    this.deviceHash = localStorage.getItem('deviceHash') || ('tmp_' + crypto.randomUUID());
-    this.sessionId = crypto.randomUUID();
-  }
-
-  async init() {
-    await metaDB.init();
-    // Инициализируем стабильный deviceHash
-    try {
-      const { getOrCreateDeviceHash } = await import('../core/device-identity.js');
-      this.deviceHash = await getOrCreateDeviceHash();
-    } catch {
-      if (!localStorage.getItem('deviceHash')) {
-        this.deviceHash = 'dv_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-        localStorage.setItem('deviceHash', this.deviceHash);
-      } else {
-        this.deviceHash = localStorage.getItem('deviceHash');
-      }
-    }
-    ['visibilitychange', 'beforeunload'].forEach(e => window.addEventListener(e, () => document.hidden !== false && this.flush()));
-    window.addEventListener('analytics:forceFlush', () => this.flush());
-    setInterval(() => this.flush(), 15000);
-  }
-
-  log(type, uid, data = {}) {
-    this.queue.push({ eventId: crypto.randomUUID(), sessionId: this.sessionId, deviceHash: this.deviceHash, platform: window.Utils?.getPlatform()?.isIOS ? 'ios' : 'web', type, uid, timestamp: Date.now(), data });
-    if (this.queue.length > 20) this.flush();
-  }
-
-  async flush() {
-    if (!this.queue.length) return;
-    const b = [...this.queue]; this.queue = [];
-    try { await metaDB.addEvents(b, 'events_hot'); window.dispatchEvent(new CustomEvent('analytics:logUpdated')); } 
-    catch { this.queue = [...b, ...this.queue]; }
-  }
+  constructor() { this.queue=[]; this.sessionId=crypto.randomUUID(); this.deviceHash=localStorage.getItem('deviceHash')||('tmp_'+crypto.randomUUID()); }
+  async init() { await metaDB.init(); try { const { getOrCreateDeviceHash } = await import('../core/device-identity.js'); this.deviceHash = await getOrCreateDeviceHash(); } catch { if(!localStorage.getItem('deviceHash')) localStorage.setItem('deviceHash', this.deviceHash='dv_'+crypto.randomUUID().replace(/-/g,'').slice(0,16)); else this.deviceHash=localStorage.getItem('deviceHash'); } ['visibilitychange','beforeunload'].forEach(e=>window.addEventListener(e,()=>document.hidden!==false&&this.flush())); window.addEventListener('analytics:forceFlush',()=>this.flush()); setInterval(()=>this.flush(),15000); }
+  log(type, uid, data={}) { this.queue.push({eventId:crypto.randomUUID(),sessionId:this.sessionId,deviceHash:this.deviceHash,platform:window.Utils?.getPlatform()?.isIOS?'ios':'web',type,uid,timestamp:Date.now(),data}); if(this.queue.length>20)this.flush(); }
+  async flush() { if(!this.queue.length)return; const b=[...this.queue]; this.queue=[]; try{ await metaDB.addEvents(b,'events_hot'); window.dispatchEvent(new CustomEvent('analytics:logUpdated')); }catch{ this.queue=[...b,...this.queue]; } }
 }
+
 export const eventLogger = new EventLogger(); window.eventLogger = eventLogger;
 
 //=================================================
