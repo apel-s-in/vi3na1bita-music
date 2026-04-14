@@ -201,58 +201,41 @@ export function initYandexActions() {
       const token = ya.getToken();
       if (!token || !ya.isTokenAlive()) return window.NotificationSystem?.warning('Сессия истекла. Войдите снова.');
 
-      const runRestoreByPath = async selectedPath => {
-        window.NotificationSystem?.info('Загружаем резервную копию...');
-        try {
-          const data = await disk.download(token, selectedPath || undefined);
-          if (!data) throw new Error('Файл не найден или пуст');
-          openRestorePreviewModal(data, async mode => {
-            try {
-              await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
-              clearCachedBackupFile();
-              try {
-                const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-                markSyncReady('restore_completed');
-                markRestoreOrSkipDone('restore_completed');
-              } catch {}
-              try {
-                const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-                await runPostRestoreRefresh({ reason: 'cloud_restore' });
-              } catch {}
-              window.NotificationSystem?.success('Прогресс восстановлен ✅');
-            } catch (e) {
-              const msg = String(e?.message || '');
-              if (msg.includes('restore_owner_mismatch')) window.NotificationSystem?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
-              else window.NotificationSystem?.error('Ошибка восстановления: ' + msg);
-            }
-          });
-          } catch (e) {
-            const msg = String(e?.message || '');
-            console.error('[Yandex restore failed]', e);
-            if (msg.includes('proxy_failed_or_timeout')) {
-              window.NotificationSystem?.error('Сервер Яндекса не отвечает. Попробуйте "Из файла" или повторите попытку позже.');
-            } else if (msg.includes('disk_forbidden')) {
-              window.NotificationSystem?.error('Доступ к backup через Cloud Function запрещён: ' + msg);
-            } else if (msg.includes('backup_not_found')) {
-              window.NotificationSystem?.error('Backup-файл не найден в облаке: ' + msg);
-            } else {
-              window.NotificationSystem?.error('Ошибка восстановления: ' + msg);
-            }
-          }
-      };
-
+      window.NotificationSystem?.info('Скачивание и применение резервной копии...');
       try {
-        const versions = await disk.listBackups(token).catch(() => []);
-        if (Array.isArray(versions) && versions.length > 1) {
-          openRestoreVersionPickerModal(versions, path => runRestoreByPath(path));
-          return;
+        const data = await disk.download(token);
+        if (!data) throw new Error('Файл не найден или пуст');
+        
+        await BackupVault.importData(new Blob([JSON.stringify(data)]), 'all');
+        
+        // Жёстко прописываем мету, чтобы "оранжевое окно" исчезло немедленно
+        const meta = await disk.getMeta(token).catch(() => null);
+        if (meta) {
+          localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
+          localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
+          localStorage.setItem('yandex:last_backup_local_ts', String(Number(data.revision?.timestamp || data.createdAt || Date.now())));
         }
-        await runRestoreByPath(versions?.[0]?.path || null);
+
+        try {
+          const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+          markSyncReady('restore_completed');
+          markRestoreOrSkipDone('restore_completed');
+        } catch {}
+
+        window.NotificationSystem?.success('Прогресс полностью восстановлен! Перезагрузка...');
+        setTimeout(() => window.location.reload(), 1000);
       } catch (e) {
-        if (String(e?.message || '') !== '__handled__') {
-          window.NotificationSystem?.error('Ошибка списка backup: ' + String(e?.message || ''));
+        const msg = String(e?.message || '');
+        console.error('[Yandex restore failed]', e);
+        if (msg.includes('disk_forbidden')) {
+          window.NotificationSystem?.error('Доступ запрещён. Пожалуйста, переподключите Яндекс Аккаунт (выйдите и зайдите).');
+        } else if (msg.includes('restore_owner_mismatch')) {
+          window.NotificationSystem?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
+        } else {
+          window.NotificationSystem?.error('Ошибка восстановления: ' + msg);
         }
       }
+      return;
     }
   };
 }
