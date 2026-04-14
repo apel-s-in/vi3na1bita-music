@@ -1,88 +1,26 @@
-export async function runPostRestoreRefresh({ reason = 'restore', keepCurrentAlbum = true } = {}) {
+export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlbum = true } = {}) => {
+  const W = window;
   try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    const [unlocked, rpg] = await Promise.all([
-      metaDB.getGlobal('unlocked_achievements').catch(() => null),
-      metaDB.getGlobal('user_profile_rpg').catch(() => null)
-    ]);
-
-    if (window.achievementEngine) {
-      window.achievementEngine.unlocked = unlocked?.value || {};
-      window.achievementEngine.profile = rpg?.value || { xp: 0, level: 1 };
-      window.achievementEngine.achievements = window.achievementEngine._buildUIArray?.() || window.achievementEngine.achievements || [];
-    }
-
-    window.dispatchEvent(new CustomEvent('stats:updated'));
-    window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
-    window.dispatchEvent(new CustomEvent('achievements:updated', {
-      detail: {
-        total: window.achievementEngine?.achievements?.length || 0,
-        unlocked: Object.keys(window.achievementEngine?.unlocked || {}).length,
-        items: window.achievementEngine?.unlocked || {},
-        streak: 0,
-        profile: window.achievementEngine?.profile || { xp: 0, level: 1 }
-      }
-    }));
+    const { metaDB } = await import('../../analytics/meta-db.js'), [u, r] = await Promise.all([metaDB.getGlobal('unlocked_achievements').catch(()=>null), metaDB.getGlobal('user_profile_rpg').catch(()=>null)]);
+    if (W.achievementEngine) { W.achievementEngine.unlocked = u?.value || {}; W.achievementEngine.profile = r?.value || { xp: 0, level: 1 }; W.achievementEngine.achievements = W.achievementEngine._buildUIArray?.() || W.achievementEngine.achievements || []; }
+    ['stats:updated', 'analytics:logUpdated'].forEach(e => W.dispatchEvent(new CustomEvent(e)));
+    W.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: W.achievementEngine?.achievements?.length || 0, unlocked: Object.keys(W.achievementEngine?.unlocked || {}).length, items: W.achievementEngine?.unlocked || {}, streak: 0, profile: W.achievementEngine?.profile || { xp: 0, level: 1 } } }));
   } catch {}
-
+  
+  try { const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || Date.now()), m = JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null'); localStorage.setItem('yandex:last_backup_check', JSON.stringify((m && typeof m === 'object') ? m : { timestamp: ts })); W.dispatchEvent(new CustomEvent('yandex:backup:meta-updated')); } catch {}
+  
+  try { ['intel:listener-profile:rebuild-request', 'intel:recommendations:refresh-request', 'intel:collection:refresh-request', 'intel:runtime:refresh-request'].forEach(n => W.dispatchEvent(new CustomEvent(n, { detail: { reason, at: Date.now() } }))); } catch {}
+  try { const { listenerProfile } = await import('../../intel/listener/listener-profile.js'); await listenerProfile?.build?.().catch(()=>null); } catch {}
+  
   try {
-    const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || Date.now());
-    const meta = JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null');
-    if (meta && typeof meta === 'object') {
-      localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
-    } else {
-      localStorage.setItem('yandex:last_backup_check', JSON.stringify({ timestamp: ts }));
-    }
-    window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
-  } catch {}
-
-  try {
-    const intelEvents = [
-      'intel:listener-profile:rebuild-request',
-      'intel:recommendations:refresh-request',
-      'intel:collection:refresh-request',
-      'intel:runtime:refresh-request'
-    ];
-    intelEvents.forEach(name => window.dispatchEvent(new CustomEvent(name, {
-      detail: { reason, at: Date.now() }
-    })));
-  } catch {}
-
-  try {
-    const { listenerProfile } = await import('../../intel/listener/listener-profile.js');
-    await listenerProfile?.build?.().catch(() => null);
-  } catch {}
-
-  try {
-    const currentAlbum = keepCurrentAlbum ? (window.AlbumsManager?.getCurrentAlbum?.() || null) : null;
-    if (currentAlbum === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) {
-      const mod = await import('./view.js');
-      await mod.loadProfileView?.(window.AlbumsManager);
-    } else if (currentAlbum) {
-      await window.AlbumsManager?.loadAlbum?.(currentAlbum);
-    } else {
-      window.PlayerUI?.updatePlaylistFiltering?.();
-      window.PlayerUI?.updateMiniHeader?.();
-    }
-  } catch (e) {
-    console.debug('[YandexRuntimeRefresh] soft refresh fallback:', e?.message);
-    window.PlayerUI?.updatePlaylistFiltering?.();
-    window.PlayerUI?.updateMiniHeader?.();
-  }
-
-  try {
-    window.dispatchEvent(new CustomEvent('backup:restore:applied', {
-      detail: { reason, at: Date.now() }
-    }));
-  } catch {}
-
-  try {
-    window.dispatchEvent(new CustomEvent('profile:data:refreshed', {
-      detail: { reason, at: Date.now() }
-    }));
-  } catch {}
-
+    const cA = keepCurrentAlbum ? (W.AlbumsManager?.getCurrentAlbum?.() || null) : null;
+    if (cA === (W.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) { const mod = await import('./view.js'); await mod.loadProfileView?.(W.AlbumsManager); }
+    else if (cA) await W.AlbumsManager?.loadAlbum?.(cA);
+    else { W.PlayerUI?.updatePlaylistFiltering?.(); W.PlayerUI?.updateMiniHeader?.(); }
+  } catch { W.PlayerUI?.updatePlaylistFiltering?.(); W.PlayerUI?.updateMiniHeader?.(); }
+  
+  try { ['backup:restore:applied', 'profile:data:refreshed'].forEach(e => W.dispatchEvent(new CustomEvent(e, { detail: { reason, at: Date.now() } }))); } catch {}
   return true;
-}
+};
 
 export default { runPostRestoreRefresh };
