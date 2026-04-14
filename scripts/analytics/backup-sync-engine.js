@@ -140,8 +140,13 @@ async function canSafelyUploadAgainstCloud(disk, token) {
     }
 
     return { ok: false, reason: 'conflict', compare: cmp, cloudMeta };
-  } catch (e) {
-    return { ok: false, reason: 'cloud_compare_failed', error: String(e?.message || '') };
+    } catch (e) {
+    const errStr = String(e?.message || '');
+    if (errStr.includes('disk_forbidden') || errStr.includes('disk_auth_error')) {
+       window.YandexAuth?.logout?.(); // Токен умер или отозван
+       window.NotificationSystem?.error('Сессия Яндекса устарела или нет прав. Автосохранение остановлено.');
+    }
+    return { ok: false, reason: 'cloud_compare_failed', error: errStr };
   }
 }
 
