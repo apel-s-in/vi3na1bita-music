@@ -16,7 +16,13 @@ const canUp = () => _rdy && isSyncEnabled() && isRestoreOrSkipDone();
 export const isRestoreOrSkipDone = () => localStorage.getItem(LS_RESTORE) === '1';
 export const markRestoreOrSkipDone = r => { localStorage.setItem(LS_RESTORE, '1'); console.debug('[BackupSyncEngine] restore/skip done:', r); };
 
-export const markSyncReady = r => { if(_rdy) return; _rdy=true; if(['no_cloud_backup','cloud_not_newer','diff_too_small','no_auth_local_only','logged_out_local_only','offline_skip','meta_check_failed','timeout_fallback','auto_restore','restore_completed','manual_save','user_skipped_restore'].includes(r)) markRestoreOrSkipDone(r); console.debug('[BackupSyncEngine] sync READY:', r); window.dispatchEvent(new CustomEvent('backup:sync:ready',{detail:{reason:r}})); };
+export const markSyncReady = r => {
+  if(_rdy) return;
+  _rdy=true;
+  if(['no_cloud_backup','cloud_not_newer','diff_too_small','no_auth_local_only','logged_out_local_only','offline_skip','meta_check_failed','timeout_fallback','restore_completed','manual_save','user_skipped_restore'].includes(r)) markRestoreOrSkipDone(r);
+  console.debug('[BackupSyncEngine] sync READY:', r);
+  window.dispatchEvent(new CustomEvent('backup:sync:ready',{detail:{reason:r}}));
+};
 
 export const setSyncEnabled = v => { localStorage.setItem(LS_SYNC, v?'1':'0'); if(!v){clearTimeout(_tmr);_tmr=null;} window.dispatchEvent(new CustomEvent('backup:sync:settings:changed')); };
 
