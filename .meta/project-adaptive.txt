@@ -399,12 +399,11 @@ vi3na1bita-music/
 ├── albums.json
 ├── generate-context.js
 ├── index.html
-├── index.js для Cloud Function.txt
 ├── manifest.json
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-14 12:10:51 UTC
+Сгенерировано: 2026-04-14 12:11:21 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
