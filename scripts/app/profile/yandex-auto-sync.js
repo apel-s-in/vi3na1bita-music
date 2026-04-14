@@ -117,70 +117,17 @@ async function _checkCloudMetaOnly() {
       }
     }));
 
+    // Убираем агрессивное модальное окно. Оранжевое окно в профиле 
+    // само покажет, что есть новая копия (через dispatchEvent).
     if (isNewDevice || cmp.state === 'cloud_richer' || cmp.state === 'cloud_probably_richer' || cmp.state === 'conflict') {
-      _showRestoreModal(meta, token, { localSummary, compare: cmp });
+      _markReady('cloud_newer_user_choice');
     }
   } catch (e) {
     console.debug('[AutoSync] meta check failed:', e?.message);
     _markReady('meta_check_failed');
   }
 }
-
-function _showRestoreModal(meta, token, ctx = {}) {
-  const localSummary = ctx.localSummary || getLocalProfileSummary();
-  const cmp = ctx.compare || compareLocalVsCloud(localSummary, meta);
-
-  window.Modals?.confirm?.({
-    title: '☁️ Найден ваш облачный прогресс',
-    textHtml: `
-      <div style="color:#eaf2ff;font-size:13px;margin-bottom:12px;line-height:1.5">
-        Обнаружена облачная копия данных. Восстановить прогресс на этом устройстве?
-      </div>
-      <div style="display:flex;gap:10px;margin:0 0 12px;text-align:center">
-        <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px 8px">
-          <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase">💾 Сейчас</div>
-          <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${localSummary.level || 1}</div>
-          <div style="font-size:11px;color:#eaf2ff">⭐ ${localSummary.favoritesCount || 0} треков · ▶ ${localSummary.playlistsCount || 0}</div>
-        </div>
-        <div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:10px 8px">
-          <div style="font-size:10px;color:#8ab8fd;margin-bottom:6px;text-transform:uppercase">☁️ Облако</div>
-          <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${meta.level || 1}</div>
-          <div style="font-size:11px;color:#eaf2ff">⭐ ${meta.favoritesCount || 0} треков · ▶ ${meta.playlistsCount || 0}</div>
-        </div>
-      </div>
-      <div style="font-size:11px;color:#7f93b5">
-        Сравнение: ${cmp.state}. Применяется безопасное слияние — высокие результаты не будут понижены.
-      </div>`,
-    maxWidth: 460,
-    confirmText: '📥 Восстановить',
-    cancelText: 'Пропустить',
-    onCancel: () => {
-      _markReady('user_skipped_restore');
-    },
-    onConfirm: async () => {
-      window.NotificationSystem?.info('Загружаем резервную копию...');
-      try {
-        const data = await YandexDisk.download(token);
-        if (!data) return window.NotificationSystem?.warning('Файл backup не найден.');
-        const sum = BackupVault.summarizeBackupObject(data);
-        const curYId = String(window.YandexAuth?.getProfile?.()?.yandexId || '').trim();
-        if (sum.ownerYandexId && sum.ownerYandexId !== curYId) {
-          return window.NotificationSystem?.error('Backup принадлежит другому аккаунту.');
-        }
-        await BackupVault.importData(new Blob([JSON.stringify(data)]), 'all');
-        _markReady('auto_restore');
-        try {
-          const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-          await runPostRestoreRefresh({ reason: 'auto_restore' });
-        } catch {}
-        window.NotificationSystem?.success('Прогресс восстановлен ✅');
-      } catch (e) {
-        _markReady('restore_failed');
-        window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
-      }
-    }
-  });
-}
+/* Функция агрессивного модального окна _showRestoreModal удалена по правилу ненавязчивости */
 
 async function _markReady(reason) {
   try {
