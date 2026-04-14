@@ -28,7 +28,7 @@ export function initYandexActions() {
         nSys?.info('Скачивание и применение резервной копии...');
         try {
           const d = await disk.download(t);
-          if (!d) throw new Error('Файл не найден или пуст');
+          if (!d) throw new Error('backup_not_found');
 
           await BackupVault.importData(new Blob([JSON.stringify(d)]), 'all');
 
@@ -55,10 +55,19 @@ export function initYandexActions() {
         } catch (e) {
           const msg = String(e?.message || '');
           console.error('[Yandex restore failed]', e);
-          if (msg.includes('disk_forbidden')) nSys?.error('Доступ запрещён. Переподключите Яндекс Аккаунт: ' + msg);
-          else if (msg.includes('restore_owner_mismatch')) nSys?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
-          else if (msg.includes('backup_not_found')) nSys?.error('Backup не найден в облаке.');
-          else nSys?.error('Ошибка восстановления: ' + msg);
+          if (msg.includes('disk_forbidden')) {
+            nSys?.error('Нет доступа к Яндекс Диску. Попробуйте: Выйти → Войти заново (кнопка «Переподключить права»).');
+          } else if (msg.includes('restore_owner_mismatch')) {
+            nSys?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
+          } else if (msg.includes('backup_not_found') || msg.includes('not_found')) {
+            nSys?.warning('Облачная копия не найдена. Сначала сохраните backup кнопкой «Сохранить».');
+          } else if (msg.includes('restore_requires_yandex_login')) {
+            nSys?.warning('Для восстановления нужен вход в Яндекс.');
+          } else if (msg.includes('proxy_failed_or_timeout')) {
+            nSys?.error('Cloud Function не отвечает. Повторите позже или используйте «Из файла».');
+          } else {
+            nSys?.error('Ошибка восстановления: ' + msg);
+          }
         }
       }
     };
