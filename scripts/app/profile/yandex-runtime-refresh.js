@@ -1,5 +1,17 @@
 export async function runPostRestoreRefresh({ reason = 'restore', keepCurrentAlbum = true } = {}) {
   try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    const [unlocked, rpg] = await Promise.all([
+      metaDB.getGlobal('unlocked_achievements').catch(() => null),
+      metaDB.getGlobal('user_profile_rpg').catch(() => null)
+    ]);
+
+    if (window.achievementEngine) {
+      window.achievementEngine.unlocked = unlocked?.value || {};
+      window.achievementEngine.profile = rpg?.value || { xp: 0, level: 1 };
+      window.achievementEngine.achievements = window.achievementEngine._buildUIArray?.() || window.achievementEngine.achievements || [];
+    }
+
     window.dispatchEvent(new CustomEvent('stats:updated'));
     window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
     window.dispatchEvent(new CustomEvent('achievements:updated', {
