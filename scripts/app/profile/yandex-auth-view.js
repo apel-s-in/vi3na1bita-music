@@ -35,7 +35,29 @@ const bindReactiveEvents = (root, rerender) => {
   if (root._yaReactiveBound) return; root._yaReactiveBound = true;
   const s = () => root.isConnected && rerender(), d = () => root.isConnected && updateSyncDot(root);
   root._yaReactiveHandlers = {
-    onAuthChanged: s, onBackupMetaUpdated: s, onSyncReady: () => { s(); d(); }, onSyncSettingsChanged: d,
+    onAuthChanged: s,
+    onBackupMetaUpdated: s,
+    onSyncReady: () => { s(); d(); },
+    onSyncSettingsChanged: d,
+    onCloudNewer: e => {
+      if (!root.isConnected) return;
+      s();
+      const dt = e.detail || {}, meta = dt.meta || null, cmpState = String(dt.compareState || ''), k = `yandex:cloud:newer:prompt:${safeNum(meta?.timestamp)}:${cmpState}`;
+      if (!meta || sessionStorage.getItem(k) === '1') return;
+      sessionStorage.setItem(k, '1');
+      setTimeout(() => {
+        if (!root.isConnected) return;
+        const ask = window.Modals?.confirm;
+        if (!ask) return;
+        ask({
+          title: 'Облачная копия найдена',
+          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более богатая или более новая копия.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>Открыть восстановление из облака?`,
+          confirmText: 'Открыть',
+          cancelText: 'Позже',
+          onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender)
+        });
+      }, 250);
+    },
     onSyncState: e => {
       const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
       const st = e.detail?.state, map = { syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true }, ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false }, idle: { title: 'Авто-сохранение активно', color: '#4caf50', anim: false } }, cfg = map[st] || map.idle;
@@ -47,6 +69,7 @@ const bindReactiveEvents = (root, rerender) => {
   window.addEventListener('yandex:backup:meta-updated', root._yaReactiveHandlers.onBackupMetaUpdated);
   window.addEventListener('backup:sync:ready', root._yaReactiveHandlers.onSyncReady);
   window.addEventListener('backup:sync:settings:changed', root._yaReactiveHandlers.onSyncSettingsChanged);
+  window.addEventListener('yandex:cloud:newer', root._yaReactiveHandlers.onCloudNewer);
   window.addEventListener('backup:sync:state', root._yaReactiveHandlers.onSyncState);
 };
 
