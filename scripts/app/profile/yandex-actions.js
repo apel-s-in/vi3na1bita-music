@@ -10,6 +10,7 @@ const clearCachedBackupFile = () => { _cachedBackupFile = null; };
 export function initYandexActions() {
   window._handleYaAction = async (action, container, rerender) => {
     const ya = window.YandexAuth, disk = YandexDisk, nSys = window.NotificationSystem, mods = window.Modals;
+    const localProfile = (() => { try { return JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null') || { name: 'Слушатель' }; } catch { return { name: 'Слушатель' }; } })();
     if (!ya) return;
 
     const acts = {
