@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-15 15:19:42 UTC
+Сгенерировано: 2026-04-15 15:40:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3021,6 +3021,7 @@ const clearCachedBackupFile = () => { _cachedBackupFile = null; };
 export function initYandexActions() {
   window._handleYaAction = async (action, container, rerender) => {
     const ya = window.YandexAuth, disk = YandexDisk, nSys = window.NotificationSystem, mods = window.Modals;
+    const localProfile = (() => { try { return JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null') || { name: 'Слушатель' }; } catch { return { name: 'Слушатель' }; } })();
     if (!ya) return;
 
     const acts = {
