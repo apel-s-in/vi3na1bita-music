@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-15 13:40:41 UTC
+Сгенерировано: 2026-04-15 13:41:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1168,7 +1168,17 @@ const rDevCac = async () => { try { const [{getAllTrackMetas}, {getCurrentDevice
 const rSnap = async () => { const [st, w, a, str, uP, uR, lP, pI, hS, rS, cS, iR] = await Promise.all([metaDB.getAllStats(), metaDB.getEvents('events_warm'), metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('global_streak'), metaDB.getGlobal('user_profile'), metaDB.getGlobal('user_profile_rpg'), metaDB.getStoreAll('listener_profile').catch(()=>[]), metaDB.getStoreAll('provider_identity').catch(()=>[]), metaDB.getStoreAll('hybrid_sync').catch(()=>[]), metaDB.getStoreAll('recommendation_state').catch(()=>[]), metaDB.getStoreAll('collection_state').catch(()=>[]), metaDB.getStoreAll('intel_runtime').catch(()=>[])]); return { stats:st, eventLog:{warm:w}, achievements:a?.value||{}, streaks:str?.value||{}, userProfile:uP?.value||{name:'Слушатель',avatar:'😎'}, userProfileRpg:uR?.value||{xp:0,level:1}, localStorage: P_KEYS.reduce((a,k)=>{const v=localStorage.getItem(k);if(v!=null)a[k]=v;return a;},{}), intel: {listenerProfile:lP, providerIdentity:pI, hybridSync:hS, recommendationState:rS, collectionState:cS, intelRuntime:iR} }; };
 
 export class BackupVault {
-  static async buildBackupObject() { const identity=await rOwner(), devices=await rDevReg(), data=await rSnap(), cm=await rDevCac(); if(cm?.deviceHash||cm?.deviceStableId) { const d=devices.find(x=>(cm.deviceStableId&&x.deviceStableId===cm.deviceStableId)||(cm.deviceHash&&x.deviceHash===cm.deviceHash)); if(d) d._cacheMeta=cm.items; } const revision={ timestamp:Date.now(), appVersion:window.APP_CONFIG?.APP_VERSION||null, schemaVersion:'6.0', eventCount:Array.isArray(data?.eventLog?.warm)?data.eventLog.warm.length:0, statsCount:Array.isArray(data?.stats)?data.stats.length:0, devicesCount:devices.length }; const payloadHash=await sha256Hex(stableStringify({identity,devices,revision,data})); return { version:'6.0', createdAt:Date.now(), identity, devices, revision, integrity:{ algorithm:'SHA-256', payloadHash, ownerBinding:await sha256Hex(`${identity.ownerYandexId||'anon'}::${identity.internalUserId||'local'}::${payloadHash}`) }, data }; }
+  static async buildBackupObject() {
+    const identity=await rOwner(), devices=await rDevReg(), data=await rSnap(), cm=await rDevCac();
+    if(cm?.deviceHash||cm?.deviceStableId) {
+      const d=devices.find(x=>(cm.deviceStableId&&x.deviceStableId===cm.deviceStableId)||(cm.deviceHash&&x.deviceHash===cm.deviceHash));
+      if(d) d._cacheMeta=cm.items;
+    }
+    const cur=Array.isArray(devices)?devices.find(x=>(cm?.deviceStableId&&x.deviceStableId===cm.deviceStableId)||(cm?.deviceHash&&x.deviceHash===cm.deviceHash))||devices[0]||null:null;
+    const revision={ timestamp:Date.now(), appVersion:window.APP_CONFIG?.APP_VERSION||null, schemaVersion:'6.0', eventCount:Array.isArray(data?.eventLog?.warm)?data.eventLog.warm.length:0, statsCount:Array.isArray(data?.stats)?data.stats.length:0, devicesCount:devices.length, profileName:String(data?.userProfile?.name||'Слушатель'), sourceDeviceStableId:String(cur?.deviceStableId||''), sourceDeviceLabel:String(cur?.label||''), sourceDeviceClass:String(cur?.class||''), sourcePlatform:String(cur?.platform||'') };
+    const payloadHash=await sha256Hex(stableStringify({identity,devices,revision,data}));
+    return { version:'6.0', createdAt:Date.now(), identity, devices, revision, integrity:{ algorithm:'SHA-256', payloadHash, ownerBinding:await sha256Hex(`${identity.ownerYandexId||'anon'}::${identity.internalUserId||'local'}::${payloadHash}`) }, data };
+  }
   
   static async exportData() { const d=await this.buildBackupObject(), u=URL.createObjectURL(new Blob([stableStringify(d)],{type:'application/json'})), a=document.createElement('a'); a.href=u; a.download=`vi3na1bita_backup_${new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)}.vi3bak`; a.click(); URL.revokeObjectURL(u); if(window.eventLogger){window.eventLogger.log('FEATURE_USED','global',{feature:'backup_export_manual'}); window.dispatchEvent(new CustomEvent('analytics:forceFlush'));} return d; }
   
