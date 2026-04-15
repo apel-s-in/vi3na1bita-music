@@ -11,7 +11,7 @@ const _checkCloudMetaOnly = async () => {
   const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return _markReady('offline_skip');
   try {
-    const [m, items] = await Promise.all([YandexDisk.getMeta(ya.getToken()).catch(() => null), YandexDisk.listBackups(ya.getToken()).catch(() => [])]), lS = await enrichLocalSummaryWithDb(getLocalProfileSummary());
+    const m = await YandexDisk.getMeta(ya.getToken()).catch(() => null), lS = await enrichLocalSummaryWithDb(getLocalProfileSummary());
     if (!m) return _markReady('no_cloud_backup');
     try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); } catch {}
     window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
@@ -19,7 +19,7 @@ const _checkCloudMetaOnly = async () => {
     if (['local_richer', 'local_probably_richer', 'equivalent'].includes(c.state)) return _markReady(c.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
     if (c.state === 'no_cloud') return _markReady('no_cloud_backup');
     _markReady('cloud_newer_user_choice');
-    window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail: { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device', meta: m, items, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore } }));
+    window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail: { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device', meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore } }));
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
 };
 
