@@ -403,7 +403,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-15 13:26:35 UTC
+Сгенерировано: 2026-04-15 13:40:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1187,7 +1187,14 @@ const LS_REGISTRY = 'backup:device_registry:v1';
 
 export const getDeviceRegistry = () => (safeJsonParse(localStorage.getItem(LS_REGISTRY), [])||[]).filter(Boolean);
 
-export const normalizeDeviceRow = (r = {}) => { const sH=Array.isArray(r?.seenHashes)?[...new Set(r.seenHashes.map(safeString).filter(Boolean))]:[], dH=safeString(r?.deviceHash||''); if(dH&&!sH.includes(dH)) sH.push(dH); return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:safeString(r?.platform||'web')||'web', userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), seenHashes:sH }; };
+export const normalizeDeviceRow = (r = {}) => {
+  const sH=Array.isArray(r?.seenHashes)?[...new Set(r.seenHashes.map(safeString).filter(Boolean))]:[], dH=safeString(r?.deviceHash||'');
+  if(dH&&!sH.includes(dH)) sH.push(dH);
+  const pf=safeString(r?.platform||'web')||'web';
+  const cl=((v,p)=>{const x=safeString(v).toLowerCase();if(['iphone','ipad','android','desktop','tablet'].includes(x))return x.charAt(0).toUpperCase()+x.slice(1);if(p==='ios')return 'iPhone';if(p==='android')return 'Android';return 'Desktop';})(r?.class,pf);
+  const lb=safeString(r?.label||'')||({ ios:'Мой iPhone', android:'Моё Android устройство', web:'Мой Desktop' }[pf]||'Моё устройство');
+  return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:pf, class:cl, label:lb, userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), seenHashes:sH };
+};
 
 export const normalizeDeviceRegistry = rows => { const bK=new Map(); (Array.isArray(rows)?rows:[]).map(normalizeDeviceRow).filter(r=>r.deviceStableId||r.deviceHash).forEach(r => { const k=r.deviceStableId||r.deviceHash, p=bK.get(k); if(!p) return bK.set(k, r); bK.set(k, normalizeDeviceRow({ ...p, ...r, firstSeenAt: Math.min(...[safeNum(p.firstSeenAt), safeNum(r.firstSeenAt)].filter(v=>v>0))||0, lastSeenAt: Math.max(safeNum(p.lastSeenAt), safeNum(r.lastSeenAt)), seenHashes: [...new Set([...(p.seenHashes||[]), ...(r.seenHashes||[]), p.deviceHash, r.deviceHash].filter(Boolean))] })); }); return [...bK.values()].sort((a,b)=>safeNum(a.firstSeenAt)-safeNum(b.firstSeenAt)); };
 
