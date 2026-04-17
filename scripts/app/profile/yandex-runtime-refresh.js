@@ -11,6 +11,8 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
     if (W.achievementEngine) {
       W.achievementEngine.unlocked = u?.value || {};
       W.achievementEngine.profile = r?.value || { xp: 0, level: 1 };
+      // Пересчитать достижения из свежих данных stats/events, чтобы UI-массив собрался корректно
+      try { await W.achievementEngine.check?.(); } catch {}
       W.achievementEngine.achievements = W.achievementEngine._buildUIArray?.() || W.achievementEngine.achievements || [];
     }
 
@@ -18,17 +20,30 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
       try { localStorage.setItem('profile:last_snapshot', JSON.stringify(p.value)); } catch {}
     }
 
-    ['stats:updated', 'analytics:logUpdated'].forEach(e => W.dispatchEvent(new CustomEvent(e)));
+    // Перезагрузить FavoritesManager из обновлённого localStorage после restore
+    try {
+      if (W.FavoritesManager?._m) {
+        W.FavoritesManager._m.clear();
+        const raw = JSON.parse(localStorage.getItem('__favorites_v2__') || '[]');
+        raw.forEach(i => i?.uid && W.FavoritesManager._m.set(String(i.uid).trim(), i));
+        W.FavoritesManager._s?.forEach?.(cb => { try { cb({ uid: null, liked: null, restored: true }); } catch {} });
+      }
+    } catch {}
+
+    ['stats:updated', 'analytics:logUpdated', 'favorites:changed'].forEach(e => W.dispatchEvent(new CustomEvent(e)));
     W.dispatchEvent(new CustomEvent('achievements:updated', {
       detail: {
         total: W.achievementEngine?.achievements?.length || 0,
         unlocked: Object.keys(W.achievementEngine?.unlocked || {}).length,
         items: W.achievementEngine?.unlocked || {},
         streak: 0,
-        profile: W.achievementEngine?.profile || { xp: 0, level: 1 }
+        profile: W.achievementEngine?.profile || { xp: 0, level: 1 },
+        reason
       }
     }));
-  } catch {}
+  } catch (e) {
+    console.warn('[PostRestoreRefresh] failed:', e?.message);
+  }
 
   try {
     const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || Date.now());
