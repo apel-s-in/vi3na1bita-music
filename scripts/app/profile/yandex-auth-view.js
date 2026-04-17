@@ -97,7 +97,10 @@ export function renderYandexAuthBlock({ root, localProfile }) {
       ? `<img class="yandex-auth-avatar" src="${esc(pr.avatar)}" alt="avatar">`
       : `<div class="yandex-auth-avatar--fallback">Я</div>`;
 
-    const cloudNewerHtml = (cmp.state === 'cloud_newer' || cmp.state === 'cloud_probable')
+    let restoreDone = false;
+    try { restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1'; } catch {}
+
+    const cloudNewerHtml = (!restoreDone && (cmp.state === 'cloud_newer' || cmp.state === 'cloud_probable'))
       ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3);border-radius:10px;margin-bottom:10px"><span style="font-size:18px">⚠️</span><div style="flex:1;font-size:12px;color:#ffb74d;line-height:1.4">В облаке есть более богатая или более новая копия.<br>При желании можно восстановить её вручную.</div><button class="modal-action-btn" data-ya-action="restore-backup" style="font-size:11px;padding:6px 10px;flex-shrink:0">📥 Загрузить</button></div>`
       : '';
 
