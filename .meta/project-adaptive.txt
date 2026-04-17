@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-17 21:20:51 UTC
+Сгенерировано: 2026-04-17 21:22:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1648,11 +1648,57 @@ export class StatsAggregator {
   };
 
   const setupSW = () => { if (!('serviceWorker' in navigator)) return; const h = e => { if (e.data?.type === 'SW_VERSION') { const v = String(e.data.version || '').trim(); if (v && v !== String(W.VERSION || '')) W.ServiceWorkerManager?.handleVersionMessage?.({ swVer: v }); } }; navigator.serviceWorker.addEventListener('message', h); W.addEventListener('message', h); };
+
+  const restorePlaybackAfterReload = async () => {
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem('playerStateV2') || 'null'); } catch {}
+    if (!st?.trackUid || !st?.album) return false;
+
+    const ageMs = Date.now() - Number(st.ts || 0);
+    if (ageMs > 1000 * 60 * 60 * 12) return false;
+
+    try {
+      await W.TrackRegistry?.ensurePopulated?.();
+      const list = W.PlaybackContextSource?.getSourcePlaylistForContext?.(st.album) || [];
+      if (!list.length) return false;
+
+      const uid = String(st.trackUid || '').trim();
+      const exists = list.some(t => String(t?.uid || '').trim() === uid);
+      if (!exists) return false;
+
+      if (st.album && W.AlbumsManager?.getPlayingAlbum?.() !== st.album) W.AlbumsManager?.setPlayingAlbum?.(st.album);
+      if (st.currentAlbum) await W.AlbumsManager?.loadAlbum?.(st.currentAlbum).catch(() => {});
+      if (Number.isFinite(Number(st.volume))) W.playerCore?.setVolume?.(Number(st.volume));
+      if ('muted' in st) W.playerCore?.setMuted?.(!!st.muted);
+      if (st.quality) W.playerCore.qMode = String(st.quality).toLowerCase() === 'lo' ? 'lo' : 'hi';
+      W.playerCore.flags.rep = !!st.repeat;
+      W.playerCore.flags.shuf = !!st.shuffle;
+
+      const ok = W.playerCore?.playExactFromPlaylist?.(list, uid, { dir: 1, preserveOriginalPlaylist: true });
+      if (!ok) return false;
+
+      const resumePos = Math.max(0, Number(st.position || 0));
+      setTimeout(() => {
+        try {
+          if (resumePos > 0) W.playerCore?.seek?.(resumePos);
+          if (st.wasPlaying) W.playerCore?.play?.();
+          else W.playerCore?.pause?.();
+          W.PlayerUI?.updateMiniHeader?.();
+          W.PlayerUI?.updatePlaylistFiltering?.();
+        } catch {}
+      }, 600);
+
+      return true;
+    } catch (e) {
+      console.warn('[PlaybackRestore] failed:', e);
+      return false;
+    }
+  };
   
   let _init = false;
   W.app = {
     checkShowcaseShare: () => { const p = new URLSearchParams(W.location.search).get('playlist'); if (p && W.ShowcaseManager) { W.ShowcaseManager.handleSharedPlaylist(p); W.history.replaceState(null, '', W.location.pathname); } },
-    initialize: async () => { if (_init) return; _init = true; try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); W.app.checkShowcaseShare(); } catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); } }
+    initialize: async () => { if (_init) return; _init = true; try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); W.app.checkShowcaseShare(); await restorePlaybackAfterReload().catch(() => false); } catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); } }
   };
 })(window, document);
 
