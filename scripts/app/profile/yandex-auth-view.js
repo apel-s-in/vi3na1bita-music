@@ -54,7 +54,13 @@ const bindReactiveEvents = (root, rerender) => {
           textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более богатая или более новая копия.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>Открыть восстановление из облака?`,
           confirmText: 'Открыть',
           cancelText: 'Позже',
-          onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender)
+          onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender),
+          onCancel: async () => {
+            try {
+              const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+              markSyncReady('user_skipped_restore');
+            } catch {}
+          }
         });
       }, 250);
     },
