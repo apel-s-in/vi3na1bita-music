@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-17 20:53:48 UTC
+Сгенерировано: 2026-04-17 21:20:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6614,6 +6614,7 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
     sound = null; qMode = qNorm(ls.getItem(LS_PQ));
     _tok = 0; _tick = null; _sleep = null; _skips = 0;
     _ev = new Map(); _favSubs = new Set(); _playingUid = null;
+    _persistTimer = null;
     
     constructor() {
       W.addEventListener('offline:uiChanged', () => this.qMode = qNorm(ls.getItem(LS_PQ)));
@@ -6642,6 +6643,7 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
     initialize() {
       Favorites?.init?.();
       initIosAudioKeeper();
+      this._bindPlaybackPersistence();
     }
 
     prepareContext() {
@@ -6807,13 +6809,14 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
         }),
         onplay: sf(() => {
           this._startT();
+          this._persistPlaybackState(true);
           this._emit('onPlay', t, idx);
           this._updMedia();
           this._syncMediaSessionPosition(true);
           emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP });
           emitG('player:providerChanged', { provider: aP });
         }),
-        onpause: sf(() => { this._stopT(); this._emit('onPause'); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:pause'); }),
+        onpause: sf(() => { this._stopT(); this._persistPlaybackState(true); this._emit('onPause'); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:pause'); }),
         onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
         onloaderror: sf(() => this._err(idx, retry, opts, dir)),
         onplayerror: sf(() => this._err(idx, retry, opts, dir))
@@ -6836,15 +6839,64 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
         this._oK = null; this._oKTok = 0;
       }
       this._stopT();
-      if (!silent) { this._syncMediaSessionPosition(true); emitG('player:stop'); this._emit('onStop'); }
+      if (!silent) { this._clearPersistedPlaybackState(); this._syncMediaSessionPosition(true); emitG('player:stop'); this._emit('onStop'); }
     }
 
     _syncMediaSessionPosition(force = false) { try { this._ms?.updatePositionState?.({ force }); } catch {} }
+
+    _buildPersistedState() {
+      const t = this.getCurrentTrack();
+      const uid = sUid(t?.uid);
+      const pA = sUid(W.AlbumsManager?.getPlayingAlbum?.());
+      const cA = sUid(W.AlbumsManager?.getCurrentAlbum?.()) || pA;
+      if (!uid || this.currentIndex < 0 || !pA) return null;
+      return {
+        album: pA,
+        currentAlbum: cA,
+        trackUid: uid,
+        sourceAlbum: sUid(t?.sourceAlbum),
+        trackIndex: this.currentIndex,
+        position: Math.max(0, Math.floor(this.getPosition() || 0)),
+        volume: this.getVolume(),
+        muted: !!this.isMuted(),
+        wasPlaying: !!this.isPlaying(),
+        repeat: !!this.flags.rep,
+        shuffle: !!this.flags.shuf,
+        quality: this.qMode || 'hi',
+        ts: Date.now()
+      };
+    }
+
+    _persistPlaybackState(force = false) {
+      try {
+        const st = this._buildPersistedState();
+        if (!st) return;
+        if (!force && this._persistTimer) return;
+        if (!force) {
+          this._persistTimer = setTimeout(() => {
+            this._persistTimer = null;
+            try { localStorage.setItem('playerStateV2', JSON.stringify(this._buildPersistedState())); } catch {}
+          }, 150);
+          return;
+        }
+        localStorage.setItem('playerStateV2', JSON.stringify(st));
+      } catch {}
+    }
+
+    _clearPersistedPlaybackState() {
+      try { localStorage.removeItem('playerStateV2'); } catch {}
+    }
+
+    _bindPlaybackPersistence() {
+      W.addEventListener('beforeunload', () => this._persistPlaybackState(true));
+      document.addEventListener('visibilitychange', () => { if (document.hidden) this._persistPlaybackState(true); });
+    }
 
     _startT() {
       this._stopT();
       this._tick = setInterval(() => {
         const pos = this.getPosition(), dur = this.getDuration();
+        this._persistPlaybackState(false);
         this._emit('onTick', pos, dur);
         emitG('player:tick', { currentTime: pos, volume: this.getVolume(), muted: this.isMuted() });
         this._syncMediaSessionPosition(false);
