@@ -51,6 +51,21 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
 
     if (['local_richer', 'local_probably_richer', 'equivalent'].includes(c.state)) return _markReady(c.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
     if (c.state === 'no_cloud') return _markReady('no_cloud_backup');
+
+    try {
+      const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+      if (isRestoreOrSkipDone()) {
+        console.debug('[AutoSync] cloud_newer ignored — restore already done');
+        return _markReady('cloud_not_newer');
+      }
+    } catch {}
+
+    const promptKey = `yandex:cloud:newer:prompt:${safeNum(m?.timestamp)}:${c.state}`;
+    if (sessionStorage.getItem(promptKey) === '1') {
+      console.debug('[AutoSync] cloud_newer prompt already shown this session');
+      return _markReady('cloud_newer_user_choice');
+    }
+
     _markReady('cloud_newer_user_choice');
     window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail: { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device', meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore } }));
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
