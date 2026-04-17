@@ -21,12 +21,16 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
     }
 
     // Перезагрузить FavoritesManager из обновлённого localStorage после restore
+    // ВАЖНО: не триггерим onFavoritesChanged callbacks если плеер играет, чтобы не вызвать applyFavoritesOnlyFilter → unload звука
     try {
       if (W.FavoritesManager?._m) {
+        const isPlaying = !!W.playerCore?.isPlaying?.();
         W.FavoritesManager._m.clear();
         const raw = JSON.parse(localStorage.getItem('__favorites_v2__') || '[]');
         raw.forEach(i => i?.uid && W.FavoritesManager._m.set(String(i.uid).trim(), i));
-        W.FavoritesManager._s?.forEach?.(cb => { try { cb({ uid: null, liked: null, restored: true }); } catch {} });
+        if (!isPlaying) {
+          W.FavoritesManager._s?.forEach?.(cb => { try { cb({ uid: null, liked: null, restored: true }); } catch {} });
+        }
       }
     } catch {}
 
