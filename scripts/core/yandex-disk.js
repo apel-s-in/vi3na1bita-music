@@ -1,4 +1,29 @@
-// scripts/core/yandex-disk.js Сохранение прогресса в app:/ + стабильное чтение только через Cloud Function proxy. Без direct browser fallback на signed Yandex URL.
+// scripts/core/yandex-disk.js
+// Сохранение прогресса в app:/ + стабильное чтение только через Cloud Function proxy.
+//
+// ============================================================================
+// ⚠️ КРИТИЧЕСКАЯ АРХИТЕКТУРНАЯ ЗАМЕТКА — ЛОВУШКА ЯНДЕКС CLOUD GATEWAY ⚠️
+// ============================================================================
+// API Gateway Яндекс Облака ЖАДНО перехватывает заголовок 'Authorization'
+// и пытается валидировать его как токен разработчика IAM. Если заголовок
+// содержит ЛЮБОЙ токен (включая OAuth токен Яндекс Диска), шлюз РЕЖЕТ
+// запрос с 403 Forbidden ЕЩЁ ДО того, как он достигнет Cloud Function.
+// Node.js код функции в этот момент даже не запускается.
+//
+// ПРАВИЛЬНОЕ РЕШЕНИЕ (применено и НЕ ИЗМЕНЯТЬ):
+//   1. Клиент НЕ шлёт заголовок 'Authorization' к functions.yandexcloud.net
+//   2. Клиент шлёт кастомный заголовок 'X-Yandex-Auth' (шлюз его пропускает)
+//   3. Клиент дублирует токен в query параметре '?token=...' (fallback)
+//   4. Cloud Function читает токен из 'x-yandex-auth' ИЛИ из query
+//   5. Только Cloud Function шлёт 'Authorization: OAuth <token>' к cloud-api.yandex.net
+//
+// ПРИЗНАКИ РЕГРЕССИИ (если кто-то добавит Authorization обратно):
+//   - mode=meta, mode=list, mode=download → 403 Forbidden
+//   - В логах Cloud Function НЕТ строк [DISK ...] (функция не запускается)
+//   - "Сохранить" работает (прямой запрос к Диску), но "Из облака" падает
+//
+// Дата фиксации: 2026-04-15. НЕ ДОБАВЛЯТЬ Authorization в fPJ() НИ ПРИ КАКИХ УСЛОВИЯХ!
+// ============================================================================
 const API='https://cloud-api.yandex.net/v1/disk',BD='app:/Backup',BP=`${BD}/vi3na1bita_backup.vi3bak`,MP=`${BD}/vi3na1bita_backup_meta.json`,BPV=s=>`${BD}/vi3na1bita_backup_${s}.vi3bak`,PROXY='https://functions.yandexcloud.net/d4ecdu6kgamevcauajid',aH=t=>({'Authorization':`OAuth ${t}`}),sS=v=>String(v==null?'':v).trim(),sN=v=>Number.isFinite(Number(v))?Number(v):0,sPJ=t=>{try{return JSON.parse(t)}catch{return null}},mPE=(p,e)=>{const s=Number(e?.status||0),pl=e?.payload&&typeof e.payload==='object'?e.payload:null,d=[sS(pl?.error),sS(pl?.stage),sS(pl?.path),sS(pl?.raw),sS(pl?.hint)].filter(Boolean).join(' | '),err=new Error(d?`${p}:${d}`:p);err.status=s;err.payload=pl;return err};
 async function fPJ(u,t,r=2){
   const qU=u.includes('?')?`${u}&token=${t}`:`${u}?token=${t}`;
