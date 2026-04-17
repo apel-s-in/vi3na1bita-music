@@ -7,46 +7,56 @@ const enrichLocalSummaryWithDb = async s => { try { const { metaDB } = await imp
 
 const _markReady = async r => { try { const { markSyncReady } = await import('../../analytics/backup-sync-engine.js'); markSyncReady(r); } catch {} };
 
+const _tryAutoRestore = async (m, token) => {
+  try {
+    window.NotificationSystem?.info('Найдена облачная копия. Восстанавливаем прогресс...');
+    const d = await YandexDisk.download(token, String(m?.path || m?.latestPath || '').trim() || undefined).catch(() => null);
+    if (!d) return false;
+    const { BackupVault } = await import('../../analytics/backup-vault.js');
+    await BackupVault.importData(new Blob([JSON.stringify(d)]), 'all');
+    try {
+      localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
+      localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
+      localStorage.setItem('yandex:last_backup_local_ts', String(Number(d?.revision?.timestamp || d?.createdAt || Date.now())));
+    } catch {}
+    try {
+      const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+      markSyncReady('restore_completed');
+      markRestoreOrSkipDone('auto_restore');
+    } catch {}
+    try {
+      const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
+      await runPostRestoreRefresh({ reason: 'auto_restore_after_login', keepCurrentAlbum: true });
+    } catch {}
+    window.NotificationSystem?.success('Прогресс из облака восстановлен ✅');
+    return true;
+  } catch (er) {
+    console.warn('[AutoSync] safe auto-restore failed:', er?.message);
+    return false;
+  }
+};
+
 const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
   const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return _markReady('offline_skip');
   try {
-    const m = await YandexDisk.getMeta(ya.getToken()).catch((e) => { console.warn('[AutoSync] getMeta failed:', e?.message); return null; }), lS = await enrichLocalSummaryWithDb(getLocalProfileSummary());
+    const m = await YandexDisk.getMeta(ya.getToken()).catch((e) => { console.warn('[AutoSync] getMeta failed:', e?.message); return null; });
+    const lS = await enrichLocalSummaryWithDb(getLocalProfileSummary());
+
     if (!m) {
       try { localStorage.removeItem('yandex:last_backup_meta'); localStorage.removeItem('yandex:last_backup_check'); } catch {}
       return _markReady('no_cloud_backup');
     }
+
     try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); } catch {}
     window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
     const c = compareLocalVsCloud(lS, m);
 
-    if (isFreshLogin && c.state === 'cloud_richer_new_device') {
-      try {
-        window.NotificationSystem?.info('Найдена облачная копия. Восстанавливаем прогресс...');
-        const d = await YandexDisk.download(ya.getToken(), String(m?.path || m?.latestPath || '').trim() || undefined).catch(() => null);
-        if (d) {
-          const { BackupVault } = await import('../../analytics/backup-vault.js');
-          await BackupVault.importData(new Blob([JSON.stringify(d)]), 'all');
-          try {
-            localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
-            localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-            localStorage.setItem('yandex:last_backup_local_ts', String(Number(d?.revision?.timestamp || d?.createdAt || Date.now())));
-          } catch {}
-          try {
-            const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-            markSyncReady('restore_completed');
-            markRestoreOrSkipDone('auto_restore');
-          } catch {}
-          try {
-            const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-            await runPostRestoreRefresh({ reason: 'auto_restore_after_login', keepCurrentAlbum: true });
-          } catch {}
-          window.NotificationSystem?.success('Прогресс из облака восстановлен ✅');
-          return;
-        }
-      } catch (er) {
-        console.debug('[AutoSync] safe auto-restore skipped:', er?.message);
-      }
+    // На fresh login облако явно богаче локального (new device / richer) — пробуем автовосстановление
+    // Игнорируем старый флаг isRestoreOrSkipDone, т.к. это новое устройство/сессия
+    if (isFreshLogin && ['cloud_richer_new_device', 'cloud_richer', 'cloud_probably_richer'].includes(c.state)) {
+      const ok = await _tryAutoRestore(m, ya.getToken());
+      if (ok) return;
     }
 
     if (['local_richer', 'local_probably_richer', 'equivalent'].includes(c.state)) return _markReady(c.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
@@ -54,7 +64,7 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
 
     try {
       const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-      if (isRestoreOrSkipDone()) {
+      if (isRestoreOrSkipDone() && !isFreshLogin) {
         console.debug('[AutoSync] cloud_newer ignored — restore already done');
         return _markReady('cloud_not_newer');
       }
@@ -65,6 +75,7 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
       console.debug('[AutoSync] cloud_newer prompt already shown this session');
       return _markReady('cloud_newer_user_choice');
     }
+    sessionStorage.setItem(promptKey, '1');
 
     _markReady('cloud_newer_user_choice');
     window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail: { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device', meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore } }));
