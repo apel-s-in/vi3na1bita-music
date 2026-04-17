@@ -31,7 +31,10 @@ export function initYandexActions() {
           await openYandexRestoreFlow({ token: t, disk, notify: nSys, rerender, localProfile });
         } catch (e) {
           const msg = String(e?.message || '');
-          if (msg.includes('backup_not_found')) nSys?.warning('Облачная копия eventCount:Array.isArray(b?.data?.eventLog?.warm)?b.data.eventLog.warm.length:0, achievementsCount:Object.keys(b?.data?.achievements||{}).length, favoritesCount:Array.isArray(f)?f.filter(x=>!x?.inactiveAt).length:0, playlistsCount:Array.isArray(p)?p.length:0, profileName:String(b?.revision?.profileName||b?.data?.userProfile?.name||'Слушатель'), ownerYandexId:String(b?.identity?.ownerYandexId||''), devicesCount:dv.length, deviceStableCount:DeviceRegistry.countDeviceStableIds(dv), checksum:String(b?.integrity?.payloadHash||''), sourceDeviceStableId:String(b?.revision?.sourceDeviceStableId||''), sourceDeviceLabel:String(b?.revision?.sourceDeviceLabel||cur?.label||''), sourceDeviceClass:String(b?.revision?.sourceDeviceClass||cur?.class||''), sourcePlatform:String(b?.revision?.sourcePlatform||cur?.platform||'') }; }
+          if (msg.includes('backup_not_found')) nSys?.warning('Облачная копия не найдена. Сначала сохраните backup кнопкой «Сохранить».');
+          else nSys?.error('Не удалось подготовить восстановление: ' + msg);
+        }
+      }
     };
     acts[action]?.();
   };
