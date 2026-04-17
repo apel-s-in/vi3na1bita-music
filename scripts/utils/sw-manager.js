@@ -6,7 +6,11 @@
     async init() {
       if (!('serviceWorker' in N)) return;
       this._clearUpdateUi();
-      N.serviceWorker.addEventListener('controllerchange', () => { this._clearUpdateUi(); if (!refreshing) { refreshing = true; W.location.reload(); } });
+      N.serviceWorker.addEventListener('controllerchange', () => {
+        this._clearUpdateUi();
+        try { W.playerCore?._persistPlaybackState?.(true); } catch {}
+        if (!refreshing) { refreshing = true; W.location.reload(); }
+      });
       try {
         this.reg = await N.serviceWorker.register('./service-worker.js', { scope: './' });
         if (!this.reg.waiting) this._clearUpdateUi(); else this._notifyUpdate();
