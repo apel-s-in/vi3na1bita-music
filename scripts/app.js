@@ -119,8 +119,14 @@
 
       if (st.album && W.AlbumsManager?.getPlayingAlbum?.() !== st.album) W.AlbumsManager?.setPlayingAlbum?.(st.album);
       if (st.currentAlbum) await W.AlbumsManager?.loadAlbum?.(st.currentAlbum).catch(() => {});
-      if (Number.isFinite(Number(st.volume))) W.playerCore?.setVolume?.(Number(st.volume));
-      if ('muted' in st) W.playerCore?.setMuted?.(!!st.muted);
+
+      // Восстанавливаем volume/mute СРАЗУ и через Howler напрямую, чтобы избежать зашкала
+      if (Number.isFinite(Number(st.volume))) {
+        const vol = Math.max(0, Math.min(100, Number(st.volume))) / 100;
+        try { localStorage.setItem('playerVolume', String(Math.round(vol * 100))); } catch {}
+        try { if (W.Howler) W.Howler.volume(st.muted ? 0 : vol); } catch {}
+      }
+      if ('muted' in st) { try { W.playerCore.flags.mute = !!st.muted; } catch {} }
       if (st.quality) W.playerCore.qMode = String(st.quality).toLowerCase() === 'lo' ? 'lo' : 'hi';
       W.playerCore.flags.rep = !!st.repeat;
       W.playerCore.flags.shuf = !!st.shuffle;
@@ -132,6 +138,11 @@
       setTimeout(() => {
         try {
           if (resumePos > 0) W.playerCore?.seek?.(resumePos);
+          // Ещё раз подтверждаем громкость после загрузки Howler
+          if (Number.isFinite(Number(st.volume))) {
+            const vol = Math.max(0, Math.min(100, Number(st.volume))) / 100;
+            try { if (W.Howler) W.Howler.volume(st.muted ? 0 : vol); } catch {}
+          }
           if (st.wasPlaying) W.playerCore?.play?.();
           else W.playerCore?.pause?.();
           W.PlayerUI?.updateMiniHeader?.();
