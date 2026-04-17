@@ -11,8 +11,11 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
   const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return _markReady('offline_skip');
   try {
-    const m = await YandexDisk.getMeta(ya.getToken()).catch(() => null), lS = await enrichLocalSummaryWithDb(getLocalProfileSummary());
-    if (!m) return _markReady('no_cloud_backup');
+    const m = await YandexDisk.getMeta(ya.getToken()).catch((e) => { console.warn('[AutoSync] getMeta failed:', e?.message); return null; }), lS = await enrichLocalSummaryWithDb(getLocalProfileSummary());
+    if (!m) {
+      try { localStorage.removeItem('yandex:last_backup_meta'); localStorage.removeItem('yandex:last_backup_check'); } catch {}
+      return _markReady('no_cloud_backup');
+    }
     try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); } catch {}
     window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
     const c = compareLocalVsCloud(lS, m);
