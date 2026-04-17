@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-17 20:50:02 UTC
+Сгенерировано: 2026-04-17 20:51:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3206,7 +3206,7 @@ const enrichLocalSummaryWithDb = async s => { try { const { metaDB } = await imp
 
 const _markReady = async r => { try { const { markSyncReady } = await import('../../analytics/backup-sync-engine.js'); markSyncReady(r); } catch {} };
 
-const _checkCloudMetaOnly = async () => {
+const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
   const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return _markReady('offline_skip');
   try {
@@ -3215,6 +3215,36 @@ const _checkCloudMetaOnly = async () => {
     try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); } catch {}
     window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
     const c = compareLocalVsCloud(lS, m);
+
+    if (isFreshLogin && c.state === 'cloud_richer_new_device') {
+      try {
+        window.NotificationSystem?.info('Найдена облачная копия. Восстанавливаем прогресс...');
+        const d = await YandexDisk.download(ya.getToken(), String(m?.path || m?.latestPath || '').trim() || undefined).catch(() => null);
+        if (d) {
+          const { BackupVault } = await import('../../analytics/backup-vault.js');
+          await BackupVault.importData(new Blob([JSON.stringify(d)]), 'all');
+          try {
+            localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
+            localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
+            localStorage.setItem('yandex:last_backup_local_ts', String(Number(d?.revision?.timestamp || d?.createdAt || Date.now())));
+          } catch {}
+          try {
+            const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+            markSyncReady('restore_completed');
+            markRestoreOrSkipDone('auto_restore');
+          } catch {}
+          try {
+            const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
+            await runPostRestoreRefresh({ reason: 'auto_restore_after_login', keepCurrentAlbum: true });
+          } catch {}
+          window.NotificationSystem?.success('Прогресс из облака восстановлен ✅');
+          return;
+        }
+      } catch (er) {
+        console.debug('[AutoSync] safe auto-restore skipped:', er?.message);
+      }
+    }
+
     if (['local_richer', 'local_probably_richer', 'equivalent'].includes(c.state)) return _markReady(c.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
     if (c.state === 'no_cloud') return _markReady('no_cloud_backup');
     _markReady('cloud_newer_user_choice');
@@ -3222,7 +3252,7 @@ const _checkCloudMetaOnly = async () => {
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
 };
 
-export const initYandexAutoSync = async () => { const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return _markReady('no_auth_local_only'); await _checkCloudMetaOnly(); window.addEventListener('yandex:auth:changed', async e => { if (e.detail?.status === 'active') await _checkCloudMetaOnly(); else if (e.detail?.status === 'logged_out') _markReady('logged_out_local_only'); }); };
+export const initYandexAutoSync = async () => { const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return _markReady('no_auth_local_only'); await _checkCloudMetaOnly({ isFreshLogin: false }); window.addEventListener('yandex:auth:changed', async e => { if (e.detail?.status === 'active') await _checkCloudMetaOnly({ isFreshLogin: !!e.detail?.isFreshLogin }); else if (e.detail?.status === 'logged_out') _markReady('logged_out_local_only'); }); };
 
 export default { initYandexAutoSync };
 
