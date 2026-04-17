@@ -20,6 +20,8 @@ export const markSyncReady = r => {
   const reason = String(r || '').trim();
   const safeReady = ['no_cloud_backup','cloud_not_newer','diff_too_small','no_auth_local_only','logged_out_local_only','offline_skip','restore_completed','manual_save','user_skipped_restore'];
   const riskyBlocked = ['meta_check_failed','timeout_fallback','cloud_newer_user_choice'];
+  // Только ЯВНЫЕ действия пользователя ставят restore_or_skip_done; остальные reasons только переводят engine в ready state
+  const explicitDoneReasons = ['restore_completed','manual_save','user_skipped_restore'];
   if (_rdy && !riskyBlocked.includes(reason)) return;
   if (riskyBlocked.includes(reason)) {
     console.warn('[BackupSyncEngine] sync NOT ready due to risky state:', reason);
@@ -27,7 +29,7 @@ export const markSyncReady = r => {
     return;
   }
   _rdy = true;
-  if (safeReady.includes(reason)) markRestoreOrSkipDone(reason);
+  if (explicitDoneReasons.includes(reason)) markRestoreOrSkipDone(reason);
   console.debug('[BackupSyncEngine] sync READY:', reason);
   window.dispatchEvent(new CustomEvent('backup:sync:ready',{detail:{reason}}));
 };
