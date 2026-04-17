@@ -1,7 +1,7 @@
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { YandexDisk } from '../../core/yandex-disk.js';
-import { openBackupInfoModal, openBackupFoundModal, openRestorePreviewModal, openRestoreVersionPickerModal, openManualRestoreHelpModal } from './yandex-modals.js';
-import { getLocalBackupUiSnapshot, compareLocalVsCloud } from '../../analytics/backup-summary.js';
+import { openBackupInfoModal, openBackupFoundModal, openManualRestoreHelpModal } from './yandex-modals.js';
+import { openYandexRestoreFlow } from './yandex-restore-flow.js';
 
 let _cachedBackupFile = null;
 const pickBackupFile = (useCache = false) => (useCache && _cachedBackupFile) ? Promise.resolve(_cachedBackupFile) : new Promise(res => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.vi3bak,application/json'; inp.onchange = () => { const f = inp.files?.[0] || null; if (f) _cachedBackupFile = f; res(f); }; inp.click(); });
@@ -28,57 +28,10 @@ export function initYandexActions() {
         const t = ya.getToken();
         if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
         try {
-          const [items, meta] = await Promise.all([disk.listBackups(t).catch(() => []), disk.getMeta(t).catch(() => null)]);
-          if (!meta) return nSys?.warning('Облачная копия не найдена. Сначала сохраните backup кнопкой «Сохранить».');
-          const localSummary = getLocalBackupUiSnapshot({ name: localProfile?.name || 'Слушатель' });
-          const cmp = compareLocalVsCloud(localSummary, meta);
-          openRestoreVersionPickerModal(items?.length ? items : [meta], async pickedPath => {
-            if (!pickedPath) return;
-            nSys?.info('Скачивание резервной копии...');
-            try {
-              const d = await disk.download(t, pickedPath);
-              if (!d) throw new Error('backup_not_found');
-              openRestorePreviewModal(d, async mode => {
-                try {
-                  await BackupVault.importData(new Blob([JSON.stringify(d)]), mode || 'all');
-                  const m = await disk.getMeta(t).catch(() => null);
-                  if (m) {
-                    localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-                    localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
-                    localStorage.setItem('yandex:last_backup_local_ts', String(Number(d.revision?.timestamp || d.createdAt || Date.now())));
-                  }
-                  try {
-                    const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-                    await runPostRestoreRefresh({ reason: 'cloud_restore', keepCurrentAlbum: true });
-                  } catch {}
-                  try {
-                    const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-                    markSyncReady('restore_completed');
-                    markRestoreOrSkipDone('restore_completed');
-                  } catch {}
-                  nSys?.success(`Восстановление завершено ✅ ${cmp?.state === 'cloud_richer_new_device' ? '(облако выглядело как источник для нового устройства)' : ''}`);
-                  rerender?.();
-                } catch (e) {
-                  const msg = String(e?.message || '');
-                  if (msg.includes('restore_owner_mismatch')) nSys?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
-                  else if (msg.includes('restore_requires_yandex_login')) nSys?.warning('Для восстановления нужен вход в Яндекс.');
-                  else if (msg.includes('backup_integrity_failed')) nSys?.error('Файл backup повреждён или изменён.');
-                  else nSys?.error('Ошибка восстановления: ' + msg);
-                }
-              });
-            } catch (e) {
-              const msg = String(e?.message || '');
-              console.error('[Yandex restore failed]', e);
-              if (msg.includes('disk_forbidden')) nSys?.error('Нет доступа к Яндекс Диску. Попробуйте: Выйти → Войти заново (кнопка «Переподключить права»).');
-              else if (msg.includes('backup_not_found') || msg.includes('not_found')) nSys?.warning('Выбранная облачная копия не найдена.');
-              else if (msg.includes('proxy_failed_or_timeout')) nSys?.error('Cloud Function не отвечает. Повторите позже или используйте «Из файла».');
-              else nSys?.error('Ошибка скачивания backup: ' + msg);
-            }
-          });
+          await openYandexRestoreFlow({ token: t, disk, notify: nSys, rerender, localProfile });
         } catch (e) {
-          nSys?.error('Не удалось подготовить восстановление: ' + String(e?.message || ''));
-        }
-      }
+          const msg = String(e?.message || '');
+          if (msg.includes('backup_not_found')) nSys?.warning('Облачная копия eventCount:Array.isArray(b?.data?.eventLog?.warm)?b.data.eventLog.warm.length:0, achievementsCount:Object.keys(b?.data?.achievements||{}).length, favoritesCount:Array.isArray(f)?f.filter(x=>!x?.inactiveAt).length:0, playlistsCount:Array.isArray(p)?p.length:0, profileName:String(b?.revision?.profileName||b?.data?.userProfile?.name||'Слушатель'), ownerYandexId:String(b?.identity?.ownerYandexId||''), devicesCount:dv.length, deviceStableCount:DeviceRegistry.countDeviceStableIds(dv), checksum:String(b?.integrity?.payloadHash||''), sourceDeviceStableId:String(b?.revision?.sourceDeviceStableId||''), sourceDeviceLabel:String(b?.revision?.sourceDeviceLabel||cur?.label||''), sourceDeviceClass:String(b?.revision?.sourceDeviceClass||cur?.class||''), sourcePlatform:String(b?.revision?.sourcePlatform||cur?.platform||'') }; }
     };
     acts[action]?.();
   };
