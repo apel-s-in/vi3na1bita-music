@@ -160,14 +160,26 @@
   const restorePlaybackUiSafety = async ({ reason = 'runtime' } = {}) => {
     try {
       const pc = W.playerCore;
-      if (!pc?.getCurrentTrackUid?.()) {
+      const hasUid = !!pc?.getCurrentTrackUid?.();
+      const hasLiveSound = !!pc?.sound && (typeof pc.sound.playing === 'function' ? (pc.sound.playing() || !!pc.isPlaying?.()) : !!pc.isPlaying?.());
+
+      if (!hasUid || !hasLiveSound) {
         const restored = await restorePlaybackAfterReload().catch(() => false);
-        if (restored) return true;
+        if (restored) {
+          W.PlayerUI?.switchAlbumInstantly?.();
+          W.PlayerUI?.updateMiniHeader?.();
+          W.PlayerUI?.updatePlaylistFiltering?.();
+          return true;
+        }
       }
+
       if (pc?.getCurrentTrackUid?.()) {
         W.PlayerUI?.switchAlbumInstantly?.();
         W.PlayerUI?.updateMiniHeader?.();
         W.PlayerUI?.updatePlaylistFiltering?.();
+        if (!pc?.isPlaying?.() && pc?.sound && typeof pc.sound.play === 'function') {
+          try { pc.play?.(); } catch {}
+        }
         return true;
       }
     } catch (e) {
