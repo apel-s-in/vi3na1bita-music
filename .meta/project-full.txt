@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-18 12:58:51 UTC
+Сгенерировано: 2026-04-18 13:00:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3617,6 +3617,9 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
     const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || Date.now());
     const m = JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null');
     localStorage.setItem('yandex:last_backup_check', JSON.stringify((m && typeof m === 'object') ? m : { timestamp: ts }));
+    try {
+      Object.keys(sessionStorage).filter(k => k.startsWith('yandex:cloud:newer:prompt:')).forEach(k => sessionStorage.removeItem(k));
+    } catch {}
     W.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
   } catch {}
 
