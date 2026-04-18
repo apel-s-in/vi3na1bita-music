@@ -91,6 +91,6 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
 };
 
-export const initYandexAutoSync = async () => { const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return _markReady('no_auth_local_only'); await _checkCloudMetaOnly({ isFreshLogin: false }); window.addEventListener('yandex:auth:changed', async e => { if (e.detail?.status === 'active') await _checkCloudMetaOnly({ isFreshLogin: !!e.detail?.isFreshLogin }); else if (e.detail?.status === 'logged_out') _markReady('logged_out_local_only'); }); };
+export const initYandexAutoSync = async () => { const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return _markReady('no_auth_local_only'); await _checkCloudMetaOnly({ isFreshLogin: false }); window.addEventListener('yandex:auth:changed', async e => { if (e.detail?.status === 'active') { const delay = e.detail?.phase === 'name_saved' ? 350 : (!!e.detail?.isFreshLogin ? 700 : 0); setTimeout(() => _checkCloudMetaOnly({ isFreshLogin: !!e.detail?.isFreshLogin }).catch(() => {}), delay); } else if (e.detail?.status === 'logged_out') _markReady('logged_out_local_only'); }); };
 
 export default { initYandexAutoSync };
