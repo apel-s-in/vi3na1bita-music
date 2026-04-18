@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-18 09:39:04 UTC
+Сгенерировано: 2026-04-18 09:42:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3483,9 +3483,8 @@ const persistCloudMetaAfterRestore = async ({ disk, token, restoredBackup }) => 
 
 const markRestoreCompleted = async () => {
   try {
-    const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+    const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
     markSyncReady('restore_completed');
-    markRestoreOrSkipDone('restore_completed');
   } catch {}
 };
 
