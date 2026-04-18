@@ -82,8 +82,9 @@ export const renderProfileShell = ({
         ? Math.floor((Date.now() - Number(localStorage.getItem('app:first-install-ts'))) / 86400000)
         : 0);
 
-  // Рендерим HTML-скелет профиля
-  c.innerHTML = getProfileTemplateHtml();
+  // Рендерим HTML-скелет профиля только один раз.
+  // ВАЖНО: повторный full innerHTML здесь убивает/сбрасывает player host внутри #track-list.
+  if (!c.querySelector('.profile-wrap')) c.innerHTML = getProfileTemplateHtml();
 
   // Заполняем начальные данные
   const $ = sel => c.querySelector(sel);
