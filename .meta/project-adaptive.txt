@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-18 13:02:06 UTC
+Сгенерировано: 2026-04-18 13:29:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4542,7 +4542,7 @@ export const YandexAuth={
   async _onFirstLogin(yP,t){
     const yId=String(yP.id||'').trim(),rN=String(yP.real_name||yP.display_name||yP.login||'').trim(),lg=String(yP.login||'').trim(),av=yP.default_avatar_id?`https://avatars.yandex.net/get-yapic/${yP.default_avatar_id}/islands-200`:null;
     write(LS_PROFILE,{yandexId:yId,displayName:rN||lg,realName:rN,login:lg,avatar:av,lastSync:Date.now()});
-    window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:true}}));
+    window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:false,phase:'oauth_success'}}));
     this._showNamePickModal(rN,lg);
   },
   _showNamePickModal(rN,lg){
