@@ -20,9 +20,8 @@ const _tryAutoRestore = async (m, token) => {
       localStorage.setItem('yandex:last_backup_local_ts', String(Number(d?.revision?.timestamp || d?.createdAt || Date.now())));
     } catch {}
     try {
-      const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+      const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
       markSyncReady('restore_completed');
-      markRestoreOrSkipDone('auto_restore');
     } catch {}
     try {
       const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
