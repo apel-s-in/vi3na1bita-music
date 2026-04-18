@@ -62,9 +62,9 @@ const bindReactiveEvents = (root, rerender) => {
         const ask = window.Modals?.confirm;
         if (!ask) return;
         ask({
-          title: 'Облачная копия найдена',
-          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более богатая или более новая копия.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>Открыть восстановление из облака?`,
-          confirmText: 'Открыть',
+          title: dt.isFreshLogin ? 'Восстановить прогресс из облака?' : 'Облачная копия найдена',
+          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более богатая или более новая копия.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>${dt.isFreshLogin ? 'Рекомендуется сразу проверить и восстановить прогресс.' : 'Открыть восстановление из облака?'}`,
+          confirmText: dt.isFreshLogin ? 'Восстановить' : 'Открыть',
           cancelText: 'Позже',
           onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender),
           onCancel: async () => {
@@ -74,7 +74,7 @@ const bindReactiveEvents = (root, rerender) => {
             } catch {}
           }
         });
-      }, 250);
+      }, dt.isFreshLogin ? 80 : 250);
     },
     onSyncState: e => {
       const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
