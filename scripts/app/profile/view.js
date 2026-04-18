@@ -22,6 +22,12 @@ export const refreshProfileViewSoft = async (ctx) => {
     const statAch = c.querySelector('#prof-stat-ach'); if (statAch) statAch.textContent = String(Object.keys(ach || {}).length);
     const profName = c.querySelector('#prof-name-inp'); if (profName) profName.value = profile?.name || 'Слушатель';
     const profAvatar = c.querySelector('#prof-avatar-btn'); if (profAvatar) profAvatar.textContent = profile?.avatar || '😎';
+    const sinceEl = c.querySelector('#prof-meta-since'); if (sinceEl) sinceEl.textContent = `📅 Слушаю с: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('ru-RU') : (localStorage.getItem('app:first-install-ts') ? new Date(Number(localStorage.getItem('app:first-install-ts'))).toLocaleDateString('ru-RU') : '—')}`;
+    const daysEl = c.querySelector('#prof-meta-days'); if (daysEl) {
+      const baseTs = Number(profile?.createdAt || localStorage.getItem('app:first-install-ts') || 0);
+      daysEl.textContent = `🎵 Дней с нами: ${baseTs > 0 ? Math.max(0, Math.floor((Date.now() - baseTs) / 86400000)) : 0}`;
+    }
+    const lvlEl = c.querySelector('#prof-meta-level'); if (lvlEl) lvlEl.textContent = `⭐ Уровень: ${window.achievementEngine?.profile?.level || 1}`;
     return true;
   } catch (e) {
     console.warn('[Profile] soft refresh failed:', e);
