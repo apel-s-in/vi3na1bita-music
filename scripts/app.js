@@ -157,9 +157,28 @@
     }
   };
   
+  const restorePlaybackUiSafety = async ({ reason = 'runtime' } = {}) => {
+    try {
+      const pc = W.playerCore;
+      if (!pc?.getCurrentTrackUid?.()) {
+        const restored = await restorePlaybackAfterReload().catch(() => false);
+        if (restored) return true;
+      }
+      if (pc?.getCurrentTrackUid?.()) {
+        W.PlayerUI?.switchAlbumInstantly?.();
+        W.PlayerUI?.updateMiniHeader?.();
+        W.PlayerUI?.updatePlaylistFiltering?.();
+        return true;
+      }
+    } catch (e) {
+      console.warn('[PlaybackUiSafety] failed:', reason, e);
+    }
+    return false;
+  };
+
   let _init = false;
   W.app = {
     checkShowcaseShare: () => { const p = new URLSearchParams(W.location.search).get('playlist'); if (p && W.ShowcaseManager) { W.ShowcaseManager.handleSharedPlaylist(p); W.history.replaceState(null, '', W.location.pathname); } },
-    initialize: async () => { if (_init) return; _init = true; try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); W.app.checkShowcaseShare(); await restorePlaybackAfterReload().catch(() => false); } catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); } }
+    initialize: async () => { if (_init) return; _init = true; try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); W.app.checkShowcaseShare(); await restorePlaybackAfterReload().catch(() => false); W.addEventListener('yandex:auth:changed', () => setTimeout(() => restorePlaybackUiSafety({ reason: 'auth_changed' }).catch(() => false), 180)); W.addEventListener('backup:restore:applied', () => setTimeout(() => restorePlaybackUiSafety({ reason: 'backup_restore_applied' }).catch(() => false), 180)); W.addEventListener('profile:data:refreshed', () => setTimeout(() => restorePlaybackUiSafety({ reason: 'profile_data_refreshed' }).catch(() => false), 120)); } catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); } }
   };
 })(window, document);
