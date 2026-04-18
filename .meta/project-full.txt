@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-18 13:29:33 UTC
+Сгенерировано: 2026-04-18 13:50:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2887,8 +2887,9 @@ export const renderProfileShell = ({
         ? Math.floor((Date.now() - Number(localStorage.getItem('app:first-install-ts'))) / 86400000)
         : 0);
 
-  // Рендерим HTML-скелет профиля
-  c.innerHTML = getProfileTemplateHtml();
+  // Рендерим HTML-скелет профиля только один раз.
+  // ВАЖНО: повторный full innerHTML здесь убивает/сбрасывает player host внутри #track-list.
+  if (!c.querySelector('.profile-wrap')) c.innerHTML = getProfileTemplateHtml();
 
   // Заполняем начальные данные
   const $ = sel => c.querySelector(sel);
