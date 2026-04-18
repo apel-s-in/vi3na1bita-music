@@ -72,9 +72,13 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
     const currentPlayingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
 
     if (cA === (W.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) {
-      // Профиль перерендерить безопасно — он не трогает playback
       const mod = await import('./view.js');
-      await mod.loadProfileView?.(W.AlbumsManager);
+      const softOk = await mod.refreshProfileViewSoft?.(W.AlbumsManager).catch(() => false);
+      if (!softOk && !isPlaying) await mod.loadProfileView?.(W.AlbumsManager);
+      else {
+        W.PlayerUI?.updatePlaylistFiltering?.();
+        W.PlayerUI?.updateMiniHeader?.();
+      }
     } else if (cA && !isPlaying) {
       // Перезагружаем альбом ТОЛЬКО если плеер не играет — иначе сломается звук
       await W.AlbumsManager?.loadAlbum?.(cA);
