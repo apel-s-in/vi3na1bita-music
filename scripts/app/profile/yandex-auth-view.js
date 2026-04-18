@@ -37,8 +37,7 @@ const bindReactiveEvents = (root, rerender) => {
     if (!root.isConnected) return;
     try {
       const isProfileOpen = window.AlbumsManager?.getCurrentAlbum?.() === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
-      const isPlaying = !!window.playerCore?.isPlaying?.();
-      if (isProfileOpen && isPlaying) {
+      if (isProfileOpen) {
         const mod = await import('./view.js');
         const ok = await mod.refreshProfileViewSoft?.(window.AlbumsManager).catch(() => false);
         if (ok) return;
