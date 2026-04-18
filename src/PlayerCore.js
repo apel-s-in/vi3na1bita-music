@@ -209,11 +209,10 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
       
       this.sound = new Howl({
         src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: false,
-        onload: sf(() => { pos && this.seek(pos); this._updMedia(); }),
         onload: sf(() => {
-          pos && this.seek(pos);
-          // Сразу обновляем lockscreen artwork как только трек загружен
+          if (pos) this.seek(pos);
           this._updMedia();
+          this._syncMediaSessionPosition(true);
         }),
         onplay: sf(() => {
           this._startT();
