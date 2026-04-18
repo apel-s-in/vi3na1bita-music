@@ -6,6 +6,29 @@ import { renderProfileTabsData } from './profile-tab-renderers.js';
 import { bindProfileTabControllers } from './profile-tab-bindings.js';
 import { initYandexActions } from './yandex-actions.js';
 
+export const refreshProfileViewSoft = async (ctx) => {
+  const c = document.getElementById('track-list'); if (!c) return false;
+  if (ctx.getCurrentAlbum?.() !== (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) return false;
+  try {
+    const { metaDB, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
+    const authRoot = c.querySelector('#prof-auth-grid');
+    if (authRoot) {
+      const { renderYandexAuthBlock } = await import('./yandex-auth-view.js');
+      renderYandexAuthBlock({ root: authRoot, localProfile: profile });
+    }
+    const statTracks = c.querySelector('#prof-stat-tracks'); if (statTracks) statTracks.textContent = String(totalFull || 0);
+    const statTime = c.querySelector('#prof-stat-time'); if (statTime) statTime.textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSec || 0) : `${Math.floor((totalSec || 0) / 60)}м`;
+    const statStreak = c.querySelector('#prof-stat-streak'); if (statStreak) statStreak.textContent = String(streak || 0);
+    const statAch = c.querySelector('#prof-stat-ach'); if (statAch) statAch.textContent = String(Object.keys(ach || {}).length);
+    const profName = c.querySelector('#prof-name-inp'); if (profName) profName.value = profile?.name || 'Слушатель';
+    const profAvatar = c.querySelector('#prof-avatar-btn'); if (profAvatar) profAvatar.textContent = profile?.avatar || '😎';
+    return true;
+  } catch (e) {
+    console.warn('[Profile] soft refresh failed:', e);
+    return false;
+  }
+};
+
 export const loadProfileView = async (ctx) => {
   ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
   initYandexActions();
