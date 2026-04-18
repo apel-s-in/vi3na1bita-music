@@ -56,7 +56,7 @@ export const loadProfileView = async (ctx) => {
 
   await renderProfileTabsData({ container: c, all, metaDB });
 
-  bindProfileTabControllers({ ctx, container: c, achView, profile, metaDB, tokens, onProfileChanged: syncCarouselAccountCard, reloadProfile: () => loadProfileView(ctx) });
+  bindProfileTabControllers({ ctx, container: c, achView, profile, metaDB, tokens, onProfileChanged: syncCarouselAccountCard, reloadProfile: async () => { try { await refreshProfileViewSoft(ctx); } catch {} } });
 
   if (sessionStorage.getItem('jumpToAch')) {
     sessionStorage.removeItem('jumpToAch');
