@@ -46,7 +46,7 @@ function _initBadgeListeners() {
   });
 
   window.addEventListener('backup:sync:ready', (e) => {
-    const reasons = ['auto_restore', 'cloud_not_newer', 'user_skipped_restore'];
+    const reasons = ['auto_restore', 'cloud_not_newer', 'user_skipped_restore', 'restore_completed', 'manual_save'];
     if (reasons.includes(e.detail?.reason)) {
       document.querySelectorAll('.cloud-newer-badge').forEach(b => b.remove());
     }
