@@ -33,7 +33,19 @@ const updateSyncDot = async root => {
 
 const bindReactiveEvents = (root, rerender) => {
   if (root._yaReactiveBound) return; root._yaReactiveBound = true;
-  const s = () => root.isConnected && rerender(), d = () => root.isConnected && updateSyncDot(root);
+  const s = async () => {
+    if (!root.isConnected) return;
+    try {
+      const isProfileOpen = window.AlbumsManager?.getCurrentAlbum?.() === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
+      const isPlaying = !!window.playerCore?.isPlaying?.();
+      if (isProfileOpen && isPlaying) {
+        const mod = await import('./view.js');
+        const ok = await mod.refreshProfileViewSoft?.(window.AlbumsManager).catch(() => false);
+        if (ok) return;
+      }
+    } catch {}
+    rerender();
+  }, d = () => root.isConnected && updateSyncDot(root);
   root._yaReactiveHandlers = {
     onAuthChanged: s,
     onBackupMetaUpdated: s,
