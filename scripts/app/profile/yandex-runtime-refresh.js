@@ -53,6 +53,9 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
     const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || Date.now());
     const m = JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null');
     localStorage.setItem('yandex:last_backup_check', JSON.stringify((m && typeof m === 'object') ? m : { timestamp: ts }));
+    try {
+      Object.keys(sessionStorage).filter(k => k.startsWith('yandex:cloud:newer:prompt:')).forEach(k => sessionStorage.removeItem(k));
+    } catch {}
     W.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
   } catch {}
 
