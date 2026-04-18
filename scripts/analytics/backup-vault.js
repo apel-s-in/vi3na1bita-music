@@ -10,7 +10,20 @@ const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'ob
 const stableStringify = v => JSON.stringify(sortObj(v));
 const sha256Hex = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s||''))))].map(b => b.toString(16).padStart(2,'0')).join('');
 
-const rbdStats = async () => { try { const [{StatsAggregator}] = await Promise.all([import('./stats-aggregator.js')]); await metaDB.tx('stats','readwrite',s=>s.clear()); await new StatsAggregator().processHotEvents(); return true; } catch{ return false; } };
+const rbdStats = async () => {
+  try {
+    const [{ StatsAggregator }] = await Promise.all([import('./stats-aggregator.js')]);
+    const agg = new StatsAggregator();
+    const warm = await metaDB.getEvents('events_warm').catch(() => []);
+    await metaDB.tx('stats', 'readwrite', s => s.clear());
+    await metaDB.clearEvents('events_hot').catch(() => {});
+    if (Array.isArray(warm) && warm.length) await metaDB.addEvents(warm, 'events_hot');
+    await agg.processHotEvents();
+    return true;
+  } catch {
+    return false;
+  }
+};
 const rOwner = async () => { const p = window.YandexAuth?.getProfile?.(); return { internalUserId: localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || crypto.randomUUID(), ownerYandexId: String(p?.yandexId||p?.id||'').trim()||null, ownerLogin: String(p?.login||'').trim()||null, ownerDisplayName: String(p?.displayName||p?.realName||'').trim()||null }; };
 const rDevReg = async () => { const { getOrCreateDeviceHash, getOrCreateDeviceStableId } = await import('../core/device-identity.js'); const h = await getOrCreateDeviceHash(), id = await getOrCreateDeviceStableId(), cur = DeviceRegistry.normalizeDeviceRow({ deviceHash: h, deviceStableId: id, platform: window.Utils?.getPlatform?.()?.isIOS ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web'), userAgent: navigator.userAgent, firstSeenAt: Number(localStorage.getItem('app:first-install-ts')||Date.now()), lastSeenAt: Date.now(), seenHashes: [h] }); const list = DeviceRegistry.normalizeDeviceRegistry([...DeviceRegistry.getDeviceRegistry(), cur]); DeviceRegistry.saveDeviceRegistry(list); return list; };
 const rDevCac = async () => { try { const [{getAllTrackMetas}, {getCurrentDeviceHash, getCurrentDeviceStableId}] = await Promise.all([import('../offline/cache-db.js'), import('../core/device-identity.js')]); return { deviceHash: getCurrentDeviceHash?.() || localStorage.getItem('deviceHash') || '', deviceStableId: getCurrentDeviceStableId?.() || localStorage.getItem('deviceStableId') || '', items: (await getAllTrackMetas()).filter(m => ['pinned','cloud'].includes(m.type)).map(m => ({ uid:m.uid, type:m.type, quality:m.quality, size:m.size||0, cloudExpiresAt:m.cloudExpiresAt||null, pinnedAt:m.pinnedAt||null })) }; } catch { return null; } };
