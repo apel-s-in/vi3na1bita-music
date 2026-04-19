@@ -77,14 +77,6 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
       } catch {}
     }
 
-    const promptKey = `yandex:cloud:newer:prompt:${safeNum(m?.timestamp)}:${c.state}`;
-    // Для fresh login игнорируем session prompt key, чтобы модалка показалась свежему входу
-    if (!isFreshLogin && sessionStorage.getItem(promptKey) === '1') {
-      console.debug('[AutoSync] cloud_newer prompt already shown this session');
-      return _markReady('cloud_newer_user_choice');
-    }
-    sessionStorage.setItem(promptKey, '1');
-
     _markReady('cloud_newer_user_choice');
     window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail: { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device', meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin } }));
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
