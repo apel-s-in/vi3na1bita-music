@@ -89,6 +89,9 @@ class AlbumsManager {
     try {
       D.body.classList.toggle('profile-view', key === PROFILE);
       const tList = $('track-list'), social = $('social-links');
+      // ВАЖНО: Спасаем играющий плеер перед очисткой DOM, чтобы музыка не обрывалась
+      const pb = D.getElementById('lyricsplayerblock');
+      if (pb && tList?.contains(pb)) D.body.appendChild(pb);
       if (tList) tList.innerHTML = ''; if (social) social.innerHTML = ''; W.GalleryManager?.clear?.();
 
       const sp = { [FAV]: 'loadFavoritesAlbum', [NEWS]: 'loadNewsAlbum', [SHOWCASE]: 'loadShowcaseAlbum', [PROFILE]: 'loadProfileAlbum' };
