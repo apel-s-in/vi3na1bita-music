@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-19 07:29:21 UTC
+Сгенерировано: 2026-04-19 07:30:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1732,27 +1732,10 @@ export class StatsAggregator {
   
   const restorePlaybackUiSafety = async ({ reason = 'runtime' } = {}) => {
     try {
-      const pc = W.playerCore;
-      const hasUid = !!pc?.getCurrentTrackUid?.();
-      const hasLiveSound = !!pc?.sound && (typeof pc.sound.playing === 'function' ? (pc.sound.playing() || !!pc.isPlaying?.()) : !!pc.isPlaying?.());
-
-      if (!hasUid || !hasLiveSound) {
-        const restored = await restorePlaybackAfterReload().catch(() => false);
-        if (restored) {
-          W.PlayerUI?.switchAlbumInstantly?.();
-          W.PlayerUI?.updateMiniHeader?.();
-          W.PlayerUI?.updatePlaylistFiltering?.();
-          return true;
-        }
-      }
-
-      if (pc?.getCurrentTrackUid?.()) {
+      if (W.playerCore?.getCurrentTrackUid?.()) {
         W.PlayerUI?.switchAlbumInstantly?.();
         W.PlayerUI?.updateMiniHeader?.();
         W.PlayerUI?.updatePlaylistFiltering?.();
-        if (!pc?.isPlaying?.() && pc?.sound && typeof pc.sound.play === 'function') {
-          try { pc.play?.(); } catch {}
-        }
         return true;
       }
     } catch (e) {
@@ -1764,7 +1747,7 @@ export class StatsAggregator {
   let _init = false;
   W.app = {
     checkShowcaseShare: () => { const p = new URLSearchParams(W.location.search).get('playlist'); if (p && W.ShowcaseManager) { W.ShowcaseManager.handleSharedPlaylist(p); W.history.replaceState(null, '', W.location.pathname); } },
-    initialize: async () => { if (_init) return; _init = true; try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); W.app.checkShowcaseShare(); await restorePlaybackAfterReload().catch(() => false); W.addEventListener('backup:restore:applied', () => setTimeout(() => restorePlaybackUiSafety({ reason: 'backup_restore_applied' }).catch(() => false), 180)); W.addEventListener('profile:data:refreshed', () => setTimeout(() => restorePlaybackUiSafety({ reason: 'profile_data_refreshed' }).catch(() => false), 120)); } catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); } }
+    initialize: async () => { if (_init) return; _init = true; try { await initModules(); setupHotkeys(); setupPWA(); setupSW(); W.app.checkShowcaseShare(); await restorePlaybackAfterReload().catch(() => false); W.addEventListener('backup:restore:applied', () => setTimeout(() => restorePlaybackUiSafety({ reason: 'backup_restore_applied' }).catch(() => false), 180)); } catch (e) { console.error('App init failed:', e); W.NotificationSystem?.error('Ошибка инициализации'); } }
   };
 })(window, document);
 
