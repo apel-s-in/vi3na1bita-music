@@ -54,9 +54,21 @@ const bindReactiveEvents = (root, rerender) => {
       if (!root.isConnected) return;
       s();
       const dt = e.detail || {}, meta = dt.meta || null, cmpState = String(dt.compareState || ''), k = `yandex:cloud:newer:prompt:${safeNum(meta?.timestamp)}:${cmpState}`;
-      if (!meta || sessionStorage.getItem(k) === '1') return;
+      if (!meta) return;
+
+      // Защита: если та же облачная копия уже применена или явно пропущена пользователем, не показываем модалку повторно.
+      try {
+        const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
+        const cloudTs = safeNum(meta?.timestamp);
+        const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
+        const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
+        if (restoreDone && sameSnapshot) return;
+      } catch {}
+
+      if (sessionStorage.getItem(k) === '1') return;
       sessionStorage.setItem(k, '1');
       if (dt.isFreshLogin) return; // Свежий вход перехватывается новым событием yandex:restore:entry
+
       setTimeout(() => {
         if (!root.isConnected) return;
         const ask = window.Modals?.confirm;
@@ -69,8 +81,9 @@ const bindReactiveEvents = (root, rerender) => {
           onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender),
           onCancel: async () => {
             try {
-              const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+              const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
               markSyncReady('user_skipped_restore');
+              try { markRestoreOrSkipDone('user_skipped_restore'); } catch {}
             } catch {}
           }
         });
