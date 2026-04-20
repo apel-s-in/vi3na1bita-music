@@ -57,15 +57,17 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
     }
     if (c.state === 'no_cloud') return _markReady('no_cloud_backup');
 
-    if (!isFreshLogin) {
-      try {
-        const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-        if (isRestoreOrSkipDone()) {
-          console.debug('[AutoSync] cloud_newer ignored — restore already done');
-          return _markReady('cloud_not_newer');
-        }
-      } catch {}
-    }
+    // Защита от бесконечного цикла "cloud_richer" для той же облачной копии после успешного restore.
+    try {
+      const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+      const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
+      const cloudTs = safeNum(m?.timestamp);
+      const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
+      if (isRestoreOrSkipDone() && (sameSnapshot || !isFreshLogin)) {
+        console.debug('[AutoSync] cloud_newer suppressed — restore already done for same snapshot');
+        return _markReady('cloud_not_newer');
+      }
+    } catch {}
 
     _markReady('cloud_newer_user_choice');
     const detail = { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device' || localIsPoor, meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin };
