@@ -1,4 +1,4 @@
-const SW_VERSION = '8.2.62';
+const SW_VERSION = '8.2.63';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -9,7 +9,7 @@ const STATIC_SET = new Set([...new Set(STATIC_ASSETS)].map(norm));
 self.addEventListener('install', e => e.waitUntil((async () => {
   const c = await caches.open(CORE_CACHE);
   await Promise.all(STATIC_ASSETS.map(async u => { try { const req = new Request(norm(u), { cache: 'no-cache' }), res = await fetch(req); if (res.ok && !res.redirected) await c.put(req, res.clone()); } catch {} }));
-  await self.skipWaiting();
+  // Убрано безусловное self.skipWaiting(), чтобы не перезагружать страницу пользователю прямо во время авторизации или прослушивания музыки.
 })()));
 
 self.addEventListener('activate', e => e.waitUntil((async () => {
