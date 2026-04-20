@@ -24,8 +24,9 @@ const persistCloudMetaAfterRestore = async ({ disk, token, restoredBackup }) => 
 
 const markRestoreCompleted = async () => {
   try {
-    const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+    const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
     markSyncReady('restore_completed');
+    try { markRestoreOrSkipDone('restore_completed'); } catch {}
   } catch {}
 };
 
