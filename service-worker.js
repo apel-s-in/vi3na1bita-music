@@ -1,4 +1,4 @@
-const SW_VERSION = '8.2.63';
+const SW_VERSION = '8.2.64';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -13,10 +13,13 @@ self.addEventListener('install', e => e.waitUntil((async () => {
 })()));
 
 self.addEventListener('activate', e => e.waitUntil((async () => {
-  const keep = new Set([CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE]), keys = await caches.keys();
+  const keep = new Set([CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE]);
+  const keys = await caches.keys();
   await Promise.all(keys.map(n => keep.has(n) ? Promise.resolve() : caches.delete(n)));
-  await self.clients.claim();
-  (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).forEach(c => c.postMessage({ type: 'SW_VERSION', version: SW_VERSION }));
+  // Намеренно НЕ вызываем self.clients.claim().
+  // Это предотвращает controllerchange у уже открытой вкладки (и соответственно принудительный reload).
+  (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+    .forEach(c => c.postMessage({ type: 'SW_VERSION', version: SW_VERSION }));
 })()));
 
 self.addEventListener('fetch', e => {
