@@ -50,23 +50,13 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
     try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); } catch {}
     window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
     const c = compareLocalVsCloud(lS, m);
-
-    // На fresh login: если облако богаче/смешано/есть любой не-пустой снапшот и локальное устройство "бедное"
-    // → автоматически восстанавливаем без подтверждения (это сценарий "новое устройство")
     const localIsPoor = safeNum(lS?.level) <= 1 && safeNum(lS?.xp) < 500 && safeNum(lS?.achievementsCount) < 3 && safeNum(lS?.favoritesCount) < 3 && safeNum(lS?.playlistsCount) < 1;
-    const shouldAutoRestore = isFreshLogin && (
-      ['cloud_richer_new_device', 'cloud_richer', 'cloud_probably_richer'].includes(c.state) ||
-      (localIsPoor && (c.state === 'conflict' || c.state === 'equivalent'))
-    );
-    if (shouldAutoRestore) {
-      const ok = await _tryAutoRestore(m, ya.getToken());
-      if (ok) return;
-    }
 
-    if (['local_richer', 'local_probably_richer', 'equivalent'].includes(c.state)) return _markReady(c.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
+    if (!isFreshLogin && ['local_richer', 'local_probably_richer', 'equivalent'].includes(c.state)) {
+      return _markReady(c.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
+    }
     if (c.state === 'no_cloud') return _markReady('no_cloud_backup');
 
-    // Если fresh login и cloud богаче/смешано — всегда предлагаем восстановление, даже если локальный флаг restore_or_skip_done установлен
     if (!isFreshLogin) {
       try {
         const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
@@ -78,7 +68,12 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
     }
 
     _markReady('cloud_newer_user_choice');
-    window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail: { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device', meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin } }));
+    const detail = { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device' || localIsPoor, meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin };
+    
+    window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail }));
+    if (isFreshLogin) {
+      setTimeout(() => window.dispatchEvent(new CustomEvent('yandex:restore:entry', { detail })), 40);
+    }
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
 };
 
