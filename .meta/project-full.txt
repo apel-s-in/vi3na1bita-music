@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-20 15:19:18 UTC
+Сгенерировано: 2026-04-20 15:21:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -694,7 +694,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.63'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.64'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -3250,9 +3250,21 @@ const bindReactiveEvents = (root, rerender) => {
       if (!root.isConnected) return;
       s();
       const dt = e.detail || {}, meta = dt.meta || null, cmpState = String(dt.compareState || ''), k = `yandex:cloud:newer:prompt:${safeNum(meta?.timestamp)}:${cmpState}`;
-      if (!meta || sessionStorage.getItem(k) === '1') return;
+      if (!meta) return;
+
+      // Защита: если та же облачная копия уже применена или явно пропущена пользователем, не показываем модалку повторно.
+      try {
+        const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
+        const cloudTs = safeNum(meta?.timestamp);
+        const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
+        const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
+        if (restoreDone && sameSnapshot) return;
+      } catch {}
+
+      if (sessionStorage.getItem(k) === '1') return;
       sessionStorage.setItem(k, '1');
       if (dt.isFreshLogin) return; // Свежий вход перехватывается новым событием yandex:restore:entry
+
       setTimeout(() => {
         if (!root.isConnected) return;
         const ask = window.Modals?.confirm;
@@ -3265,8 +3277,9 @@ const bindReactiveEvents = (root, rerender) => {
           onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender),
           onCancel: async () => {
             try {
-              const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
+              const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
               markSyncReady('user_skipped_restore');
+              try { markRestoreOrSkipDone('user_skipped_restore'); } catch {}
             } catch {}
           }
         });
@@ -4313,7 +4326,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.63',
+  APP_VERSION: '8.2.64',
   BUILD_DATE: '2026-04-14',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
