@@ -56,14 +56,15 @@ const bindReactiveEvents = (root, rerender) => {
       const dt = e.detail || {}, meta = dt.meta || null, cmpState = String(dt.compareState || ''), k = `yandex:cloud:newer:prompt:${safeNum(meta?.timestamp)}:${cmpState}`;
       if (!meta || sessionStorage.getItem(k) === '1') return;
       sessionStorage.setItem(k, '1');
+      if (dt.isFreshLogin) return; // Свежий вход перехватывается новым событием yandex:restore:entry
       setTimeout(() => {
         if (!root.isConnected) return;
         const ask = window.Modals?.confirm;
         if (!ask) return;
         ask({
-          title: dt.isFreshLogin ? 'Восстановить прогресс из облака?' : 'Облачная копия найдена',
-          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более богатая или более новая копия.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>${dt.isFreshLogin ? 'Рекомендуется сразу проверить и восстановить прогресс.' : 'Открыть восстановление из облака?'}`,
-          confirmText: dt.isFreshLogin ? 'Восстановить' : 'Открыть',
+          title: 'Облачная копия найдена',
+          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более богатая или более новая копия.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>Открыть восстановление из облака?`,
+          confirmText: 'Открыть',
           cancelText: 'Позже',
           onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender),
           onCancel: async () => {
@@ -73,7 +74,7 @@ const bindReactiveEvents = (root, rerender) => {
             } catch {}
           }
         });
-      }, dt.isFreshLogin ? 80 : 250);
+      }, 250);
     },
     onSyncState: e => {
       const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
