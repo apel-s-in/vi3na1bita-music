@@ -72,42 +72,65 @@ function getSystemInstallDate() {
 }
 
 // ─── Предзагрузка backup с retry и таймаутом ─────────────────────────────────
+// Обёртка с таймаутом (AbortController не пробрасывается через YandexDisk методы, поэтому используем Promise.race).
+function withTimeout(promise, ms, label = 'op') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms))
+  ]);
+}
+
 async function preloadBackupData(token) {
   if (!token) return { meta: null, items: [], backup: null };
 
   for (let attempt = 0; attempt < PRELOAD_RETRY_COUNT; attempt++) {
     try {
-      const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), PRELOAD_TIMEOUT_MS);
+      console.debug(`[AuthOnboarding] preload attempt ${attempt + 1}/${PRELOAD_RETRY_COUNT}`);
 
-      const [meta, items] = await Promise.all([
+      // Сначала ТОЛЬКО meta с таймаутом — самый критичный шаг.
+      // listBackups и download делаются ПОСЛЕ того, как мы убедились, что meta есть.
+      const meta = await withTimeout(
         YandexDisk.getMeta(token).catch(() => null),
-        YandexDisk.listBackups(token).catch(() => [])
-      ]);
-      clearTimeout(timeoutId);
+        PRELOAD_TIMEOUT_MS,
+        'meta'
+      ).catch(e => { console.warn(`[AuthOnboarding] meta timeout (attempt ${attempt + 1}):`, e?.message); return null; });
 
-      const safeItems = Array.isArray(items) && items.length ? items : (meta ? [meta] : []);
-
-      // Параллельный download сам backup
-      let backupData = null;
-      if (meta?.path) {
-        try {
-          backupData = await YandexDisk.download(token, meta.path);
-        } catch (e) {
-          console.warn(`[AuthOnboarding] download attempt ${attempt + 1} failed:`, e?.message);
+      if (!meta) {
+        // Нет meta — пробуем retry с экспоненциальным backoff
+        if (attempt < PRELOAD_RETRY_COUNT - 1) {
+          const delay = 1000 * Math.pow(2, attempt);
+          console.debug(`[AuthOnboarding] no meta, waiting ${delay}ms before retry`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
         }
+        console.debug('[AuthOnboarding] all retries exhausted, giving up');
+        return { meta: null, items: [], backup: null };
       }
 
-      if (meta || attempt >= PRELOAD_RETRY_COUNT - 1) {
-        console.debug(`[AuthOnboarding] preload attempt ${attempt + 1}: meta=${!!meta}, backup=${!!backupData}, items=${safeItems.length}`);
-        return { meta, items: safeItems, backup: backupData };
-      }
+      // Meta есть — параллельно грузим items + backup (оба с таймаутами)
+      const [items, backupData] = await Promise.all([
+        withTimeout(
+          YandexDisk.listBackups(token).catch(() => []),
+          PRELOAD_TIMEOUT_MS,
+          'list'
+        ).catch(() => []),
+        meta.path
+          ? withTimeout(
+              YandexDisk.download(token, meta.path).catch(() => null),
+              PRELOAD_TIMEOUT_MS * 2, // download может быть долгим для больших backup
+              'download'
+            ).catch(e => { console.warn('[AuthOnboarding] download timeout:', e?.message); return null; })
+          : Promise.resolve(null)
+      ]);
 
-      // Не нашли meta — retry с backoff
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      const safeItems = Array.isArray(items) && items.length ? items : [meta];
+
+      console.debug(`[AuthOnboarding] preload success (attempt ${attempt + 1}): meta=yes, backup=${!!backupData}, items=${safeItems.length}`);
+      return { meta, items: safeItems, backup: backupData };
     } catch (e) {
-      console.warn(`[AuthOnboarding] preload attempt ${attempt + 1} failed:`, e?.message);
+      console.warn(`[AuthOnboarding] preload attempt ${attempt + 1} error:`, e?.message);
       if (attempt >= PRELOAD_RETRY_COUNT - 1) return { meta: null, items: [], backup: null };
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
     }
   }
   return { meta: null, items: [], backup: null };
