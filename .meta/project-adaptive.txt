@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 13:20:48 UTC
+Сгенерировано: 2026-04-21 13:21:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3170,9 +3170,21 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile }) {
         reason: asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore',
         keepCurrentAlbum: true
       });
+    } catch (e) { console.warn('[AuthOnboarding] runtime refresh failed:', e?.message); }
+
+    // Финальная волна событий — заставляем все компоненты UI (мини-хедер, бейдж, плейлист) перерисоваться
+    try {
+      await new Promise(r => setTimeout(r, 100));
+      window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason: 'cloud_restore_final' } }));
+      window.dispatchEvent(new CustomEvent('stats:updated', { detail: { source: 'cloud_restore' } }));
+      window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { source: 'cloud_restore' } }));
+      window.dispatchEvent(new CustomEvent('favorites:updated', { detail: { source: 'cloud_restore' } }));
+      window.dispatchEvent(new CustomEvent('devices:updated', { detail: { source: 'cloud_restore' } }));
+      window.PlayerUI?.updateMiniHeader?.();
+      window.PlayerUI?.updatePlaylistFiltering?.();
     } catch {}
 
-    nSys?.success?.(`Прогресс восстановлен ✅${asNewDevice ? ' (новое устройство)' : ''}`);
+    nSys?.success(`Прогресс восстановлен ✅${asNewDevice ? ' (новое устройство)' : ''}`);
   } catch (e) {
     const msg = String(e?.message || '');
     if (msg.includes('restore_owner_mismatch')) nSys?.error?.('Backup принадлежит другому Яндекс-аккаунту.');
