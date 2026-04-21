@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 08:33:22 UTC
+Сгенерировано: 2026-04-21 08:34:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3669,24 +3669,39 @@ const refreshAfterRestore = async reason => {
   } catch {}
 };
 
-export async function openYandexRestoreFlow({ token, disk = YandexDisk, notify = window.NotificationSystem, rerender, localProfile } = {}) {
+export async function openYandexRestoreFlow({
+  token,
+  disk = YandexDisk,
+  notify = window.NotificationSystem,
+  rerender,
+  localProfile,
+  autoPickedPath = null,
+  inheritDeviceKey = null,
+  asNewDevice = false,
+  skipPreview = false,
+  applyMode = 'all'
+} = {}) {
   if (!token) throw new Error('no_token');
   const [items, meta] = await Promise.all([disk.listBackups(token).catch(() => []), disk.getMeta(token).catch(() => null)]);
   if (!meta) throw new Error('backup_not_found');
-  const local = getLocalProfile(localProfile), localSummary = getLocalBackupUiSnapshot({ name: local?.name || 'Слушатель' }), cmp = compareLocalVsCloud(localSummary, meta);
-  openRestoreVersionPickerModal(items?.length ? items : [meta], async pickedPath => {
+  const local = getLocalProfile(localProfile);
+  const localSummary = getLocalBackupUiSnapshot({ name: local?.name || 'Слушатель' });
+  const cmp = compareLocalVsCloud(localSummary, meta);
+
+  const runRestoreWithPath = async (pickedPath) => {
     if (!pickedPath) return;
     notify?.info('Скачивание резервной копии...');
     try {
       const data = await disk.download(token, pickedPath);
       if (!data) throw new Error('backup_not_found');
-      openRestorePreviewModal(data, async mode => {
+
+      const applyData = async (mode) => {
         try {
           await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
           await persistCloudMetaAfterRestore({ disk, token, restoredBackup: data });
-          await refreshAfterRestore('cloud_restore');
           await markRestoreCompleted();
-          notify?.success(`Восстановление завершено ✅ ${cmp?.state === 'cloud_richer_new_device' ? '(облако выглядело как источник для нового устройства)' : ''}`);
+          await refreshAfterRestore(asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore');
+          notify?.success(`Восстановление завершено ✅ ${asNewDevice ? '(новое устройство)' : (cmp?.state === 'cloud_richer_new_device' ? '(облако выглядело как источник для нового устройства)' : '')}`);
           rerender?.();
         } catch (e) {
           const msg = sS(e?.message || '');
@@ -3695,7 +3710,13 @@ export async function openYandexRestoreFlow({ token, disk = YandexDisk, notify =
           else if (msg.includes('backup_integrity_failed')) notify?.error('Файл backup повреждён или изменён.');
           else notify?.error('Ошибка восстановления: ' + msg);
         }
-      });
+      };
+
+      if (skipPreview) {
+        await applyData(applyMode || 'all');
+      } else {
+        openRestorePreviewModal(data, async (mode) => applyData(mode));
+      }
     } catch (e) {
       const msg = sS(e?.message || '');
       console.error('[Yandex restore flow failed]', e);
@@ -3704,8 +3725,21 @@ export async function openYandexRestoreFlow({ token, disk = YandexDisk, notify =
       else if (msg.includes('proxy_failed_or_timeout')) notify?.error('Cloud Function не отвечает. Повторите позже или используйте «Из файла».');
       else notify?.error('Ошибка скачивания backup: ' + msg);
     }
-  });
-  return { ok: true, compareState: cmp?.state || 'unknown', hasHistory: Array.isArray(items) && items.length > 0 };
+  };
+
+  if (autoPickedPath) {
+    await runRestoreWithPath(String(autoPickedPath).trim() || meta?.path || null);
+  } else {
+    openRestoreVersionPickerModal(items?.length ? items : [meta], async (pickedPath) => runRestoreWithPath(pickedPath));
+  }
+
+  return {
+    ok: true,
+    compareState: cmp?.state || 'unknown',
+    hasHistory: Array.isArray(items) && items.length > 0,
+    inheritDeviceKey: inheritDeviceKey || null,
+    asNewDevice: !!asNewDevice
+  };
 }
 
 export default { openYandexRestoreFlow };
