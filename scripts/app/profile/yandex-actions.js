@@ -28,7 +28,60 @@ export function initYandexActions() {
         const t = ya.getToken();
         if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
         try {
-          await openYandexRestoreFlow({ token: t, disk, notify: nSys, rerender, localProfile });
+          const [meta, items] = await Promise.all([
+            disk.getMeta(t).catch(() => null),
+            disk.listBackups(t).catch(() => [])
+          ]);
+          if (!meta) throw new Error('backup_not_found');
+
+          const safeItems = Array.isArray(items) && items.length ? items : [meta];
+          const { openFreshLoginRestoreModal } = await import('./yandex-modals.js');
+          if (typeof openFreshLoginRestoreModal !== 'function') {
+            await openYandexRestoreFlow({ token: t, disk, notify: nSys, rerender, localProfile });
+            return;
+          }
+
+          openFreshLoginRestoreModal({
+            meta,
+            items: safeItems,
+            onLater: async () => {
+              try {
+                const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+                markSyncReady('user_skipped_restore');
+                try { markRestoreOrSkipDone('user_skipped_restore'); } catch {}
+              } catch {}
+            },
+            onRestore: async ({ pickedPath, inheritDeviceKey, asNewDevice } = {}) => {
+              try {
+                await openYandexRestoreFlow({
+                  token: t, disk, notify: nSys, rerender,
+                  autoPickedPath: pickedPath,
+                  inheritDeviceKey: inheritDeviceKey || null,
+                  asNewDevice: !!asNewDevice,
+                  skipPreview: true, applyMode: 'all',
+                  localProfile
+                });
+              } catch (err) {
+                const m = String(err?.message || '');
+                if (m.includes('backup_not_found')) nSys?.warning('Облачная копия не найдена.');
+                else nSys?.error('Ошибка восстановления: ' + m);
+              }
+            },
+            onNewDevice: async ({ pickedPath, inheritDeviceKey } = {}) => {
+              try {
+                await openYandexRestoreFlow({
+                  token: t, disk, notify: nSys, rerender,
+                  autoPickedPath: pickedPath,
+                  inheritDeviceKey: inheritDeviceKey || null,
+                  asNewDevice: true,
+                  skipPreview: true, applyMode: 'all',
+                  localProfile
+                });
+              } catch (err) {
+                nSys?.error('Ошибка восстановления: ' + String(err?.message || ''));
+              }
+            }
+          });
         } catch (e) {
           const msg = String(e?.message || '');
           if (msg.includes('backup_not_found')) nSys?.warning('Облачная копия не найдена. Сначала сохраните backup кнопкой «Сохранить».');
