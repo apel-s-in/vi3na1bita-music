@@ -51,6 +51,66 @@ function _initBadgeListeners() {
       document.querySelectorAll('.cloud-newer-badge').forEach(b => b.remove());
     }
   });
+
+  // Fresh-login orchestrator: один раз показываем богатую модалку выбора сценария
+  window.addEventListener('yandex:restore:entry', async (e) => {
+    try {
+      const dt = e.detail || {};
+      if (!dt.isFreshLogin || !dt.meta) return;
+
+      const skipKey = `yandex:fresh-restore:entry:${Number(dt.meta?.timestamp || 0)}`;
+      if (sessionStorage.getItem(skipKey) === '1') return;
+      sessionStorage.setItem(skipKey, '1');
+
+      const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
+      if (restoreDone) return;
+
+      const ya = window.YandexAuth;
+      const token = ya?.getToken?.();
+      if (!token || !ya?.isTokenAlive?.()) return;
+
+      const mod = await import('./yandex-modals.js');
+      const openFn = mod?.openFreshLoginRestoreModal;
+      if (typeof openFn !== 'function') return;
+
+      const YandexDiskMod = await import('../../core/yandex-disk.js');
+      const YandexDisk = YandexDiskMod.YandexDisk || YandexDiskMod.default;
+
+      let items = [];
+      try { items = await YandexDisk.listBackups(token); } catch {}
+      if (!Array.isArray(items) || !items.length) items = [dt.meta];
+
+      const { openYandexRestoreFlow } = await import('./yandex-restore-flow.js');
+
+      openFn({
+        meta: dt.meta,
+        items,
+        onLater: async () => {
+          try {
+            const se = await import('../../analytics/backup-sync-engine.js');
+            se.markSyncReady('user_skipped_restore');
+            try { se.markRestoreOrSkipDone('user_skipped_restore'); } catch {}
+          } catch {}
+        },
+        onRestore: async ({ pickedPath, inheritDeviceKey } = {}) => {
+          try {
+            await openYandexRestoreFlow({
+              token,
+              disk: YandexDisk,
+              notify: window.NotificationSystem,
+              autoPickedPath: pickedPath,
+              inheritDeviceKey: inheritDeviceKey || null,
+              localProfile: (() => { try { return JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null') || { name: 'Слушатель' }; } catch { return { name: 'Слушатель' }; } })()
+            });
+          } catch (err) {
+            console.warn('[FreshLoginRestore] flow failed', err?.message);
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('[FreshLoginRestoreEntry] failed:', err?.message);
+    }
+  });
 }
 
 // Инициализируем сразу при импорте — строго один раз
