@@ -35,7 +35,36 @@ const rbdStats = async () => {
   }
 };
 const rOwner = async () => { const p = window.YandexAuth?.getProfile?.(); return { internalUserId: localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || crypto.randomUUID(), ownerYandexId: String(p?.yandexId||p?.id||'').trim()||null, ownerLogin: String(p?.login||'').trim()||null, ownerDisplayName: String(p?.displayName||p?.realName||'').trim()||null }; };
-const rDevReg = async () => { const { getOrCreateDeviceHash, getOrCreateDeviceStableId } = await import('../core/device-identity.js'); const h = await getOrCreateDeviceHash(), id = await getOrCreateDeviceStableId(), cur = DeviceRegistry.normalizeDeviceRow({ deviceHash: h, deviceStableId: id, platform: window.Utils?.getPlatform?.()?.isIOS ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web'), userAgent: navigator.userAgent, firstSeenAt: Number(localStorage.getItem('app:first-install-ts')||Date.now()), lastSeenAt: Date.now(), seenHashes: [h] }); const list = DeviceRegistry.normalizeDeviceRegistry([...DeviceRegistry.getDeviceRegistry(), cur]); DeviceRegistry.saveDeviceRegistry(list); return list; };
+const rDevReg = async () => {
+  const { getOrCreateDeviceHash, getOrCreateDeviceStableId } = await import('../core/device-identity.js');
+  const h = await getOrCreateDeviceHash();
+  const id = await getOrCreateDeviceStableId();
+  const cur = DeviceRegistry.normalizeDeviceRow({
+    deviceHash: h,
+    deviceStableId: id,
+    platform: window.Utils?.getPlatform?.()?.isIOS ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web'),
+    userAgent: navigator.userAgent,
+    firstSeenAt: Number(localStorage.getItem('app:first-install-ts') || Date.now()),
+    lastSeenAt: Date.now(),
+    seenHashes: [h]
+  });
+
+  // КРИТИЧНО: сначала чистим storage от дублей, потом добавляем current
+  const raw = DeviceRegistry.getDeviceRegistry();
+  const deduped = DeviceRegistry.normalizeDeviceRegistry(raw);
+  const withCurrent = DeviceRegistry.normalizeDeviceRegistry([...deduped, cur]);
+
+  // Проверяем результат: если получилось больше, чем количество уникальных stableId+hash → баг в dedup
+  const expectedMax = new Set([...withCurrent.map(d => d.deviceStableId || d.deviceHash)].filter(Boolean)).size;
+  const finalList = withCurrent.length > expectedMax ? withCurrent.slice(0, expectedMax) : withCurrent;
+
+  if (finalList.length < raw.length) {
+    console.debug(`[BackupVault] device registry deduplicated: ${raw.length} → ${finalList.length}`);
+  }
+
+  DeviceRegistry.saveDeviceRegistry(finalList);
+  return finalList;
+};
 const rDevCac = async () => { try { const [{getAllTrackMetas}, {getCurrentDeviceHash, getCurrentDeviceStableId}] = await Promise.all([import('../offline/cache-db.js'), import('../core/device-identity.js')]); return { deviceHash: getCurrentDeviceHash?.() || localStorage.getItem('deviceHash') || '', deviceStableId: getCurrentDeviceStableId?.() || localStorage.getItem('deviceStableId') || '', items: (await getAllTrackMetas()).filter(m => ['pinned','cloud'].includes(m.type)).map(m => ({ uid:m.uid, type:m.type, quality:m.quality, size:m.size||0, cloudExpiresAt:m.cloudExpiresAt||null, pinnedAt:m.pinnedAt||null })) }; } catch { return null; } };
 
 const rSnap = async () => { const [st, w, a, str, uP, uR, lP, pI, hS, rS, cS, iR] = await Promise.all([metaDB.getAllStats(), metaDB.getEvents('events_warm'), metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('global_streak'), metaDB.getGlobal('user_profile'), metaDB.getGlobal('user_profile_rpg'), metaDB.getStoreAll('listener_profile').catch(()=>[]), metaDB.getStoreAll('provider_identity').catch(()=>[]), metaDB.getStoreAll('hybrid_sync').catch(()=>[]), metaDB.getStoreAll('recommendation_state').catch(()=>[]), metaDB.getStoreAll('collection_state').catch(()=>[]), metaDB.getStoreAll('intel_runtime').catch(()=>[])]); return { stats:st, eventLog:{warm:w}, achievements:a?.value||{}, streaks:str?.value||{}, userProfile:uP?.value||{name:'Слушатель',avatar:'😎'}, userProfileRpg:uR?.value||{xp:0,level:1}, localStorage: P_KEYS.reduce((a,k)=>{const v=localStorage.getItem(k);if(v!=null)a[k]=v;return a;},{}), intel: {listenerProfile:lP, providerIdentity:pI, hybridSync:hS, recommendationState:rS, collectionState:cS, intelRuntime:iR} }; };
@@ -59,6 +88,12 @@ export class BackupVault {
   
   static async importData(f, m = 'all') { return new Promise((res, rej) => { const r=new FileReader(); r.onload=async e=>{ try { const b=await this.parseBackupText(e.target.result), cY=String(window.YandexAuth?.getProfile?.()?.yandexId||'').trim(), oY=String(b?.identity?.ownerYandexId||'').trim(); if(!cY) throw new Error('restore_requires_yandex_login'); if(!oY||oY!==cY) throw new Error('restore_owner_mismatch'); const i=b.data.intel||{}, wS=async(st,r)=>{if(Array.isArray(r)&&r.length)await metaDB.tx(st,'readwrite',s=>r.forEach(x=>s.put(x)));}; if(m==='all'||m==='stats'){ const [lW, lA, lS, lR]=await Promise.all([metaDB.getEvents('events_warm'), metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('global_streak'), metaDB.getGlobal('user_profile_rpg')]); const sn=new Set(), mE=[...lW,...(b.data.eventLog.warm||[])].filter(x=>x?.eventId&&!sn.has(x.eventId)&&sn.add(x.eventId)).sort((x,y)=>x.timestamp-y.timestamp); await metaDB.clearEvents('events_warm'); await metaDB.addEvents(mE,'events_warm'); await rbdStats(); await metaDB.setGlobal('unlocked_achievements', mergeAchievementsSafe(lA?.value||{},b.data.achievements||{})); const rS=b.data.streaks||{}, lsV=lS?.value||{}; await metaDB.setGlobal('global_streak', {...lsV,...rS,current:Math.max(toNum(lsV.current),toNum(rS.current)),longest:Math.max(toNum(lsV.longest),toNum(rS.longest)),lastActiveDate:maxDateStr(lsV.lastActiveDate,rS.lastActiveDate)}); const rR=b.data.userProfileRpg||{}, lrV=lR?.value||{}; await metaDB.setGlobal('user_profile_rpg', {...lrV,...rR,xp:Math.max(toNum(lrV.xp),toNum(rR.xp)),level:Math.max(toNum(lrV.level||1),toNum(rR.level||1),1)}); await wS('listener_profile',i.listenerProfile); await wS('provider_identity',i.providerIdentity); await wS('hybrid_sync',i.hybridSync); await wS('recommendation_state',i.recommendationState); await wS('collection_state',i.collectionState); await wS('intel_runtime',i.intelRuntime); } if(m==='all'||m==='profile'){
           if(b.data.userProfile) await metaDB.setGlobal('user_profile',b.data.userProfile);
+          // КРИТИЧНО: дедуплицируем devices ДО записи в localStorage
+          if (Array.isArray(b.devices)) {
+            const dedupedDevices = DeviceRegistry.normalizeDeviceRegistry(b.devices);
+            b.devices = dedupedDevices;
+            console.debug(`[BackupVault] devices dedup on import: ${(b.devices || []).length}`);
+          }
           const isPlaying = !!window.playerCore?.isPlaying?.();
           const PLAYBACK_GUARD = new Set(['playerStateV2','favoritesOnlyMode','sourcePref','qualityMode:v1']);
           Object.entries(b.data.localStorage||{}).forEach(([k,v])=>{
