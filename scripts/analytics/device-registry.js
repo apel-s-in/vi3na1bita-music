@@ -13,7 +13,50 @@ export const normalizeDeviceRow = (r = {}) => {
   return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:pf, class:cl, label:lb, userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), seenHashes:sH };
 };
 
-export const normalizeDeviceRegistry = rows => { const bK=new Map(); (Array.isArray(rows)?rows:[]).map(normalizeDeviceRow).filter(r=>r.deviceStableId||r.deviceHash).forEach(r => { const k=r.deviceStableId||r.deviceHash, p=bK.get(k); if(!p) return bK.set(k, r); bK.set(k, normalizeDeviceRow({ ...p, ...r, firstSeenAt: Math.min(...[safeNum(p.firstSeenAt), safeNum(r.firstSeenAt)].filter(v=>v>0))||0, lastSeenAt: Math.max(safeNum(p.lastSeenAt), safeNum(r.lastSeenAt)), seenHashes: [...new Set([...(p.seenHashes||[]), ...(r.seenHashes||[]), p.deviceHash, r.deviceHash].filter(Boolean))] })); }); return [...bK.values()].sort((a,b)=>safeNum(a.firstSeenAt)-safeNum(b.firstSeenAt)); };
+export const normalizeDeviceRegistry = rows => {
+  const bK = new Map();
+  const hashToStableId = new Map(); // hash → stableId, чтобы склеить старые записи с новыми
+
+  // Первый проход: собираем mapping hash → stableId из всех записей у которых есть оба поля
+  (Array.isArray(rows) ? rows : []).forEach(r => {
+    const sid = safeString(r?.deviceStableId);
+    const hash = safeString(r?.deviceHash);
+    const seenH = Array.isArray(r?.seenHashes) ? r.seenHashes.map(safeString).filter(Boolean) : [];
+    if (sid) {
+      if (hash) hashToStableId.set(hash, sid);
+      seenH.forEach(h => hashToStableId.set(h, sid));
+    }
+  });
+
+  // Второй проход: группируем по stableId (если известен) или по hash
+  (Array.isArray(rows) ? rows : []).map(normalizeDeviceRow).filter(r => r.deviceStableId || r.deviceHash).forEach(r => {
+    let k = r.deviceStableId;
+    if (!k && r.deviceHash) {
+      k = hashToStableId.get(r.deviceHash) || r.deviceHash;
+    }
+    // Дополнительная проверка seenHashes — может быть связь через них
+    if (!r.deviceStableId && Array.isArray(r.seenHashes)) {
+      for (const h of r.seenHashes) {
+        if (hashToStableId.has(h)) { k = hashToStableId.get(h); break; }
+      }
+    }
+
+    const p = bK.get(k);
+    if (!p) return bK.set(k, r);
+
+    bK.set(k, normalizeDeviceRow({
+      ...p, ...r,
+      deviceStableId: p.deviceStableId || r.deviceStableId,
+      deviceHash: p.deviceHash || r.deviceHash,
+      firstSeenAt: Math.min(...[safeNum(p.firstSeenAt), safeNum(r.firstSeenAt)].filter(v => v > 0)) || 0,
+      lastSeenAt: Math.max(safeNum(p.lastSeenAt), safeNum(r.lastSeenAt)),
+      label: p.label || r.label,
+      seenHashes: [...new Set([...(p.seenHashes || []), ...(r.seenHashes || []), p.deviceHash, r.deviceHash].filter(Boolean))]
+    }));
+  });
+
+  return [...bK.values()].sort((a, b) => safeNum(a.firstSeenAt) - safeNum(b.firstSeenAt));
+};
 
 export const saveDeviceRegistry = r => { const o = normalizeDeviceRegistry(r); localStorage.setItem(LS_REGISTRY, JSON.stringify(o)); return o; };
 
