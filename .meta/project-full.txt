@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 13:15:44 UTC
+Сгенерировано: 2026-04-21 13:17:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2711,12 +2711,50 @@ const SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
 const PRELOAD_TIMEOUT_MS = 12000;
 const PRELOAD_RETRY_COUNT = 3;
+const PERSISTENT_CACHE_TTL_MS = 24 * 3600 * 1000; // 24 часа
+const PERSISTENT_CACHE_KEY = 'yandex:onboarding:preload_cache:v1';
 
 // Кэш предзагрузки в памяти
 let _preloadPromise = null;
 let _preloadResult = null;
 let _onboardingActive = false;
 let _currentModal = null;
+
+// Персистентный кэш через metaDB (24 часа)
+async function savePreloadToCache(result) {
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, {
+      result,
+      savedAt: Date.now(),
+      ownerYandexId: safeNum(result?.meta?.ownerYandexId || 0)
+    });
+  } catch {}
+}
+
+async function loadPreloadFromCache(currentYandexId) {
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    const rec = await metaDB.getGlobal(PERSISTENT_CACHE_KEY);
+    const entry = rec?.value;
+    if (!entry) return null;
+    const age = Date.now() - safeNum(entry.savedAt);
+    if (age > PERSISTENT_CACHE_TTL_MS) return null;
+    // Проверяем что кэш принадлежит текущему аккаунту
+    const cachedOwner = safeNum(entry.ownerYandexId);
+    const currentOwner = safeNum(currentYandexId);
+    if (cachedOwner && currentOwner && cachedOwner !== currentOwner) return null;
+    console.debug('[AuthOnboarding] using persistent cache (age:', Math.round(age / 1000), 's)');
+    return entry.result;
+  } catch { return null; }
+}
+
+async function invalidatePreloadCache() {
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, null);
+  } catch {}
+}
 
 const sessionKey = (ts) => `yandex:onboarding:shown:${Number(ts || 0)}`;
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
@@ -3154,7 +3192,22 @@ export function startPreload(token) {
     return _preloadPromise;
   }
 
-  _preloadPromise = preloadBackupData(token);
+  _preloadPromise = (async () => {
+    // Сначала пробуем персистентный кэш
+    try {
+      const profile = window.YandexAuth?.getProfile?.();
+      const cached = await loadPreloadFromCache(profile?.yandexId);
+      if (cached?.meta) {
+        console.debug('[AuthOnboarding] preload served from persistent cache');
+        return cached;
+      }
+    } catch {}
+    // Фолбэк: обычная сетевая предзагрузка
+    const result = await preloadBackupData(token);
+    if (result?.meta) savePreloadToCache(result).catch(() => {});
+    return result;
+  })();
+
   return _preloadPromise;
 }
 
@@ -3164,6 +3217,7 @@ export function clearPreloadCache() {
   _onboardingActive = false;
   try { _currentModal?.remove?.(); } catch {}
   _currentModal = null;
+  invalidatePreloadCache().catch(() => {});
 }
 
 export async function openManualRestoreFlow({ token, profile } = {}) {
