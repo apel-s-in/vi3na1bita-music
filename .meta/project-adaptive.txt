@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 14:04:38 UTC
+Сгенерировано: 2026-04-21 14:05:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1295,48 +1295,72 @@ export const normalizeDeviceRow = (r = {}) => {
 };
 
 export const normalizeDeviceRegistry = rows => {
-  const bK = new Map();
-  const hashToStableId = new Map(); // hash → stableId, чтобы склеить старые записи с новыми
+  if (!Array.isArray(rows) || !rows.length) return [];
 
-  // Первый проход: собираем mapping hash → stableId из всех записей у которых есть оба поля
-  (Array.isArray(rows) ? rows : []).forEach(r => {
-    const sid = safeString(r?.deviceStableId);
-    const hash = safeString(r?.deviceHash);
-    const seenH = Array.isArray(r?.seenHashes) ? r.seenHashes.map(safeString).filter(Boolean) : [];
+  // Шаг 1: нормализуем каждую строку
+  const normalized = rows.map(normalizeDeviceRow).filter(r => r.deviceStableId || r.deviceHash);
+
+  // Шаг 2: строим граф связей hash ↔ stableId из ВСЕХ записей
+  const hashToStableId = new Map();
+  normalized.forEach(r => {
+    const sid = safeString(r.deviceStableId);
+    const hash = safeString(r.deviceHash);
+    const seenH = Array.isArray(r.seenHashes) ? r.seenHashes.map(safeString).filter(Boolean) : [];
     if (sid) {
-      if (hash) hashToStableId.set(hash, sid);
-      seenH.forEach(h => hashToStableId.set(h, sid));
+      if (hash && !hashToStableId.has(hash)) hashToStableId.set(hash, sid);
+      seenH.forEach(h => { if (h && !hashToStableId.has(h)) hashToStableId.set(h, sid); });
     }
   });
 
-  // Второй проход: группируем по stableId (если известен) или по hash
-  (Array.isArray(rows) ? rows : []).map(normalizeDeviceRow).filter(r => r.deviceStableId || r.deviceHash).forEach(r => {
-    let k = r.deviceStableId;
-    if (!k && r.deviceHash) {
-      k = hashToStableId.get(r.deviceHash) || r.deviceHash;
-    }
-    // Дополнительная проверка seenHashes — может быть связь через них
-    if (!r.deviceStableId && Array.isArray(r.seenHashes)) {
+  // Шаг 3: определяем каноничный ключ для каждой записи
+  const getCanonicalKey = r => {
+    if (r.deviceStableId) return r.deviceStableId;
+    if (r.deviceHash && hashToStableId.has(r.deviceHash)) return hashToStableId.get(r.deviceHash);
+    if (Array.isArray(r.seenHashes)) {
       for (const h of r.seenHashes) {
-        if (hashToStableId.has(h)) { k = hashToStableId.get(h); break; }
+        if (hashToStableId.has(h)) return hashToStableId.get(h);
       }
     }
+    return r.deviceHash || null;
+  };
 
-    const p = bK.get(k);
-    if (!p) return bK.set(k, r);
+  // Шаг 4: группируем по каноничному ключу и мержим
+  const grouped = new Map();
+  normalized.forEach(r => {
+    const key = getCanonicalKey(r);
+    if (!key) return;
 
-    bK.set(k, normalizeDeviceRow({
-      ...p, ...r,
-      deviceStableId: p.deviceStableId || r.deviceStableId,
-      deviceHash: p.deviceHash || r.deviceHash,
-      firstSeenAt: Math.min(...[safeNum(p.firstSeenAt), safeNum(r.firstSeenAt)].filter(v => v > 0)) || 0,
-      lastSeenAt: Math.max(safeNum(p.lastSeenAt), safeNum(r.lastSeenAt)),
-      label: p.label || r.label,
-      seenHashes: [...new Set([...(p.seenHashes || []), ...(r.seenHashes || []), p.deviceHash, r.deviceHash].filter(Boolean))]
-    }));
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, r);
+      return;
+    }
+
+    // Мержим записи с одинаковым ключом
+    const merged = normalizeDeviceRow({
+      ...existing,
+      ...r,
+      deviceStableId: existing.deviceStableId || r.deviceStableId,
+      deviceHash: existing.deviceHash || r.deviceHash,
+      firstSeenAt: Math.min(...[safeNum(existing.firstSeenAt), safeNum(r.firstSeenAt)].filter(v => v > 0)) || 0,
+      lastSeenAt: Math.max(safeNum(existing.lastSeenAt), safeNum(r.lastSeenAt)),
+      label: existing.label || r.label,
+      platform: existing.platform || r.platform,
+      class: existing.class || r.class,
+      seenHashes: [
+        ...new Set([
+          ...(existing.seenHashes || []),
+          ...(r.seenHashes || []),
+          existing.deviceHash,
+          r.deviceHash
+        ].filter(Boolean))
+      ]
+    });
+    grouped.set(key, merged);
   });
 
-  return [...bK.values()].sort((a, b) => safeNum(a.firstSeenAt) - safeNum(b.firstSeenAt));
+  // Шаг 5: сортируем по firstSeenAt (старые первыми)
+  return [...grouped.values()].sort((a, b) => safeNum(a.firstSeenAt) - safeNum(b.firstSeenAt));
 };
 
 export const saveDeviceRegistry = r => { const o = normalizeDeviceRegistry(r); localStorage.setItem(LS_REGISTRY, JSON.stringify(o)); return o; };
