@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 08:35:10 UTC
+Сгенерировано: 2026-04-21 08:36:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -694,7 +694,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.64'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.65'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -706,7 +706,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.64';
+const SW_VERSION = '8.2.65';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -3515,10 +3515,13 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
 
     _markReady('cloud_newer_user_choice');
     const detail = { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device' || localIsPoor, meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin };
-    
-    window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail }));
+
     if (isFreshLogin) {
+      // Для свежего входа богатую модалку берёт на себя fresh-login orchestrator.
+      // Не эмитим yandex:cloud:newer, чтобы не показывать простую модалку в yandex-auth-view.
       setTimeout(() => window.dispatchEvent(new CustomEvent('yandex:restore:entry', { detail })), 40);
+    } else {
+      window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail }));
     }
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
 };
@@ -4531,7 +4534,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.64',
+  APP_VERSION: '8.2.65',
   BUILD_DATE: '2026-04-14',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
