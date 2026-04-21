@@ -1,49 +1,116 @@
 // scripts/app/profile/auth-onboarding-orchestrator.js
 // Единый оркестратор авторизации + восстановления backup.
-// Отвечает за правильную последовательность модалок и предварительную загрузку backup-данных.
+// Решает race condition между OAuth popup и YandexDisk.getMeta через активное ожидание.
 
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { safeNum } from '../../analytics/backup-summary.js';
 
-const STATE_KEY = 'yandex:onboarding:state:v1';
 const SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
+const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
+const PRELOAD_TIMEOUT_MS = 12000;
+const PRELOAD_RETRY_COUNT = 3;
 
-// Кэш предзагруженных данных backup в памяти (не в localStorage, чтобы не раздувать)
-let _preloadedBackup = null;
-let _preloadedMeta = null;
-let _preloadedItems = null;
+// Кэш предзагрузки в памяти
+let _preloadPromise = null;
+let _preloadResult = null;
 let _onboardingActive = false;
+let _currentModal = null;
 
 const sessionKey = (ts) => `yandex:onboarding:shown:${Number(ts || 0)}`;
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 
-/**
- * Предзагрузка backup-meta и списка версий СРАЗУ после OAuth.
- * Вызывается до показа модалки имени, чтобы к моменту восстановления данные уже были готовы.
- */
+// ─── Детектор устройства ────────────────────────────────────────────────────
+function detectDeviceInfo() {
+  const ua = navigator.userAgent;
+  const platform = navigator.platform || '';
+  const lang = navigator.language || '';
+
+  let os = 'Unknown OS';
+  let osIcon = '💻';
+  if (/iPhone/.test(ua)) { os = 'iPhone'; osIcon = '📱'; }
+  else if (/iPad/.test(ua)) { os = 'iPad'; osIcon = '📱'; }
+  else if (/Android/.test(ua)) { os = 'Android'; osIcon = '📱'; }
+  else if (/Mac OS X/.test(ua) || /Macintosh/.test(ua)) { os = 'macOS'; osIcon = '🖥'; }
+  else if (/Windows/.test(ua)) { os = 'Windows'; osIcon = '🖥'; }
+  else if (/Linux/.test(ua)) { os = 'Linux'; osIcon = '🖥'; }
+
+  let browser = 'Browser';
+  if (/YaBrowser\/([\d.]+)/.test(ua)) browser = 'Яндекс Браузер';
+  else if (/OPR\//.test(ua) || /Opera\//.test(ua)) browser = 'Opera';
+  else if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/Chrome\//.test(ua) && !/Edg/.test(ua)) browser = 'Chrome';
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+
+  const screen = `${window.screen.width || 0}×${window.screen.height || 0}`;
+  const lastActive = new Date().toLocaleDateString('ru-RU');
+
+  // Список устройств по умолчанию по возрастанию
+  const existingReg = window.DeviceRegistry?.getDeviceRegistry?.() || [];
+  const deviceNumber = existingReg.length + 1;
+
+  const savedLabel = localStorage.getItem(DEVICE_LABEL_KEY) || '';
+  const defaultLabel = savedLabel || `Моё устройство №${deviceNumber}`;
+
+  return {
+    os,
+    osIcon,
+    browser,
+    screen,
+    lang,
+    platform,
+    userAgent: ua,
+    label: defaultLabel,
+    deviceNumber,
+    lastActive
+  };
+}
+
+function getSystemInstallDate() {
+  const ts = Number(localStorage.getItem('app:first-install-ts') || 0);
+  return ts > 0 ? new Date(ts).toLocaleDateString('ru-RU') : '—';
+}
+
+// ─── Предзагрузка backup с retry и таймаутом ─────────────────────────────────
 async function preloadBackupData(token) {
   if (!token) return { meta: null, items: [], backup: null };
-  try {
-    const [meta, items] = await Promise.all([
-      YandexDisk.getMeta(token).catch(() => null),
-      YandexDisk.listBackups(token).catch(() => [])
-    ]);
-    _preloadedMeta = meta;
-    _preloadedItems = Array.isArray(items) && items.length ? items : (meta ? [meta] : []);
 
-    // Скачиваем сам backup в фоне, чтобы при согласии пользователя он был мгновенно доступен
-    if (meta?.path) {
-      YandexDisk.download(token, meta.path)
-        .then(data => { _preloadedBackup = data; })
-        .catch(() => { _preloadedBackup = null; });
+  for (let attempt = 0; attempt < PRELOAD_RETRY_COUNT; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const timeoutId = setTimeout(() => ctrl.abort(), PRELOAD_TIMEOUT_MS);
+
+      const [meta, items] = await Promise.all([
+        YandexDisk.getMeta(token).catch(() => null),
+        YandexDisk.listBackups(token).catch(() => [])
+      ]);
+      clearTimeout(timeoutId);
+
+      const safeItems = Array.isArray(items) && items.length ? items : (meta ? [meta] : []);
+
+      // Параллельный download сам backup
+      let backupData = null;
+      if (meta?.path) {
+        try {
+          backupData = await YandexDisk.download(token, meta.path);
+        } catch (e) {
+          console.warn(`[AuthOnboarding] download attempt ${attempt + 1} failed:`, e?.message);
+        }
+      }
+
+      if (meta || attempt >= PRELOAD_RETRY_COUNT - 1) {
+        console.debug(`[AuthOnboarding] preload attempt ${attempt + 1}: meta=${!!meta}, backup=${!!backupData}, items=${safeItems.length}`);
+        return { meta, items: safeItems, backup: backupData };
+      }
+
+      // Не нашли meta — retry с backoff
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+    } catch (e) {
+      console.warn(`[AuthOnboarding] preload attempt ${attempt + 1} failed:`, e?.message);
+      if (attempt >= PRELOAD_RETRY_COUNT - 1) return { meta: null, items: [], backup: null };
     }
-
-    console.debug('[AuthOnboarding] preloaded meta:', !!meta, 'items:', _preloadedItems.length);
-    return { meta, items: _preloadedItems, backup: null };
-  } catch (e) {
-    console.warn('[AuthOnboarding] preload failed:', e?.message);
-    return { meta: null, items: [], backup: null };
   }
+  return { meta: null, items: [], backup: null };
 }
 
 function isReminderSuppressedForSnapshot(cloudTs) {
@@ -68,10 +135,7 @@ function snoozeReminder(hours = 24) {
   } catch {}
 }
 
-/**
- * Главная точка входа: показывает очередь модалок после получения имени.
- * Вызывается из yandex-auth.js после сохранения имени.
- */
+// ─── Главная точка входа ──────────────────────────────────────────────────────
 export async function runOnboardingFlow({ token, profile, isFirstLogin = true } = {}) {
   if (_onboardingActive) {
     console.debug('[AuthOnboarding] already active, skipping');
@@ -80,8 +144,19 @@ export async function runOnboardingFlow({ token, profile, isFirstLogin = true } 
   _onboardingActive = true;
 
   try {
-    const meta = _preloadedMeta;
-    const items = _preloadedItems || [];
+    // Ждём завершения предзагрузки (максимум PRELOAD_TIMEOUT_MS).
+    // Если предзагрузка не запущена (например, вызов напрямую из профиля), запускаем её сейчас.
+    if (!_preloadPromise) {
+      console.debug('[AuthOnboarding] no active preload, starting one now');
+      _preloadPromise = preloadBackupData(token);
+    }
+
+    const result = await _preloadPromise;
+    _preloadResult = result;
+
+    const meta = result?.meta || null;
+    const items = result?.items || [];
+    const backup = result?.backup || null;
 
     if (!meta) {
       console.debug('[AuthOnboarding] no cloud backup found, showing welcome');
@@ -110,8 +185,8 @@ export async function runOnboardingFlow({ token, profile, isFirstLogin = true } 
       return;
     }
 
-    await new Promise(r => setTimeout(r, 250));
-    showRestoreChoiceModal({ token, meta, items, profile });
+    await new Promise(r => setTimeout(r, 150));
+    showRestoreChoiceModal({ token, meta, items, profile, preloadedBackup: backup });
   } catch (e) {
     console.warn('[AuthOnboarding] flow failed:', e?.message);
   } finally {
@@ -119,41 +194,116 @@ export async function runOnboardingFlow({ token, profile, isFirstLogin = true } 
   }
 }
 
+// ─── Welcome модалка нового устройства с device-picker ────────────────────────
 function showWelcomeNoBackupModal(profile) {
   if (!window.Modals?.open) return;
   const name = profile?.displayName || profile?.name || 'Слушатель';
+  const device = detectDeviceInfo();
+  const installDate = getSystemInstallDate();
+
   const m = window.Modals.open({
     title: `👋 Добро пожаловать, ${esc(name)}!`,
-    maxWidth: 400,
+    maxWidth: 420,
     bodyHtml: `
-      <div style="color:#9db7dd;line-height:1.5;margin-bottom:16px">
+      <div style="color:#9db7dd;line-height:1.5;margin-bottom:14px">
         Вы подключили Яндекс аккаунт. В облаке пока нет сохранений прогресса — это ваше первое устройство.
       </div>
-      <div style="background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:12px;margin-bottom:16px">
-        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px">💡 Что дальше?</div>
-        <ul style="margin:0;padding-left:20px;color:#9db7dd;font-size:12px;line-height:1.6">
+      <div style="background:rgba(77,170,255,.06);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">
+          🔧 Ваше текущее устройство
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#eaf2ff">
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <span style="color:#888">Операционная система:</span>
+            <span style="font-weight:700">${esc(device.osIcon)} ${esc(device.os)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <span style="color:#888">Браузер:</span>
+            <span style="font-weight:700">${esc(device.browser)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <span style="color:#888">Экран:</span>
+            <span style="font-weight:700">${esc(device.screen)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <span style="color:#888">Язык системы:</span>
+            <span style="font-weight:700">${esc(device.lang)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <span style="color:#888">Установлено:</span>
+            <span style="font-weight:700">${esc(installDate)}</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">
+          📝 Как назвать это устройство? (для понимания на других устройствах)
+        </label>
+        <input type="text" id="ao-device-label"
+          maxlength="25"
+          value="${esc(device.label)}"
+          placeholder="${esc(device.label)}"
+          style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:14px;outline:none;transition:border-color .2s"
+          autocomplete="off"
+        >
+        <div style="font-size:11px;color:#666;margin-top:4px">По умолчанию — «Моё устройство №${device.deviceNumber}»</div>
+      </div>
+      <div style="background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:12px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:8px">💡 Что дальше?</div>
+        <ul style="margin:0;padding-left:20px;color:#9db7dd;font-size:11px;line-height:1.6">
           <li>Слушайте музыку — прогресс автоматически сохранится</li>
           <li>На другом устройстве войдите тем же Яндексом — всё синхронизируется</li>
           <li>Включите автосохранение в настройках профиля</li>
         </ul>
       </div>
       <div class="om-actions">
-        <button class="modal-action-btn online" data-act="ok" style="flex:1;justify-content:center">Понятно</button>
+        <button class="modal-action-btn online" id="ao-welcome-ok" style="flex:1;justify-content:center">Понятно</button>
       </div>`
   });
-  m?.addEventListener('click', e => {
-    if (e.target.closest('[data-act="ok"]')) m.remove();
-  });
+
+  _currentModal = m;
+
+  const inp = m?.querySelector('#ao-device-label');
+  const okBtn = m?.querySelector('#ao-welcome-ok');
+
+  const saveLabelAndClose = () => {
+    const val = inp?.value?.trim() || device.label;
+    try {
+      localStorage.setItem(DEVICE_LABEL_KEY, val);
+      // Обновляем device registry с новым label
+      const reg = window.DeviceRegistry?.getDeviceRegistry?.() || [];
+      const currentId = window.DeviceRegistry?.getCurrentDeviceIdentity?.();
+      if (currentId && reg.length) {
+        const updated = reg.map(d => {
+          if ((d.deviceStableId && d.deviceStableId === currentId.deviceStableId) ||
+              (d.deviceHash && d.deviceHash === currentId.deviceHash)) {
+            return { ...d, label: val };
+          }
+          return d;
+        });
+        window.DeviceRegistry?.saveDeviceRegistry?.(updated);
+      }
+    } catch {}
+    m.remove();
+    _currentModal = null;
+  };
+
+  okBtn?.addEventListener('click', saveLabelAndClose);
+  inp?.addEventListener('keydown', e => { if (e.key === 'Enter') saveLabelAndClose(); });
 }
 
-async function showRestoreChoiceModal({ token, meta, items, profile }) {
+// ─── Модалка выбора backup (restore flow) ────────────────────────────────────
+async function showRestoreChoiceModal({ token, meta, items, profile, preloadedBackup }) {
   const mod = await import('./yandex-modals.js');
   const openFn = mod?.openFreshLoginRestoreModal;
   if (typeof openFn !== 'function') return;
 
+  const device = detectDeviceInfo();
+
   openFn({
     meta,
     items,
+    currentDeviceInfo: device, // новое поле — передаём в yandex-modals.js
     onLater: async () => {
       console.debug('[AuthOnboarding] user chose later');
       snoozeReminder(24);
@@ -166,54 +316,59 @@ async function showRestoreChoiceModal({ token, meta, items, profile }) {
     },
     onRestore: async ({ pickedPath, inheritDeviceKey, asNewDevice } = {}) => {
       await executeRestore({
-        token, pickedPath, inheritDeviceKey, asNewDevice: !!asNewDevice, profile
+        token, pickedPath, inheritDeviceKey, asNewDevice: !!asNewDevice, profile,
+        preloadedBackup
       });
     },
     onNewDevice: async ({ pickedPath, inheritDeviceKey } = {}) => {
       await executeRestore({
-        token, pickedPath, inheritDeviceKey, asNewDevice: true, profile
+        token, pickedPath, inheritDeviceKey, asNewDevice: true, profile,
+        preloadedBackup
       });
     }
   });
 }
 
-async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice, profile }) {
+async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice, profile, preloadedBackup }) {
   const nSys = window.NotificationSystem;
+
+  nSys?.info?.('Применяем прогресс из облака...');
+
   try {
-    const { openYandexRestoreFlow } = await import('./yandex-restore-flow.js');
+    // Приоритет: используем предзагруженный backup если путь совпадает
+    const canUseCache = preloadedBackup && (!pickedPath || _preloadResult?.meta?.path === pickedPath);
 
-    // Если backup уже предзагружен и путь совпадает — используем кэш
-    const useCache = _preloadedBackup && _preloadedMeta?.path === pickedPath;
-
-    if (useCache) {
-      console.debug('[AuthOnboarding] using preloaded backup');
-      await applyPreloadedBackup({ backup: _preloadedBackup, token, asNewDevice, profile });
-    } else {
-      await openYandexRestoreFlow({
-        token,
-        disk: YandexDisk,
-        notify: nSys,
-        autoPickedPath: pickedPath,
-        inheritDeviceKey: inheritDeviceKey || null,
-        asNewDevice: !!asNewDevice,
-        skipPreview: true,
-        applyMode: 'all',
-        localProfile: profile || { name: 'Слушатель' }
-      });
+    if (canUseCache) {
+      console.debug('[AuthOnboarding] using preloaded backup for restore');
+      await applyPreloadedBackup({ backup: preloadedBackup, token, asNewDevice, profile });
+      return;
     }
+
+    // Fallback: грузим через стандартный flow (двойной запрос getMeta + download)
+    const { openYandexRestoreFlow } = await import('./yandex-restore-flow.js');
+    await openYandexRestoreFlow({
+      token,
+      disk: YandexDisk,
+      notify: nSys,
+      autoPickedPath: pickedPath,
+      inheritDeviceKey: inheritDeviceKey || null,
+      asNewDevice: !!asNewDevice,
+      skipPreview: true,
+      applyMode: 'all',
+      localProfile: profile || { name: 'Слушатель' }
+    });
   } catch (err) {
     console.warn('[AuthOnboarding] restore failed:', err?.message);
     nSys?.error?.('Ошибка восстановления: ' + String(err?.message || ''));
   } finally {
-    _preloadedBackup = null;
-    _preloadedMeta = null;
-    _preloadedItems = null;
+    // Инвалидируем кэш после применения (следующий вход получит свежие данные)
+    _preloadResult = null;
+    _preloadPromise = null;
   }
 }
 
 async function applyPreloadedBackup({ backup, token, asNewDevice, profile }) {
   const nSys = window.NotificationSystem;
-  nSys?.info?.('Применяем прогресс из облака...');
   try {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
     await BackupVault.importData(new Blob([JSON.stringify(backup)]), 'all');
@@ -253,40 +408,46 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile }) {
 
 /**
  * Вызывается из yandex-auth.js СРАЗУ после OAuth, до показа имени.
- * Возвращает promise, который не блокирует UI (предзагрузка в фоне).
+ * Инициирует предзагрузку и возвращает promise (не блокирует UI).
  */
 export function startPreload(token) {
-  if (!token) return Promise.resolve({ meta: null, items: [] });
-  return preloadBackupData(token);
+  if (!token) {
+    _preloadPromise = Promise.resolve({ meta: null, items: [], backup: null });
+    return _preloadPromise;
+  }
+
+  _preloadPromise = preloadBackupData(token);
+  return _preloadPromise;
 }
 
-/**
- * Очистка кэша (например, при logout).
- */
 export function clearPreloadCache() {
-  _preloadedBackup = null;
-  _preloadedMeta = null;
-  _preloadedItems = null;
+  _preloadPromise = null;
+  _preloadResult = null;
   _onboardingActive = false;
+  try { _currentModal?.remove?.(); } catch {}
+  _currentModal = null;
 }
 
-/**
- * Ручной запуск восстановления из Личного кабинета ("Из облака").
- * Использует тот же flow, но без привязки к first-login логике.
- */
 export async function openManualRestoreFlow({ token, profile } = {}) {
   if (!token) return;
   try {
-    if (!_preloadedMeta) {
-      await preloadBackupData(token);
-    }
-    const meta = _preloadedMeta;
-    const items = _preloadedItems || [];
+    // Всегда делаем свежую предзагрузку для ручного запуска
+    _preloadPromise = preloadBackupData(token);
+    const result = await _preloadPromise;
+    _preloadResult = result;
+
+    const meta = result?.meta || null;
     if (!meta) {
       window.NotificationSystem?.warning?.('Облачная копия не найдена');
       return;
     }
-    showRestoreChoiceModal({ token, meta, items, profile });
+    showRestoreChoiceModal({
+      token,
+      meta,
+      items: result?.items || [],
+      profile: profile || { name: 'Слушатель' },
+      preloadedBackup: result?.backup || null
+    });
   } catch (e) {
     window.NotificationSystem?.error?.('Не удалось открыть восстановление: ' + String(e?.message || ''));
   }
