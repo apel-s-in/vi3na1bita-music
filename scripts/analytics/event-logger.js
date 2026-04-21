@@ -6,7 +6,7 @@ import { metaDB } from './meta-db.js';
 class EventLogger {
   constructor() { this.queue=[]; this.sessionId=crypto.randomUUID(); this.deviceHash=localStorage.getItem('deviceHash')||('tmp_'+crypto.randomUUID()); }
   async init() { await metaDB.init(); try { const { getOrCreateDeviceHash } = await import('../core/device-identity.js'); this.deviceHash = await getOrCreateDeviceHash(); } catch { if(!localStorage.getItem('deviceHash')) localStorage.setItem('deviceHash', this.deviceHash='dv_'+crypto.randomUUID().replace(/-/g,'').slice(0,16)); else this.deviceHash=localStorage.getItem('deviceHash'); } ['visibilitychange','beforeunload'].forEach(e=>window.addEventListener(e,()=>document.hidden!==false&&this.flush())); window.addEventListener('analytics:forceFlush',()=>this.flush()); setInterval(()=>this.flush(),15000); }
-  log(type, uid, data={}) { this.queue.push({eventId:crypto.randomUUID(),sessionId:this.sessionId,deviceHash:this.deviceHash,platform:window.Utils?.getPlatform()?.isIOS?'ios':'web',type,uid,timestamp:Date.now(),data}); if(this.queue.length>20)this.flush(); }
+  log(type, uid, data={}) { if (window._isRestoring) return; this.queue.push({eventId:crypto.randomUUID(),sessionId:this.sessionId,deviceHash:this.deviceHash,platform:window.Utils?.getPlatform()?.isIOS?'ios':'web',type,uid,timestamp:Date.now(),data}); if(this.queue.length>20)this.flush(); }
   async flush() { if(!this.queue.length)return; const b=[...this.queue]; this.queue=[]; try{ await metaDB.addEvents(b,'events_hot'); window.dispatchEvent(new CustomEvent('analytics:logUpdated')); }catch{ this.queue=[...b,...this.queue]; } }
 }
 
