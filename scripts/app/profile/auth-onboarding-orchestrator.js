@@ -453,9 +453,16 @@ export async function openManualRestoreFlow({ token, profile } = {}) {
   }
 }
 
+// Внутренний метод для UI-статуса в модалке имени: возвращает результат текущей предзагрузки.
+export async function _waitForPreload() {
+  if (_preloadPromise) return await _preloadPromise;
+  return { meta: null, items: [], backup: null };
+}
+
 export default {
   startPreload,
   runOnboardingFlow,
   clearPreloadCache,
-  openManualRestoreFlow
+  openManualRestoreFlow,
+  _waitForPreload
 };
