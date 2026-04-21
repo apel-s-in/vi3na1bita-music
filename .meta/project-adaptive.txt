@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 15:18:44 UTC
+Сгенерировано: 2026-04-21 15:20:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1767,7 +1767,7 @@ export class StatsAggregator {
             if (mins >= 120 && mins <= 270) s.featuresUsed.nightPlay = (s.featuresUsed.nightPlay || 0) + 1;
             if (mins >= 300 && mins <= 539) s.featuresUsed.earlyPlay = (s.featuresUsed.earlyPlay || 0) + 1;
             if (ev.data?.quality === 'hi') s.featuresUsed.hiQuality = (s.featuresUsed.hiQuality || 0) + 1;
-            if (s.globalFullListenCount >= (parseInt(localStorage.getItem('cloud:listenThreshold')) || 5)) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
+            if (s.globalFullListenCount >= (parseInt(localStorage.getItem('cloud:listenThreshold')) || 5) && !window._isRestoring) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
 
             if (window.playerCore) {
               const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1', isShuf = window.playerCore.isShuffle(), isFav = window.playerCore.isFavorite(ev.uid);
@@ -1777,7 +1777,7 @@ export class StatsAggregator {
               const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
               if (timeStr >= '00:00:00' && timeStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
               this.session.lastFullUid = ev.uid;
-              if (this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) {
+              if ((this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) && !window._isRestoring) {
                 setTimeout(async () => await metaDB.updateStat('global', gs => { gs.featuresUsed = gs.featuresUsed || {}; if (this.session.favOrderedRun >= 5) gs.featuresUsed.fav_ordered_5 = 5; if (this.session.favShuffleEvents.size >= 5) gs.featuresUsed.fav_shuffle_5 = 5; if (this.session.midnightTripleCount >= 3) gs.featuresUsed.midnight_triple = 1; return gs; }), 500);
               }
             }
@@ -1796,7 +1796,7 @@ export class StatsAggregator {
       }
     }
 
-    if (dailyActive) {
+    if (dailyActive && !window._isRestoring) {
       const sObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
       if (sObj.lastActiveDate !== dateStr) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const yStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`; sObj.current = (sObj.lastActiveDate === yStr) ? sObj.current + 1 : 1; sObj.longest = Math.max(sObj.longest, sObj.current); sObj.lastActiveDate = dateStr; await metaDB.setGlobal('global_streak', sObj); }
     }
