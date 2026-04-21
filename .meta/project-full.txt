@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 13:13:04 UTC
+Сгенерировано: 2026-04-21 13:13:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5266,7 +5266,33 @@ export const YandexAuth={
     if(!window.Modals?.open)return;const sg=rN||lg||'Слушатель',esc=s=>window.Utils?.escapeHtml?.(String(s||''))||String(s||''),m=window.Modals.open({title:'👋 Добро пожаловать!',maxWidth:400,bodyHtml:`<div style="color:#9db7dd;margin-bottom:16px;line-height:1.5">Вы вошли через Яндекс.<br>Как вас отображать в приложении?</div><div style="margin-bottom:14px"><label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Ваше имя</label><input type="text" id="ya-display-name" style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;outline:none" maxlength="20" placeholder="${esc(sg)}" value="${esc(sg)}" autocomplete="off"><div style="font-size:11px;color:#666;margin-top:6px">Или оставьте как есть — ${esc(sg)}</div></div><div class="om-actions"><button class="modal-action-btn online" id="ya-name-save" style="flex:1;justify-content:center">Сохранить</button></div><div id="ya-preload-status" style="margin-top:10px;font-size:11px;color:#666;text-align:center;min-height:16px;display:flex;align-items:center;justify-content:center;gap:6px"><span class="ya-preload-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(77,170,255,.2);border-top-color:#4daaff;border-radius:50%;animation:spin .8s linear infinite"></span>Проверяем облачную копию...</div>`}),i=m.querySelector('#ya-display-name'),b=m.querySelector('#ya-name-save');
     setTimeout(()=>i?.focus(),100);
     // Следим за состоянием предзагрузки и обновляем статус в модалке
-    (async()=>{try{const mod=await import('../app/profile/auth-onboarding-orchestrator.js');const statusEl=m.querySelector('#ya-preload-status');if(!statusEl)return;const result=await mod._waitForPreload?.();if(!m.isConnected)return;if(result?.meta){statusEl.innerHTML='<span style="color:#4caf50">✓</span> Облачная копия найдена';}else{statusEl.innerHTML='<span style="color:#888">○</span> Облачной копии нет — это первое устройство';}}catch{}})();
+    const updatePreloadStatus=async(attemptRetry=false)=>{
+      try{
+        const mod=await import('../app/profile/auth-onboarding-orchestrator.js');
+        const statusEl=m.querySelector('#ya-preload-status');
+        if(!statusEl)return;
+        if(attemptRetry){
+          statusEl.innerHTML='<span class="ya-preload-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(77,170,255,.2);border-top-color:#4daaff;border-radius:50%;animation:spin .8s linear infinite"></span> Повторяем проверку...';
+          mod.clearPreloadCache?.();
+          mod.startPreload?.(this.getToken());
+        }
+        const result=await mod._waitForPreload?.();
+        if(!m.isConnected)return;
+        if(result?.meta){
+          statusEl.innerHTML='<span style="color:#4caf50">✓</span> Облачная копия найдена';
+        }else{
+          statusEl.innerHTML=`<span style="color:#888">○</span> Облачной копии нет <a href="#" id="ya-preload-retry" style="color:#4daaff;text-decoration:underline;margin-left:6px;font-size:10px">попробовать ещё раз</a>`;
+          const retryLink=m.querySelector('#ya-preload-retry');
+          if(retryLink){
+            retryLink.addEventListener('click',e=>{
+              e.preventDefault();
+              updatePreloadStatus(true);
+            });
+          }
+        }
+      }catch{}
+    };
+    updatePreloadStatus(false);
     const sv=async()=>{
       try{window.playerCore?._persistPlaybackState?.(true)}catch{}
       const n=i?.value?.trim()||sg,p=read(LS_PROFILE)||{};
