@@ -40,8 +40,10 @@ export const YandexAuth={
     this._showNamePickModal(rN,lg);
   },
   _showNamePickModal(rN,lg){
-    if(!window.Modals?.open)return;const sg=rN||lg||'Слушатель',esc=s=>window.Utils?.escapeHtml?.(String(s||''))||String(s||''),m=window.Modals.open({title:'👋 Добро пожаловать!',maxWidth:400,bodyHtml:`<div style="color:#9db7dd;margin-bottom:16px;line-height:1.5">Вы вошли через Яндекс.<br>Как вас отображать в приложении?</div><div style="margin-bottom:14px"><label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Ваше имя</label><input type="text" id="ya-display-name" style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;outline:none" maxlength="20" placeholder="${esc(sg)}" value="${esc(sg)}" autocomplete="off"><div style="font-size:11px;color:#666;margin-top:6px">Или оставьте как есть — ${esc(sg)}</div></div><div class="om-actions"><button class="modal-action-btn online" id="ya-name-save" style="flex:1;justify-content:center">Сохранить</button></div>`}),i=m.querySelector('#ya-display-name'),b=m.querySelector('#ya-name-save');
+    if(!window.Modals?.open)return;const sg=rN||lg||'Слушатель',esc=s=>window.Utils?.escapeHtml?.(String(s||''))||String(s||''),m=window.Modals.open({title:'👋 Добро пожаловать!',maxWidth:400,bodyHtml:`<div style="color:#9db7dd;margin-bottom:16px;line-height:1.5">Вы вошли через Яндекс.<br>Как вас отображать в приложении?</div><div style="margin-bottom:14px"><label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Ваше имя</label><input type="text" id="ya-display-name" style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;outline:none" maxlength="20" placeholder="${esc(sg)}" value="${esc(sg)}" autocomplete="off"><div style="font-size:11px;color:#666;margin-top:6px">Или оставьте как есть — ${esc(sg)}</div></div><div class="om-actions"><button class="modal-action-btn online" id="ya-name-save" style="flex:1;justify-content:center">Сохранить</button></div><div id="ya-preload-status" style="margin-top:10px;font-size:11px;color:#666;text-align:center;min-height:16px;display:flex;align-items:center;justify-content:center;gap:6px"><span class="ya-preload-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(77,170,255,.2);border-top-color:#4daaff;border-radius:50%;animation:spin .8s linear infinite"></span>Проверяем облачную копию...</div>`}),i=m.querySelector('#ya-display-name'),b=m.querySelector('#ya-name-save');
     setTimeout(()=>i?.focus(),100);
+    // Следим за состоянием предзагрузки и обновляем статус в модалке
+    (async()=>{try{const mod=await import('../app/profile/auth-onboarding-orchestrator.js');const statusEl=m.querySelector('#ya-preload-status');if(!statusEl)return;const result=await mod._waitForPreload?.();if(!m.isConnected)return;if(result?.meta){statusEl.innerHTML='<span style="color:#4caf50">✓</span> Облачная копия найдена';}else{statusEl.innerHTML='<span style="color:#888">○</span> Облачной копии нет — это первое устройство';}}catch{}})();
     const sv=async()=>{
       try{window.playerCore?._persistPlaybackState?.(true)}catch{}
       const n=i?.value?.trim()||sg,p=read(LS_PROFILE)||{};
@@ -52,12 +54,14 @@ export const YandexAuth={
       setTimeout(()=>{try{window.PlayerUI?.switchAlbumInstantly?.();window.PlayerUI?.updateMiniHeader?.();window.PlayerUI?.updatePlaylistFiltering?.();window.dispatchEvent(new CustomEvent('profile:data:refreshed',{detail:{reason:'auth_name_saved'}}));}catch{}},120);
       setTimeout(()=>{try{if(window.playerCore?.getCurrentTrackUid?.()&&!window.playerCore?.isPlaying?.())window.playerCore?.play?.()}catch{}},420);
       // Запускаем orchestrator flow: проверка backup + предложение восстановления
+      // Orchestrator сам дождётся завершения startPreload — не жёстко таймером, а через await _preloadPromise внутри runOnboardingFlow.
+      // 200ms — это только пауза на закрытие анимации модалки имени, чтобы новая модалка не дёргала UI.
       setTimeout(async()=>{
         try{
           const {runOnboardingFlow}=await import('../app/profile/auth-onboarding-orchestrator.js');
           await runOnboardingFlow({token:this.getToken(),profile:read(LS_PROFILE),isFirstLogin:true});
         }catch(e){console.warn('[YandexAuth] onboarding flow failed:',e?.message);}
-      },600);
+      },200);
     };
     b?.addEventListener('click',sv);i?.addEventListener('keydown',e=>e.key==='Enter'&&sv());
   },
