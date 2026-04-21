@@ -95,7 +95,7 @@ export const openFreshLoginRestoreModal = ({ meta, items = [], onRestore, onNewD
     </div>
   `;
 
-  const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 500, bodyHtml });
+  const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 500, strictClose: true, bodyHtml });
   if (!m) return;
 
   const pickPath = () => {
