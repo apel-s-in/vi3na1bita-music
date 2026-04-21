@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 14:42:14 UTC
+Сгенерировано: 2026-04-21 14:43:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6784,13 +6784,23 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
 (function () {
   'use strict';
   const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
-  const open = ({ title = '', bodyHtml = '', maxWidth = 520, onClose } = {}) => {
+  const open = ({ title = '', bodyHtml = '', maxWidth = 520, onClose, strictClose = false } = {}) => {
     let c = document.getElementById('modals-container') || Object.assign(document.createElement('div'), { id: 'modals-container' });
     if (!c.isConnected) document.body.appendChild(c);
     const bg = Object.assign(document.createElement('div'), { className: 'modal-bg active', innerHTML: `<div class="modal-feedback modal-feedback--dynamic"><button class="bigclose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-close"></use></svg></button>${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-body">${bodyHtml}</div></div>` });
     bg.style.setProperty('--modal-max-width', `${maxWidth}px`); c.appendChild(bg);
-    const cl = () => { onClose?.(); bg.remove(); }, oK = e => { if (e.key === 'Escape') { e.preventDefault(); cl(); } };
-    bg.onclick = e => { if (e.target === bg || e.target.closest('.bigclose')) cl(); }; window.addEventListener('keydown', oK);
+    const cl = () => { onClose?.(); bg.remove(); };
+    const oK = e => { if (!strictClose && e.key === 'Escape') { e.preventDefault(); cl(); } };
+    // strictClose: закрытие ТОЛЬКО по крестику (как в Яндексе для критичных модалок)
+    bg.onclick = e => {
+      if (strictClose) {
+        // В strict-режиме закрываем только по крестику, клик вне контента игнорируем
+        if (e.target.closest('.bigclose')) cl();
+        return;
+      }
+      if (e.target === bg || e.target.closest('.bigclose')) cl();
+    };
+    window.addEventListener('keydown', oK);
     const _rem = bg.remove.bind(bg); bg.remove = () => { window.removeEventListener('keydown', oK); _rem(); };
     return bg;
   };
