@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 14:49:22 UTC
+Сгенерировано: 2026-04-21 14:50:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4076,13 +4076,15 @@ const bindReactiveEvents = (root, rerender) => {
     onCloudNewer: e => {
       if (!root.isConnected) return;
       s();
-      const dt = e.detail || {}, meta = dt.meta || null, cmpState = String(dt.compareState || ''), k = `yandex:cloud:newer:prompt:${safeNum(meta?.timestamp)}:${cmpState}`;
+      const dt = e.detail || {}, meta = dt.meta || null;
       if (!meta) return;
 
-      // Fresh-login всегда обрабатывается оркестратором — здесь только badge "!" на иконке профиля.
+      // Fresh-login обрабатывается оркестратором в auth-onboarding-orchestrator.js → здесь только badge "!" на иконке профиля (обслуживается в render-shell.js).
       if (dt.isFreshLogin) return;
 
-      // Защита: если та же облачная копия уже применена или явно пропущена пользователем, не показываем модалку повторно.
+      // Для не-fresh (пользователь уже залогинен, появилась новая версия в облаке) — тоже НЕ показываем confirm-диалог.
+      // Достаточно badge "!" на иконке, пользователь сам нажмёт «Из облака» в профиле когда захочет.
+      // Это убирает дубликат flow и предотвращает случайные двойные модалки.
       try {
         const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
         const cloudTs = safeNum(meta?.timestamp);
@@ -4090,37 +4092,7 @@ const bindReactiveEvents = (root, rerender) => {
         const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
         if (restoreDone && sameSnapshot) return;
       } catch {}
-
-      if (sessionStorage.getItem(k) === '1') return;
-      sessionStorage.setItem(k, '1');
-
-      // Для не-fresh случаев (пользователь зашёл снова, а в облаке появилось что-то новее) — показываем короткий confirm с переходом на богатую модалку.
-      setTimeout(() => {
-        if (!root.isConnected) return;
-        const ask = window.Modals?.confirm;
-        if (!ask) return;
-        ask({
-          title: 'Облачная копия обновлена',
-          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более новая копия вашего прогресса.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>Открыть восстановление из облака?`,
-          confirmText: 'Открыть',
-          cancelText: 'Позже',
-          onConfirm: async () => {
-            try {
-              const { openManualRestoreFlow } = await import('./auth-onboarding-orchestrator.js');
-              await openManualRestoreFlow({ token: window.YandexAuth?.getToken?.(), profile: JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null') || { name: 'Слушатель' } });
-            } catch {
-              window._handleYaAction?.('restore-backup', root, rerender);
-            }
-          },
-          onCancel: async () => {
-            try {
-              const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-              markSyncReady('user_skipped_restore');
-              try { markRestoreOrSkipDone('user_skipped_restore'); } catch {}
-            } catch {}
-          }
-        });
-      }, 250);
+      // Просто обновляем UI (бейдж "!" появится сам через render-shell badge-listener)
     },
     onSyncState: e => {
       const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
