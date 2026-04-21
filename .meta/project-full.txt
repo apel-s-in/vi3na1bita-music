@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 12:21:49 UTC
+Сгенерировано: 2026-04-21 12:24:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3963,13 +3963,21 @@ export const openRestoreVersionPickerModal = (i, oP) => {
   m?.addEventListener('click', e => { const b = e.target.closest('[data-restore-path]'); if (b) { m.remove(); oP?.(String(b.dataset.restorePath || '').trim() || null); } });
 };
 
-export const openFreshLoginRestoreModal = ({ meta, items = [], onRestore, onNewDevice, onLater } = {}) => {
+export const openFreshLoginRestoreModal = ({ meta, items = [], onRestore, onNewDevice, onLater, currentDeviceInfo = null } = {}) => {
   const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
   const safe = Array.isArray(items) && items.length ? items : (meta ? [meta] : []);
   const localSnap = getLocalBackupUiSnapshot({ name: 'Слушатель' });
   const cloudSnap = meta || safe[0] || {};
   const cmp = compareLocalVsCloud(localSnap, cloudSnap);
   const cL = getBackupCompareLabel(localSnap, cloudSnap);
+
+  // Блок с текущим устройством (если передан из orchestrator)
+  const currentDeviceHtml = currentDeviceInfo ? `
+    <div style="background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <div style="font-size:10px;color:#8ab8fd;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">🔧 Вы сейчас на</div>
+      <div style="font-size:12px;color:#eaf2ff;font-weight:700">${esc(currentDeviceInfo.osIcon)} ${esc(currentDeviceInfo.os)} · ${esc(currentDeviceInfo.browser)}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px">По умолчанию — «${esc(currentDeviceInfo.label)}»</div>
+    </div>` : '';
   const devicesFromMeta = (() => {
     const set = new Map();
     safe.forEach(it => {
@@ -4003,6 +4011,7 @@ export const openFreshLoginRestoreModal = ({ meta, items = [], onRestore, onNewD
 
   const bodyHtml = `
     <div style="font-size:13px;color:#9db7dd;margin-bottom:10px">Мы нашли облачную копию аккаунта. Что сделать?</div>
+    ${currentDeviceHtml}
     <div style="display:flex;gap:10px;margin:10px 0;text-align:center">
       <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 8px">
         <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💾 На устройстве</div>
