@@ -396,6 +396,19 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile }) {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
     await BackupVault.importData(new Blob([JSON.stringify(backup)]), 'all');
 
+    // Принудительная дедупликация device registry после restore (чистит накопленные дубли)
+    try {
+      const { default: DeviceRegistry } = await import('../../analytics/device-registry.js');
+      const before = DeviceRegistry.getDeviceRegistry();
+      const cleaned = DeviceRegistry.normalizeDeviceRegistry(before);
+      if (cleaned.length < before.length) {
+        DeviceRegistry.saveDeviceRegistry(cleaned);
+        console.debug(`[AuthOnboarding] device registry deduplicated: ${before.length} → ${cleaned.length}`);
+      }
+    } catch (e) {
+      console.warn('[AuthOnboarding] device dedup failed:', e?.message);
+    }
+
     try {
       const meta = await YandexDisk.getMeta(token).catch(() => null);
       if (meta) {
