@@ -23,7 +23,39 @@ export function initYandexActions() {
       'backup-export-manual': async () => { try { await BackupVault.exportData(); nSys?.success('Backup-файл сохранён на устройство ✅'); } catch (e) { nSys?.error('Ошибка сохранения файла: ' + (e?.message || '')); } },
       'backup-import-manual': async () => { const t = ya.getToken(); if (!t || !ya.isTokenAlive()) return nSys?.warning('Для восстановления нужен вход в Яндекс.'); try { const f = await pickBackupFile(true); if (!f) return; await BackupVault.importData(f, 'all'); clearCachedBackupFile(); try { const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js'); markSyncReady('restore_completed'); markRestoreOrSkipDone('restore_completed'); } catch {} try { const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js'); await runPostRestoreRefresh({ reason: 'manual_file_restore' }); } catch {} nSys?.success('Backup восстановлен ✅'); } catch (e) { const m = e?.message || ''; if (m.includes('restore_owner_mismatch')) nSys?.error('Этот backup принадлежит другому Яндекс-аккаунту.'); else if (m.includes('restore_requires_yandex_login')) nSys?.warning('Сначала войдите в Яндекс.'); else if (m.includes('backup_integrity_failed')) nSys?.error('Файл backup повреждён или изменён.'); else nSys?.error('Ошибка импорта backup: ' + m); } },
       'check-backup': async () => { const t = ya.getToken(); if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.'); nSys?.info('Проверяем облачную копию...'); try { const [ex, m] = await Promise.all([disk.checkExists(t), disk.getMeta(t).catch(() => null)]); if (!ex) { try { localStorage.removeItem('yandex:last_backup_check'); } catch {} nSys?.warning('Облачная резервная копия не найдена.'); return rerender?.(); } try { if (m) localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); } catch {} rerender?.(); openBackupFoundModal(m); } catch (e) { nSys?.error('Не удалось проверить резервную копию: ' + (e?.message || '')); } },
-      'save-backup': async () => { const t = ya.getToken(); if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.'); if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return nSys?.error('Нет подключения к сети.'); try { const { isSyncReady } = await import('../../analytics/backup-sync-engine.js'); if (!isSyncReady()) return nSys?.warning('Облачное состояние ещё не подтверждено. Сначала проверьте/восстановите backup, затем сохраняйте.'); } catch {} nSys?.info('Сохраняем единый backup на Яндекс Диск...'); try { const b = await BackupVault.buildBackupObject(); const m = await disk.upload(t, b); try { localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m)); localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); localStorage.setItem('yandex:last_backup_local_ts', String(Number(b?.revision?.timestamp || b?.createdAt || Date.now()))); localStorage.setItem('profile:last_snapshot', JSON.stringify(b?.data?.userProfile || localProfile || { name: 'Слушатель' })); window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated')); } catch {} nSys?.success('Прогресс сохранён на Яндекс Диск ✅'); try { const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js'); markSyncReady('manual_save'); markRestoreOrSkipDone('manual_save'); } catch {} if (window.eventLogger) { window.eventLogger.log('FEATURE_USED', 'global', { feature: 'backup' }); window.dispatchEvent(new CustomEvent('analytics:forceFlush')); } rerender?.(); } catch (e) { const m = e?.message || ''; if (m.includes('401') || m.includes('403')) nSys?.warning('Сессия истекла. Войдите снова.'); else nSys?.error('Ошибка сохранения: ' + m); } },
+      'save-backup': async () => {
+        const t = ya.getToken();
+        if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
+        if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return nSys?.error('Нет подключения к сети.');
+        try {
+          const { isSyncReady } = await import('../../analytics/backup-sync-engine.js');
+          if (!isSyncReady()) return nSys?.warning('Облачное состояние ещё не подтверждено. Сначала проверьте/восстановите backup, затем сохраняйте.');
+        } catch {}
+        nSys?.info('Сохраняем единый backup на Яндекс Диск...');
+        try {
+          const b = await BackupVault.buildBackupObject();
+          const m = await disk.upload(t, b);
+          try {
+            localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
+            localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
+            localStorage.setItem('yandex:last_backup_local_ts', String(Number(b?.revision?.timestamp || b?.createdAt || Date.now())));
+            localStorage.setItem('profile:last_snapshot', JSON.stringify(b?.data?.userProfile || localProfile || { name: 'Слушатель' }));
+            window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
+          } catch {}
+          // Инвалидируем persistent cache orchestrator, чтобы следующий логин получил свежие данные
+          try {
+            const orch = await import('./auth-onboarding-orchestrator.js');
+            orch.clearPreloadCache?.();
+          } catch {}
+          nSys?.success('Прогресс сохранён на Яндекс Диск ✅');
+          rerender?.();
+        } catch (e) {
+          const msg = String(e?.message || '');
+          if (msg.includes('401')) nSys?.error('Сессия истекла. Войдите снова.');
+          else if (msg.includes('offline')) nSys?.error('Нет сети.');
+          else nSys?.error('Ошибка сохранения: ' + msg);
+        }
+      },
       'restore-backup': async () => {
         const t = ya.getToken();
         if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
