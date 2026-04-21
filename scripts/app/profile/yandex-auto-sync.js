@@ -71,10 +71,13 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
 
     _markReady('cloud_newer_user_choice');
     const detail = { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device' || localIsPoor, meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin };
-    
-    window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail }));
+
     if (isFreshLogin) {
+      // Для свежего входа богатую модалку берёт на себя fresh-login orchestrator.
+      // Не эмитим yandex:cloud:newer, чтобы не показывать простую модалку в yandex-auth-view.
       setTimeout(() => window.dispatchEvent(new CustomEvent('yandex:restore:entry', { detail })), 40);
+    } else {
+      window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail }));
     }
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
 };
