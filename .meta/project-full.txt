@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 09:06:59 UTC
+Сгенерировано: 2026-04-21 09:20:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3602,7 +3602,7 @@ export default { initYandexAutoSync };
 //=================================================
 // FILE: /scripts/app/profile/yandex-modals.js
 import { BackupVault } from '../../analytics/backup-vault.js';
-import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
+import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel, safeNum } from '../../analytics/backup-summary.js';
 
 export const openBackupInfoModal = () => window.Modals?.open?.({ title: 'Что сохраняется в backup', maxWidth: 480, bodyHtml: `<div class="modal-confirm-text">Один backup-файл содержит полный слепок пользовательского прогресса.<br><br>Внутрь входят:<ul style="margin:10px 0 0 18px;color:#eaf2ff;line-height:1.5"><li>статистика и event log</li><li>достижения, XP, стрики</li><li>локальный профиль</li><li>избранное и плейлисты</li><li>настройки интерфейса и player state</li><li>внутренние intel/store данные</li><li>привязка к владельцу Яндекса и устройствам</li></ul><div style="margin-top:12px;color:#9db7dd">Файл можно сохранить на устройство вручную. Восстановление разрешено только под тем же Яндекс-аккаунтом владельца backup.</div></div>` });
 
