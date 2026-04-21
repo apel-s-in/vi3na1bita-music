@@ -265,6 +265,7 @@ function showWelcomeNoBackupModal(profile) {
   const m = window.Modals.open({
     title: `👋 Добро пожаловать, ${esc(name)}!`,
     maxWidth: 420,
+    strictClose: true,
     bodyHtml: `
       <div style="color:#9db7dd;line-height:1.5;margin-bottom:14px">
         Вы подключили Яндекс аккаунт. В облаке пока нет сохранений прогресса — это ваше первое устройство.
