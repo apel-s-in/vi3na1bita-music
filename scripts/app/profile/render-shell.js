@@ -92,7 +92,7 @@ function _initBadgeListeners() {
             try { se.markRestoreOrSkipDone('user_skipped_restore'); } catch {}
           } catch {}
         },
-        onRestore: async ({ pickedPath, inheritDeviceKey } = {}) => {
+        onRestore: async ({ pickedPath, inheritDeviceKey, asNewDevice } = {}) => {
           try {
             await openYandexRestoreFlow({
               token,
@@ -100,10 +100,30 @@ function _initBadgeListeners() {
               notify: window.NotificationSystem,
               autoPickedPath: pickedPath,
               inheritDeviceKey: inheritDeviceKey || null,
+              asNewDevice: !!asNewDevice,
+              skipPreview: true,
+              applyMode: 'all',
               localProfile: (() => { try { return JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null') || { name: 'Слушатель' }; } catch { return { name: 'Слушатель' }; } })()
             });
           } catch (err) {
             console.warn('[FreshLoginRestore] flow failed', err?.message);
+          }
+        },
+        onNewDevice: async ({ pickedPath, inheritDeviceKey } = {}) => {
+          try {
+            await openYandexRestoreFlow({
+              token,
+              disk: YandexDisk,
+              notify: window.NotificationSystem,
+              autoPickedPath: pickedPath,
+              inheritDeviceKey: inheritDeviceKey || null,
+              asNewDevice: true,
+              skipPreview: true,
+              applyMode: 'all',
+              localProfile: (() => { try { return JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null') || { name: 'Слушатель' }; } catch { return { name: 'Слушатель' }; } })()
+            });
+          } catch (err) {
+            console.warn('[FreshLoginNewDevice] flow failed', err?.message);
           }
         }
       });
