@@ -404,7 +404,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 09:02:47 UTC
+Сгенерировано: 2026-04-21 09:06:59 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -694,7 +694,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.65'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.66'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-14');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -706,7 +706,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.65';
+const SW_VERSION = '8.2.66';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -3275,7 +3275,60 @@ export function initYandexActions() {
         const t = ya.getToken();
         if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
         try {
-          await openYandexRestoreFlow({ token: t, disk, notify: nSys, rerender, localProfile });
+          const [meta, items] = await Promise.all([
+            disk.getMeta(t).catch(() => null),
+            disk.listBackups(t).catch(() => [])
+          ]);
+          if (!meta) throw new Error('backup_not_found');
+
+          const safeItems = Array.isArray(items) && items.length ? items : [meta];
+          const { openFreshLoginRestoreModal } = await import('./yandex-modals.js');
+          if (typeof openFreshLoginRestoreModal !== 'function') {
+            await openYandexRestoreFlow({ token: t, disk, notify: nSys, rerender, localProfile });
+            return;
+          }
+
+          openFreshLoginRestoreModal({
+            meta,
+            items: safeItems,
+            onLater: async () => {
+              try {
+                const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
+                markSyncReady('user_skipped_restore');
+                try { markRestoreOrSkipDone('user_skipped_restore'); } catch {}
+              } catch {}
+            },
+            onRestore: async ({ pickedPath, inheritDeviceKey, asNewDevice } = {}) => {
+              try {
+                await openYandexRestoreFlow({
+                  token: t, disk, notify: nSys, rerender,
+                  autoPickedPath: pickedPath,
+                  inheritDeviceKey: inheritDeviceKey || null,
+                  asNewDevice: !!asNewDevice,
+                  skipPreview: true, applyMode: 'all',
+                  localProfile
+                });
+              } catch (err) {
+                const m = String(err?.message || '');
+                if (m.includes('backup_not_found')) nSys?.warning('Облачная копия не найдена.');
+                else nSys?.error('Ошибка восстановления: ' + m);
+              }
+            },
+            onNewDevice: async ({ pickedPath, inheritDeviceKey } = {}) => {
+              try {
+                await openYandexRestoreFlow({
+                  token: t, disk, notify: nSys, rerender,
+                  autoPickedPath: pickedPath,
+                  inheritDeviceKey: inheritDeviceKey || null,
+                  asNewDevice: true,
+                  skipPreview: true, applyMode: 'all',
+                  localProfile
+                });
+              } catch (err) {
+                nSys?.error('Ошибка восстановления: ' + String(err?.message || ''));
+              }
+            }
+          });
         } catch (e) {
           const msg = String(e?.message || '');
           if (msg.includes('backup_not_found')) nSys?.warning('Облачная копия не найдена. Сначала сохраните backup кнопкой «Сохранить».');
@@ -4550,7 +4603,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.65',
+  APP_VERSION: '8.2.66',
   BUILD_DATE: '2026-04-14',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
