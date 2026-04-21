@@ -123,9 +123,10 @@ const rSnap = async () => {
     metaDB.getStoreAll('collection_state').catch(()=>[]),
     metaDB.getStoreAll('intel_runtime').catch(()=>[])
   ]);
-  const warmTrimmed = trimWarm(w);
-  if (warmTrimmed.length < w.length) {
-    console.debug(`[BackupVault] warm events trimmed: ${w.length} → ${warmTrimmed.length}`);
+  const wClean = w.filter(x => x.type !== 'ACHIEVEMENT_UNLOCK' && !(x.type === 'FEATURE_USED' && String(x.data?.feature).startsWith('backup')));
+  const warmTrimmed = trimWarm(wClean);
+  if (warmTrimmed.length < w.length || wClean.length < w.length) {
+    console.debug(`[BackupVault] warm events trimmed/cleaned: ${w.length} → ${warmTrimmed.length}`);
   }
   return {
     stats: st,
@@ -170,7 +171,10 @@ export class BackupVault {
 }; if(m==='all'||m==='stats'){
   const [lW, lA, lS, lR]=await Promise.all([metaDB.getEvents('events_warm'), metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('global_streak'), metaDB.getGlobal('user_profile_rpg')]);
   const sn=new Set();
-  let mE=[...lW,...(b.data.eventLog.warm||[])].filter(x=>x?.eventId&&!sn.has(x.eventId)&&sn.add(x.eventId)).sort((x,y)=>x.timestamp-y.timestamp);
+  let mE=[...lW,...(b.data.eventLog.warm||[])]
+    .filter(x=>x?.eventId&&!sn.has(x.eventId)&&sn.add(x.eventId))
+    .filter(x=>x.type!=='ACHIEVEMENT_UNLOCK'&&!(x.type==='FEATURE_USED'&&String(x.data?.feature).startsWith('backup')))
+    .sort((x,y)=>x.timestamp-y.timestamp);
   // Ограничение warm при merge — защита от бесконечного роста при повторных restore
   const WARM_LIMIT = 2000;
   if (mE.length > WARM_LIMIT) {
@@ -179,7 +183,16 @@ export class BackupVault {
   }
   await metaDB.clearEvents('events_warm');
   await metaDB.addEvents(mE,'events_warm');
-  await rbdStats(); await metaDB.setGlobal('unlocked_achievements', mergeAchievementsSafe(lA?.value||{},b.data.achievements||{})); const rS=b.data.streaks||{}, lsV=lS?.value||{}; await metaDB.setGlobal('global_streak', {...lsV,...rS,current:Math.max(toNum(lsV.current),toNum(rS.current)),longest:Math.max(toNum(lsV.longest),toNum(rS.longest)),lastActiveDate:maxDateStr(lsV.lastActiveDate,rS.lastActiveDate)}); const rR=b.data.userProfileRpg||{}, lrV=lR?.value||{}; await metaDB.setGlobal('user_profile_rpg', {...lrV,...rR,xp:Math.max(toNum(lrV.xp),toNum(rR.xp)),level:Math.max(toNum(lrV.level||1),toNum(rR.level||1),1)}); await wS('listener_profile',i.listenerProfile); await wS('provider_identity',i.providerIdentity); await wS('hybrid_sync',i.hybridSync); await wS('recommendation_state',i.recommendationState); await wS('collection_state',i.collectionState); await wS('intel_runtime',i.intelRuntime); } if(m==='all'||m==='profile'){
+  await rbdStats();
+  const mAch = mergeAchievementsSafe(lA?.value||{},b.data.achievements||{});
+  await metaDB.setGlobal('unlocked_achievements', mAch);
+  if(window.achievementEngine) window.achievementEngine.unlocked = mAch;
+  const rS=b.data.streaks||{}, lsV=lS?.value||{}; await metaDB.setGlobal('global_streak', {...lsV,...rS,current:Math.max(toNum(lsV.current),toNum(rS.current)),longest:Math.max(toNum(lsV.longest),toNum(rS.longest)),lastActiveDate:maxDateStr(lsV.lastActiveDate,rS.lastActiveDate)});
+  const rR=b.data.userProfileRpg||{}, lrV=lR?.value||{};
+  const mRpg = {...lrV,...rR,xp:Math.max(toNum(lrV.xp),toNum(rR.xp)),level:Math.max(toNum(lrV.level||1),toNum(rR.level||1),1)};
+  await metaDB.setGlobal('user_profile_rpg', mRpg);
+  if(window.achievementEngine) window.achievementEngine.profile = mRpg;
+  await wS('listener_profile',i.listenerProfile); await wS('provider_identity',i.providerIdentity); await wS('hybrid_sync',i.hybridSync); await wS('recommendation_state',i.recommendationState); await wS('collection_state',i.collectionState); await wS('intel_runtime',i.intelRuntime); } if(m==='all'||m==='profile'){
           if(b.data.userProfile) await metaDB.setGlobal('user_profile',b.data.userProfile);
           // КРИТИЧНО: дедуплицируем devices ДО записи в localStorage
           if (Array.isArray(b.devices)) {
