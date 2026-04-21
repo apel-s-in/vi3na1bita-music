@@ -33,6 +33,7 @@ export class AchievementEngine {
   _getSc(r, lvl, isXp) { if (isXp) return Math.floor(r.reward.xpBase * Math.pow(r.reward.xpMultiplier, lvl - 1)); const s = r.scaling; return s.math === 'custom' ? (s.steps[lvl - 1] ?? s.steps[s.steps.length - 1]) : r.trigger.conditions[0].startTarget * Math.pow(s.factor, lvl - 1); }
 
   async check() {
+    if (window._isRestoring) return;
     const statsArr = await metaDB.getAllStats(), gStat = statsArr.find(s => s.uid === 'global')?.featuresUsed || {};
     const trStats = statsArr.filter(s => s.uid !== 'global'), strk = (await metaDB.getGlobal('global_streak'))?.value?.current || 0;
     const favCount = window.FavoritesManager ? window.FavoritesManager.getSnapshot().filter(i => !i.inactiveAt).length : 0;
