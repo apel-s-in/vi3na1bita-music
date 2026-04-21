@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 12:21:14 UTC
+Сгенерировано: 2026-04-21 12:21:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3102,11 +3102,18 @@ export async function openManualRestoreFlow({ token, profile } = {}) {
   }
 }
 
+// Внутренний метод для UI-статуса в модалке имени: возвращает результат текущей предзагрузки.
+export async function _waitForPreload() {
+  if (_preloadPromise) return await _preloadPromise;
+  return { meta: null, items: [], backup: null };
+}
+
 export default {
   startPreload,
   runOnboardingFlow,
   clearPreloadCache,
-  openManualRestoreFlow
+  openManualRestoreFlow,
+  _waitForPreload
 };
 
 //=================================================
