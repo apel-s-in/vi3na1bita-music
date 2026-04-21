@@ -15,19 +15,43 @@ const rbdStats = async () => {
     const [{ StatsAggregator }] = await Promise.all([import('./stats-aggregator.js')]);
     const agg = new StatsAggregator();
     const warm = await metaDB.getEvents('events_warm').catch(() => []);
+
+    // Полная очистка stats и hot
     await metaDB.tx('stats', 'readwrite', s => s.clear());
     await metaDB.clearEvents('events_hot').catch(() => {});
-    if (Array.isArray(warm) && warm.length) {
-      await metaDB.addEvents(warm, 'events_hot');
+
+    if (!Array.isArray(warm) || !warm.length) {
+      await new Promise(r => setTimeout(r, 0));
+      return true;
+    }
+
+    console.debug(`[rbdStats] rebuilding from ${warm.length} events...`);
+
+    // Обрабатываем батчами по 500 событий — это безопасно для любого размера backup
+    const BATCH_SIZE = 500;
+    let processed = 0;
+    for (let i = 0; i < warm.length; i += BATCH_SIZE) {
+      const batch = warm.slice(i, i + BATCH_SIZE);
+      await metaDB.addEvents(batch, 'events_hot');
       await agg.processHotEvents();
-      // Двойной проход: если остались события в hot (большой backup) — обрабатываем повторно
-      const stillHot = await metaDB.getEvents('events_hot').catch(() => []);
-      if (Array.isArray(stillHot) && stillHot.length) {
-        await agg.processHotEvents();
+
+      // Гарантируем что hot очищен после processHotEvents
+      const remaining = await metaDB.getEvents('events_hot').catch(() => []);
+      if (Array.isArray(remaining) && remaining.length) {
+        await agg.processHotEvents(); // повторный проход для остатков
+      }
+
+      processed += batch.length;
+      // Даём event-loop подышать между батчами (для больших backup-ов)
+      if (i + BATCH_SIZE < warm.length) {
+        await new Promise(r => setTimeout(r, 10));
       }
     }
-    // Финальная гарантия: ждём следующий event-loop tick чтобы все stats:updated успели разойтись по слушателям
-    await new Promise(r => setTimeout(r, 0));
+
+    console.debug(`[rbdStats] processed ${processed} events`);
+
+    // Финальная дождалка — все подписчики stats:updated отработают
+    await new Promise(r => setTimeout(r, 50));
     return true;
   } catch (e) {
     console.warn('[rbdStats] failed:', e?.message);
