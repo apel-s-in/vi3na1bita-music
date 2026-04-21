@@ -72,11 +72,9 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
     _markReady('cloud_newer_user_choice');
     const detail = { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device' || localIsPoor, meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin };
 
-    if (isFreshLogin) {
-      // Для свежего входа богатую модалку берёт на себя fresh-login orchestrator.
-      // Не эмитим yandex:cloud:newer, чтобы не показывать простую модалку в yandex-auth-view.
-      setTimeout(() => window.dispatchEvent(new CustomEvent('yandex:restore:entry', { detail })), 40);
-    } else {
+    // Для fresh-login весь flow идёт через auth-onboarding-orchestrator (вызывается из yandex-auth.js после имени).
+    // Здесь эмитим только badge-событие для случая, когда пользователь уже залогинен и в облаке появились новые данные.
+    if (!isFreshLogin) {
       window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail }));
     }
   } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
