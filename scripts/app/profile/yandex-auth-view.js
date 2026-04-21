@@ -56,6 +56,9 @@ const bindReactiveEvents = (root, rerender) => {
       const dt = e.detail || {}, meta = dt.meta || null, cmpState = String(dt.compareState || ''), k = `yandex:cloud:newer:prompt:${safeNum(meta?.timestamp)}:${cmpState}`;
       if (!meta) return;
 
+      // Fresh-login всегда обрабатывается оркестратором — здесь только badge "!" на иконке профиля.
+      if (dt.isFreshLogin) return;
+
       // Защита: если та же облачная копия уже применена или явно пропущена пользователем, не показываем модалку повторно.
       try {
         const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
@@ -67,18 +70,25 @@ const bindReactiveEvents = (root, rerender) => {
 
       if (sessionStorage.getItem(k) === '1') return;
       sessionStorage.setItem(k, '1');
-      if (dt.isFreshLogin) return; // Свежий вход перехватывается новым событием yandex:restore:entry
 
+      // Для не-fresh случаев (пользователь зашёл снова, а в облаке появилось что-то новее) — показываем короткий confirm с переходом на богатую модалку.
       setTimeout(() => {
         if (!root.isConnected) return;
         const ask = window.Modals?.confirm;
         if (!ask) return;
         ask({
-          title: 'Облачная копия найдена',
-          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более богатая или более новая копия.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>Открыть восстановление из облака?`,
+          title: 'Облачная копия обновлена',
+          textHtml: `${esc(dt.isNewDevice ? 'Это похоже на основную копию для нового устройства.' : 'В облаке есть более новая копия вашего прогресса.')}<br><br>${esc(meta?.profileName || 'Слушатель')} · ${meta?.timestamp ? new Date(meta.timestamp).toLocaleString('ru-RU') : 'без даты'}<br><br>Открыть восстановление из облака?`,
           confirmText: 'Открыть',
           cancelText: 'Позже',
-          onConfirm: () => window._handleYaAction?.('restore-backup', root, rerender),
+          onConfirm: async () => {
+            try {
+              const { openManualRestoreFlow } = await import('./auth-onboarding-orchestrator.js');
+              await openManualRestoreFlow({ token: window.YandexAuth?.getToken?.(), profile: JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null') || { name: 'Слушатель' } });
+            } catch {
+              window._handleYaAction?.('restore-backup', root, rerender);
+            }
+          },
           onCancel: async () => {
             try {
               const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
