@@ -405,7 +405,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-21 10:06:48 UTC
+Сгенерировано: 2026-04-21 10:08:59 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5117,18 +5117,36 @@ export const YandexAuth={
     const tId=setTimeout(()=>{window.removeEventListener('message',onMsg);clearInterval(cC);try{if(!p.closed)p.close()}catch{}window.NotificationSystem?.warning('Время авторизации истекло. Попробуйте снова.')},300000);
     const cC=setInterval(()=>{if(p.closed){clearInterval(cC);clearTimeout(tId);window.removeEventListener('message',onMsg)}},1000);
   },
-  logout(){del(LS_TOKEN);del(LS_TOKEN_EXP);del(LS_TOKEN_SCOPE);del(LS_PROFILE);localStorage.setItem(LS_FORCE_CONFIRM_NEXT,'1');try{localStorage.removeItem('yandex:last_backup_check')}catch{}window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'logged_out'}}));window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс')},
+  logout(){del(LS_TOKEN);del(LS_TOKEN_EXP);del(LS_TOKEN_SCOPE);del(LS_PROFILE);localStorage.setItem(LS_FORCE_CONFIRM_NEXT,'1');try{localStorage.removeItem('yandex:last_backup_check')}catch{}try{import('../app/profile/auth-onboarding-orchestrator.js').then(m=>m.clearPreloadCache?.()).catch(()=>{})}catch{}window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'logged_out'}}));window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс')},
   async fetchYandexProfile(t){try{const r=await fetch('https://login.yandex.ru/info?format=json',{headers:{'Authorization':`OAuth ${t}`}});return r.ok?await r.json():null}catch{return null}},
   async _onFirstLogin(yP,t){
     const yId=String(yP.id||'').trim(),rN=String(yP.real_name||yP.display_name||yP.login||'').trim(),lg=String(yP.login||'').trim(),av=yP.default_avatar_id?`https://avatars.yandex.net/get-yapic/${yP.default_avatar_id}/islands-200`:null;
     write(LS_PROFILE,{yandexId:yId,displayName:rN||lg,realName:rN,login:lg,avatar:av,lastSync:Date.now()});
     window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:false,phase:'oauth_success'}}));
+    // Предзагружаем backup в фоне, пока пользователь вводит имя
+    try{const {startPreload}=await import('../app/profile/auth-onboarding-orchestrator.js');startPreload(t).catch(()=>{});}catch{}
     this._showNamePickModal(rN,lg);
   },
   _showNamePickModal(rN,lg){
     if(!window.Modals?.open)return;const sg=rN||lg||'Слушатель',esc=s=>window.Utils?.escapeHtml?.(String(s||''))||String(s||''),m=window.Modals.open({title:'👋 Добро пожаловать!',maxWidth:400,bodyHtml:`<div style="color:#9db7dd;margin-bottom:16px;line-height:1.5">Вы вошли через Яндекс.<br>Как вас отображать в приложении?</div><div style="margin-bottom:14px"><label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Ваше имя</label><input type="text" id="ya-display-name" style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;outline:none" maxlength="20" placeholder="${esc(sg)}" value="${esc(sg)}" autocomplete="off"><div style="font-size:11px;color:#666;margin-top:6px">Или оставьте как есть — ${esc(sg)}</div></div><div class="om-actions"><button class="modal-action-btn online" id="ya-name-save" style="flex:1;justify-content:center">Сохранить</button></div>`}),i=m.querySelector('#ya-display-name'),b=m.querySelector('#ya-name-save');
     setTimeout(()=>i?.focus(),100);
-    const sv=async()=>{try{window.playerCore?._persistPlaybackState?.(true)}catch{}const n=i?.value?.trim()||sg,p=read(LS_PROFILE)||{};write(LS_PROFILE,{...p,displayName:n});window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:true,phase:'name_saved'}}));window.NotificationSystem?.success(`Имя сохранено: ${n} ✅`);m.remove();setTimeout(()=>{try{window.PlayerUI?.switchAlbumInstantly?.();window.PlayerUI?.updateMiniHeader?.();window.PlayerUI?.updatePlaylistFiltering?.();window.dispatchEvent(new CustomEvent('profile:data:refreshed',{detail:{reason:'auth_name_saved'}}));}catch{}},120);setTimeout(()=>{try{if(window.playerCore?.getCurrentTrackUid?.()&&!window.playerCore?.isPlaying?.())window.playerCore?.play?.()}catch{}},420);};
+    const sv=async()=>{
+      try{window.playerCore?._persistPlaybackState?.(true)}catch{}
+      const n=i?.value?.trim()||sg,p=read(LS_PROFILE)||{};
+      write(LS_PROFILE,{...p,displayName:n});
+      window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:true,phase:'name_saved'}}));
+      window.NotificationSystem?.success(`Имя сохранено: ${n} ✅`);
+      m.remove();
+      setTimeout(()=>{try{window.PlayerUI?.switchAlbumInstantly?.();window.PlayerUI?.updateMiniHeader?.();window.PlayerUI?.updatePlaylistFiltering?.();window.dispatchEvent(new CustomEvent('profile:data:refreshed',{detail:{reason:'auth_name_saved'}}));}catch{}},120);
+      setTimeout(()=>{try{if(window.playerCore?.getCurrentTrackUid?.()&&!window.playerCore?.isPlaying?.())window.playerCore?.play?.()}catch{}},420);
+      // Запускаем orchestrator flow: проверка backup + предложение восстановления
+      setTimeout(async()=>{
+        try{
+          const {runOnboardingFlow}=await import('../app/profile/auth-onboarding-orchestrator.js');
+          await runOnboardingFlow({token:this.getToken(),profile:read(LS_PROFILE),isFirstLogin:true});
+        }catch(e){console.warn('[YandexAuth] onboarding flow failed:',e?.message);}
+      },600);
+    };
     b?.addEventListener('click',sv);i?.addEventListener('keydown',e=>e.key==='Enter'&&sv());
   },
   updateDisplayName(n){const p=read(LS_PROFILE);if(!p)return;write(LS_PROFILE,{...p,displayName:String(n||'').trim()||p.displayName});window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE)}}))},
