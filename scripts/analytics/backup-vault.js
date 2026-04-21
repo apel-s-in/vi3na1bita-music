@@ -17,10 +17,20 @@ const rbdStats = async () => {
     const warm = await metaDB.getEvents('events_warm').catch(() => []);
     await metaDB.tx('stats', 'readwrite', s => s.clear());
     await metaDB.clearEvents('events_hot').catch(() => {});
-    if (Array.isArray(warm) && warm.length) await metaDB.addEvents(warm, 'events_hot');
-    await agg.processHotEvents();
+    if (Array.isArray(warm) && warm.length) {
+      await metaDB.addEvents(warm, 'events_hot');
+      await agg.processHotEvents();
+      // Двойной проход: если остались события в hot (большой backup) — обрабатываем повторно
+      const stillHot = await metaDB.getEvents('events_hot').catch(() => []);
+      if (Array.isArray(stillHot) && stillHot.length) {
+        await agg.processHotEvents();
+      }
+    }
+    // Финальная гарантия: ждём следующий event-loop tick чтобы все stats:updated успели разойтись по слушателям
+    await new Promise(r => setTimeout(r, 0));
     return true;
-  } catch {
+  } catch (e) {
+    console.warn('[rbdStats] failed:', e?.message);
     return false;
   }
 };
