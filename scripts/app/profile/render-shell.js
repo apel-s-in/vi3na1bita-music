@@ -58,12 +58,22 @@ function _initBadgeListeners() {
       const dt = e.detail || {};
       if (!dt.isFreshLogin || !dt.meta) return;
 
-      const skipKey = `yandex:fresh-restore:entry:${Number(dt.meta?.timestamp || 0)}`;
+      const cloudTs = Number(dt.meta?.timestamp || 0);
+      const skipKey = `yandex:fresh-restore:entry:${cloudTs}`;
       if (sessionStorage.getItem(skipKey) === '1') return;
       sessionStorage.setItem(skipKey, '1');
 
-      const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
-      if (restoreDone) return;
+      // Блокируем только ту же облачную копию, для которой restore уже был выполнен.
+      // Любой новый fresh-login с другим snapshot timestamp обязан показать модалку.
+      try {
+        const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
+        const localTs = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
+        const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
+        if (restoreDone && sameSnapshot) {
+          console.debug('[FreshLoginRestoreEntry] skipped — snapshot already applied');
+          return;
+        }
+      } catch {}
 
       const ya = window.YandexAuth;
       const token = ya?.getToken?.();
