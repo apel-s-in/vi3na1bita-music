@@ -11,8 +11,21 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
     if (W.achievementEngine) {
       W.achievementEngine.unlocked = u?.value || {};
       W.achievementEngine.profile = r?.value || { xp: 0, level: 1 };
-      // Пересчитать достижения из свежих данных stats/events, чтобы UI-массив собрался корректно
-      try { await W.achievementEngine.check?.(); } catch {}
+      // ДВОЙНОЙ пересчёт достижений: первый — из восстановленных данных, второй — после сохранения нового xp
+      try {
+        await W.achievementEngine.check?.();
+        // Даём IndexedDB закоммитить новый profile/unlocked
+        await new Promise(r => setTimeout(r, 50));
+        // Перезагружаем состояние из DB (вдруг check() докинул xp)
+        const [u2, r2] = await Promise.all([
+          metaDB.getGlobal('unlocked_achievements').catch(() => null),
+          metaDB.getGlobal('user_profile_rpg').catch(() => null)
+        ]);
+        if (u2?.value) W.achievementEngine.unlocked = u2.value;
+        if (r2?.value) W.achievementEngine.profile = r2.value;
+      } catch (e) {
+        console.warn('[PostRestoreRefresh] achievement recheck failed:', e?.message);
+      }
       W.achievementEngine.achievements = W.achievementEngine._buildUIArray?.() || W.achievementEngine.achievements || [];
     }
 
