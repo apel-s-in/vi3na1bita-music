@@ -10,6 +10,31 @@
     try {
       const [M, L, ST, SA, AE, LS, PF] = await Promise.all(['meta-db', 'event-logger', 'session-tracker', 'stats-aggregator', 'achievement-engine', 'live-stats', '../ui/progress-formatters'].map(p => import(`./analytics/${p}.js`)));
       await M.metaDB.init(); await L.eventLogger.init(); new ST.SessionTracker(); new SA.StatsAggregator(); await LS.liveStatsTracker.initialize(); W.achievementEngine = new AE.AchievementEngine();
+
+      // Разовая миграция: чистим раздутый device registry и warm events от накопленных дублей (cleanup после старых версий)
+      try {
+        const MIGRATION_KEY = 'migration:cleanup_duplicates:v1';
+        if (!localStorage.getItem(MIGRATION_KEY)) {
+          const { default: DR } = await import('./analytics/device-registry.js');
+          const before = DR.getDeviceRegistry();
+          const cleaned = DR.normalizeDeviceRegistry(before);
+          if (cleaned.length < before.length) {
+            DR.saveDeviceRegistry(cleaned);
+            console.debug(`[Migration] device registry cleaned: ${before.length} → ${cleaned.length}`);
+          }
+          // Ограничиваем warm если сильно раздут
+          const warm = await M.metaDB.getEvents('events_warm').catch(() => []);
+          if (Array.isArray(warm) && warm.length > 2000) {
+            const trimmed = [...warm].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)).slice(-2000);
+            await M.metaDB.clearEvents('events_warm');
+            await M.metaDB.addEvents(trimmed, 'events_warm');
+            console.debug(`[Migration] warm events trimmed: ${warm.length} → ${trimmed.length}`);
+          }
+          localStorage.setItem(MIGRATION_KEY, String(Date.now()));
+        }
+      } catch (e) {
+        console.warn('[Migration] cleanup failed:', e?.message);
+      }
       W.addEventListener('achievements:updated', e => {
         const { total, unlocked, profile } = e.detail, $el = id => $(id);
         if ($el('achievementsCount')) $el('achievementsCount').textContent = `ВЫПОЛНЕНО: ${unlocked} / ${total}`;
