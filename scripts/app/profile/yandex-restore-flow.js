@@ -65,13 +65,19 @@ export async function openYandexRestoreFlow({
 
       const applyData = async (mode) => {
         try {
-          await BackupVault.importBackupObject(data, mode || 'all');
+          if (typeof BackupVault.importBackupObject === 'function') {
+            await BackupVault.importBackupObject(data, mode || 'all');
+          } else {
+            await BackupVault.importData(new Blob([JSON.stringify(data)], { type: 'application/json' }), mode || 'all');
+          }
           if (!asNewDevice) {
             const devKey = sS(inheritDeviceKey || data?.revision?.sourceDeviceStableId || '');
             if (devKey) {
               try {
                 const deviceDoc = await disk.downloadDeviceSettings(token, devKey).catch(() => null);
-                if (deviceDoc?.deviceStableId) await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+                if (deviceDoc?.deviceStableId && typeof BackupVault.importDeviceSettingsObject === 'function') {
+                  await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+                }
               } catch {}
             }
           }
