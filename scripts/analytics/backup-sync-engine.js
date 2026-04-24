@@ -52,8 +52,8 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
   markDomainDirty(domain);
   try{localStorage.setItem('backup:local_dirty_ts', String(Date.now()));}catch{}
   clearTimeout(_tmr);
-  const plannedMs = immediate ? DOMAIN_DEBOUNCE_MS.achievements : (consumeDirtyState().debounceMs || DOMAIN_DEBOUNCE_MS.generic);
-  markDomainDirty(domain);
+  const dirtyState = consumeDirtyState();
+  const plannedMs = immediate ? DOMAIN_DEBOUNCE_MS.achievements : (dirtyState.debounceMs || DOMAIN_DEBOUNCE_MS.generic);
   _tmr = setTimeout(async () => {
     if(!canUp()) return;
     const ya=window.YandexAuth, disk=window.YandexDisk;
@@ -74,6 +74,10 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
         return;
       }
       const mt=await disk.upload(tok,b);
+      try{
+        const dev=await BackupVault.buildDeviceSettingsObject?.();
+        if(dev?.deviceStableId) await disk.uploadDeviceSettings?.(tok,dev).catch(()=>null);
+      }catch{}
       _last=Date.now();
       try{
         localStorage.setItem('yandex:last_backup_meta',JSON.stringify(mt));
@@ -102,8 +106,9 @@ export const initBackupSyncEngine = () => {
     localStorage.setItem=function(k,v){
       oS(k,v);
       if(isWatchedStorageKey(k)&&_rdy&&!k.startsWith('backup:')&&!k.startsWith('yandex:')){
-        markStorageKeyDirty(k);
-        markDirty({ immediate:false, domain:'generic' });
+        const st=markStorageKeyDirty(k);
+        const dm=st?.domains?.[st.domains.length-1]||'generic';
+        markDirty({ immediate:false, domain:dm });
       }
     };
     localStorage._bsePatched=true;
