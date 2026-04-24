@@ -407,7 +407,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 18:42:27 UTC
+Сгенерировано: 2026-04-24 18:44:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1095,10 +1095,6 @@ export default { toNum, minPositive, maxDateStr, mergeNumArrayMax, mergeNumericM
 
 //=================================================
 // FILE: /scripts/analytics/backup-summary.js
-export const safeNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
-export const safeString = v => String(v == null ? '' : v).trim();
-export const safeJsonParse = (r, f = null) => { try { return JSON.parse(r); } catch { return f; } };
-
 import { normalizeCloudBackupMeta, safeCloudNum, safeCloudString } from './cloud-contract.js';
 
 export const safeNum = safeCloudNum;
