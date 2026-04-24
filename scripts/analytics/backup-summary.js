@@ -2,7 +2,13 @@ export const safeNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 export const safeString = v => String(v == null ? '' : v).trim();
 export const safeJsonParse = (r, f = null) => { try { return JSON.parse(r); } catch { return f; } };
 
-export const normalizeBackupSummary = (s = {}) => ({ appVersion:safeString(s?.appVersion||'unknown'), timestamp:safeNum(s?.timestamp), favoritesCount:safeNum(s?.favoritesCount), playlistsCount:safeNum(s?.playlistsCount), profileName:safeString(s?.profileName||'Слушатель')||'Слушатель', level:Math.max(1,safeNum(s?.level||1)), xp:safeNum(s?.xp), achievementsCount:safeNum(s?.achievementsCount), statsCount:safeNum(s?.statsCount), eventCount:safeNum(s?.eventCount), devicesCount:safeNum(s?.devicesCount), deviceStableCount:safeNum(s?.deviceStableCount), checksum:safeString(s?.checksum||''), ownerYandexId:safeString(s?.ownerYandexId||''), sourceDeviceStableId:safeString(s?.sourceDeviceStableId||''), sourceDeviceLabel:safeString(s?.sourceDeviceLabel||''), sourceDeviceClass:safeString(s?.sourceDeviceClass||''), sourcePlatform:safeString(s?.sourcePlatform||'') });
+import { normalizeCloudBackupMeta, safeCloudNum, safeCloudString } from './cloud-contract.js';
+
+export const safeNum = safeCloudNum;
+export const safeString = safeCloudString;
+export const safeJsonParse = (r, f = null) => { try { return JSON.parse(r); } catch { return f; } };
+
+export const normalizeBackupSummary = (s = {}) => normalizeCloudBackupMeta(s || {});
 
 export const getRichnessScore = s => { const x=normalizeBackupSummary(s); return safeNum(x.level)*1000 + safeNum(x.xp) + safeNum(x.achievementsCount)*250 + safeNum(x.favoritesCount)*40 + safeNum(x.playlistsCount)*60 + safeNum(x.statsCount)*6 + safeNum(x.eventCount)*2 + safeNum(x.devicesCount)*25 + safeNum(x.deviceStableCount)*30; };
 
