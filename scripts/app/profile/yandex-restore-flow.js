@@ -66,6 +66,15 @@ export async function openYandexRestoreFlow({
       const applyData = async (mode) => {
         try {
           await BackupVault.importBackupObject(data, mode || 'all');
+          if (!asNewDevice) {
+            const devKey = sS(inheritDeviceKey || data?.revision?.sourceDeviceStableId || '');
+            if (devKey) {
+              try {
+                const deviceDoc = await disk.downloadDeviceSettings(token, devKey).catch(() => null);
+                if (deviceDoc?.deviceStableId) await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+              } catch {}
+            }
+          }
           await persistCloudMetaAfterRestore({ disk, token, restoredBackup: data });
           await markRestoreCompleted();
           await refreshAfterRestore(asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore');
