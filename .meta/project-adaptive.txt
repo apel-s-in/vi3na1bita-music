@@ -406,7 +406,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 18:35:09 UTC
+Сгенерировано: 2026-04-24 18:36:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1199,7 +1199,7 @@ export default { initBackupSyncEngine, markSyncReady, isSyncReady, isSyncEnabled
 // FILE: /scripts/analytics/backup-vault.js
 // scripts/analytics/backup-vault.js
 // UID.003_(Event log truth)_(держать backup честным и пересчитываемым)_(backup должен оставаться event-log-centric) // UID.073_(Hybrid sync orchestrator)_(подготовить backup как transport-слой для multi-provider sync)_(future orchestration жить отдельно от vault) // UID.089_(Future MetaDB stores)_(расширить backup listener/provider/recommendation/collection state)_(когда intel stores начнут наполняться, vault должен включить их без ломки формата) // UID.099_(Multi-device sync model)_(готовить deterministic merge без дублей)_(backup должен знать owner/devices/revision) // UID.100_(Backup snapshot as life capsule)_(сделать один канонический файл пользователя)_(manual/cloud backup используют один и тот же формат)
-import { metaDB } from './meta-db.js'; import { toNum, minPositive, maxDateStr, mergeNumArrayMax, mergeNumericMapMax, mergeStatRowSafe, mergeAchievementsSafe, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe } from './backup-merge.js'; import DeviceRegistry from './device-registry.js';
+import { metaDB } from './meta-db.js'; import { toNum, minPositive, maxDateStr, mergeNumArrayMax, mergeNumericMapMax, mergeStatRowSafe, mergeAchievementsSafe, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe } from './backup-merge.js'; import DeviceRegistry from './device-registry.js'; import { normalizeCloudBackupMeta } from './cloud-contract.js';
 
 const P_KEYS = ['__favorites_v2__','sc3:playlists','sc3:default','sc3:activeId','sc3:ui_v2','sc3:albumColors','sourcePref','favoritesOnlyMode','qualityMode:v1','offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays','playerVolume','playerStateV2','lyricsViewMode','lyricsAnimationEnabled','lyricsShowAnimBtn','logoPulseEnabled','logoPulsePreset','logoPulseIntensity','logoPulseDebug','profileShowControls','dl_format_v1','app:first-install-ts','sleepTimerState:v2'];
 const DL_KEYS = new Set(['offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays','playerVolume','playerStateV2','sleepTimerState:v2','favoritesOnlyMode','qualityMode:v1']);
@@ -1354,7 +1354,7 @@ export class BackupVault {
       if(d) d._cacheMeta=cm.items;
     }
     const cur=Array.isArray(devices)?devices.find(x=>(cm?.deviceStableId&&x.deviceStableId===cm.deviceStableId)||(cm?.deviceHash&&x.deviceHash===cm.deviceHash))||devices[0]||null:null;
-    const revision={ timestamp:Date.now(), appVersion:window.APP_CONFIG?.APP_VERSION||null, schemaVersion:'6.0', eventCount:Array.isArray(data?.eventLog?.warm)?data.eventLog.warm.length:0, statsCount:Array.isArray(data?.stats)?data.stats.length:0, devicesCount:devices.length, profileName:String(data?.userProfile?.name||'Слушатель'), sourceDeviceStableId:String(cur?.deviceStableId||''), sourceDeviceLabel:String(cur?.label||''), sourceDeviceClass:String(cur?.class||''), sourcePlatform:String(cur?.platform||'') };
+    const revision=normalizeCloudBackupMeta({ timestamp:Date.now(), appVersion:window.APP_CONFIG?.APP_VERSION||null, version:'6.0', eventCount:Array.isArray(data?.eventLog?.warm)?data.eventLog.warm.length:0, statsCount:Array.isArray(data?.stats)?data.stats.length:0, devicesCount:devices.length, profileName:String(data?.userProfile?.name||'Слушатель'), sourceDeviceStableId:String(cur?.deviceStableId||''), sourceDeviceLabel:String(cur?.label||''), sourceDeviceClass:String(cur?.class||''), sourcePlatform:String(cur?.platform||''), latestPath:'', historyPath:'', ownerYandexId:String(identity?.ownerYandexId||''), favoritesCount:0, playlistsCount:0, achievementsCount:Object.keys(data?.achievements||{}).length, level:Math.max(1,Number(data?.userProfileRpg?.level||1)), xp:Number(data?.userProfileRpg?.xp||0), deviceStableCount:DeviceRegistry.countDeviceStableIds(devices), checksum:'' });
     const payloadHash=await sha256Hex(stableStringify({identity,devices,revision,data}));
     return { version:'6.0', createdAt:Date.now(), identity, devices, revision, integrity:{ algorithm:'SHA-256', payloadHash, ownerBinding:await sha256Hex(`${identity.ownerYandexId||'anon'}::${identity.internalUserId||'local'}::${payloadHash}`) }, data };
   }
