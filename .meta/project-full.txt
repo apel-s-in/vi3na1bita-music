@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 20:43:55 UTC
+Сгенерировано: 2026-04-24 20:52:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3773,13 +3773,21 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inher
   const nSys = window.NotificationSystem;
   try {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
-    await BackupVault.importBackupObject(backup, 'all');
+    if (typeof BackupVault.importBackupObject === 'function') {
+      await BackupVault.importBackupObject(backup, 'all');
+    } else {
+      await BackupVault.importData(new Blob([JSON.stringify(backup)], { type: 'application/json' }), 'all');
+    }
     if (!asNewDevice) {
       const deviceKey = String(inheritDeviceKey || backup?.revision?.sourceDeviceStableId || '').trim();
       if (deviceKey) {
         try {
           const deviceDoc = await YandexDisk.downloadDeviceSettings(token, deviceKey).catch(() => null);
-          if (deviceDoc?.deviceStableId) await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+          if (deviceDoc?.deviceStableId) {
+            if (typeof BackupVault.importDeviceSettingsObject === 'function') {
+              await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+            }
+          }
         } catch {}
       }
     }
