@@ -4,6 +4,7 @@
 
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { safeNum } from '../../analytics/backup-summary.js';
+import { detectCurrentDeviceProfile, getSystemInstallDateLabel } from '../../core/device-profile.js';
 
 const SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
@@ -57,56 +58,16 @@ async function invalidatePreloadCache() {
 const sessionKey = (ts) => `yandex:onboarding:shown:${Number(ts || 0)}`;
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 
-// ─── Детектор устройства ────────────────────────────────────────────────────
+// ─── Device profile helpers moved to /scripts/core/device-profile.js ─────────
 function detectDeviceInfo() {
-  const ua = navigator.userAgent;
-  const platform = navigator.platform || '';
-  const lang = navigator.language || '';
-
-  let os = 'Unknown OS';
-  let osIcon = '💻';
-  if (/iPhone/.test(ua)) { os = 'iPhone'; osIcon = '📱'; }
-  else if (/iPad/.test(ua)) { os = 'iPad'; osIcon = '📱'; }
-  else if (/Android/.test(ua)) { os = 'Android'; osIcon = '📱'; }
-  else if (/Mac OS X/.test(ua) || /Macintosh/.test(ua)) { os = 'macOS'; osIcon = '🖥'; }
-  else if (/Windows/.test(ua)) { os = 'Windows'; osIcon = '🖥'; }
-  else if (/Linux/.test(ua)) { os = 'Linux'; osIcon = '🖥'; }
-
-  let browser = 'Browser';
-  if (/YaBrowser\/([\d.]+)/.test(ua)) browser = 'Яндекс Браузер';
-  else if (/OPR\//.test(ua) || /Opera\//.test(ua)) browser = 'Opera';
-  else if (/Edg\//.test(ua)) browser = 'Edge';
-  else if (/Chrome\//.test(ua) && !/Edg/.test(ua)) browser = 'Chrome';
-  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
-  else if (/Firefox\//.test(ua)) browser = 'Firefox';
-
-  const screen = `${window.screen.width || 0}×${window.screen.height || 0}`;
-  const lastActive = new Date().toLocaleDateString('ru-RU');
-
-  // Список устройств по умолчанию по возрастанию
-  const existingReg = window.DeviceRegistry?.getDeviceRegistry?.() || [];
-  const deviceNumber = existingReg.length + 1;
-
-  const savedLabel = localStorage.getItem(DEVICE_LABEL_KEY) || '';
-  const defaultLabel = savedLabel || `Моё устройство №${deviceNumber}`;
-
-  return {
-    os,
-    osIcon,
-    browser,
-    screen,
-    lang,
-    platform,
-    userAgent: ua,
-    label: defaultLabel,
-    deviceNumber,
-    lastActive
-  };
+  return detectCurrentDeviceProfile({
+    registry: window.DeviceRegistry?.getDeviceRegistry?.() || [],
+    savedLabel: localStorage.getItem(DEVICE_LABEL_KEY) || ''
+  });
 }
 
 function getSystemInstallDate() {
-  const ts = Number(localStorage.getItem('app:first-install-ts') || 0);
-  return ts > 0 ? new Date(ts).toLocaleDateString('ru-RU') : '—';
+  return getSystemInstallDateLabel();
 }
 
 // ─── Предзагрузка backup с retry и таймаутом ─────────────────────────────────
