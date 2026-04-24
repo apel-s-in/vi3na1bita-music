@@ -2,6 +2,7 @@ import { metaDB } from './meta-db.js';
 import { toNum, maxDateStr, mergeAchievementsSafe, mergeProfileStorageValueSafe } from './backup-merge.js';
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
+import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
 
 export const rebuildStatsFromWarmEvents = async () => {
   try {
@@ -132,7 +133,20 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
   }
 };
 
+export const applyDeviceSettingsObject = async (deviceDoc, { allowPlaybackSensitive = false } = {}) => {
+  const doc = normalizeDeviceSettingsSnapshot(deviceDoc || {});
+  const isPlaying = !!window.playerCore?.isPlaying?.();
+  Object.entries(doc.localStorage || {}).forEach(([k, v]) => {
+    if (!shouldApplyDeviceSettingKey(k)) return;
+    if (!allowPlaybackSensitive && isPlaying && isPlaybackSensitiveDeviceSettingKey(k)) return;
+    try { localStorage.setItem(k, v); } catch {}
+  });
+  window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
+  return true;
+};
+
 export default {
   rebuildStatsFromWarmEvents,
-  applyBackupImportObject
+  applyBackupImportObject,
+  applyDeviceSettingsObject
 };
