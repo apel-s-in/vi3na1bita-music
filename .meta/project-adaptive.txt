@@ -412,7 +412,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 19:50:37 UTC
+Сгенерировано: 2026-04-24 19:52:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4304,15 +4304,10 @@ export default { initYandexActions };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-auth-view.js
-import { safeNum, getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
+import { safeNum, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
+import { getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice, formatCloudDateTime, formatCloudTimeOnly } from './cloud-ui-helpers.js';
 
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
-
-const compareBackupMeta = (l, c) => {
-  if (!c) return { state: 'unknown', label: 'Нет данных о копии' };
-  const cmp = compareLocalVsCloud(l || {}, c || {}), stateMap = { no_cloud: 'local_newer', cloud_richer_new_device: 'cloud_newer', cloud_richer: 'cloud_newer', cloud_probably_richer: 'cloud_probable', local_richer: 'local_newer', local_probably_richer: 'local_probable', equivalent: 'equal', conflict: 'mixed' };
-  return { state: stateMap[cmp.state] || 'mixed', label: getBackupCompareLabel(l, c), compare: cmp };
-};
 
 const bindYandexActions = (root, rerender) => {
   root.querySelectorAll('[data-ya-action]').forEach(btn => btn.onclick = async () => {
@@ -4400,13 +4395,13 @@ export function renderYandexAuthBlock({ root, localProfile }) {
   const bM = (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null'); } catch { return null; } })();
   const lI = getLocalBackupUiSnapshot(localProfile);
   const cI = bM || (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } })();
-  const cmp = compareBackupMeta(lI, cI);
+  const cmp = getCloudCompareViewModel(lI, cI);
   const sL = { active: 'Подключено', expired: 'Сессия истекла', logged_out: 'Не подключено' }[st] || 'Не подключено';
   const sC = { active: '#4caf50', expired: '#ff9800', logged_out: '#888' }[st] || '#888';
 
   const lastSyncLabel = (() => {
     const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-    return ts > 0 ? `последнее: ${new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'ещё не сохранялось';
+    return ts > 0 ? `последнее: ${formatCloudTimeOnly(ts)}` : 'ещё не сохранялось';
   })();
 
   const autosaveChecked = (() => { try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; } })();
@@ -4419,14 +4414,12 @@ export function renderYandexAuthBlock({ root, localProfile }) {
     let restoreDone = false;
     try { restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1'; } catch {}
 
-    const cloudNewerHtml = (!restoreDone && (cmp.state === 'cloud_newer' || cmp.state === 'cloud_probable'))
-      ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3);border-radius:10px;margin-bottom:10px"><span style="font-size:18px">⚠️</span><div style="flex:1;font-size:12px;color:#ffb74d;line-height:1.4">В облаке есть более богатая или более новая копия.<br>При желании можно восстановить её вручную.</div><button class="modal-action-btn" data-ya-action="restore-backup" style="font-size:11px;padding:6px 10px;flex-shrink:0">📥 Загрузить</button></div>`
-      : '';
+    const cloudNewerHtml = renderCloudCompareNotice({ compareVm: cmp, restoreDone });
 
     root.innerHTML = `<div class="yandex-auth-block">
       <div class="yandex-auth-statusline"><div class="yandex-auth-statusdot" style="background:${sC}"></div><div class="yandex-auth-statustext">${esc(sL)}</div></div>
       <div class="yandex-auth-profile">${avatarHtml}<div class="yandex-auth-profileinfo"><div class="yandex-auth-profilename">${esc(pr.displayName || pr.login || 'Пользователь')}</div><div class="yandex-auth-profilemeta">${esc(pr.login || '')}${hDA ? ' · Диск ✓' : ''}</div></div></div>
-      <div class="yandex-auth-meta"><div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Облако</div><div class="yandex-auth-metabox-value">${cI ? (cI.timestamp ? new Date(cI.timestamp).toLocaleString('ru-RU') : 'есть копия') : 'копии ещё нет'}</div></div><div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Сравнение</div><div class="yandex-auth-metabox-value">${esc(cmp.label)}</div></div></div>
+      <div class="yandex-auth-meta">${renderCloudMetaBox({ label: 'Облако', value: cI ? (cI.timestamp ? formatCloudDateTime(cI.timestamp) : 'есть копия') : 'копии ещё нет' })}${renderCloudMetaBox({ label: 'Сравнение', value: cmp.label })}</div>
       ${cloudNewerHtml}
       <div class="yandex-auth-actions"><button class="modal-action-btn" data-ya-action="rename">✏️ Имя</button><button class="modal-action-btn" data-ya-action="save-backup">☁️ Сохранить</button><button class="modal-action-btn" data-ya-action="check-backup">🔎 Сравнить</button><button class="modal-action-btn" data-ya-action="restore-backup">📥 Из облака</button><button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button><button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button></div>
       <div id="ya-restore-progress" style="display:none;margin-top:8px"><div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div id="ya-restore-bar" style="height:100%;width:0%;background:var(--grad-blue);transition:width .3s ease;border-radius:2px"></div></div><div id="ya-restore-status" style="font-size:11px;color:#9db7dd;margin-top:4px;text-align:center">Загрузка...</div></div>
