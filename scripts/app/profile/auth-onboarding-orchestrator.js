@@ -294,13 +294,21 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inher
   const nSys = window.NotificationSystem;
   try {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
-    await BackupVault.importBackupObject(backup, 'all');
+    if (typeof BackupVault.importBackupObject === 'function') {
+      await BackupVault.importBackupObject(backup, 'all');
+    } else {
+      await BackupVault.importData(new Blob([JSON.stringify(backup)], { type: 'application/json' }), 'all');
+    }
     if (!asNewDevice) {
       const deviceKey = String(inheritDeviceKey || backup?.revision?.sourceDeviceStableId || '').trim();
       if (deviceKey) {
         try {
           const deviceDoc = await YandexDisk.downloadDeviceSettings(token, deviceKey).catch(() => null);
-          if (deviceDoc?.deviceStableId) await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+          if (deviceDoc?.deviceStableId) {
+            if (typeof BackupVault.importDeviceSettingsObject === 'function') {
+              await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+            }
+          }
         } catch {}
       }
     }
