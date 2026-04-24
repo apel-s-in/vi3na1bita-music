@@ -1,7 +1,3 @@
-export const safeNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
-export const safeString = v => String(v == null ? '' : v).trim();
-export const safeJsonParse = (r, f = null) => { try { return JSON.parse(r); } catch { return f; } };
-
 import { normalizeCloudBackupMeta, safeCloudNum, safeCloudString } from './cloud-contract.js';
 
 export const safeNum = safeCloudNum;
