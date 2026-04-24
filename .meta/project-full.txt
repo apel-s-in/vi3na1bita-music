@@ -412,7 +412,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 19:52:40 UTC
+Сгенерировано: 2026-04-24 19:54:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4537,6 +4537,7 @@ export default { initYandexAutoSync };
 // FILE: /scripts/app/profile/yandex-modals.js
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel, safeNum } from '../../analytics/backup-summary.js';
+import { renderCloudStatPair } from './cloud-ui-helpers.js';
 
 export const openBackupInfoModal = () => window.Modals?.open?.({ title: 'Что сохраняется в backup', maxWidth: 480, bodyHtml: `<div class="modal-confirm-text">Backup хранит общий прогресс аккаунта и данные синхронизации.<br><br>Внутрь входят:<ul style="margin:10px 0 0 18px;color:#eaf2ff;line-height:1.5"><li>статистика и event log</li><li>достижения, XP, стрики</li><li>локальный профиль</li><li>избранное и плейлисты</li><li>часть настроек интерфейса и player state</li><li>внутренние intel/store данные</li><li>реестр устройств и привязка к владельцу Яндекса</li></ul><div style="margin-top:12px;color:#9db7dd">Архитектурно проект уже движется к более чистому разделению account-shared и device-local данных. Восстановление разрешено только под тем же Яндекс-аккаунтом владельца backup.</div></div>` });
 
@@ -4605,18 +4606,7 @@ export const openFreshLoginRestoreModal = ({ meta, items = [], onRestore, onNewD
   const bodyHtml = `
     <div style="font-size:13px;color:#9db7dd;margin-bottom:10px">Мы нашли облачную копию аккаунта. Что сделать?</div>
     ${currentDeviceHtml}
-    <div style="display:flex;gap:10px;margin:10px 0;text-align:center">
-      <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 8px">
-        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💾 На устройстве</div>
-        <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${safeNum(localSnap.level || 1)} <span style="color:#ff9800">(${safeNum(localSnap.xp || 0)} XP)</span></div>
-        <div style="font-size:11px;color:#eaf2ff">🏆 ${safeNum(localSnap.achievementsCount)} · ⭐ ${safeNum(localSnap.favoritesCount)}</div>
-      </div>
-      <div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.25);border-radius:12px;padding:10px 8px">
-        <div style="font-size:10px;color:#8ab8fd;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">☁️ В облаке</div>
-        <div style="font-size:13px;font-weight:900;color:#fff">Ур. ${safeNum(cloudSnap.level || 1)} <span style="color:#ff9800">(${safeNum(cloudSnap.xp || 0)} XP)</span></div>
-        <div style="font-size:11px;color:#eaf2ff">🏆 ${safeNum(cloudSnap.achievementsCount)} · ⭐ ${safeNum(cloudSnap.favoritesCount)}</div>
-      </div>
-    </div>
+    ${renderCloudStatPair({ localSummary: localSnap, cloudSummary: cloudSnap })}
     <div style="font-size:11px;color:#9db7dd;margin-bottom:10px">Сравнение: ${esc(cL)} (${esc(cmp.state)})</div>
 
     <div style="font-size:12px;font-weight:700;color:#eaf2ff;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.8px">Версия backup</div>
