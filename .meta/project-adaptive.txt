@@ -412,7 +412,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 19:54:11 UTC
+Сгенерировано: 2026-04-24 19:55:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4456,33 +4456,8 @@ const enrichLocalSummaryWithDb = async s => { try { const { metaDB } = await imp
 
 const _markReady = async r => { try { const { markSyncReady } = await import('../../analytics/backup-sync-engine.js'); markSyncReady(r); } catch {} };
 
-const _tryAutoRestore = async (m, token) => {
-  try {
-    window.NotificationSystem?.info('Найдена облачная копия. Восстанавливаем прогресс...');
-    const d = await YandexDisk.download(token, String(m?.path || m?.latestPath || '').trim() || undefined).catch(() => null);
-    if (!d) return false;
-    const { BackupVault } = await import('../../analytics/backup-vault.js');
-    await BackupVault.importData(new Blob([JSON.stringify(d)]), 'all');
-    try {
-      localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
-      localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-      localStorage.setItem('yandex:last_backup_local_ts', String(Number(d?.revision?.timestamp || d?.createdAt || Date.now())));
-    } catch {}
-    try {
-      const { markSyncReady } = await import('../../analytics/backup-sync-engine.js');
-      markSyncReady('restore_completed');
-    } catch {}
-    try {
-      const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-      await runPostRestoreRefresh({ reason: 'auto_restore_after_login', keepCurrentAlbum: true });
-    } catch {}
-    window.NotificationSystem?.success('Прогресс из облака восстановлен ✅');
-    return true;
-  } catch (er) {
-    console.warn('[AutoSync] safe auto-restore failed:', er?.message);
-    return false;
-  }
-};
+// legacy helper intentionally kept removed:
+// fresh-login restore now belongs to auth-onboarding-orchestrator.js only
 
 const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
   const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
