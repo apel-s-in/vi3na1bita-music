@@ -415,7 +415,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 21:27:49 UTC
+Сгенерировано: 2026-04-24 21:28:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3486,6 +3486,7 @@ import { YandexDisk } from '../../core/yandex-disk.js';
 import { safeNum } from '../../analytics/backup-summary.js';
 import { detectCurrentDeviceProfile, getSystemInstallDateLabel } from '../../core/device-profile.js';
 import { loadPreloadFromCache, savePreloadToCache, invalidatePreloadCache, preloadBackupData } from './yandex-preload-cache.js';
+import { runBackupRestore } from './restore-backup-runner.js';
 
 const SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
@@ -3774,26 +3775,19 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inher
   const nSys = window.NotificationSystem;
   try {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
-    if (typeof BackupVault.importBackupObject === 'function') {
-      await BackupVault.importBackupObject(backup, 'all');
-    } else {
-      await BackupVault.importData(new Blob([JSON.stringify(backup)], { type: 'application/json' }), 'all');
-    }
-    if (!asNewDevice) {
-      const deviceKey = String(inheritDeviceKey || backup?.revision?.sourceDeviceStableId || '').trim();
-      if (deviceKey) {
-        try {
-          const deviceDoc = await YandexDisk.downloadDeviceSettings(token, deviceKey).catch(() => null);
-          if (deviceDoc?.deviceStableId) {
-            if (typeof BackupVault.importDeviceSettingsObject === 'function') {
-              await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
-            }
-          }
-        } catch {}
-      }
-    }
+    await runBackupRestore({
+      BackupVault,
+      disk: YandexDisk,
+      token,
+      backup,
+      mode: 'all',
+      inheritDeviceKey,
+      asNewDevice,
+      allowPlaybackSensitive: false,
+      refreshReason: asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore',
+      keepCurrentAlbum: true
+    });
 
-    // Принудительная дедупликация device registry после restore (чистит накопленные дубли)
     try {
       const { default: DeviceRegistry } = await import('../../analytics/device-registry.js');
       const before = DeviceRegistry.getDeviceRegistry();
@@ -3806,30 +3800,6 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inher
       console.warn('[AuthOnboarding] device dedup failed:', e?.message);
     }
 
-    try {
-      const meta = await YandexDisk.getMeta(token).catch(() => null);
-      if (meta) {
-        localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
-        localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
-      }
-      localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
-    } catch {}
-
-    try {
-      const se = await import('../../analytics/backup-sync-engine.js');
-      se.markSyncReady('restore_completed');
-      try { se.markRestoreOrSkipDone('restore_completed'); } catch {}
-    } catch {}
-
-    try {
-      const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-      await runPostRestoreRefresh({
-        reason: asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore',
-        keepCurrentAlbum: true
-      });
-    } catch (e) { console.warn('[AuthOnboarding] runtime refresh failed:', e?.message); }
-
-    // Финальная волна событий — заставляем все компоненты UI (мини-хедер, бейдж, плейлист) перерисоваться
     try {
       await new Promise(r => setTimeout(r, 100));
       window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason: 'cloud_restore_final' } }));
