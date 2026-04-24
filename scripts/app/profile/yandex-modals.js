@@ -78,11 +78,11 @@ export const openFreshLoginRestoreModal = ({ meta, items = [], onRestore, onNewD
     <div style="font-size:12px;font-weight:700;color:#eaf2ff;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.8px">Устройства в облаке</div>
     <div id="fresh-dev-list" style="display:flex;flex-wrap:wrap">${renderDevices()}</div>
 
-    <div class="modal-choice-actions" style="margin-top:14px">
-      <button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить</button>
-      ${devicesFromMeta.length ? `<button type="button" class="modal-action-btn" data-fresh-act="new-device">📱 Это новое устройство</button>` : ''}
-      <button type="button" class="modal-action-btn" data-fresh-act="later">🔕 Напомнить позже</button>
-    </div>
+      <div class="modal-choice-actions" style="margin-top:14px">
+        <button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить shared + устройство</button>
+        ${devicesFromMeta.length ? `<button type="button" class="modal-action-btn" data-fresh-act="new-device">📱 Восстановить как новое устройство</button>` : ''}
+        <button type="button" class="modal-action-btn" data-fresh-act="later">🔕 Напомнить позже</button>
+      </div>
   `;
 
   const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 500, strictClose: true, bodyHtml });
