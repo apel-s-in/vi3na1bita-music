@@ -65,7 +65,7 @@ export async function openYandexRestoreFlow({
 
       const applyData = async (mode) => {
         try {
-          await BackupVault.importData(new Blob([JSON.stringify(data)]), mode || 'all');
+          await BackupVault.importBackupObject(data, mode || 'all');
           await persistCloudMetaAfterRestore({ disk, token, restoredBackup: data });
           await markRestoreCompleted();
           await refreshAfterRestore(asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore');
