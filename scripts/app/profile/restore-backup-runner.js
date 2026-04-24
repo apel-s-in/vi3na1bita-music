@@ -2,9 +2,15 @@ const sS = v => String(v == null ? '' : v).trim();
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
   if (!BackupVault || !backup) throw new Error('restore_runner_invalid_input');
-  if (typeof BackupVault.importBackupObject !== 'function') throw new Error('restore_runner_import_api_missing');
-  await BackupVault.importBackupObject(backup, mode);
-  return true;
+  if (typeof BackupVault.importBackupObject === 'function') {
+    await BackupVault.importBackupObject(backup, mode);
+    return true;
+  }
+  if (typeof BackupVault.importData === 'function') {
+    await BackupVault.importData(new Blob([JSON.stringify(backup)], { type: 'application/json' }), mode);
+    return true;
+  }
+  throw new Error('restore_runner_import_api_missing');
 };
 
 export const maybeApplyDeviceSettings = async ({
