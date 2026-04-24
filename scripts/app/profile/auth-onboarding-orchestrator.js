@@ -294,7 +294,7 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile }) {
   const nSys = window.NotificationSystem;
   try {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
-    await BackupVault.importData(new Blob([JSON.stringify(backup)]), 'all');
+    await BackupVault.importBackupObject(backup, 'all');
 
     // Принудительная дедупликация device registry после restore (чистит накопленные дубли)
     try {
