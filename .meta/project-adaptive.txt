@@ -411,7 +411,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 19:25:55 UTC
+Сгенерировано: 2026-04-24 19:29:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3220,13 +3220,10 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { safeNum } from '../../analytics/backup-summary.js';
 import { detectCurrentDeviceProfile, getSystemInstallDateLabel } from '../../core/device-profile.js';
+import { loadPreloadFromCache, savePreloadToCache, invalidatePreloadCache, preloadBackupData } from './yandex-preload-cache.js';
 
 const SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
-const PRELOAD_TIMEOUT_MS = 12000;
-const PRELOAD_RETRY_COUNT = 3;
-const PERSISTENT_CACHE_TTL_MS = 24 * 3600 * 1000; // 24 часа
-const PERSISTENT_CACHE_KEY = 'yandex:onboarding:preload_cache:v1';
 
 // Кэш предзагрузки в памяти
 let _preloadPromise = null;
@@ -3234,41 +3231,7 @@ let _preloadResult = null;
 let _onboardingActive = false;
 let _currentModal = null;
 
-// Персистентный кэш через metaDB (24 часа)
-async function savePreloadToCache(result) {
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, {
-      result,
-      savedAt: Date.now(),
-      ownerYandexId: safeNum(result?.meta?.ownerYandexId || 0)
-    });
-  } catch {}
-}
-
-async function loadPreloadFromCache(currentYandexId) {
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    const rec = await metaDB.getGlobal(PERSISTENT_CACHE_KEY);
-    const entry = rec?.value;
-    if (!entry) return null;
-    const age = Date.now() - safeNum(entry.savedAt);
-    if (age > PERSISTENT_CACHE_TTL_MS) return null;
-    // Проверяем что кэш принадлежит текущему аккаунту
-    const cachedOwner = safeNum(entry.ownerYandexId);
-    const currentOwner = safeNum(currentYandexId);
-    if (cachedOwner && currentOwner && cachedOwner !== currentOwner) return null;
-    console.debug('[AuthOnboarding] using persistent cache (age:', Math.round(age / 1000), 's)');
-    return entry.result;
-  } catch { return null; }
-}
-
-async function invalidatePreloadCache() {
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, null);
-  } catch {}
-}
+// preload cache helpers moved to /scripts/app/profile/yandex-preload-cache.js
 
 const sessionKey = (ts) => `yandex:onboarding:shown:${Number(ts || 0)}`;
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
@@ -3285,70 +3248,7 @@ function getSystemInstallDate() {
   return getSystemInstallDateLabel();
 }
 
-// ─── Предзагрузка backup с retry и таймаутом ─────────────────────────────────
-// Обёртка с таймаутом (AbortController не пробрасывается через YandexDisk методы, поэтому используем Promise.race).
-function withTimeout(promise, ms, label = 'op') {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms))
-  ]);
-}
-
-async function preloadBackupData(token) {
-  if (!token) return { meta: null, items: [], backup: null };
-
-  for (let attempt = 0; attempt < PRELOAD_RETRY_COUNT; attempt++) {
-    try {
-      console.debug(`[AuthOnboarding] preload attempt ${attempt + 1}/${PRELOAD_RETRY_COUNT}`);
-
-      // Сначала ТОЛЬКО meta с таймаутом — самый критичный шаг.
-      // listBackups и download делаются ПОСЛЕ того, как мы убедились, что meta есть.
-      const meta = await withTimeout(
-        YandexDisk.getMeta(token).catch(() => null),
-        PRELOAD_TIMEOUT_MS,
-        'meta'
-      ).catch(e => { console.warn(`[AuthOnboarding] meta timeout (attempt ${attempt + 1}):`, e?.message); return null; });
-
-      if (!meta) {
-        // Нет meta — пробуем retry с экспоненциальным backoff
-        if (attempt < PRELOAD_RETRY_COUNT - 1) {
-          const delay = 1000 * Math.pow(2, attempt);
-          console.debug(`[AuthOnboarding] no meta, waiting ${delay}ms before retry`);
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        }
-        console.debug('[AuthOnboarding] all retries exhausted, giving up');
-        return { meta: null, items: [], backup: null };
-      }
-
-      // Meta есть — параллельно грузим items + backup (оба с таймаутами)
-      const [items, backupData] = await Promise.all([
-        withTimeout(
-          YandexDisk.listBackups(token).catch(() => []),
-          PRELOAD_TIMEOUT_MS,
-          'list'
-        ).catch(() => []),
-        meta.path
-          ? withTimeout(
-              YandexDisk.download(token, meta.path).catch(() => null),
-              PRELOAD_TIMEOUT_MS * 2, // download может быть долгим для больших backup
-              'download'
-            ).catch(e => { console.warn('[AuthOnboarding] download timeout:', e?.message); return null; })
-          : Promise.resolve(null)
-      ]);
-
-      const safeItems = Array.isArray(items) && items.length ? items : [meta];
-
-      console.debug(`[AuthOnboarding] preload success (attempt ${attempt + 1}): meta=yes, backup=${!!backupData}, items=${safeItems.length}`);
-      return { meta, items: safeItems, backup: backupData };
-    } catch (e) {
-      console.warn(`[AuthOnboarding] preload attempt ${attempt + 1} error:`, e?.message);
-      if (attempt >= PRELOAD_RETRY_COUNT - 1) return { meta: null, items: [], backup: null };
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
-    }
-  }
-  return { meta: null, items: [], backup: null };
-}
+// preload transport helpers moved to /scripts/app/profile/yandex-preload-cache.js
 
 function isReminderSuppressedForSnapshot(cloudTs) {
   try {
@@ -3385,7 +3285,7 @@ export async function runOnboardingFlow({ token, profile, isFirstLogin = true } 
     // Если предзагрузка не запущена (например, вызов напрямую из профиля), запускаем её сейчас.
     if (!_preloadPromise) {
       console.debug('[AuthOnboarding] no active preload, starting one now');
-      _preloadPromise = preloadBackupData(token);
+      _preloadPromise = preloadBackupData({ token, disk: YandexDisk });
     }
 
     const result = await _preloadPromise;
@@ -3679,21 +3579,19 @@ export function startPreload(token) {
     return _preloadPromise;
   }
 
-  _preloadPromise = (async () => {
-    // Сначала пробуем персистентный кэш
-    try {
-      const profile = window.YandexAuth?.getProfile?.();
-      const cached = await loadPreloadFromCache(profile?.yandexId);
-      if (cached?.meta) {
-        console.debug('[AuthOnboarding] preload served from persistent cache');
-        return cached;
-      }
-    } catch {}
-    // Фолбэк: обычная сетевая предзагрузка
-    const result = await preloadBackupData(token);
-    if (result?.meta) savePreloadToCache(result).catch(() => {});
-    return result;
-  })();
+    _preloadPromise = (async () => {
+      try {
+        const profile = window.YandexAuth?.getProfile?.();
+        const cached = await loadPreloadFromCache(profile?.yandexId);
+        if (cached?.meta) {
+          console.debug('[AuthOnboarding] preload served from persistent cache');
+          return cached;
+        }
+      } catch {}
+      const result = await preloadBackupData({ token, disk: YandexDisk });
+      if (result?.meta) savePreloadToCache(result).catch(() => {});
+      return result;
+    })();
 
   return _preloadPromise;
 }
@@ -3711,7 +3609,7 @@ export async function openManualRestoreFlow({ token, profile } = {}) {
   if (!token) return;
   try {
     // Всегда делаем свежую предзагрузку для ручного запуска
-    _preloadPromise = preloadBackupData(token);
+    _preloadPromise = preloadBackupData({ token, disk: YandexDisk });
     const result = await _preloadPromise;
     _preloadResult = result;
 
