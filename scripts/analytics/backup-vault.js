@@ -1,10 +1,6 @@
 // scripts/analytics/backup-vault.js
 // UID.003_(Event log truth)_(держать backup честным и пересчитываемым)_(backup должен оставаться event-log-centric) // UID.073_(Hybrid sync orchestrator)_(подготовить backup как transport-слой для multi-provider sync)_(future orchestration жить отдельно от vault) // UID.089_(Future MetaDB stores)_(расширить backup listener/provider/recommendation/collection state)_(когда intel stores начнут наполняться, vault должен включить их без ломки формата) // UID.099_(Multi-device sync model)_(готовить deterministic merge без дублей)_(backup должен знать owner/devices/revision) // UID.100_(Backup snapshot as life capsule)_(сделать один канонический файл пользователя)_(manual/cloud backup используют один и тот же формат)
-import { metaDB } from './meta-db.js'; import { toNum, minPositive, maxDateStr, mergeNumArrayMax, mergeNumericMapMax, mergeStatRowSafe, mergeAchievementsSafe, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe } from './backup-merge.js'; import DeviceRegistry from './device-registry.js'; import { normalizeCloudBackupMeta } from './cloud-contract.js';
-
-const P_KEYS = ['__favorites_v2__','sc3:playlists','sc3:default','sc3:activeId','sc3:ui_v2','sc3:albumColors','sourcePref','favoritesOnlyMode','qualityMode:v1','offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays','playerVolume','playerStateV2','lyricsViewMode','lyricsAnimationEnabled','lyricsShowAnimBtn','logoPulseEnabled','logoPulsePreset','logoPulseIntensity','logoPulseDebug','profileShowControls','dl_format_v1','app:first-install-ts','sleepTimerState:v2'];
-const DL_KEYS = new Set(['offline:mode:v1','offline:cacheQuality:v1','cloud:listenThreshold','cloud:ttlDays','playerVolume','playerStateV2','sleepTimerState:v2','favoritesOnlyMode','qualityMode:v1']);
-const PO_KEYS = new Set(['__favorites_v2__','sc3:playlists','sc3:default','sc3:activeId','sc3:ui_v2','sc3:albumColors','sourcePref','favoritesOnlyMode','qualityMode:v1','offline:mode:v1','offline:cacheQuality:v1','playerVolume','playerStateV2','lyricsViewMode','lyricsAnimationEnabled','lyricsShowAnimBtn','logoPulseEnabled','logoPulsePreset','logoPulseIntensity','logoPulseDebug','profileShowControls','dl_format_v1','sleepTimerState:v2']);
+import { metaDB } from './meta-db.js'; import { toNum, minPositive, maxDateStr, mergeNumArrayMax, mergeNumericMapMax, mergeStatRowSafe, mergeAchievementsSafe, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe } from './backup-merge.js'; import DeviceRegistry from './device-registry.js'; import { normalizeCloudBackupMeta } from './cloud-contract.js'; import { collectSnapshotLocalStorage, getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 const stableStringify = v => JSON.stringify(sortObj(v));
@@ -135,7 +131,7 @@ const rSnap = async () => {
     streaks: str?.value || {},
     userProfile: uP?.value || { name: 'Слушатель', avatar: '😎' },
     userProfileRpg: uR?.value || { xp: 0, level: 1 },
-    localStorage: P_KEYS.reduce((acc, k) => { const v = localStorage.getItem(k); if (v != null) acc[k] = v; return acc; }, {}),
+    localStorage: collectSnapshotLocalStorage(localStorage),
     intel: {
       listenerProfile: dedupIntel(lP),
       providerIdentity: dedupIntel(pI),
@@ -201,13 +197,18 @@ export class BackupVault {
             console.debug(`[BackupVault] devices dedup on import: ${(b.devices || []).length}`);
           }
           const isPlaying = !!window.playerCore?.isPlaying?.();
-          const PLAYBACK_GUARD = new Set(['playerStateV2','favoritesOnlyMode','sourcePref','qualityMode:v1']);
-          Object.entries(b.data.localStorage||{}).forEach(([k,v])=>{
-            if(!PO_KEYS.has(k)||DL_KEYS.has(k)) return;
-            if(isPlaying && PLAYBACK_GUARD.has(k)) return; // не трогаем playback-чувствительные ключи при активном воспроизведении
+          const sharedLocal = getSharedSnapshotLocalEntries(b.data.localStorage || {});
+          const deviceLocal = getDeviceSnapshotLocalEntries(b.data.localStorage || {});
+          Object.entries(sharedLocal).forEach(([k,v])=>{
+            if(!isSharedStorageKey(k)) return;
             try{localStorage.setItem(k,mergeProfileStorageValueSafe(k,localStorage.getItem(k),v));}catch{}
+          });
+          Object.entries(deviceLocal).forEach(([k,v])=>{
+            if(!isDeviceStorageKey(k)) return;
+            if(isPlaying && PLAYBACK_SENSITIVE_DEVICE_KEYS.has(k)) return;
+            try{localStorage.setItem(k,v);}catch{}
           });
                 } try { localStorage.setItem('backup:device_registry:v1',JSON.stringify(Array.isArray(b.devices)?b.devices:[])); localStorage.setItem('yandex:last_backup_local_ts',String(Number(b?.revision?.timestamp||b?.createdAt||Date.now()))); }catch{} window.dispatchEvent(new CustomEvent('stats:updated')); window.dispatchEvent(new CustomEvent('analytics:logUpdated')); res(true); }catch(err){rej(err);} finally { window._isRestoring = false; } }; r.readAsText(f); }); }
   
-  static summarizeBackupObject(b) { const ls=b?.data?.localStorage||{}, f=(()=>{try{return JSON.parse(ls['__favorites_v2__']||'[]');}catch{return[];}})(), p=(()=>{try{return JSON.parse(ls['sc3:playlists']||'[]');}catch{return[];}})(), dv=Array.isArray(b?.devices)?DeviceRegistry.normalizeDeviceRegistry(b.devices):[]; return { timestamp:Number(b?.revision?.timestamp||b?.createdAt||0), appVersion:String(b?.revision?.appVersion||'unknown'), statsCount:Array.isArray(b?.data?.stats)?b.data.stats.filter(x=>x?.uid&&x.uid!=='global').length:0, eventCount:Array.isArray(b?.data?.eventLog?.warm)?b.data.eventLog.warm.length:0, achievementsCount:Object.keys(b?.data?.achievements||{}).length, favoritesCount:Array.isArray(f)?f.filter(x=>!x?.inactiveAt).length:0, playlistsCount:Array.isArray(p)?p.length:0, profileName:String(b?.data?.userProfile?.name||'Слушатель'), ownerYandexId:String(b?.identity?.ownerYandexId||''), devicesCount:dv.length, deviceStableCount:DeviceRegistry.countDeviceStableIds(dv), checksum:String(b?.integrity?.payloadHash||'') }; }
+  static summarizeBackupObject(b) { const ls=b?.data?.localStorage||{}, f=(()=>{try{return JSON.parse(ls['__favorites_v2__']||'[]');}catch{return[];}})(), p=(()=>{try{return JSON.parse(ls['sc3:playlists']||'[]');}catch{return[];}})(), dv=Array.isArray(b?.devices)?DeviceRegistry.normalizeDeviceRegistry(b.devices):[]; return normalizeCloudBackupMeta({ timestamp:Number(b?.revision?.timestamp||b?.createdAt||0), appVersion:String(b?.revision?.appVersion||'unknown'), statsCount:Array.isArray(b?.data?.stats)?b.data.stats.filter(x=>x?.uid&&x.uid!=='global').length:0, eventCount:Array.isArray(b?.data?.eventLog?.warm)?b.data.eventLog.warm.length:0, achievementsCount:Object.keys(b?.data?.achievements||{}).length, favoritesCount:Array.isArray(f)?f.filter(x=>!x?.inactiveAt).length:0, playlistsCount:Array.isArray(p)?p.length:0, profileName:String(b?.data?.userProfile?.name||'Слушатель'), ownerYandexId:String(b?.identity?.ownerYandexId||''), devicesCount:dv.length, deviceStableCount:DeviceRegistry.countDeviceStableIds(dv), checksum:String(b?.integrity?.payloadHash||''), version:String(b?.version||b?.revision?.version||'unknown') }); }
 }
