@@ -414,7 +414,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 20:37:55 UTC
+Сгенерировано: 2026-04-24 20:39:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3742,7 +3742,7 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
 
     if (canUseCache) {
       console.debug('[AuthOnboarding] using preloaded backup for restore');
-      await applyPreloadedBackup({ backup: preloadedBackup, token, asNewDevice, profile });
+      await applyPreloadedBackup({ backup: preloadedBackup, token, asNewDevice, profile, inheritDeviceKey });
       return;
     }
 
@@ -3769,11 +3769,20 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
   }
 }
 
-async function applyPreloadedBackup({ backup, token, asNewDevice, profile }) {
+async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inheritDeviceKey = null }) {
   const nSys = window.NotificationSystem;
   try {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
     await BackupVault.importBackupObject(backup, 'all');
+    if (!asNewDevice) {
+      const deviceKey = String(inheritDeviceKey || backup?.revision?.sourceDeviceStableId || '').trim();
+      if (deviceKey) {
+        try {
+          const deviceDoc = await YandexDisk.downloadDeviceSettings(token, deviceKey).catch(() => null);
+          if (deviceDoc?.deviceStableId) await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
+        } catch {}
+      }
+    }
 
     // Принудительная дедупликация device registry после restore (чистит накопленные дубли)
     try {
