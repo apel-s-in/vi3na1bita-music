@@ -417,7 +417,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-24 21:47:26 UTC
+Сгенерировано: 2026-04-24 21:47:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1657,7 +1657,7 @@ export class BackupVault {
 
   static async importBackupFile(f, m = 'all') { return new Promise((res, rej) => { const r=new FileReader(); r.onload=async e=>{ try { await this.importBackupText(e.target.result, m); res(true); }catch(err){rej(err);} }; r.readAsText(f); }); }
 
-  static async importData(f, m = 'all') { return await this.importBackupFile(f, m); }
+  static async importData() { throw new Error('BackupVault.importData removed; use importBackupFile/importBackupObject'); }
   static async importDeviceSettingsObject(d, opts = {}) { return await applyDeviceSettingsObject(d, opts); }
   
   static summarizeBackupObject(b) { const ls=b?.data?.localStorage||{}, f=(()=>{try{return JSON.parse(ls['__favorites_v2__']||'[]');}catch{return[];}})(), p=(()=>{try{return JSON.parse(ls['sc3:playlists']||'[]');}catch{return[];}})(), dv=Array.isArray(b?.devices)?DeviceRegistry.normalizeDeviceRegistry(b.devices):[]; return normalizeCloudBackupMeta({ timestamp:Number(b?.revision?.timestamp||b?.createdAt||0), appVersion:String(b?.revision?.appVersion||'unknown'), statsCount:Array.isArray(b?.data?.stats)?b.data.stats.filter(x=>x?.uid&&x.uid!=='global').length:0, eventCount:Array.isArray(b?.data?.eventLog?.warm)?b.data.eventLog.warm.length:0, achievementsCount:Object.keys(b?.data?.achievements||{}).length, favoritesCount:Array.isArray(f)?f.filter(x=>!x?.inactiveAt).length:0, playlistsCount:Array.isArray(p)?p.length:0, profileName:String(b?.data?.userProfile?.name||'Слушатель'), ownerYandexId:String(b?.identity?.ownerYandexId||''), devicesCount:dv.length, deviceStableCount:DeviceRegistry.countDeviceStableIds(dv), checksum:String(b?.integrity?.payloadHash||''), version:String(b?.version||b?.revision?.version||'unknown') }); }
