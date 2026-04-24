@@ -1,10 +1,10 @@
-import { normalizeCloudBackupMeta, safeCloudNum, safeCloudString } from './cloud-contract.js';
+import { normalizeCloudBackupMeta as normalizeCloudMetaBase, safeCloudNum, safeCloudString } from './cloud-contract.js';
 
 export const safeNum = safeCloudNum;
 export const safeString = safeCloudString;
 export const safeJsonParse = (r, f = null) => { try { return JSON.parse(r); } catch { return f; } };
 
-export const normalizeBackupSummary = (s = {}) => normalizeCloudBackupMeta(s || {});
+export const normalizeBackupSummary = (s = {}) => normalizeCloudMetaBase(s || {});
 
 export const getRichnessScore = s => { const x=normalizeBackupSummary(s); return safeNum(x.level)*1000 + safeNum(x.xp) + safeNum(x.achievementsCount)*250 + safeNum(x.favoritesCount)*40 + safeNum(x.playlistsCount)*60 + safeNum(x.statsCount)*6 + safeNum(x.eventCount)*2 + safeNum(x.devicesCount)*25 + safeNum(x.deviceStableCount)*30; };
 
@@ -32,7 +32,7 @@ return{state:'conflict',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,sc
 
 export const getLocalBackupUiSnapshot = p => { try { const f=safeJsonParse(localStorage.getItem('__favorites_v2__'),[]), pl=safeJsonParse(localStorage.getItem('sc3:playlists'),[]), r=window.DeviceRegistry?.getDeviceRegistry?.()||safeJsonParse(localStorage.getItem('backup:device_registry:v1'),[])||[], a=window.achievementEngine, cur=window.DeviceRegistry?.getCurrentDeviceIdentity?.()||{}, row=(Array.isArray(r)?r:[]).find(d=>safeString(d?.deviceStableId)&&safeString(d?.deviceStableId)===safeString(cur?.deviceStableId))||{}; return normalizeBackupSummary({ appVersion:window.APP_CONFIG?.APP_VERSION||'unknown', timestamp:safeNum(localStorage.getItem('yandex:last_backup_local_ts')), favoritesCount:Array.isArray(f)?f.filter(i=>!i?.inactiveAt).length:0, playlistsCount:Array.isArray(pl)?pl.length:0, profileName:p?.name||'Слушатель', level:safeNum(a?.profile?.level||1), xp:safeNum(a?.profile?.xp||0), achievementsCount:Object.keys(a?.unlocked||{}).length, devicesCount:Array.isArray(r)?r.length:0, deviceStableCount:window.DeviceRegistry?.countDeviceStableIds?.(r)||new Set((Array.isArray(r)?r:[]).map(d=>safeString(d?.deviceStableId)).filter(Boolean)).size, sourceDeviceStableId:safeString(cur?.deviceStableId||''), sourceDeviceLabel:safeString(row?.label||''), sourceDeviceClass:safeString(row?.class||''), sourcePlatform:safeString(row?.platform||'') }); } catch { return normalizeBackupSummary({ appVersion:window.APP_CONFIG?.APP_VERSION||'unknown', timestamp:safeNum(localStorage.getItem('yandex:last_backup_local_ts')), favoritesCount:0, playlistsCount:0, profileName:p?.name||'Слушатель', level:safeNum(window.achievementEngine?.profile?.level||1), xp:safeNum(window.achievementEngine?.profile?.xp||0), achievementsCount:Object.keys(window.achievementEngine?.unlocked||{}).length, devicesCount:0, deviceStableCount:0 }); } };
 
-export const normalizeCloudBackupMeta = m => normalizeBackupSummary(m||{});
+export const normalizeCloudBackupMeta = m => normalizeCloudMetaBase(m || {});
 
 export const getBackupCompareLabel = (l, c) => c ? ({no_cloud:'Облачная копия отсутствует',cloud_richer_new_device:'Облако выглядит как основной источник для нового устройства',cloud_richer:'Облако богаче и новее локального профиля',cloud_probably_richer:'Облако вероятно богаче локального профиля',local_richer:'Локальные данные богаче облачной копии',local_probably_richer:'Локальный профиль вероятно богаче облачного',equivalent:'Локальная и облачная копии практически эквивалентны',conflict:'Есть смешанные признаки: нужна ручная проверка'})[compareLocalVsCloud(l||{},c||{}).state] || 'Сравнение недоступно' : 'Нет данных о копии';
 
