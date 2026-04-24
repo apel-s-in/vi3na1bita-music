@@ -2,6 +2,7 @@ import { BackupVault } from '../../analytics/backup-vault.js';
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { getLocalBackupUiSnapshot, compareLocalVsCloud } from '../../analytics/backup-summary.js';
 import { openRestorePreviewModal, openRestoreVersionPickerModal } from './yandex-modals.js';
+import { runBackupRestore } from './restore-backup-runner.js';
 
 const sS = v => String(v == null ? '' : v).trim();
 
@@ -11,30 +12,6 @@ const getLocalProfile = fallback => {
   } catch {
     return fallback || { name: 'Слушатель' };
   }
-};
-
-const persistCloudMetaAfterRestore = async ({ disk, token, restoredBackup }) => {
-  const m = await disk.getMeta(token).catch(() => null);
-  if (m) {
-    localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-    localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
-  }
-  localStorage.setItem('yandex:last_backup_local_ts', String(Number(restoredBackup?.revision?.timestamp || restoredBackup?.createdAt || Date.now())));
-};
-
-const markRestoreCompleted = async () => {
-  try {
-    const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-    markSyncReady('restore_completed');
-    try { markRestoreOrSkipDone('restore_completed'); } catch {}
-  } catch {}
-};
-
-const refreshAfterRestore = async reason => {
-  try {
-    const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-    await runPostRestoreRefresh({ reason: reason || 'cloud_restore', keepCurrentAlbum: true });
-  } catch {}
 };
 
 export async function openYandexRestoreFlow({
@@ -65,25 +42,18 @@ export async function openYandexRestoreFlow({
 
       const applyData = async (mode) => {
         try {
-          if (typeof BackupVault.importBackupObject === 'function') {
-            await BackupVault.importBackupObject(data, mode || 'all');
-          } else {
-            await BackupVault.importData(new Blob([JSON.stringify(data)], { type: 'application/json' }), mode || 'all');
-          }
-          if (!asNewDevice) {
-            const devKey = sS(inheritDeviceKey || data?.revision?.sourceDeviceStableId || '');
-            if (devKey) {
-              try {
-                const deviceDoc = await disk.downloadDeviceSettings(token, devKey).catch(() => null);
-                if (deviceDoc?.deviceStableId && typeof BackupVault.importDeviceSettingsObject === 'function') {
-                  await BackupVault.importDeviceSettingsObject(deviceDoc, { allowPlaybackSensitive: false });
-                }
-              } catch {}
-            }
-          }
-          await persistCloudMetaAfterRestore({ disk, token, restoredBackup: data });
-          await markRestoreCompleted();
-          await refreshAfterRestore(asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore');
+          await runBackupRestore({
+            BackupVault,
+            disk,
+            token,
+            backup: data,
+            mode: mode || 'all',
+            inheritDeviceKey,
+            asNewDevice,
+            allowPlaybackSensitive: false,
+            refreshReason: asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore',
+            keepCurrentAlbum: true
+          });
           notify?.success(`Восстановление завершено ✅ ${asNewDevice ? '(новое устройство)' : (cmp?.state === 'cloud_richer_new_device' ? '(облако выглядело как источник для нового устройства)' : '')}`);
           rerender?.();
         } catch (e) {
