@@ -2,6 +2,7 @@ import { metaDB } from './meta-db.js';
 import DeviceRegistry from './device-registry.js';
 import { normalizeCloudBackupMeta } from './cloud-contract.js';
 import { collectSnapshotLocalStorage } from './snapshot-contract.js';
+import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -131,6 +132,35 @@ export const buildBackupRevision = ({ identity, devices, data, currentDevice } =
   checksum: ''
 });
 
+export const buildDeviceSettingsObject = async ({ identity = null, currentDevice = null } = {}) => {
+  const own = identity || await readBackupOwnerIdentity();
+  const cur = currentDevice || (() => {
+    const reg = DeviceRegistry.getDeviceRegistry();
+    const me = DeviceRegistry.getCurrentDeviceIdentity();
+    return DeviceRegistry.normalizeDeviceRegistry(reg).find(d =>
+      (me?.deviceStableId && d.deviceStableId === me.deviceStableId) ||
+      (me?.deviceHash && d.deviceHash === me.deviceHash)
+    ) || null;
+  })();
+
+  const stableId = String(cur?.deviceStableId || localStorage.getItem('deviceStableId') || '').trim();
+  const deviceHash = String(cur?.deviceHash || localStorage.getItem('deviceHash') || '').trim();
+  const path = buildDeviceSettingsPath(stableId);
+
+  return normalizeDeviceSettingsSnapshot({
+    version: '1.0',
+    timestamp: Date.now(),
+    ownerYandexId: String(own?.ownerYandexId || ''),
+    deviceStableId: stableId,
+    deviceHash,
+    sourceDeviceLabel: String(cur?.label || ''),
+    sourceDeviceClass: String(cur?.class || ''),
+    sourcePlatform: String(cur?.platform || ''),
+    path,
+    localStorage: collectDeviceSettingsLocalStorage(localStorage)
+  });
+};
+
 export const buildFullBackupObject = async () => {
   const identity = await readBackupOwnerIdentity();
   const devices = await readDeviceRegistryForBackup();
@@ -167,5 +197,6 @@ export default {
   trimWarmEvents,
   buildBackupDataSnapshot,
   buildBackupRevision,
+  buildDeviceSettingsObject,
   buildFullBackupObject
 };
