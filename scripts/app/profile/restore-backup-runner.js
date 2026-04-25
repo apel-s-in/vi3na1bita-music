@@ -33,7 +33,7 @@ export const maybeApplyDeviceSettings = async ({
     if (!meta?.deviceStableId) return false;
 
     const doc = await disk.downloadDeviceSettings?.(token, deviceKey).catch(() => null);
-    if (!doc?.deviceStableId) return false;
+    if (!doc || !doc.deviceStableId) return false;
 
     await BackupVault.importDeviceSettingsObject(doc, { allowPlaybackSensitive: !!allowPlaybackSensitive });
     return true;
