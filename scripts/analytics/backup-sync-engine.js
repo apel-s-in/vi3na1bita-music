@@ -76,7 +76,7 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
       const mt=await disk.upload(tok,b);
       try{
         const dev=await BackupVault.buildDeviceSettingsObject?.();
-        if(dev?.deviceStableId) await disk.uploadDeviceSettings?.(tok,dev).catch(()=>null);
+        if(dev?.deviceStableId && Object.keys(dev?.localStorage||{}).length) await disk.uploadDeviceSettings?.(tok,dev).catch(()=>null);
       }catch{}
       _last=Date.now();
       try{
