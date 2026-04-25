@@ -417,7 +417,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-25 11:22:35 UTC
+Сгенерировано: 2026-04-25 11:24:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6549,7 +6549,7 @@ export const YandexDeviceSettingsDisk={
   async getDeviceSettingsMeta(t,stableId){
     if(!t) throw new Error('no_token');
     const sid=sS(stableId);
-    if(!sid) throw new Error('device_settings_no_stable_id');
+    if(!sid) return null;
     const u=new URL(PROXY);u.searchParams.set('mode','device_meta');u.searchParams.set('deviceStableId',sid);
     try{
       const d=await fPJ(u.toString(),t,2);
@@ -6565,7 +6565,7 @@ export const YandexDeviceSettingsDisk={
   async downloadDeviceSettings(t,stableId){
     if(!t) throw new Error('no_token');
     const sid=sS(stableId);
-    if(!sid) throw new Error('device_settings_no_stable_id');
+    if(!sid) return null;
     const u=new URL(PROXY);u.searchParams.set('mode','device_download');u.searchParams.set('deviceStableId',sid);
     try{
       const d=await fPJ(u.toString(),t,2);
