@@ -417,7 +417,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-25 10:54:19 UTC
+Сгенерировано: 2026-04-25 10:54:59 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1585,7 +1585,7 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
       const mt=await disk.upload(tok,b);
       try{
         const dev=await BackupVault.buildDeviceSettingsObject?.();
-        if(dev?.deviceStableId) await disk.uploadDeviceSettings?.(tok,dev).catch(()=>null);
+        if(dev?.deviceStableId && Object.keys(dev?.localStorage||{}).length) await disk.uploadDeviceSettings?.(tok,dev).catch(()=>null);
       }catch{}
       _last=Date.now();
       try{
