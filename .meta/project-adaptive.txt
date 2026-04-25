@@ -417,7 +417,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-25 10:53:24 UTC
+Сгенерировано: 2026-04-25 10:54:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4311,7 +4311,7 @@ export const maybeApplyDeviceSettings = async ({
     if (!meta?.deviceStableId) return false;
 
     const doc = await disk.downloadDeviceSettings?.(token, deviceKey).catch(() => null);
-    if (!doc?.deviceStableId) return false;
+    if (!doc || !doc.deviceStableId) return false;
 
     await BackupVault.importDeviceSettingsObject(doc, { allowPlaybackSensitive: !!allowPlaybackSensitive });
     return true;
