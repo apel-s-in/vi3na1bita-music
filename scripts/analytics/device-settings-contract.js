@@ -19,6 +19,7 @@ export const normalizeDeviceSettingsSnapshot = (raw = {}) => ({
   sourceDeviceLabel: safeDeviceString(raw?.sourceDeviceLabel || ''),
   sourceDeviceClass: safeDeviceString(raw?.sourceDeviceClass || ''),
   sourcePlatform: safeDeviceString(raw?.sourcePlatform || ''),
+  path: safeDeviceString(raw?.path || ''),
   localStorage: Object.fromEntries(
     Object.entries(raw?.localStorage || {}).filter(([k]) => DEVICE_STORAGE_KEY_SET.has(String(k || '')))
   )
