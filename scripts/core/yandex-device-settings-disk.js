@@ -43,7 +43,7 @@ export const YandexDeviceSettingsDisk={
   async getDeviceSettingsMeta(t,stableId){
     if(!t) throw new Error('no_token');
     const sid=sS(stableId);
-    if(!sid) throw new Error('device_settings_no_stable_id');
+    if(!sid) return null;
     const u=new URL(PROXY);u.searchParams.set('mode','device_meta');u.searchParams.set('deviceStableId',sid);
     try{
       const d=await fPJ(u.toString(),t,2);
@@ -59,7 +59,7 @@ export const YandexDeviceSettingsDisk={
   async downloadDeviceSettings(t,stableId){
     if(!t) throw new Error('no_token');
     const sid=sS(stableId);
-    if(!sid) throw new Error('device_settings_no_stable_id');
+    if(!sid) return null;
     const u=new URL(PROXY);u.searchParams.set('mode','device_download');u.searchParams.set('deviceStableId',sid);
     try{
       const d=await fPJ(u.toString(),t,2);
