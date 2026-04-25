@@ -282,8 +282,11 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
       localProfile: profile || { name: 'Слушатель' }
     });
   } catch (err) {
-    console.warn('[AuthOnboarding] restore failed:', err?.message);
-    nSys?.error?.('Ошибка восстановления: ' + String(err?.message || ''));
+    const msg = String(err?.message || '');
+    console.warn('[AuthOnboarding] restore failed:', msg);
+    if (!msg.includes('device_settings_not_found') && !msg.includes('device_settings_conflict')) {
+      nSys?.error?.('Ошибка восстановления: ' + msg);
+    }
   } finally {
     // Инвалидируем кэш после применения (следующий вход получит свежие данные)
     _preloadResult = null;
