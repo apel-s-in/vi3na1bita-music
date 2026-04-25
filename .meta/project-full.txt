@@ -417,7 +417,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-25 11:24:19 UTC
+Сгенерировано: 2026-04-25 11:25:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -719,7 +719,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.2.80';
+const SW_VERSION = '8.2.81';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -3770,8 +3770,11 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
       localProfile: profile || { name: 'Слушатель' }
     });
   } catch (err) {
-    console.warn('[AuthOnboarding] restore failed:', err?.message);
-    nSys?.error?.('Ошибка восстановления: ' + String(err?.message || ''));
+    const msg = String(err?.message || '');
+    console.warn('[AuthOnboarding] restore failed:', msg);
+    if (!msg.includes('device_settings_not_found') && !msg.includes('device_settings_conflict')) {
+      nSys?.error?.('Ошибка восстановления: ' + msg);
+    }
   } finally {
     // Инвалидируем кэш после применения (следующий вход получит свежие данные)
     _preloadResult = null;
