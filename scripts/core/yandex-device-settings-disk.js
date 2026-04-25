@@ -66,12 +66,14 @@ export const YandexDeviceSettingsDisk={
       if(!d||typeof d!=='object') throw new Error('invalid_device_settings_payload');
       return normalizeDeviceSettingsSnapshot(d);
     }catch(e){
-      const s=Number(e?.status||0);
-      if(s===404) throw mPE('device_settings_not_found',e);
+      const s=Number(e?.status||0),msg=sS(e?.message||'');
+      if(s===404) return null;
+      if(s===409) return null;
       if(s===401) throw mPE('disk_auth_error',e);
       if(s===403) throw mPE('disk_forbidden',e);
-      if([502,503,504].includes(s)) throw mPE('device_download_proxy_failed',e);
-      throw mPE(sS(e?.message||'device_download_proxy_failed'),e);
+      if([502,503,504].includes(s)) return null;
+      if(msg.includes('device_settings_not_found')||msg.includes('device_download_proxy_failed')) return null;
+      throw mPE(msg||'device_download_proxy_failed',e);
     }
   }
 };
