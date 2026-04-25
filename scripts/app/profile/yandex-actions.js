@@ -37,7 +37,7 @@ export function initYandexActions() {
           const m = await disk.upload(t, b);
           try {
             const dev = await BackupVault.buildDeviceSettingsObject();
-            if (dev?.deviceStableId) await disk.uploadDeviceSettings(t, dev).catch(() => null);
+            if (dev?.deviceStableId && Object.keys(dev?.localStorage || {}).length) await disk.uploadDeviceSettings(t, dev).catch(() => null);
           } catch {}
           try {
             localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
