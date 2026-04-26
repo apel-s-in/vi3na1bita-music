@@ -1,3 +1,4 @@
+import { CLOUD_BACKUP_DIR } from '../analytics/cloud-contract.js';
 import { DEVICE_SETTINGS_DIR, buildDeviceSettingsPath, normalizeDeviceSettingsSnapshot, safeDeviceString } from '../analytics/device-settings-contract.js';
 import { YANDEX_DISK_PROXY as PROXY, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir, mapProxyError as mPE } from './yandex-disk-transport.js';
 
@@ -9,6 +10,7 @@ export const YandexDeviceSettingsDisk={
     const stableId=sS(d?.deviceStableId||''),path=buildDeviceSettingsPath(stableId);
     if(!path) throw new Error('device_settings_no_stable_id');
     const doc=normalizeDeviceSettingsSnapshot({...d,path});
+    await ensureResourceDir(t,CLOUD_BACKUP_DIR).catch(()=>null);
     await ensureResourceDir(t,DEVICE_SETTINGS_DIR).catch(()=>null);
     await pJP(t,path,doc);
     return doc;
