@@ -78,9 +78,9 @@ export const openFreshLoginRestoreModal = ({
     <div id="fresh-dev-list" style="display:flex;flex-wrap:wrap">${renderDevices()}</div>
 
     <div class="modal-choice-actions" style="margin-top:14px">
-      <button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить shared + устройство</button>
+      <button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить shared + выбранное устройство</button>
       <button type="button" class="modal-action-btn" data-fresh-act="shared-only">Восстановить только shared</button>
-      ${devices.length ? `<button type="button" class="modal-action-btn" data-fresh-act="new-device">📱 Восстановить как новое устройство</button>` : ''}
+      ${devices.length ? `<button type="button" class="modal-action-btn" data-fresh-act="new-device">📱 Создать новое устройство</button>` : ''}
       <button type="button" class="modal-action-btn" data-fresh-act="later">🔕 Напомнить позже</button>
     </div>`;
 
