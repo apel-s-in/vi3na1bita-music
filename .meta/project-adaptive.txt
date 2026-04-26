@@ -425,7 +425,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 21:04:29 UTC
+Сгенерировано: 2026-04-26 21:05:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2483,6 +2483,14 @@ export const collectSnapshotLocalStorage = (storage = localStorage) => ALL_SNAPS
   return acc;
 }, {});
 
+export const collectSharedSnapshotLocalStorage = (storage = localStorage) => SHARED_STORAGE_KEYS.reduce((acc, key) => {
+  try {
+    const v = storage.getItem(key);
+    if (v != null) acc[key] = v;
+  } catch {}
+  return acc;
+}, {});
+
 export const getSharedSnapshotLocalEntries = raw => Object.fromEntries(
   Object.entries(raw || {}).filter(([k]) => isSharedStorageKey(k))
 );
@@ -2506,6 +2514,7 @@ export default {
   isDeviceStorageKey,
   isTransientStorageKey,
   collectSnapshotLocalStorage,
+  collectSharedSnapshotLocalStorage,
   getSharedSnapshotLocalEntries,
   getDeviceSnapshotLocalEntries
 };
