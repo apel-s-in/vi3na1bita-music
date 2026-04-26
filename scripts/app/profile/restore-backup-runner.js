@@ -1,3 +1,4 @@
+import { bindCurrentInstallToDeviceStableId } from '../../core/device-linking.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
@@ -95,6 +96,16 @@ export const runBackupRestore = async ({
     skipDeviceSettings,
     allowPlaybackSensitive
   });
+  if (inheritDeviceKey && !asNewDevice) {
+    const picked = (Array.isArray(backup?.devices) ? backup.devices : []).find(d => String(d?.deviceStableId || '').trim() === String(inheritDeviceKey || '').trim()) || null;
+    await bindCurrentInstallToDeviceStableId({
+      deviceStableId: inheritDeviceKey,
+      label: picked?.label || '',
+      deviceClass: picked?.class || '',
+      platform: picked?.platform || '',
+      registry: backup?.devices || []
+    }).catch(() => null);
+  }
   await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
   await markRestoreCompleted();
   try { window.eventLogger?.log?.('RESTORE_APPLIED', null, { mode, refreshReason, asNewDevice: !!asNewDevice, skipDeviceSettings: !!skipDeviceSettings }); } catch {}
