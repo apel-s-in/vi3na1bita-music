@@ -423,7 +423,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 14:35:01 UTC
+Сгенерировано: 2026-04-26 14:36:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1743,6 +1743,7 @@ export const uploadBackupBundle = async ({
     meta = await disk.upload(token, b);
     uploadedShared = true;
     persistMeta({ meta, backup: b, sharedHash });
+    try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared: true, uploadedDevice: false, checksum: b?.integrity?.payloadHash || '' }); } catch {}
   }
 
   let uploadedDevice = false;
