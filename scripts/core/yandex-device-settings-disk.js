@@ -63,8 +63,9 @@ export const YandexDeviceSettingsDisk={
     const u=new URL(PROXY);u.searchParams.set('mode','device_download');u.searchParams.set('deviceStableId',sid);
     try{
       const d=await fPJ(u.toString(),t,2);
-      if(!d||typeof d!=='object') throw new Error('invalid_device_settings_payload');
-      return normalizeDeviceSettingsSnapshot(d);
+      if(!d||typeof d!=='object'||d.exists===false) return null;
+      const doc=normalizeDeviceSettingsSnapshot(d);
+      return doc.deviceStableId?doc:null;
     }catch(e){
       const s=Number(e?.status||0),msg=sS(e?.message||'');
       if(s===404) return null;
