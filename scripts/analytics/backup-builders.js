@@ -73,8 +73,10 @@ export const trimWarmEvents = events => {
 };
 
 export const buildBackupDataSnapshot = async () => {
-  const [st, w, a, str, uP, uR, lP, pI, hS, rS, cS, iR] = await Promise.all([
+  try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 80)); } catch {}
+  const [st, h, w, a, str, uP, uR, lP, pI, hS, rS, cS, iR] = await Promise.all([
     metaDB.getAllStats(),
+    metaDB.getEvents('events_hot').catch(() => []),
     metaDB.getEvents('events_warm'),
     metaDB.getGlobal('unlocked_achievements'),
     metaDB.getGlobal('global_streak'),
@@ -87,7 +89,7 @@ export const buildBackupDataSnapshot = async () => {
     metaDB.getStoreAll('collection_state').catch(()=>[]),
     metaDB.getStoreAll('intel_runtime').catch(()=>[])
   ]);
-  const wClean = w.filter(x => !isBackupNoiseEvent(x));
+  const wClean = [...(Array.isArray(w) ? w : []), ...(Array.isArray(h) ? h : [])].filter(x => !isBackupNoiseEvent(x));
   const warmTrimmed = trimWarmEvents(wClean);
   if (warmTrimmed.length < w.length || wClean.length < w.length) console.debug(`[BackupVault] warm events trimmed/cleaned: ${w.length} → ${warmTrimmed.length}`);
   return {
