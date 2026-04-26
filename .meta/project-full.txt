@@ -425,7 +425,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 21:28:23 UTC
+Сгенерировано: 2026-04-26 21:29:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1661,7 +1661,7 @@ export const initBackupSyncEngine = () => {
   }, 300000);
 };
 
-export const getSyncIntervalSec = () => 60;
+export const getSyncIntervalSec = () => Math.round(DOMAIN_DEBOUNCE_MS.favorites / 1000);
 export default { initBackupSyncEngine, markSyncReady, isSyncReady, isSyncEnabled, setSyncEnabled, getSyncIntervalSec, markRestoreOrSkipDone, isRestoreOrSkipDone };
 
 //=================================================
