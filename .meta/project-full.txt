@@ -421,7 +421,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 12:37:23 UTC
+Сгенерировано: 2026-04-26 12:40:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6603,37 +6603,9 @@ window.YandexAuth=YandexAuth;export default YandexAuth;
 //=================================================
 // FILE: /scripts/core/yandex-backup-disk.js
 import { CLOUD_BACKUP_DIR, CLOUD_BACKUP_LATEST_PATH, CLOUD_BACKUP_META_PATH, buildBackupHistoryPath, sanitizeBackupPath, normalizeCloudBackupMeta, normalizeCloudBackupListItem, safeCloudString, safeCloudNum } from '../analytics/cloud-contract.js';
+import { YANDEX_DISK_API as API, YANDEX_DISK_PROXY as PROXY, authHeaders as aH, fetchProxyJson as fPJ, uploadJson as pJP, mapProxyError as mPE } from './yandex-disk-transport.js';
 
-const API='https://cloud-api.yandex.net/v1/disk',BD=CLOUD_BACKUP_DIR,BP=CLOUD_BACKUP_LATEST_PATH,MP=CLOUD_BACKUP_META_PATH,BPV=s=>buildBackupHistoryPath(s),PROXY='https://functions.yandexcloud.net/d4ecdu6kgamevcauajid',aH=t=>({'Authorization':`OAuth ${t}`}),sS=safeCloudString,sN=safeCloudNum,sPJ=t=>{try{return JSON.parse(t)}catch{return null}},mPE=(p,e)=>{const s=Number(e?.status||0),pl=e?.payload&&typeof e.payload==='object'?e.payload:null,d=[sS(pl?.error),sS(pl?.stage),sS(pl?.path),sS(pl?.raw),sS(pl?.hint)].filter(Boolean).join(' | '),err=new Error(d?`${p}:${d}`:p);err.status=s;err.payload=pl;return err};
-
-async function fPJ(u,t,r=2){
-  const qU=u.includes('?')?`${u}&token=${t}`:`${u}?token=${t}`;
-  const headers={'X-Yandex-Auth':t,'Accept':'application/json'};
-  let lE=null;
-  for(let i=0;i<=r;i++){
-    try{
-      const rs=await fetch(qU,{method:'GET',headers,credentials:'omit',mode:'cors'}),tx=await rs.text(),d=sPJ(tx);
-      if(rs.ok) return d;
-      if([502,503,504].includes(rs.status)&&i<r){await new Promise(x=>setTimeout(x,800*(i+1)));continue}
-      const e=new Error(sS(d?.error||`http_${rs.status}`));
-      e.status=rs.status;e.payload=d||{raw:sS(tx).slice(0,400)};
-      if(Number(e.status)&&![502,503,504].includes(Number(e.status))) throw e;
-      lE=e;
-    }catch(e){
-      lE=e;
-      if(Number(e?.status||0)&&![502,503,504].includes(Number(e?.status||0))) throw e;
-    }
-  }
-  throw lE||new Error('proxy_failed')
-}
-
-async function pJP(t,p,d){
-  const rL=await fetch(`${API}/resources/upload?path=${encodeURIComponent(p)}&overwrite=true`,{headers:aH(t)});
-  if(!rL.ok) throw new Error(`upload_link_failed:${rL.status}`);
-  const rs=await fetch((await rL.json()).href,{method:'PUT',body:new Blob([JSON.stringify(d)],{type:'application/json'})});
-  if(!rs.ok) throw new Error(`upload_failed:${rs.status}`);
-  return true;
-}
+const BD=CLOUD_BACKUP_DIR,BP=CLOUD_BACKUP_LATEST_PATH,MP=CLOUD_BACKUP_META_PATH,BPV=s=>buildBackupHistoryPath(s),sS=safeCloudString,sN=safeCloudNum;
 
 export const YandexBackupDisk={
   async upload(t,dO){
