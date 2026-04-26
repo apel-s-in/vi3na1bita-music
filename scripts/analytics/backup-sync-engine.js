@@ -132,5 +132,5 @@ export const initBackupSyncEngine = () => {
   }, 300000);
 };
 
-export const getSyncIntervalSec = () => 60;
+export const getSyncIntervalSec = () => Math.round(DOMAIN_DEBOUNCE_MS.favorites / 1000);
 export default { initBackupSyncEngine, markSyncReady, isSyncReady, isSyncEnabled, setSyncEnabled, getSyncIntervalSec, markRestoreOrSkipDone, isRestoreOrSkipDone };
