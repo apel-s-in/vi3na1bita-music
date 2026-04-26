@@ -428,7 +428,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 22:24:30 UTC
+Сгенерировано: 2026-04-26 22:25:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6916,6 +6916,7 @@ export async function ensureCurrentDeviceRegistryRow({ label = '', registry = nu
       window.eventLogger.deviceHash = deviceHash;
       window.eventLogger.deviceStableId = deviceStableId;
     }
+    window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'devices'}}));
   } catch {}
   return out.find(d => d.deviceStableId === deviceStableId) || row;
 }
@@ -6974,6 +6975,7 @@ export async function bindCurrentInstallToDeviceStableId({
       window.eventLogger.deviceHash = deviceHash;
       window.eventLogger.deviceStableId = targetStableId;
     }
+    window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'devices'}}));
   } catch {}
 
   const out = DeviceRegistry.saveDeviceRegistry(rows);
