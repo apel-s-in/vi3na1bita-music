@@ -12,6 +12,7 @@ export class FavoritesManager {
     else { this._m.set(u, { uid: u, addedAt: i?.addedAt || Date.now(), albumKey: aK || i?.albumKey || null, sourceAlbum: aK || i?.albumKey || i?.sourceAlbum || null, inactiveAt: null }); L = true; }
     try { localStorage.setItem(KEY, JSON.stringify(Array.from(this._m.values()))); } catch {}
     try { window.eventLogger?.log?.('FAVORITE_CHANGED', u, { liked: L, source: s, albumKey: aK || i?.albumKey || i?.sourceAlbum || null, inactive: !!(!L && s === 'favorites') }); } catch {}
+    try { window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'favorites'}})); } catch {}
     this._s.forEach(cb => { try { cb({ uid: u, liked: L }); } catch {} }); return L;
   }
   remove(uid) { const u = String(uid).trim(); if (this._m.delete(u)) { try { localStorage.setItem(KEY, JSON.stringify(Array.from(this._m.values()))); } catch {} this._s.forEach(cb => { try { cb({ uid: u, liked: false }); } catch {} }); return true; } return false; }
