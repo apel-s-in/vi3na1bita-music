@@ -425,7 +425,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 21:29:19 UTC
+Сгенерировано: 2026-04-26 21:30:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2575,6 +2575,14 @@ export class StatsAggregator {
           return s;
         });
       } else if (ev.type === 'LISTEN_SKIP') { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; this.session.favShuffleEvents.clear(); this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; this.session.lastFullUid = null; }
+      else if (ev.type === 'BACKUP_CREATED') {
+        await metaDB.updateStat('global', s => {
+          s.featuresUsed = s.featuresUsed || {};
+          s.featuresUsed.backup = (s.featuresUsed.backup || 0) + 1;
+          s.lastPlayedAt = ev.timestamp;
+          return s;
+        });
+      }
       else if (ev.type === 'FEATURE_USED') {
         await metaDB.updateStat(ev.uid || 'global', s => {
           s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1;
