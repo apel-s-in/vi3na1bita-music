@@ -1,5 +1,5 @@
 import { CLOUD_BACKUP_DIR, CLOUD_BACKUP_LATEST_PATH, CLOUD_BACKUP_META_PATH, buildBackupHistoryPath, sanitizeBackupPath, normalizeCloudBackupMeta, normalizeCloudBackupListItem, safeCloudString, safeCloudNum } from '../analytics/cloud-contract.js';
-import { YANDEX_DISK_API as API, YANDEX_DISK_PROXY as PROXY, authHeaders as aH, fetchProxyJson as fPJ, uploadJson as pJP, mapProxyError as mPE } from './yandex-disk-transport.js';
+import { YANDEX_DISK_API as API, YANDEX_DISK_PROXY as PROXY, authHeaders as aH, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir, mapProxyError as mPE } from './yandex-disk-transport.js';
 
 const BD=CLOUD_BACKUP_DIR,BP=CLOUD_BACKUP_LATEST_PATH,MP=CLOUD_BACKUP_META_PATH,BPV=s=>buildBackupHistoryPath(s),sS=safeCloudString,sN=safeCloudNum;
 
@@ -11,6 +11,7 @@ export const YandexBackupDisk={
     try{fC=JSON.parse(fs).filter(i=>!i?.inactiveAt).length}catch{}
     try{pC=JSON.parse(ps).length}catch{}
     const sI=new Set(dv.map(d=>sS(d?.deviceStableId)).filter(Boolean)),src=dv.find(d=>sS(d?.deviceStableId)===sS(dO?.revision?.sourceDeviceStableId))||dv[0]||null,m=normalizeCloudBackupMeta({latestPath:BP,historyPath:BPV(st),timestamp:sN(dO?.revision?.timestamp||dO?.createdAt||Date.now()),appVersion:dO?.revision?.appVersion||'unknown',ownerYandexId:dO?.identity?.ownerYandexId||null,profileName:sS(dO?.revision?.profileName||dO?.data?.userProfile?.name||'Слушатель')||'Слушатель',sourceDeviceStableId:sS(dO?.revision?.sourceDeviceStableId||src?.deviceStableId||''),sourceDeviceLabel:sS(dO?.revision?.sourceDeviceLabel||src?.label||''),sourceDeviceClass:sS(dO?.revision?.sourceDeviceClass||src?.class||''),sourcePlatform:sS(dO?.revision?.sourcePlatform||src?.platform||''),level:sN(rg.level||1),xp:sN(rg.xp||0),achievementsCount:Object.keys(dO?.data?.achievements||{}).length,favoritesCount:sN(fC),playlistsCount:sN(pC),statsCount:ss.filter(x=>x?.uid&&x.uid!=='global').length,eventCount:wm.length,devicesCount:dv.length,deviceStableCount:sI.size,checksum:sS(dO?.integrity?.payloadHash||''),version:sS(dO?.version||dO?.revision?.schemaVersion||'unknown')});
+    await ensureResourceDir(t,BD).catch(()=>null);
     await pJP(t,BP,dO);
     try{await pJP(t,m.historyPath,dO)}catch{}
     await pJP(t,MP,m);
