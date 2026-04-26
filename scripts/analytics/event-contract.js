@@ -40,6 +40,12 @@ export const getEventDomain = type => ({
 export const isBackupNoiseEvent = ev =>
   sS(ev?.type) === EVENT_TYPES.FEATURE_USED && sS(ev?.data?.feature).startsWith('backup');
 
+export const isCloudServiceEvent = ev =>
+  [EVENT_TYPES.BACKUP_CREATED, EVENT_TYPES.RESTORE_APPLIED, EVENT_TYPES.SYNC_STATE_CHANGED].includes(sS(ev?.type));
+
+export const isBackupSemanticNoiseEvent = ev =>
+  isBackupNoiseEvent(ev) || isCloudServiceEvent(ev);
+
 export const normalizeEventEnvelope = ({
   eventId,
   sessionId,
@@ -85,6 +91,8 @@ export default {
   EVENT_TYPES,
   getEventDomain,
   isBackupNoiseEvent,
+  isCloudServiceEvent,
+  isBackupSemanticNoiseEvent,
   normalizeEventEnvelope,
   describeEventForUi
 };
