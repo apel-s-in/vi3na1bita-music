@@ -1,7 +1,7 @@
 import { metaDB } from './meta-db.js';
 import DeviceRegistry from './device-registry.js';
 import { normalizeCloudBackupMeta } from './cloud-contract.js';
-import { collectSnapshotLocalStorage } from './snapshot-contract.js';
+import { collectSharedSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
 import { isBackupNoiseEvent } from './event-contract.js';
 
@@ -23,13 +23,20 @@ export const readDeviceRegistryForBackup = async () => {
   const { getOrCreateDeviceHash, getOrCreateDeviceStableId } = await import('../core/device-identity.js');
   const h = await getOrCreateDeviceHash();
   const id = await getOrCreateDeviceStableId();
+  const { detectCurrentDeviceProfile } = await import('../core/device-profile.js');
+  const prof = detectCurrentDeviceProfile({
+    registry: DeviceRegistry.getDeviceRegistry(),
+    savedLabel: localStorage.getItem('yandex:onboarding:device_label') || ''
+  });
   const cur = DeviceRegistry.normalizeDeviceRow({
+    ...prof,
     deviceHash: h,
     deviceStableId: id,
-    platform: window.Utils?.getPlatform?.()?.isIOS ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web'),
+    platform: prof.platform || (window.Utils?.getPlatform?.()?.isIOS ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web')),
     userAgent: navigator.userAgent,
     firstSeenAt: Number(localStorage.getItem('app:first-install-ts') || Date.now()),
     lastSeenAt: Date.now(),
+    lastBackupAt: Date.now(),
     seenHashes: [h]
   });
   const raw = DeviceRegistry.getDeviceRegistry();
@@ -99,7 +106,7 @@ export const buildBackupDataSnapshot = async () => {
     streaks: str?.value || {},
     userProfile: uP?.value || { name: 'Слушатель', avatar: '😎' },
     userProfileRpg: uR?.value || { xp: 0, level: 1 },
-    localStorage: collectSnapshotLocalStorage(localStorage),
+    localStorage: collectSharedSnapshotLocalStorage(localStorage),
     intel: {
       listenerProfile: dedupIntel(lP),
       providerIdentity: dedupIntel(pI),
