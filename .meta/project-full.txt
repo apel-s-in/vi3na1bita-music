@@ -425,7 +425,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 21:06:40 UTC
+Сгенерировано: 2026-04-26 21:10:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4822,6 +4822,7 @@ export default { renderProfileShell };
 
 //=================================================
 // FILE: /scripts/app/profile/restore-backup-runner.js
+import { bindCurrentInstallToDeviceStableId } from '../../core/device-linking.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
@@ -4919,6 +4920,16 @@ export const runBackupRestore = async ({
     skipDeviceSettings,
     allowPlaybackSensitive
   });
+  if (inheritDeviceKey && !asNewDevice) {
+    const picked = (Array.isArray(backup?.devices) ? backup.devices : []).find(d => String(d?.deviceStableId || '').trim() === String(inheritDeviceKey || '').trim()) || null;
+    await bindCurrentInstallToDeviceStableId({
+      deviceStableId: inheritDeviceKey,
+      label: picked?.label || '',
+      deviceClass: picked?.class || '',
+      platform: picked?.platform || '',
+      registry: backup?.devices || []
+    }).catch(() => null);
+  }
   await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
   await markRestoreCompleted();
   try { window.eventLogger?.log?.('RESTORE_APPLIED', null, { mode, refreshReason, asNewDevice: !!asNewDevice, skipDeviceSettings: !!skipDeviceSettings }); } catch {}
