@@ -420,7 +420,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 12:15:20 UTC
+Сгенерировано: 2026-04-26 12:17:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5186,8 +5186,10 @@ export default { initYandexAutoSync };
 //=================================================
 // FILE: /scripts/app/profile/yandex-modals.js
 import { BackupVault } from '../../analytics/backup-vault.js';
-import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel, safeNum } from '../../analytics/backup-summary.js';
-import { renderCloudStatPair } from './cloud-ui-helpers.js';
+import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
+import { openFreshLoginRestoreModal } from './fresh-restore-modal.js';
+
+export { openFreshLoginRestoreModal };
 
 export const openBackupInfoModal = () => window.Modals?.open?.({ title: 'Что сохраняется в backup', maxWidth: 480, bodyHtml: `<div class="modal-confirm-text">Backup хранит общий прогресс аккаунта и данные синхронизации.<br><br>Внутрь входят:<ul style="margin:10px 0 0 18px;color:#eaf2ff;line-height:1.5"><li>статистика и event log</li><li>достижения, XP, стрики</li><li>локальный профиль</li><li>избранное и плейлисты</li><li>часть настроек интерфейса и player state</li><li>внутренние intel/store данные</li><li>реестр устройств и привязка к владельцу Яндекса</li></ul><div style="margin-top:12px;color:#9db7dd">Архитектурно проект уже движется к более чистому разделению account-shared и device-local данных. Восстановление разрешено только под тем же Яндекс-аккаунтом владельца backup.</div></div>` });
 
@@ -5205,95 +5207,6 @@ export const openRestoreVersionPickerModal = (i, oP) => {
   const bH = l.length ? `<div class="modal-confirm-text">Доступные версии backup в облаке:</div><div class="modal-choice-actions">${l.map((it, idx) => { const dev = [it?.sourceDeviceLabel, it?.sourceDeviceClass].filter(Boolean).join(' · '); return `<button type="button" class="modal-action-btn ${idx === 0 ? 'online' : ''}" data-restore-path="${esc(it.path || '')}">${it.isLatest ? '☁️ Latest' : '🕘 Архив'} · ${it.timestamp ? new Date(it.timestamp).toLocaleString('ru-RU') : 'без даты'} · ${esc(it.sizeHuman || 'unknown')}${it.appVersion ? ` · v${esc(String(it.appVersion))}` : ''}${dev ? ` · ${esc(dev)}` : ''}${it.checksum ? ` · ✓` : ''}</button>`; }).join('')}</div>` : `<div class="modal-confirm-text" style="text-align:center;color:#9db7dd"><div style="font-size:32px;margin-bottom:12px">☁️</div><div>Список версий backup не получен.</div><div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div></div>`;
   const m = window.Modals?.open?.({ title: 'Выберите облачную версию', maxWidth: 500, bodyHtml: bH });
   m?.addEventListener('click', e => { const b = e.target.closest('[data-restore-path]'); if (b) { m.remove(); oP?.(String(b.dataset.restorePath || '').trim() || null); } });
-};
-
-export const openFreshLoginRestoreModal = ({ meta, items = [], onRestore, onNewDevice, onLater, currentDeviceInfo = null } = {}) => {
-  const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
-  const safe = Array.isArray(items) && items.length ? items : (meta ? [meta] : []);
-  const localSnap = getLocalBackupUiSnapshot({ name: 'Слушатель' });
-  const cloudSnap = meta || safe[0] || {};
-  const cmp = compareLocalVsCloud(localSnap, cloudSnap);
-  const cL = getBackupCompareLabel(localSnap, cloudSnap);
-
-  // Блок с текущим устройством (если передан из orchestrator)
-  const currentDeviceHtml = currentDeviceInfo ? `
-    <div style="background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px">
-      <div style="font-size:10px;color:#8ab8fd;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">🔧 Вы сейчас на</div>
-      <div style="font-size:12px;color:#eaf2ff;font-weight:700">${esc(currentDeviceInfo.osIcon)} ${esc(currentDeviceInfo.os)} · ${esc(currentDeviceInfo.browser)}</div>
-      <div style="font-size:11px;color:#888;margin-top:2px">По умолчанию — «${esc(currentDeviceInfo.label)}»</div>
-    </div>` : '';
-  const devicesFromMeta = (() => {
-    const set = new Map();
-    safe.forEach(it => {
-      const id = String(it?.sourceDeviceStableId || '').trim();
-      if (!id) return;
-      if (!set.has(id)) set.set(id, {
-        key: id,
-        label: String(it?.sourceDeviceLabel || '').trim() || 'Устройство',
-        cls: String(it?.sourceDeviceClass || '').trim() || ''
-      });
-    });
-    return [...set.values()];
-  })();
-
-  const renderItems = () => safe.map((it, i) => `
-    <label class="fresh-row" data-path="${esc(it.path || '')}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:10px;cursor:pointer;margin-bottom:6px">
-      <input type="radio" name="fresh-ver" value="${i}" ${i === 0 ? 'checked' : ''} style="accent-color:var(--secondary-color)">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:#fff">${it.isLatest ? '☁ Latest' : '🕘 Архив'} · ${it.timestamp ? new Date(it.timestamp).toLocaleString('ru-RU') : '—'}</div>
-        <div style="font-size:11px;color:#9db7dd">${esc(it.sizeHuman || '')}${it.appVersion ? ` · v${esc(it.appVersion)}` : ''}</div>
-      </div>
-    </label>`).join('') || '<div class="fav-empty">Облачных версий пока нет</div>';
-
-  const renderDevices = () => devicesFromMeta.length
-    ? devicesFromMeta.map((d, i) => `
-        <label class="fresh-dev" data-key="${esc(d.key)}" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.25);border-radius:999px;margin:0 6px 6px 0;cursor:pointer">
-          <input type="radio" name="fresh-dev" value="${i}" ${i === 0 ? 'checked' : ''} style="accent-color:var(--secondary-color)">
-          <span style="font-size:12px;color:#eaf2ff">${esc(d.label)}${d.cls ? ` · ${esc(d.cls)}` : ''}</span>
-        </label>`).join('')
-    : '<div style="font-size:12px;color:#9db7dd">У вас ещё нет ни одного устройства в облаке.</div>';
-
-  const bodyHtml = `
-    <div style="font-size:13px;color:#9db7dd;margin-bottom:10px">Мы нашли облачную копию аккаунта. Что сделать?</div>
-    ${currentDeviceHtml}
-    ${renderCloudStatPair({ localSummary: localSnap, cloudSummary: cloudSnap })}
-    <div style="font-size:11px;color:#9db7dd;margin-bottom:10px">Сравнение: ${esc(cL)} (${esc(cmp.state)})</div>
-
-    <div style="font-size:12px;font-weight:700;color:#eaf2ff;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.8px">Версия backup</div>
-    <div id="fresh-list">${renderItems()}</div>
-
-    <div style="font-size:12px;font-weight:700;color:#eaf2ff;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.8px">Устройства в облаке</div>
-    <div id="fresh-dev-list" style="display:flex;flex-wrap:wrap">${renderDevices()}</div>
-
-      <div class="modal-choice-actions" style="margin-top:14px">
-        <button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить shared + устройство</button>
-        ${devicesFromMeta.length ? `<button type="button" class="modal-action-btn" data-fresh-act="new-device">📱 Восстановить как новое устройство</button>` : ''}
-        <button type="button" class="modal-action-btn" data-fresh-act="later">🔕 Напомнить позже</button>
-      </div>
-  `;
-
-  const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 500, strictClose: true, bodyHtml });
-  if (!m) return;
-
-  const pickPath = () => {
-    const sel = m.querySelector('input[name="fresh-ver"]:checked');
-    const idx = sel ? Number(sel.value) : 0;
-    return String(safe[idx]?.path || safe[0]?.path || '').trim();
-  };
-  const pickDeviceKey = () => {
-    const sel = m.querySelector('input[name="fresh-dev"]:checked');
-    const idx = sel ? Number(sel.value) : 0;
-    return devicesFromMeta[idx]?.key || null;
-  };
-
-  m.addEventListener('click', e => {
-    const btn = e.target.closest('[data-fresh-act]');
-    if (!btn) return;
-    const act = btn.dataset.freshAct;
-    if (act === 'later') { m.remove(); try { onLater?.(); } catch {} }
-    else if (act === 'restore') { m.remove(); try { onRestore?.({ pickedPath: pickPath(), inheritDeviceKey: pickDeviceKey() }); } catch {} }
-    else if (act === 'new-device') { m.remove(); try { (onNewDevice || onRestore)?.({ pickedPath: pickPath(), inheritDeviceKey: pickDeviceKey(), asNewDevice: true }); } catch {} }
-  });
 };
 
 export const openManualRestoreHelpModal = (dH, oP) => {
