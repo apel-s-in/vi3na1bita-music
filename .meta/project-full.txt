@@ -423,7 +423,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 14:29:31 UTC
+Сгенерировано: 2026-04-26 14:30:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1086,6 +1086,7 @@ import DeviceRegistry from './device-registry.js';
 import { normalizeCloudBackupMeta } from './cloud-contract.js';
 import { collectSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
+import { isBackupNoiseEvent } from './event-contract.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -1147,7 +1148,7 @@ const dedupIntel = arr => {
   return [...m.values()];
 };
 
-const WARM_MAX = 2000;
+const WARM_MAX = 10000;
 export const trimWarmEvents = events => {
   if (!Array.isArray(events)) return [];
   if (events.length <= WARM_MAX) return events;
@@ -1169,7 +1170,7 @@ export const buildBackupDataSnapshot = async () => {
     metaDB.getStoreAll('collection_state').catch(()=>[]),
     metaDB.getStoreAll('intel_runtime').catch(()=>[])
   ]);
-  const wClean = w.filter(x => x.type !== 'ACHIEVEMENT_UNLOCK' && !(x.type === 'FEATURE_USED' && String(x.data?.feature).startsWith('backup')));
+  const wClean = w.filter(x => !isBackupNoiseEvent(x));
   const warmTrimmed = trimWarmEvents(wClean);
   if (warmTrimmed.length < w.length || wClean.length < w.length) console.debug(`[BackupVault] warm events trimmed/cleaned: ${w.length} → ${warmTrimmed.length}`);
   return {
