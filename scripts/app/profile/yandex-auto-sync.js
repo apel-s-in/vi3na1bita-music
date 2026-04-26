@@ -22,7 +22,7 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
       return _markReady('no_cloud_backup');
     }
 
-    try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); } catch {}
+    try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); localStorage.setItem('yandex:last_backup_check_ts', String(Date.now())); } catch {}
     window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
     const c = compareLocalVsCloud(lS, m);
     const localIsPoor = safeNum(lS?.level) <= 1 && safeNum(lS?.xp) < 500 && safeNum(lS?.achievementsCount) < 3 && safeNum(lS?.favoritesCount) < 3 && safeNum(lS?.playlistsCount) < 1;
