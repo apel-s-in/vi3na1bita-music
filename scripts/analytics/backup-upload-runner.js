@@ -20,6 +20,15 @@ const normalizeDeviceForHash = d => ({
   seenHashes: [...new Set((Array.isArray(d?.seenHashes) ? d.seenHashes : []).map(sS).filter(Boolean))].sort()
 });
 
+const normalizeStatsForHash = rows => (Array.isArray(rows) ? rows : [])
+  .filter(r => r && typeof r === 'object' && sS(r.uid))
+  .map(r => {
+    const featuresUsed = { ...(r.featuresUsed || {}) };
+    Object.keys(featuresUsed).forEach(k => { if (String(k || '').startsWith('backup')) delete featuresUsed[k]; });
+    return { ...r, uid: sS(r.uid), featuresUsed };
+  })
+  .sort((a, b) => sS(a.uid).localeCompare(sS(b.uid)));
+
 export const buildSharedSemanticPayload = backup => {
   const data = backup?.data || {};
   return {
@@ -27,7 +36,7 @@ export const buildSharedSemanticPayload = backup => {
     ownerYandexId: sS(backup?.identity?.ownerYandexId || ''),
     devices: (Array.isArray(backup?.devices) ? backup.devices : []).map(normalizeDeviceForHash).sort((a, b) => a.deviceStableId.localeCompare(b.deviceStableId) || a.deviceHash.localeCompare(b.deviceHash)),
     data: {
-      stats: Array.isArray(data.stats) ? data.stats : [],
+      stats: normalizeStatsForHash(data.stats),
       eventLog: { warm: (Array.isArray(data?.eventLog?.warm) ? data.eventLog.warm : []).filter(x => !isBackupSemanticNoiseEvent(x)) },
       achievements: data.achievements || {},
       streaks: data.streaks || {},
