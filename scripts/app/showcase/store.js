@@ -1,5 +1,6 @@
 // Компактный Store витрины.
-const NS = 'sc3:', deep = v => JSON.parse(JSON.stringify(v));
+const NS = 'sc3:', deep = v => JSON.parse(JSON.stringify(v)), nowTs = () => Date.now();
+
 export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
   const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
   const jSet = (k, v) => { try { ls.setItem(NS + k, JSON.stringify(v)); } catch {} };
@@ -13,39 +14,38 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
 
   const normCtx = (c, def = false, fbOrd = getCat()) => {
     c = c && typeof c === 'object' ? deep(c) : {};
-    const { order, hidden } = normSnap(c, fbOrd), x = { ...c, order, hidden, sortMode: c.sortMode || 'user', hiddenPlacement: c.hiddenPlacement || 'inline' };
+    const { order, hidden } = normSnap(c, fbOrd), x = { ...c, order, hidden, sortMode: c.sortMode || 'user', hiddenPlacement: c.hiddenPlacement || 'inline', createdAt: Number(c.createdAt || Date.now()), updatedAt: Number(c.updatedAt || c.createdAt || 0), deletedAt: Number(c.deletedAt || 0) };
     if (!def) x.creationSnapshot = c.creationSnapshot ? normSnap(c.creationSnapshot, c.creationSnapshot.order || order) : { order: [...order], hidden: [...hidden] };
     return x;
   };
 
-  const mkPl = ({ id, name, order, hidden = [], color = '', sortMode = 'user', hiddenPlacement = 'inline', createdAt = Date.now() }) => {
+  const mkPl = ({ id, name, order, hidden = [], color = '', sortMode = 'user', hiddenPlacement = 'inline', createdAt = nowTs(), updatedAt = nowTs(), deletedAt = 0 }) => {
     const s = normSnap({ order, hidden }, order || getCat());
-    return normCtx({ id, name, order: s.order, hidden: s.hidden, color, sortMode, hiddenPlacement, createdAt, creationSnapshot: deep(s) }, false, s.order);
+    return normCtx({ id, name, order: s.order, hidden: s.hidden, color, sortMode, hiddenPlacement, createdAt, updatedAt, deletedAt, creationSnapshot: deep(s) }, false, s.order);
   };
 
   const Store = {
-    pl: () => (jGet('playlists', []) || []).filter(p => p?.id).map(p => normCtx(p, false, p.order || getCat())),
+    allPl: () => (jGet('playlists', []) || []).filter(p => p?.id).map(p => normCtx(p, false, p.order || getCat())),
+    pl: () => Store.allPl().filter(p => !p.deletedAt),
     setPl: v => jSet('playlists', (Array.isArray(v) ? v : []).map(p => normCtx(p, false, p?.order || getCat()))),
     get: id => Store.pl().find(p => p.id === id) || null,
-    save: p => { 
-      const a = Store.pl(), i = a.findIndex(x => x.id === p.id);
-      const prev = i >= 0 ? a[i] : null;
-      const ops = prev ? [...(prev.ops || [])] : [];
-      const now = Date.now();
+    getDeleted: () => Store.allPl().filter(p => p.deletedAt),
+    restore: id => { const a = Store.allPl(), i = a.findIndex(x => x.id === id); if (i < 0) return false; a[i] = { ...a[i], deletedAt: 0, updatedAt: nowTs() }; Store.setPl(a); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: a[i]?.name || '' }); } catch {} return true; },
+    purge: id => { const p = Store.allPl().find(x => x.id === id); Store.setPl(Store.allPl().filter(x => x.id !== id)); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' }); } catch {} return true; },
+    save: p => {
+      const a = Store.allPl(), i = a.findIndex(x => x.id === p.id);
+      const prev = i >= 0 ? a[i] : null, ops = prev ? [...(prev.ops || [])] : [], ts = nowTs();
       if (prev) {
-        p.order.filter(u => !prev.order.includes(u)).forEach(u => ops.push({ t: 'add', u, ts: now }));
-        prev.order.filter(u => !p.order.includes(u)).forEach(u => ops.push({ t: 'del', u, ts: now }));
-      } else {
-        p.order.forEach(u => ops.push({ t: 'add', u, ts: p.createdAt || now }));
-      }
-      p.ops = ops.slice(-300); // Ограничиваем историю 300 последних операций
-      const n = normCtx(p, false, p.order || getCat());
-      n.ops = p.ops;
+        (p.order || []).filter(u => !(prev.order || []).includes(u)).forEach(u => ops.push({ t: 'add', u, ts }));
+        (prev.order || []).filter(u => !(p.order || []).includes(u)).forEach(u => ops.push({ t: 'del', u, ts }));
+      } else (p.order || []).forEach(u => ops.push({ t: 'add', u, ts: p.createdAt || ts }));
+      p.ops = ops.slice(-300); p.deletedAt = 0; p.updatedAt = ts;
+      const n = normCtx(p, false, p.order || getCat()); n.ops = p.ops;
       i >= 0 ? a.splice(i, 1, n) : a.push(n);
       Store.setPl(a);
-      try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: prev ? 'update' : 'create', playlistId: p.id, name: p.name || '', orderCount: (p.order || []).length, hiddenCount: (p.hidden || []).length }); } catch {}
+      try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: prev?.deletedAt ? 'restore_update' : (prev ? 'update' : 'create'), playlistId: p.id, name: p.name || '', orderCount: (p.order || []).length, hiddenCount: (p.hidden || []).length }); } catch {}
     },
-    del: id => { const p = Store.get(id); Store.setPl(Store.pl().filter(x => x.id !== id)); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'delete', playlistId: id, name: p?.name || '' }); } catch {} },
+    del: id => { const a = Store.allPl(), i = a.findIndex(x => x.id === id); if (i < 0) return false; const ts = nowTs(), p = a[i]; a[i] = { ...p, deletedAt: ts, updatedAt: Math.max(Number(p.updatedAt || 0), ts) }; Store.setPl(a); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'delete', playlistId: id, name: p?.name || '' }); } catch {} return true; },
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
     ui: () => jGet('ui_v2', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui_v2', v),
     cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
