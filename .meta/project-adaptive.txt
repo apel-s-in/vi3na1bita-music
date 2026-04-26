@@ -428,7 +428,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 22:21:54 UTC
+Сгенерировано: 2026-04-26 22:22:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4881,7 +4881,7 @@ export default { renderProfileShell };
 
 //=================================================
 // FILE: /scripts/app/profile/restore-backup-runner.js
-import { bindCurrentInstallToDeviceStableId } from '../../core/device-linking.js';
+import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
@@ -4988,6 +4988,8 @@ export const runBackupRestore = async ({
       platform: picked?.platform || '',
       registry: backup?.devices || []
     }).catch(() => null);
+  } else if (asNewDevice) {
+    await ensureCurrentDeviceRegistryRow({ registry: backup?.devices || [] }).catch(() => null);
   }
   await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
   await markRestoreCompleted();
