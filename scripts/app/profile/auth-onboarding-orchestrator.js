@@ -172,19 +172,8 @@ function showWelcomeNoBackupModal(profile) {
     const val = inp?.value?.trim() || device.label;
     try {
       localStorage.setItem(DEVICE_LABEL_KEY, val);
-      // Обновляем device registry с новым label
-      const reg = window.DeviceRegistry?.getDeviceRegistry?.() || [];
-      const currentId = window.DeviceRegistry?.getCurrentDeviceIdentity?.();
-      if (currentId && reg.length) {
-        const updated = reg.map(d => {
-          if ((d.deviceStableId && d.deviceStableId === currentId.deviceStableId) ||
-              (d.deviceHash && d.deviceHash === currentId.deviceHash)) {
-            return { ...d, label: val };
-          }
-          return d;
-        });
-        window.DeviceRegistry?.saveDeviceRegistry?.(updated);
-      }
+      const { ensureCurrentDeviceRegistryRow } = await import('../../core/device-linking.js');
+      await ensureCurrentDeviceRegistryRow({ label: val });
     } catch {}
     m.remove();
     _currentModal = null;
