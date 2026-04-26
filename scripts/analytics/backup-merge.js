@@ -1,6 +1,8 @@
 // scripts/analytics/backup-merge.js
 // Все чистые merge-функции для backup/restore. Импортируется из backup-vault.js и может использоваться в hybrid-sync.
 
+import { isDeletedRow } from './tombstone-contract.js';
+
 export const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 
 export const minPositive = (...vs) => Math.min(...vs.map(toNum).filter(v => v > 0)) || 0;
@@ -20,7 +22,8 @@ const uniq = a => [...new Set((Array.isArray(a)?a:[]).filter(Boolean))];
 
 export const mergeFavoritesStorageSafe = (lR, rR) => { const m = new Map(); [...parseS(lR,[]), ...parseS(rR,[])].forEach(i => { const u = String(i?.uid||'').trim(); if(!u)return; const p=m.get(u), cA=!i?.inactiveAt; if(!p) return m.set(u,{...i,uid:u}); if((p&&!p.inactiveAt)||cA) return m.set(u,{...p,...i,uid:u,inactiveAt:null,addedAt:minPositive(p.addedAt,i.addedAt)||Date.now(),sourceAlbum:p.sourceAlbum||i.sourceAlbum||p.albumKey||i.albumKey||null,albumKey:p.albumKey||i.albumKey||p.sourceAlbum||i.sourceAlbum||null}); m.set(u,{...p,...i,uid:u,inactiveAt:Math.max(toNum(p.inactiveAt),toNum(i.inactiveAt))}); }); return JSON.stringify([...m.values()]); };
 
-export const mergePlaylistsStorageSafe = (lR, rR) => { const m = new Map(); [...parseS(lR,[]), ...parseS(rR,[])].forEach(pl => { const id = String(pl?.id||'').trim(); if(!id)return; const p=m.get(id); if(!p) return m.set(id,{...pl,id,order:uniq(pl?.order),hidden:uniq(pl?.hidden),ops:pl.ops||[]}); let ord=[], ops=[]; if(p.ops&&pl.ops&&(p.ops.length||pl.ops.length)){ const oM=new Map(); [...p.ops,...pl.ops].forEach(op=>oM.set(`${op.t}:${op.u}:${op.ts}`,op)); ops=[...oM.values()].sort((a,b)=>a.ts-b.ts); const st=new Set(); ops.forEach(op=>op.t==='add'?st.add(op.u):st.delete(op.u)); ord=[...st]; } else ord=uniq([...(p.order||[]),...(pl.order||[])]); m.set(id,{...p,...pl,id,name:p.name||pl.name||'Плейлист',color:p.color||pl.color||'',createdAt:minPositive(p.createdAt,pl.createdAt)||Date.now(),order:ord,hidden:uniq([...(p.hidden||[]),...(pl.hidden||[])]).filter(u=>ord.includes(u)),ops}); }); return JSON.stringify([...m.values()]); };
+const normPl = pl => ({ ...(pl||{}), id:String(pl?.id||'').trim(), name:String(pl?.name||'Плейлист'), color:String(pl?.color||''), createdAt:toNum(pl?.createdAt)||Date.now(), updatedAt:toNum(pl?.updatedAt)||toNum(pl?.createdAt)||0, deletedAt:toNum(pl?.deletedAt), order:uniq(pl?.order), hidden:uniq(pl?.hidden), ops:Array.isArray(pl?.ops)?pl.ops:[] });
+export const mergePlaylistsStorageSafe = (lR, rR) => { const m = new Map(); [...parseS(lR,[]), ...parseS(rR,[])].map(normPl).forEach(pl => { const id=pl.id; if(!id)return; const p=m.get(id); if(!p) return m.set(id,pl); let ord=[],ops=[]; if((p.ops?.length||0)||(pl.ops?.length||0)){ const oM=new Map(); [...(p.ops||[]),...(pl.ops||[])].forEach(op=>oM.set(`${op.t}:${op.u}:${op.ts}`,op)); ops=[...oM.values()].sort((a,b)=>toNum(a.ts)-toNum(b.ts)); const st=new Set(); ops.forEach(op=>op.t==='add'?st.add(op.u):st.delete(op.u)); ord=[...st]; } else ord=uniq([...(p.order||[]),...(pl.order||[])]); const deletedAt=Math.max(toNum(p.deletedAt),toNum(pl.deletedAt)), updatedAt=Math.max(toNum(p.updatedAt),toNum(pl.updatedAt)); m.set(id,{...p,...pl,id,name:pl.name||p.name||'Плейлист',color:pl.color||p.color||'',createdAt:minPositive(p.createdAt,pl.createdAt)||Date.now(),updatedAt,deletedAt:deletedAt>updatedAt?deletedAt:0,order:ord,hidden:uniq([...(p.hidden||[]),...(pl.hidden||[])]).filter(u=>ord.includes(u)),ops:ops.slice(-300)}); }); return JSON.stringify([...m.values()].filter(x=>x.id)); };
 
 export const mergeProfileStorageValueSafe = (k, l, r) => r == null ? l : (l == null ? r : (k === '__favorites_v2__' ? mergeFavoritesStorageSafe(l, r) : (k === 'sc3:playlists' ? mergePlaylistsStorageSafe(l, r) : r)));
 
