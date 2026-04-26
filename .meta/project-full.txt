@@ -419,7 +419,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 11:48:07 UTC
+Сгенерировано: 2026-04-26 11:49:19 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1514,6 +1514,7 @@ export default { safeNum, safeString, safeJsonParse, normalizeBackupSummary, nor
 
 import { safeNum, safeString, safeJsonParse, compareLocalVsCloud } from './backup-summary.js';
 import { isWatchedStorageKey, markStorageKeyDirty, markDomainDirty, consumeDirtyState, DOMAIN_DEBOUNCE_MS } from './sync-domains.js';
+import { uploadBackupBundle } from './backup-upload-runner.js';
 
 const LS_SYNC = 'backup:autosync:enabled', LS_RESTORE = 'backup:restore_or_skip_done';
 let _tmr=null, _last=0, _bnd=false, _rdy=false;
@@ -1584,15 +1585,15 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
         if(['cloud_richer','cloud_probably_richer'].includes(sU.reason)) window.dispatchEvent(new CustomEvent('yandex:cloud:newer',{detail:{meta:sU.cloudMeta||null,compareState:sU.reason,localScore:sU.compare?.localScore||0,cloudScore:sU.compare?.cloudScore||0,localTs:sU.compare?.localTs||0,cloudTs:sU.compare?.cloudTs||0}}));
         return;
       }
-      const mt=await disk.upload(tok,b);
-      try{
-        const dev=await BackupVault.buildDeviceSettingsObject?.();
-        if(dev?.deviceStableId && Object.keys(dev?.localStorage||{}).length) await disk.uploadDeviceSettings?.(tok,dev).catch(()=>null);
-      }catch{}
+      const up=await uploadBackupBundle({ disk, token:tok, BackupVault, backup:b, force:false, uploadDevice:true, reason:'autosync' });
+      if(!up.uploadedShared&&!up.uploadedDevice){ emitSt('idle'); return; }
+      const mt=up.meta;
       _last=Date.now();
       try{
-        localStorage.setItem('yandex:last_backup_meta',JSON.stringify(mt));
-        localStorage.setItem('yandex:last_backup_check',JSON.stringify(mt));
+        if(mt){
+          localStorage.setItem('yandex:last_backup_meta',JSON.stringify(mt));
+          localStorage.setItem('yandex:last_backup_check',JSON.stringify(mt));
+        }
         localStorage.setItem('yandex:last_backup_local_ts',String(Number(b?.revision?.timestamp||b?.createdAt||Date.now())));
         window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
       }catch{}
