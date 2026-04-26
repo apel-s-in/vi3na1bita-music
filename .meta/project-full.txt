@@ -428,7 +428,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 22:16:50 UTC
+Сгенерировано: 2026-04-26 22:18:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1578,12 +1578,31 @@ export const setSyncEnabled = v => { localStorage.setItem(LS_SYNC, v?'1':'0'); i
 
 const emitSt = s => window.dispatchEvent(new CustomEvent('backup:sync:state',{detail:{state:s}}));
 
-const checkSafe = async (d, t) => { try { const cm=await d.getMeta(t).catch(()=>null), lSum=await enrich(getLocSum()), cmp=compareLocalVsCloud(lSum, cm); if(cmp.state==='no_cloud') return{ok:true,reason:'no_cloud'}; if(['local_richer','local_probably_richer','equivalent'].includes(cmp.state)) return{ok:true,reason:cmp.state,compare:cmp,cloudMeta:cm}; return{ok:false,reason:cmp.state,compare:cmp,cloudMeta:cm}; } catch(e){ const m=String(e?.message||''); if(m.includes('disk_forbidden')||m.includes('disk_auth_error')||m.includes('403')){console.warn('[BackupSyncEngine] disk forbidden, blocking autosave until reauth');return{ok:false,reason:'cloud_forbidden',error:m};} return{ok:false,reason:'cloud_compare_failed',error:m}; } };
+const readCachedCloudMeta = (maxAgeMs = 10 * 60000) => {
+  try {
+    const ts = safeNum(localStorage.getItem('yandex:last_backup_check_ts'));
+    if (!ts || Date.now() - ts > maxAgeMs) return null;
+    return safeJsonParse(localStorage.getItem('yandex:last_backup_check') || localStorage.getItem('yandex:last_backup_meta') || 'null', null);
+  } catch { return null; }
+};
+const writeCachedCloudMeta = m => {
+  try {
+    if (!m) return;
+    localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
+    localStorage.setItem('yandex:last_backup_check_ts', String(Date.now()));
+  } catch {}
+};
+
+const checkSafe = async (d, t) => { try { const cached=readCachedCloudMeta(), cm=cached||await d.getMeta(t).catch(()=>null); if(cm&&!cached) writeCachedCloudMeta(cm); const lSum=await enrich(getLocSum()), cmp=compareLocalVsCloud(lSum, cm); if(cmp.state==='no_cloud') return{ok:true,reason:'no_cloud'}; if(['local_richer','local_probably_richer','equivalent'].includes(cmp.state)) return{ok:true,reason:cmp.state,compare:cmp,cloudMeta:cm}; return{ok:false,reason:cmp.state,compare:cmp,cloudMeta:cm}; } catch(e){ const m=String(e?.message||''); if(m.includes('disk_forbidden')||m.includes('disk_auth_error')||m.includes('403')){console.warn('[BackupSyncEngine] disk forbidden, blocking autosave until reauth');return{ok:false,reason:'cloud_forbidden',error:m};} return{ok:false,reason:'cloud_compare_failed',error:m}; } };
 
 const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
   if(!canUp()) return;
   markDomainDirty(domain);
-  try{localStorage.setItem('backup:local_dirty_ts', String(Date.now()));}catch{}
+  try{
+    localStorage.setItem('backup:local_dirty_ts', String(Date.now()));
+    const prev=safeJsonParse(localStorage.getItem('backup:last_dirty_domains:v1')||'[]',[]);
+    localStorage.setItem('backup:last_dirty_domains:v1',JSON.stringify([...new Set([...(Array.isArray(prev)?prev:[]),domain].filter(Boolean))]));
+  }catch{}
   clearTimeout(_tmr);
   const dirtyState = consumeDirtyState();
   const plannedMs = immediate ? DOMAIN_DEBOUNCE_MS.achievements : (dirtyState.debounceMs || DOMAIN_DEBOUNCE_MS.generic);
@@ -1614,7 +1633,9 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
         if(mt){
           localStorage.setItem('yandex:last_backup_meta',JSON.stringify(mt));
           localStorage.setItem('yandex:last_backup_check',JSON.stringify(mt));
+          localStorage.setItem('yandex:last_backup_check_ts',String(Date.now()));
         }
+        localStorage.removeItem('backup:last_dirty_domains:v1');
         localStorage.setItem('yandex:last_backup_local_ts',String(Number(b?.revision?.timestamp||b?.createdAt||Date.now())));
         window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
       }catch{}
@@ -1648,6 +1669,10 @@ export const initBackupSyncEngine = () => {
       markDomainDirty('achievements');
       markDirty({ immediate:true, domain:'achievements' });
     }
+  });
+  window.addEventListener('backup:domain-dirty', e => {
+    if(!_rdy) return;
+    markDirty({ immediate:!!e.detail?.immediate, domain:e.detail?.domain||'generic' });
   });
   window.addEventListener('analytics:logUpdated', () => {
     if(!_rdy) return;
