@@ -88,10 +88,7 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
       }catch{}
       emitSt('ok');
       setTimeout(()=>emitSt('idle'),3000);
-      if(window.eventLogger){
-        window.eventLogger.log('FEATURE_USED','global',{feature:'backup'});
-        window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
-      }
+      if(window.eventLogger) window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
     } catch(e){
       emitSt('idle');
       console.debug('[BackupSyncEngine] skip:',e?.message);
