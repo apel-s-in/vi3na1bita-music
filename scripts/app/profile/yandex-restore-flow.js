@@ -23,6 +23,7 @@ export async function openYandexRestoreFlow({
   autoPickedPath = null,
   inheritDeviceKey = null,
   asNewDevice = false,
+  skipDeviceSettings = false,
   skipPreview = false,
   applyMode = 'all'
 } = {}) {
@@ -50,6 +51,7 @@ export async function openYandexRestoreFlow({
             mode: mode || 'all',
             inheritDeviceKey,
             asNewDevice,
+            skipDeviceSettings,
             allowPlaybackSensitive: false,
             refreshReason: asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore',
             keepCurrentAlbum: true
