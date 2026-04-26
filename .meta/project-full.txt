@@ -419,7 +419,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 11:49:19 UTC
+Сгенерировано: 2026-04-26 11:51:50 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4779,6 +4779,7 @@ export default { loadProfileView };
 //=================================================
 // FILE: /scripts/app/profile/yandex-actions.js
 import { BackupVault } from '../../analytics/backup-vault.js';
+import { uploadBackupBundle } from '../../analytics/backup-upload-runner.js';
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { openBackupInfoModal, openBackupFoundModal, openManualRestoreHelpModal } from './yandex-modals.js';
 import { openYandexRestoreFlow } from './yandex-restore-flow.js';
@@ -4813,18 +4814,10 @@ export function initYandexActions() {
         } catch {}
         nSys?.info('Сохраняем единый backup на Яндекс Диск...');
         try {
-          const b = await BackupVault.buildBackupObject();
-          const m = await disk.upload(t, b);
+          const up = await uploadBackupBundle({ disk, token: t, BackupVault, force: true, uploadDevice: true, reason: 'manual_save' });
+          const b = up.backup;
           try {
-            const dev = await BackupVault.buildDeviceSettingsObject();
-            if (dev?.deviceStableId && Object.keys(dev?.localStorage || {}).length) await disk.uploadDeviceSettings(t, dev).catch(() => null);
-          } catch {}
-          try {
-            localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
-            localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-            localStorage.setItem('yandex:last_backup_local_ts', String(Number(b?.revision?.timestamp || b?.createdAt || Date.now())));
             localStorage.setItem('profile:last_snapshot', JSON.stringify(b?.data?.userProfile || localProfile || { name: 'Слушатель' }));
-            window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
           } catch {}
           // Инвалидируем persistent cache orchestrator, чтобы следующий логин получил свежие данные
           try {
