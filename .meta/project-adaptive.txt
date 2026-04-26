@@ -423,7 +423,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 14:36:02 UTC
+Сгенерировано: 2026-04-26 14:36:45 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4795,6 +4795,7 @@ export const runBackupRestore = async ({
   });
   await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
   await markRestoreCompleted();
+  try { window.eventLogger?.log?.('RESTORE_APPLIED', null, { mode, refreshReason, asNewDevice: !!asNewDevice, skipDeviceSettings: !!skipDeviceSettings }); } catch {}
   await refreshAfterRestore({ reason: refreshReason, keepCurrentAlbum });
   return true;
 };
