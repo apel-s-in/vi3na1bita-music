@@ -425,7 +425,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 21:15:15 UTC
+Сгенерировано: 2026-04-26 21:23:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4027,7 +4027,7 @@ function showWelcomeNoBackupModal(profile) {
   const inp = m?.querySelector('#ao-device-label');
   const okBtn = m?.querySelector('#ao-welcome-ok');
 
-  const saveLabelAndClose = () => {
+  const saveLabelAndClose = async () => {
     const val = inp?.value?.trim() || device.label;
     try {
       localStorage.setItem(DEVICE_LABEL_KEY, val);
