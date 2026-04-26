@@ -25,7 +25,13 @@ export async function ensureCurrentDeviceRegistryRow({ label = '', registry = nu
     seenHashes: [deviceHash]
   });
   const out = DeviceRegistry.saveDeviceRegistry([...rows, row]);
-  try { localStorage.setItem(DEVICE_LABEL_KEY, row.label); } catch {}
+  try {
+    localStorage.setItem(DEVICE_LABEL_KEY, row.label);
+    if (window.eventLogger) {
+      window.eventLogger.deviceHash = deviceHash;
+      window.eventLogger.deviceStableId = deviceStableId;
+    }
+  } catch {}
   return out.find(d => d.deviceStableId === deviceStableId) || row;
 }
 
@@ -79,6 +85,10 @@ export async function bindCurrentInstallToDeviceStableId({
     localStorage.setItem('deviceStableId', targetStableId);
     localStorage.setItem('deviceHash', deviceHash);
     localStorage.setItem(DEVICE_LABEL_KEY, finalLabel);
+    if (window.eventLogger) {
+      window.eventLogger.deviceHash = deviceHash;
+      window.eventLogger.deviceStableId = targetStableId;
+    }
   } catch {}
 
   const out = DeviceRegistry.saveDeviceRegistry(rows);
