@@ -425,7 +425,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 21:25:52 UTC
+Сгенерировано: 2026-04-26 21:26:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2604,14 +2604,25 @@ export const SYNC_WATCH_KEYS = new Set([
   '__favorites_v2__',
   'sc3:playlists',
   'sc3:default',
+  'sc3:albumColors',
   'sc3:activeId',
   'sc3:ui_v2',
   'sourcePref',
   'favoritesOnlyMode',
   'qualityMode:v1',
+  'offline:mode:v1',
+  'offline:cacheQuality:v1',
+  'cloud:listenThreshold',
+  'cloud:ttlDays',
+  'playerVolume',
   'lyricsViewMode',
   'lyricsAnimationEnabled',
+  'lyricsShowAnimBtn',
   'logoPulseEnabled',
+  'logoPulsePreset',
+  'logoPulseIntensity',
+  'logoPulseDebug',
+  'profileShowControls',
   'dl_format_v1'
 ]);
 
@@ -2619,15 +2630,26 @@ export const STORAGE_KEY_TO_DOMAIN = new Map([
   ['__favorites_v2__', 'favorites'],
   ['sc3:playlists', 'playlists'],
   ['sc3:default', 'playlists'],
-  ['sc3:activeId', 'playlists'],
-  ['sc3:ui_v2', 'ui'],
-  ['sourcePref', 'device'],
-  ['favoritesOnlyMode', 'device'],
-  ['qualityMode:v1', 'device'],
-  ['lyricsViewMode', 'ui'],
-  ['lyricsAnimationEnabled', 'ui'],
-  ['logoPulseEnabled', 'ui'],
-  ['dl_format_v1', 'downloads']
+  ['sc3:albumColors', 'playlists'],
+  ['sc3:activeId', 'deviceSettings'],
+  ['sc3:ui_v2', 'deviceSettings'],
+  ['sourcePref', 'deviceSettings'],
+  ['favoritesOnlyMode', 'deviceSettings'],
+  ['qualityMode:v1', 'deviceSettings'],
+  ['offline:mode:v1', 'deviceSettings'],
+  ['offline:cacheQuality:v1', 'deviceSettings'],
+  ['cloud:listenThreshold', 'deviceSettings'],
+  ['cloud:ttlDays', 'deviceSettings'],
+  ['playerVolume', 'deviceSettings'],
+  ['lyricsViewMode', 'deviceSettings'],
+  ['lyricsAnimationEnabled', 'deviceSettings'],
+  ['lyricsShowAnimBtn', 'deviceSettings'],
+  ['logoPulseEnabled', 'deviceSettings'],
+  ['logoPulsePreset', 'deviceSettings'],
+  ['logoPulseIntensity', 'deviceSettings'],
+  ['logoPulseDebug', 'deviceSettings'],
+  ['profileShowControls', 'deviceSettings'],
+  ['dl_format_v1', 'deviceSettings']
 ]);
 
 export const DOMAIN_DEBOUNCE_MS = Object.freeze({
