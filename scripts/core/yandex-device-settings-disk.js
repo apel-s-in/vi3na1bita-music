@@ -1,35 +1,7 @@
-import { buildDeviceSettingsPath, normalizeDeviceSettingsSnapshot, safeDeviceString } from '../analytics/device-settings-contract.js';
+import { DEVICE_SETTINGS_DIR, buildDeviceSettingsPath, normalizeDeviceSettingsSnapshot, safeDeviceString } from '../analytics/device-settings-contract.js';
+import { YANDEX_DISK_PROXY as PROXY, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir, mapProxyError as mPE } from './yandex-disk-transport.js';
 
-const API='https://cloud-api.yandex.net/v1/disk',PROXY='https://functions.yandexcloud.net/d4ecdu6kgamevcauajid',aH=t=>({'Authorization':`OAuth ${t}`}),sS=safeDeviceString,sPJ=t=>{try{return JSON.parse(t)}catch{return null}},mPE=(p,e)=>{const s=Number(e?.status||0),pl=e?.payload&&typeof e.payload==='object'?e.payload:null,d=[sS(pl?.error),sS(pl?.stage),sS(pl?.path),sS(pl?.raw),sS(pl?.hint)].filter(Boolean).join(' | '),err=new Error(d?`${p}:${d}`:p);err.status=s;err.payload=pl;return err};
-
-async function fPJ(u,t,r=2){
-  const qU=u.includes('?')?`${u}&token=${t}`:`${u}?token=${t}`;
-  const headers={'X-Yandex-Auth':t,'Accept':'application/json'};
-  let lE=null;
-  for(let i=0;i<=r;i++){
-    try{
-      const rs=await fetch(qU,{method:'GET',headers,credentials:'omit',mode:'cors'}),tx=await rs.text(),d=sPJ(tx);
-      if(rs.ok) return d;
-      if([502,503,504].includes(rs.status)&&i<r){await new Promise(x=>setTimeout(x,800*(i+1)));continue}
-      const e=new Error(sS(d?.error||`http_${rs.status}`));
-      e.status=rs.status;e.payload=d||{raw:sS(tx).slice(0,400)};
-      if(Number(e.status)&&![502,503,504].includes(Number(e.status))) throw e;
-      lE=e;
-    }catch(e){
-      lE=e;
-      if(Number(e?.status||0)&&![502,503,504].includes(Number(e?.status||0))) throw e;
-    }
-  }
-  throw lE||new Error('proxy_failed')
-}
-
-async function pJP(t,p,d){
-  const rL=await fetch(`${API}/resources/upload?path=${encodeURIComponent(p)}&overwrite=true`,{headers:aH(t)});
-  if(!rL.ok) throw new Error(`upload_link_failed:${rL.status}`);
-  const rs=await fetch((await rL.json()).href,{method:'PUT',body:new Blob([JSON.stringify(d)],{type:'application/json'})});
-  if(!rs.ok) throw new Error(`upload_failed:${rs.status}`);
-  return true;
-}
+const sS=safeDeviceString;
 
 export const YandexDeviceSettingsDisk={
   async uploadDeviceSettings(t,d){
@@ -37,6 +9,7 @@ export const YandexDeviceSettingsDisk={
     const stableId=sS(d?.deviceStableId||''),path=buildDeviceSettingsPath(stableId);
     if(!path) throw new Error('device_settings_no_stable_id');
     const doc=normalizeDeviceSettingsSnapshot({...d,path});
+    await ensureResourceDir(t,DEVICE_SETTINGS_DIR).catch(()=>null);
     await pJP(t,path,doc);
     return doc;
   },
