@@ -3,6 +3,7 @@ import { toNum, maxDateStr, mergeAchievementsSafe, mergeProfileStorageValueSafe 
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
+import { isBackupNoiseEvent } from './event-contract.js';
 
 export const rebuildStatsFromWarmEvents = async () => {
   try {
@@ -58,9 +59,9 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
       const seen = new Set();
       let mergedEvents = [...lW, ...(backup.data.eventLog.warm || [])]
         .filter(x => x?.eventId && !seen.has(x.eventId) && seen.add(x.eventId))
-        .filter(x => x.type !== 'ACHIEVEMENT_UNLOCK' && !(x.type === 'FEATURE_USED' && String(x.data?.feature).startsWith('backup')))
+        .filter(x => !isBackupNoiseEvent(x))
         .sort((x, y) => x.timestamp - y.timestamp);
-      const WARM_LIMIT = 2000;
+      const WARM_LIMIT = 10000;
       if (mergedEvents.length > WARM_LIMIT) {
         console.debug(`[BackupVault] warm merge trimmed: ${mergedEvents.length} → ${WARM_LIMIT}`);
         mergedEvents = mergedEvents.slice(-WARM_LIMIT);
