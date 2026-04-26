@@ -42,9 +42,10 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
       const n = normCtx(p, false, p.order || getCat());
       n.ops = p.ops;
       i >= 0 ? a.splice(i, 1, n) : a.push(n);
-      Store.setPl(a); 
+      Store.setPl(a);
+      try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: prev ? 'update' : 'create', playlistId: p.id, name: p.name || '', orderCount: (p.order || []).length, hiddenCount: (p.hidden || []).length }); } catch {}
     },
-    del: id => Store.setPl(Store.pl().filter(p => p.id !== id)),
+    del: id => { const p = Store.get(id); Store.setPl(Store.pl().filter(x => x.id !== id)); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'delete', playlistId: id, name: p?.name || '' }); } catch {} },
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
     ui: () => jGet('ui_v2', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui_v2', v),
     cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
