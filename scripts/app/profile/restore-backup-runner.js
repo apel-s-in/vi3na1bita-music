@@ -20,8 +20,10 @@ export const maybeApplyDeviceSettings = async ({
   backup,
   inheritDeviceKey = null,
   asNewDevice = false,
+  skipDeviceSettings = false,
   allowPlaybackSensitive = false
 } = {}) => {
+  if (skipDeviceSettings) return false;
   if (!BackupVault || !disk || !token) return false;
   if (typeof BackupVault.importDeviceSettingsObject !== 'function') return false;
 
@@ -77,6 +79,7 @@ export const runBackupRestore = async ({
   mode = 'all',
   inheritDeviceKey = null,
   asNewDevice = false,
+  skipDeviceSettings = false,
   allowPlaybackSensitive = false,
   refreshReason = 'cloud_restore',
   keepCurrentAlbum = true
@@ -89,6 +92,7 @@ export const runBackupRestore = async ({
     backup,
     inheritDeviceKey,
     asNewDevice,
+    skipDeviceSettings,
     allowPlaybackSensitive
   });
   await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
