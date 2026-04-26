@@ -7,8 +7,8 @@ import { safeNum } from '../../analytics/backup-summary.js';
 import { detectCurrentDeviceProfile, getSystemInstallDateLabel } from '../../core/device-profile.js';
 import { loadPreloadFromCache, savePreloadToCache, invalidatePreloadCache, preloadBackupData } from './yandex-preload-cache.js';
 import { runBackupRestore } from './restore-backup-runner.js';
+import { sessionKeyForCloudSnapshot, isReminderSuppressedForSnapshot, isSnoozedUntilNow, snoozeReminder } from './restore-decision.js';
 
-const SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
 
 // Кэш предзагрузки в памяти
@@ -19,7 +19,6 @@ let _currentModal = null;
 
 // preload cache helpers moved to /scripts/app/profile/yandex-preload-cache.js
 
-const sessionKey = (ts) => `yandex:onboarding:shown:${Number(ts || 0)}`;
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 
 // ─── Device profile helpers moved to /scripts/core/device-profile.js ─────────
@@ -35,28 +34,6 @@ function getSystemInstallDate() {
 }
 
 // preload transport helpers moved to /scripts/app/profile/yandex-preload-cache.js
-
-function isReminderSuppressedForSnapshot(cloudTs) {
-  try {
-    const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
-    const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
-    const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
-    return restoreDone && sameSnapshot;
-  } catch { return false; }
-}
-
-function isSnoozedUntilNow() {
-  try {
-    const until = safeNum(localStorage.getItem(SKIP_REMINDER_KEY));
-    return until > 0 && Date.now() < until;
-  } catch { return false; }
-}
-
-function snoozeReminder(hours = 24) {
-  try {
-    localStorage.setItem(SKIP_REMINDER_KEY, String(Date.now() + hours * 3600000));
-  } catch {}
-}
 
 // ─── Главная точка входа ──────────────────────────────────────────────────────
 export async function runOnboardingFlow({ token, profile, isFirstLogin = true } = {}) {
@@ -95,12 +72,13 @@ export async function runOnboardingFlow({ token, profile, isFirstLogin = true } 
       return;
     }
 
-    if (sessionStorage.getItem(sessionKey(cloudTs)) === '1') {
+    const shownKey = sessionKeyForCloudSnapshot(cloudTs);
+    if (sessionStorage.getItem(shownKey) === '1') {
       console.debug('[AuthOnboarding] already shown in this session');
       _onboardingActive = false;
       return;
     }
-    sessionStorage.setItem(sessionKey(cloudTs), '1');
+    sessionStorage.setItem(shownKey, '1');
 
     if (isSnoozedUntilNow() && !isFirstLogin) {
       console.debug('[AuthOnboarding] snoozed until later');
