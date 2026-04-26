@@ -5,6 +5,8 @@ import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1';
 const LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:';
+const LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1';
+const HISTORY_MIN_INTERVAL_MS = 6 * 3600 * 1000;
 
 const sS = v => String(v == null ? '' : v).trim();
 const sN = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -71,6 +73,7 @@ const persistMeta = ({ meta, backup, sharedHash } = {}) => {
     if (meta) {
       localStorage.setItem('yandex:last_backup_meta', JSON.stringify(meta));
       localStorage.setItem('yandex:last_backup_check', JSON.stringify(meta));
+      localStorage.setItem('yandex:last_backup_check_ts', String(Date.now()));
       window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
     }
     if (backup) localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
@@ -98,9 +101,14 @@ export const uploadBackupBundle = async ({
   let uploadedShared = false;
 
   if (shouldUploadShared) {
-    meta = await disk.upload(token, b);
+    const lastHistoryAt = sN(localStorage.getItem(LS_LAST_HISTORY_AT) || 0);
+    const writeHistory = !!force || reason === 'manual_save' || Date.now() - lastHistoryAt > HISTORY_MIN_INTERVAL_MS;
+    const dirtyRaw = jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []);
+    const changedDomains = Array.isArray(dirtyRaw) ? dirtyRaw.map(sS).filter(Boolean) : [];
+    meta = await disk.upload(token, b, { writeHistory, changedDomains });
     uploadedShared = true;
     persistMeta({ meta, backup: b, sharedHash });
+    if (writeHistory) try { localStorage.setItem(LS_LAST_HISTORY_AT, String(Date.now())); } catch {}
   }
 
   let uploadedDevice = false;
