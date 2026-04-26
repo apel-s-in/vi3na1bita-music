@@ -1,5 +1,6 @@
 import { BackupVault as DefaultBackupVault } from './backup-vault.js';
 import { stableStringify, sha256Hex } from './backup-builders.js';
+import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1';
@@ -27,7 +28,7 @@ export const buildSharedSemanticPayload = backup => {
     devices: (Array.isArray(backup?.devices) ? backup.devices : []).map(normalizeDeviceForHash).sort((a, b) => a.deviceStableId.localeCompare(b.deviceStableId) || a.deviceHash.localeCompare(b.deviceHash)),
     data: {
       stats: Array.isArray(data.stats) ? data.stats : [],
-      eventLog: { warm: Array.isArray(data?.eventLog?.warm) ? data.eventLog.warm : [] },
+      eventLog: { warm: (Array.isArray(data?.eventLog?.warm) ? data.eventLog.warm : []).filter(x => !isBackupSemanticNoiseEvent(x)) },
       achievements: data.achievements || {},
       streaks: data.streaks || {},
       userProfile: data.userProfile || {},
@@ -91,7 +92,6 @@ export const uploadBackupBundle = async ({
     meta = await disk.upload(token, b);
     uploadedShared = true;
     persistMeta({ meta, backup: b, sharedHash });
-    try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared: true, uploadedDevice: false, checksum: b?.integrity?.payloadHash || '' }); } catch {}
   }
 
   let uploadedDevice = false;
@@ -115,6 +115,9 @@ export const uploadBackupBundle = async ({
   }
 
   if (!uploadedShared && meta) persistMeta({ meta, backup: b });
+  if (uploadedShared || uploadedDevice) {
+    try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared, uploadedDevice, checksum: b?.integrity?.payloadHash || '' }); } catch {}
+  }
 
   return {
     ok: true,
