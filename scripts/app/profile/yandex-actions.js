@@ -1,8 +1,7 @@
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { uploadBackupBundle } from '../../analytics/backup-upload-runner.js';
 import { YandexDisk } from '../../core/yandex-disk.js';
-import { openBackupInfoModal, openBackupFoundModal, openManualRestoreHelpModal } from './yandex-modals.js';
-import { openYandexRestoreFlow } from './yandex-restore-flow.js';
+import { openBackupInfoModal, openBackupFoundModal } from './yandex-modals.js';
 
 let _cachedBackupFile = null;
 const pickBackupFile = (useCache = false) => (useCache && _cachedBackupFile) ? Promise.resolve(_cachedBackupFile) : new Promise(res => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.vi3bak,application/json'; inp.onchange = () => { const f = inp.files?.[0] || null; if (f) _cachedBackupFile = f; res(f); }; inp.click(); });
