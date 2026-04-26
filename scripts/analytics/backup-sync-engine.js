@@ -65,7 +65,7 @@ const markDirty = ({ immediate = false, domain = 'generic' } = {}) => {
       if(!tok||!ya.isTokenAlive()) return emitSt('idle');
       const b=await BackupVault.buildBackupObject(), d=b?.data, fV=d?.localStorage?.['__favorites_v2__'], pV=d?.localStorage?.['sc3:playlists'];
       let fC=0,pC=0;
-      try{fC=JSON.parse(fV||'[]').filter(i=>!i.inactiveAt).length;pC=JSON.parse(pV||'[]').length;}catch{}
+      try{fC=JSON.parse(fV||'[]').filter(i=>!i.inactiveAt).length;pC=JSON.parse(pV||'[]').filter(p=>!p?.deletedAt).length;}catch{}
       if((d?.stats?.length||0)<=1 && (d?.eventLog?.warm?.length||0)===0 && Object.keys(d?.achievements||{}).length===0 && fC===0 && pC===0) return emitSt('idle');
       const sU=await checkSafe(disk, tok);
       if(!sU.ok){
