@@ -423,7 +423,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 14:37:19 UTC
+Сгенерировано: 2026-04-26 14:38:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1523,7 +1523,7 @@ import { isWatchedStorageKey, markStorageKeyDirty, markDomainDirty, consumeDirty
 import { uploadBackupBundle } from './backup-upload-runner.js';
 
 const LS_SYNC = 'backup:autosync:enabled', LS_RESTORE = 'backup:restore_or_skip_done';
-let _tmr=null, _last=0, _bnd=false, _rdy=false;
+let _tmr=null, _last=0, _bnd=false, _rdy=false, _lastStatsDirty=0;
 
 const getLocSum = () => { const a=window.achievementEngine, f=safeJsonParse(localStorage.getItem('__favorites_v2__'),[]), pl=safeJsonParse(localStorage.getItem('sc3:playlists'),[]), r=window.DeviceRegistry?.getDeviceRegistry?.()||safeJsonParse(localStorage.getItem('backup:device_registry:v1'),[])||[]; return { timestamp:safeNum(localStorage.getItem('yandex:last_backup_local_ts')), level:safeNum(a?.profile?.level||1), xp:safeNum(a?.profile?.xp||0), achievementsCount:Object.keys(a?.unlocked||{}).length, favoritesCount:Array.isArray(f)?f.filter(i=>!i?.inactiveAt).length:0, playlistsCount:Array.isArray(pl)?pl.length:0, statsCount:0, eventCount:0, devicesCount:Array.isArray(r)?r.length:0, deviceStableCount:window.DeviceRegistry?.countDeviceStableIds?.(r)||new Set((Array.isArray(r)?r:[]).map(d=>safeString(d?.deviceStableId)).filter(Boolean)).size }; };
 const enrich = async s => { try { const { metaDB } = await import('./meta-db.js'), [st, w] = await Promise.all([metaDB.getAllStats().catch(()=>[]), metaDB.getEvents('events_warm').catch(()=>[])]); return { ...s, statsCount:Array.isArray(st)?st.filter(x=>x?.uid&&x.uid!=='global').length:safeNum(s?.statsCount), eventCount:Array.isArray(w)?w.length:safeNum(s?.eventCount) }; } catch { return s; } };
@@ -1636,6 +1636,13 @@ export const initBackupSyncEngine = () => {
       markDomainDirty('achievements');
       markDirty({ immediate:true, domain:'achievements' });
     }
+  });
+  window.addEventListener('analytics:logUpdated', () => {
+    if(!_rdy) return;
+    if(Date.now()-_lastStatsDirty<60000) return;
+    _lastStatsDirty=Date.now();
+    markDomainDirty('stats');
+    markDirty({ immediate:false, domain:'stats' });
   });
   setTimeout(()=>{
     if(!_rdy){
