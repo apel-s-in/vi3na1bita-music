@@ -13,7 +13,7 @@
 
       // Разовая миграция: чистим раздутый device registry и warm events от накопленных дублей (cleanup после старых версий)
       try {
-        const MIGRATION_KEY = 'migration:cleanup_duplicates:v1';
+        const MIGRATION_KEY = 'migration:cleanup_duplicates:v2';
         if (!localStorage.getItem(MIGRATION_KEY)) {
           const { default: DR } = await import('./analytics/device-registry.js');
           const before = DR.getDeviceRegistry();
@@ -24,8 +24,8 @@
           }
           // Ограничиваем warm если сильно раздут
           const warm = await M.metaDB.getEvents('events_warm').catch(() => []);
-          if (Array.isArray(warm) && warm.length > 2000) {
-            const trimmed = [...warm].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)).slice(-2000);
+          if (Array.isArray(warm) && warm.length > 10000) {
+            const trimmed = [...warm].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)).slice(-10000);
             await M.metaDB.clearEvents('events_warm');
             await M.metaDB.addEvents(trimmed, 'events_warm');
             console.debug(`[Migration] warm events trimmed: ${warm.length} → ${trimmed.length}`);
