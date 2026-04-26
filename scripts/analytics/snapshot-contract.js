@@ -65,6 +65,14 @@ export const collectSnapshotLocalStorage = (storage = localStorage) => ALL_SNAPS
   return acc;
 }, {});
 
+export const collectSharedSnapshotLocalStorage = (storage = localStorage) => SHARED_STORAGE_KEYS.reduce((acc, key) => {
+  try {
+    const v = storage.getItem(key);
+    if (v != null) acc[key] = v;
+  } catch {}
+  return acc;
+}, {});
+
 export const getSharedSnapshotLocalEntries = raw => Object.fromEntries(
   Object.entries(raw || {}).filter(([k]) => isSharedStorageKey(k))
 );
@@ -88,6 +96,7 @@ export default {
   isDeviceStorageKey,
   isTransientStorageKey,
   collectSnapshotLocalStorage,
+  collectSharedSnapshotLocalStorage,
   getSharedSnapshotLocalEntries,
   getDeviceSnapshotLocalEntries
 };
