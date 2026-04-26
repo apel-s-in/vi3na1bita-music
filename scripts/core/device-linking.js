@@ -31,6 +31,7 @@ export async function ensureCurrentDeviceRegistryRow({ label = '', registry = nu
       window.eventLogger.deviceHash = deviceHash;
       window.eventLogger.deviceStableId = deviceStableId;
     }
+    window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'devices'}}));
   } catch {}
   return out.find(d => d.deviceStableId === deviceStableId) || row;
 }
@@ -89,6 +90,7 @@ export async function bindCurrentInstallToDeviceStableId({
       window.eventLogger.deviceHash = deviceHash;
       window.eventLogger.deviceStableId = targetStableId;
     }
+    window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'devices'}}));
   } catch {}
 
   const out = DeviceRegistry.saveDeviceRegistry(rows);
