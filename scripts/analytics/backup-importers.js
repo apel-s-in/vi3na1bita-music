@@ -122,7 +122,10 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
     }
 
     try {
-      localStorage.setItem('backup:device_registry:v1', JSON.stringify(Array.isArray(backup.devices) ? backup.devices : []));
+      const localDevices = DeviceRegistry.getDeviceRegistry();
+      const remoteDevices = Array.isArray(backup.devices) ? backup.devices : [];
+      const mergedDevices = DeviceRegistry.normalizeDeviceRegistry([...localDevices, ...remoteDevices]);
+      DeviceRegistry.saveDeviceRegistry(mergedDevices);
       localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
     } catch {}
 
