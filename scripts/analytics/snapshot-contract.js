@@ -2,18 +2,7 @@ export const SHARED_STORAGE_KEYS = [
   '__favorites_v2__',
   'sc3:playlists',
   'sc3:default',
-  'sc3:activeId',
-  'sc3:ui_v2',
-  'sc3:albumColors',
-  'lyricsViewMode',
-  'lyricsAnimationEnabled',
-  'lyricsShowAnimBtn',
-  'logoPulseEnabled',
-  'logoPulsePreset',
-  'logoPulseIntensity',
-  'logoPulseDebug',
-  'profileShowControls',
-  'dl_format_v1'
+  'sc3:albumColors'
 ];
 
 export const DEVICE_STORAGE_KEYS = [
@@ -27,7 +16,18 @@ export const DEVICE_STORAGE_KEYS = [
   'playerVolume',
   'playerStateV2',
   'sleepTimerState:v2',
-  'app:first-install-ts'
+  'app:first-install-ts',
+  'sc3:activeId',
+  'sc3:ui_v2',
+  'lyricsViewMode',
+  'lyricsAnimationEnabled',
+  'lyricsShowAnimBtn',
+  'logoPulseEnabled',
+  'logoPulsePreset',
+  'logoPulseIntensity',
+  'logoPulseDebug',
+  'profileShowControls',
+  'dl_format_v1'
 ];
 
 export const TRANSIENT_STORAGE_KEYS = [
