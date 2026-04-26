@@ -43,6 +43,11 @@ export function initYandexActions() {
             const orch = await import('./auth-onboarding-orchestrator.js');
             orch.clearPreloadCache?.();
           } catch {}
+          try {
+            const se = await import('../../analytics/backup-sync-engine.js');
+            se.markSyncReady?.('manual_save');
+            se.markRestoreOrSkipDone?.('manual_save');
+          } catch {}
           nSys?.success('Прогресс сохранён на Яндекс Диск ✅');
           rerender?.();
         } catch (e) {
