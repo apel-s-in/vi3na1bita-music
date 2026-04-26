@@ -32,6 +32,8 @@ export const DOMAIN_DEBOUNCE_MS = Object.freeze({
   achievements: 5000,
   favorites: 15000,
   playlists: 20000,
+  profile: 30000,
+  stats: 43200000,
   ui: 30000,
   downloads: 30000,
   device: 30000,
