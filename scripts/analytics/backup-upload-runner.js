@@ -91,6 +91,7 @@ export const uploadBackupBundle = async ({
     meta = await disk.upload(token, b);
     uploadedShared = true;
     persistMeta({ meta, backup: b, sharedHash });
+    try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared: true, uploadedDevice: false, checksum: b?.integrity?.payloadHash || '' }); } catch {}
   }
 
   let uploadedDevice = false;
