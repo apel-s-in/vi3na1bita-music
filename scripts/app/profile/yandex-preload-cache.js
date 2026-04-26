@@ -2,7 +2,7 @@ import { safeNum } from '../../analytics/backup-summary.js';
 
 export const PRELOAD_TIMEOUT_MS = 12000;
 export const PRELOAD_RETRY_COUNT = 3;
-export const PERSISTENT_CACHE_TTL_MS = 24 * 3600 * 1000;
+export const PERSISTENT_CACHE_TTL_MS = 10 * 60 * 1000;
 export const PERSISTENT_CACHE_KEY = 'yandex:onboarding:preload_cache:v1';
 
 export const withTimeout = (promise, ms, label = 'op') => Promise.race([
