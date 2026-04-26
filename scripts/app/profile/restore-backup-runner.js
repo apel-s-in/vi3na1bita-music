@@ -1,4 +1,4 @@
-import { bindCurrentInstallToDeviceStableId } from '../../core/device-linking.js';
+import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
@@ -105,6 +105,8 @@ export const runBackupRestore = async ({
       platform: picked?.platform || '',
       registry: backup?.devices || []
     }).catch(() => null);
+  } else if (asNewDevice) {
+    await ensureCurrentDeviceRegistryRow({ registry: backup?.devices || [] }).catch(() => null);
   }
   await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
   await markRestoreCompleted();
