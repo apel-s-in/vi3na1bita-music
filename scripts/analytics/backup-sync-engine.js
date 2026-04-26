@@ -24,7 +24,7 @@ export const markSyncReady = r => {
   // Оно не должно ставить engine в ready (autosave не запускается), но и не должно блокировать fresh-login flow.
   const riskyBlocked = ['meta_check_failed','timeout_fallback'];
   const pendingUserChoice = ['cloud_newer_user_choice'];
-  const explicitDoneReasons = ['restore_completed','manual_save','user_skipped_restore'];
+  const explicitDoneReasons = ['restore_completed','manual_save','user_skipped_restore','no_cloud_backup','cloud_not_newer','diff_too_small','local_richer','local_probably_richer'];
   if (_rdy && !riskyBlocked.includes(reason) && !pendingUserChoice.includes(reason)) return;
   if (riskyBlocked.includes(reason)) {
     console.warn('[BackupSyncEngine] sync NOT ready due to risky state:', reason);
