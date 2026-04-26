@@ -424,7 +424,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 17:23:53 UTC
+Сгенерировано: 2026-04-26 17:24:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3753,6 +3753,30 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
           window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
         }
       });
+    }},
+    { sel: '[data-pl-restore]', run: async ({ el }) => {
+      try {
+        const id = String(el.dataset.plRestore || '').trim();
+        const rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [];
+        const i = rows.findIndex(p => p?.id === id);
+        if (i < 0) return;
+        rows[i] = { ...rows[i], deletedAt: 0, updatedAt: Date.now() };
+        localStorage.setItem('sc3:playlists', JSON.stringify(rows));
+        try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: rows[i]?.name || '' }); } catch {}
+        window.NotificationSystem?.success?.('Плейлист восстановлен ✅');
+        rP?.();
+      } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
+    }},
+    { sel: '[data-pl-purge]', run: async ({ el }) => {
+      try {
+        const id = String(el.dataset.plPurge || '').trim();
+        const rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [];
+        const p = rows.find(x => x?.id === id);
+        localStorage.setItem('sc3:playlists', JSON.stringify(rows.filter(x => x?.id !== id)));
+        try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' }); } catch {}
+        window.NotificationSystem?.success?.('Плейлист удалён окончательно');
+        rP?.();
+      } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
     }},
     {
       sel: '#stats-reset-open-btn',
