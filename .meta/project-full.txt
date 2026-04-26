@@ -419,7 +419,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 11:53:15 UTC
+Сгенерировано: 2026-04-26 11:53:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -709,7 +709,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.82'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-25');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.83'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-26');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
