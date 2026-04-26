@@ -196,7 +196,7 @@ function showWelcomeNoBackupModal(profile) {
 
 // ─── Модалка выбора backup (restore flow) ────────────────────────────────────
 async function showRestoreChoiceModal({ token, meta, items, profile, preloadedBackup }) {
-  const mod = await import('./yandex-modals.js');
+  const mod = await import('./fresh-restore-modal.js');
   const openFn = mod?.openFreshLoginRestoreModal;
   if (typeof openFn !== 'function') return;
 
@@ -205,7 +205,8 @@ async function showRestoreChoiceModal({ token, meta, items, profile, preloadedBa
   openFn({
     meta,
     items,
-    currentDeviceInfo: device, // новое поле — передаём в yandex-modals.js
+    backup: preloadedBackup || null,
+    currentDeviceInfo: device,
     onLater: async () => {
       console.debug('[AuthOnboarding] user chose later');
       snoozeReminder(24);
@@ -216,9 +217,9 @@ async function showRestoreChoiceModal({ token, meta, items, profile, preloadedBa
       } catch {}
       window.NotificationSystem?.info?.('Можно восстановить позже из Личного кабинета');
     },
-    onRestore: async ({ pickedPath, inheritDeviceKey, asNewDevice } = {}) => {
+    onRestore: async ({ pickedPath, inheritDeviceKey, asNewDevice, skipDeviceSettings } = {}) => {
       await executeRestore({
-        token, pickedPath, inheritDeviceKey, asNewDevice: !!asNewDevice, profile,
+        token, pickedPath, inheritDeviceKey, asNewDevice: !!asNewDevice, skipDeviceSettings: !!skipDeviceSettings, profile,
         preloadedBackup
       });
     },
@@ -231,7 +232,7 @@ async function showRestoreChoiceModal({ token, meta, items, profile, preloadedBa
   });
 }
 
-async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice, profile, preloadedBackup }) {
+async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice, skipDeviceSettings = false, profile, preloadedBackup }) {
   const nSys = window.NotificationSystem;
 
   nSys?.info?.('Применяем прогресс из облака...');
@@ -242,7 +243,7 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
 
     if (canUseCache) {
       console.debug('[AuthOnboarding] using preloaded backup for restore');
-      await applyPreloadedBackup({ backup: preloadedBackup, token, asNewDevice, profile, inheritDeviceKey });
+      await applyPreloadedBackup({ backup: preloadedBackup, token, asNewDevice, profile, inheritDeviceKey, skipDeviceSettings });
       return;
     }
 
@@ -255,6 +256,7 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
       autoPickedPath: pickedPath,
       inheritDeviceKey: inheritDeviceKey || null,
       asNewDevice: !!asNewDevice,
+      skipDeviceSettings: !!skipDeviceSettings,
       skipPreview: true,
       applyMode: 'all',
       localProfile: profile || { name: 'Слушатель' }
@@ -272,7 +274,7 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
   }
 }
 
-async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inheritDeviceKey = null }) {
+async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inheritDeviceKey = null, skipDeviceSettings = false }) {
   const nSys = window.NotificationSystem;
   try {
     const { BackupVault } = await import('../../analytics/backup-vault.js');
@@ -284,6 +286,7 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inher
       mode: 'all',
       inheritDeviceKey,
       asNewDevice,
+      skipDeviceSettings,
       allowPlaybackSensitive: false,
       refreshReason: asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore',
       keepCurrentAlbum: true
