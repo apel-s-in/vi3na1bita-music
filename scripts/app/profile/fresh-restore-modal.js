@@ -1,5 +1,6 @@
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
 import { renderCloudStatPair } from './cloud-ui-helpers.js';
+import { renderRestoreDiffHtml } from './restore-diff.js';
 
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 const sS = v => String(v == null ? '' : v).trim();
@@ -40,6 +41,7 @@ export const openFreshLoginRestoreModal = ({
   const cmp = compareLocalVsCloud(localSnap, cloudSnap);
   const cL = getBackupCompareLabel(localSnap, cloudSnap);
   const devices = collectRestoreDevices({ backup, items: safe, meta });
+  const diffHtml = renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices });
 
   const currentDeviceHtml = currentDeviceInfo ? `
     <div style="background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px">
@@ -70,6 +72,7 @@ export const openFreshLoginRestoreModal = ({
     ${currentDeviceHtml}
     ${renderCloudStatPair({ localSummary: localSnap, cloudSummary: cloudSnap })}
     <div style="font-size:11px;color:#9db7dd;margin-bottom:10px">Сравнение: ${esc(cL)} (${esc(cmp.state)})</div>
+    ${diffHtml}
 
     <div style="font-size:12px;font-weight:700;color:#eaf2ff;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.8px">Версия backup</div>
     <div id="fresh-list">${renderItems()}</div>
