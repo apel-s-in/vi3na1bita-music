@@ -233,9 +233,10 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
     }
 
     _err(idx, r, o, d) {
+      const tok = this._tok;
       this._emit('onPlaybackError', { reason: 'error' });
-      if ((W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) && r < 2) setTimeout(() => this._tok === this._tok && this.load(idx, { ...o, autoPlay: true, _retryN: r + 1, dir: d }), 250 + r * 500);
-      else { this._skips = Math.min(this.playlist.length, this._skips + 1); setTimeout(() => this._tok === this._tok && this.load((idx + d + this.playlist.length) % this.playlist.length, { ...o, autoPlay: true, isAutoSkip: true, dir: d }), 120); }
+      if ((W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) && r < 2) setTimeout(() => tok === this._tok && this.load(idx, { ...o, autoPlay: true, _retryN: r + 1, dir: d }), 250 + r * 500);
+      else { this._skips = Math.min(this.playlist.length, this._skips + 1); setTimeout(() => tok === this._tok && this.load((idx + d + this.playlist.length) % this.playlist.length, { ...o, autoPlay: true, isAutoSkip: true, dir: d }), 120); }
     }
 
     _unload(silent) {
