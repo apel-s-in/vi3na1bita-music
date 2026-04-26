@@ -51,14 +51,15 @@ export const STORAGE_KEY_TO_DOMAIN = new Map([
 ]);
 
 export const DOMAIN_DEBOUNCE_MS = Object.freeze({
-  achievements: 5000,
-  favorites: 15000,
-  playlists: 20000,
+  achievements: 30000,
   profile: 30000,
+  favorites: 180000,
+  playlists: 120000,
   stats: 43200000,
-  ui: 30000,
-  downloads: 30000,
-  device: 30000,
+  deviceSettings: 600000,
+  ui: 300000,
+  downloads: 300000,
+  device: 600000,
   generic: 60000
 });
 
