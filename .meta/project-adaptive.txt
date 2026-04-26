@@ -423,7 +423,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 13:59:50 UTC
+Сгенерировано: 2026-04-26 14:00:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -624,7 +624,7 @@ jobs:
 <link rel="preload" href="img/logo.png" as="image">
 <link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
 <link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
-<link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/quarantine.css">
+<link rel="stylesheet" href="styles/profile.css">
 <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -713,7 +713,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.86'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-26');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.87'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-26');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
