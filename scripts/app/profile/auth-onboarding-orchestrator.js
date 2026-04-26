@@ -168,7 +168,7 @@ function showWelcomeNoBackupModal(profile) {
   const inp = m?.querySelector('#ao-device-label');
   const okBtn = m?.querySelector('#ao-welcome-ok');
 
-  const saveLabelAndClose = () => {
+  const saveLabelAndClose = async () => {
     const val = inp?.value?.trim() || device.label;
     try {
       localStorage.setItem(DEVICE_LABEL_KEY, val);
