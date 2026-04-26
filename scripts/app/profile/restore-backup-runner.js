@@ -97,6 +97,7 @@ export const runBackupRestore = async ({
   });
   await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
   await markRestoreCompleted();
+  try { window.eventLogger?.log?.('RESTORE_APPLIED', null, { mode, refreshReason, asNewDevice: !!asNewDevice, skipDeviceSettings: !!skipDeviceSettings }); } catch {}
   await refreshAfterRestore({ reason: refreshReason, keepCurrentAlbum });
   return true;
 };
