@@ -423,7 +423,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-26 14:28:30 UTC
+Сгенерировано: 2026-04-26 14:29:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -859,11 +859,11 @@ export class AchievementEngine {
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.seasonal && ((r.seasonal.start && now < r.seasonal.start) || (r.seasonal.end && now > r.seasonal.end) || (r.seasonal.months && !r.seasonal.months.includes(new Date().getMonth())))) continue;
       if (r.type === 'static' && !this.unlocked[k]) {
-        if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { this.unlocked[k] = now; eXp += r.reward.xp; chg = true; this._notifyUnlock(r.ui.name, r.ui.icon, r.reward.xp); }
+        if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { this.unlocked[k] = now; eXp += r.reward.xp; chg = true; this._notifyUnlock(r.ui.name, r.ui.icon, r.reward.xp, k); }
       } else if (r.type === 'scalable') {
         let lvl = 1, sft = 50; while (this.unlocked[`${k}_${lvl}`]) lvl++;
         while (sft-- > 0 && (!r.scaling.maxLevel || lvl <= r.scaling.maxLevel) && (!r.scaling.steps || lvl <= r.scaling.steps.length)) {
-          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { this.unlocked[`${k}_${lvl}`] = now; const xp = this._getSc(r, lvl, true); eXp += xp; chg = true; this._notifyUnlock(r.ui.name.replace('{level}', lvl), r.ui.icon, xp); lvl++; } else break;
+          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { this.unlocked[`${k}_${lvl}`] = now; const xp = this._getSc(r, lvl, true); eXp += xp; chg = true; this._notifyUnlock(r.ui.name.replace('{level}', lvl), r.ui.icon, xp, `${k}_${lvl}`); lvl++; } else break;
         }
       }
     }
@@ -908,7 +908,7 @@ export class AchievementEngine {
     }
     return arr.sort((a, b) => a.isUnlocked === b.isUnlocked ? (b.unlockedAt || 0) - (a.unlockedAt || 0) : (a.isUnlocked ? -1 : 1));
   }
-  _notifyUnlock(name, icon, xp) { eventLogger.log('ACHIEVEMENT_UNLOCK', null, { name, xp }); window.NotificationSystem?.success(`🏆 ${icon} Открыто: ${name} (+${xp} XP)`); }
+  _notifyUnlock(name, icon, xp, id = '') { eventLogger.log('ACHIEVEMENT_UNLOCK', null, { id, name, icon, xp }); window.NotificationSystem?.success(`🏆 ${icon} Открыто: ${name} (+${xp} XP)`); }
   broadcast(streak) { window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(this.unlocked).length, items: this.unlocked, streak, profile: this.profile } })); }
 }
 
