@@ -71,6 +71,7 @@ export const YandexAuth={
     };
     updatePreloadStatus(false);
     const sv=async()=>{
+      const wasPlayingBeforeSave=!!window.playerCore?.isPlaying?.();
       try{window.playerCore?._persistPlaybackState?.(true)}catch{}
       const n=i?.value?.trim()||sg,p=read(LS_PROFILE)||{};
       write(LS_PROFILE,{...p,displayName:n});
@@ -78,7 +79,7 @@ export const YandexAuth={
       window.NotificationSystem?.success(`Имя сохранено: ${n} ✅`);
       m.remove();
       setTimeout(()=>{try{window.PlayerUI?.switchAlbumInstantly?.();window.PlayerUI?.updateMiniHeader?.();window.PlayerUI?.updatePlaylistFiltering?.();window.dispatchEvent(new CustomEvent('profile:data:refreshed',{detail:{reason:'auth_name_saved'}}));}catch{}},120);
-      setTimeout(()=>{try{if(window.playerCore?.getCurrentTrackUid?.()&&!window.playerCore?.isPlaying?.())window.playerCore?.play?.()}catch{}},420);
+      setTimeout(()=>{try{if(wasPlayingBeforeSave&&window.playerCore?.getCurrentTrackUid?.()&&!window.playerCore?.isPlaying?.())window.playerCore?.play?.()}catch{}},420);
       // Запускаем orchestrator flow: проверка backup + предложение восстановления
       // Orchestrator сам дождётся завершения startPreload — не жёстко таймером, а через await _preloadPromise внутри runOnboardingFlow.
       // 200ms — это только пауза на закрытие анимации модалки имени, чтобы новая модалка не дёргала UI.
