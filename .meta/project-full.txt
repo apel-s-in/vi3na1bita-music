@@ -432,7 +432,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-27 20:26:59 UTC
+Сгенерировано: 2026-04-27 20:28:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4095,6 +4095,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
         if (i < 0) return;
         rows[i] = { ...rows[i], deletedAt: 0, updatedAt: Date.now() };
         localStorage.setItem('sc3:playlists', JSON.stringify(rows));
+        try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } })); } catch {}
         try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: rows[i]?.name || '' }); } catch {}
         window.NotificationSystem?.success?.('Плейлист восстановлен ✅');
         rP?.();
@@ -4106,6 +4107,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
         const rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [];
         const p = rows.find(x => x?.id === id);
         localStorage.setItem('sc3:playlists', JSON.stringify(rows.filter(x => x?.id !== id)));
+        try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } })); } catch {}
         try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' }); } catch {}
         window.NotificationSystem?.success?.('Плейлист удалён окончательно');
         rP?.();
