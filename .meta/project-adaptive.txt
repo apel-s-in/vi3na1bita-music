@@ -432,7 +432,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-27 20:31:24 UTC
+Сгенерировано: 2026-04-27 20:32:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -722,7 +722,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.95'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-27');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.2.96'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-04-27');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -7075,7 +7075,7 @@ if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.2.95',
+  APP_VERSION: '8.2.96',
   BUILD_DATE: '2026-04-27',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
