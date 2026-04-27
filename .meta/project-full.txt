@@ -432,7 +432,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-04-27 20:28:26 UTC
+Сгенерировано: 2026-04-27 20:28:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5440,7 +5440,7 @@ const getDlFmt = () => {
   }
 };
 
-const setDlFmt = v => localStorage.setItem('dl_format_v1', JSON.stringify(v));
+const setDlFmt = v => { localStorage.setItem('dl_format_v1', JSON.stringify(v)); try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); } catch {} };
 
 export const renderDownloadSettingsSection = () => `<div class="settings-content active" id="set-general"><button type="button" class="set-acc-btn">СКАЧИВАНИЕ ТРЕКОВ</button><div class="set-acc-body"><div class="set-sub" style="margin-bottom:4px;padding:0 4px">Соберите формат имени файла по умолчанию.</div><div class="dl-fmt-container"><div class="dl-preview-box"><div class="dl-preview-lbl">Пример файла:</div><div class="dl-preview-val" id="dl-fmt-preview"></div></div><div id="dl-fmt-list"></div><input type="text" id="dl-fmt-custom" class="dl-inp-custom" placeholder="Свой текст или Vi3na1bita" autocomplete="off"></div></div></div>`;
 
