@@ -1,5 +1,6 @@
 // Компактный Store витрины.
 const NS = 'sc3:', deep = v => JSON.parse(JSON.stringify(v)), nowTs = () => Date.now();
+const emitPlDirty = () => { try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } })); } catch {} };
 
 export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
   const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
@@ -30,8 +31,8 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
     setPl: v => jSet('playlists', (Array.isArray(v) ? v : []).map(p => normCtx(p, false, p?.order || getCat()))),
     get: id => Store.pl().find(p => p.id === id) || null,
     getDeleted: () => Store.allPl().filter(p => p.deletedAt),
-    restore: id => { const a = Store.allPl(), i = a.findIndex(x => x.id === id); if (i < 0) return false; a[i] = { ...a[i], deletedAt: 0, updatedAt: nowTs() }; Store.setPl(a); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: a[i]?.name || '' }); } catch {} return true; },
-    purge: id => { const p = Store.allPl().find(x => x.id === id); Store.setPl(Store.allPl().filter(x => x.id !== id)); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' }); } catch {} return true; },
+    restore: id => { const a = Store.allPl(), i = a.findIndex(x => x.id === id); if (i < 0) return false; a[i] = { ...a[i], deletedAt: 0, updatedAt: nowTs() }; Store.setPl(a); emitPlDirty(); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: a[i]?.name || '' }); } catch {} return true; },
+    purge: id => { const p = Store.allPl().find(x => x.id === id); Store.setPl(Store.allPl().filter(x => x.id !== id)); emitPlDirty(); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' }); } catch {} return true; },
     save: p => {
       const a = Store.allPl(), i = a.findIndex(x => x.id === p.id);
       const prev = i >= 0 ? a[i] : null, ops = prev ? [...(prev.ops || [])] : [], ts = nowTs();
@@ -43,9 +44,10 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
       const n = normCtx(p, false, p.order || getCat()); n.ops = p.ops;
       i >= 0 ? a.splice(i, 1, n) : a.push(n);
       Store.setPl(a);
+      emitPlDirty();
       try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: prev?.deletedAt ? 'restore_update' : (prev ? 'update' : 'create'), playlistId: p.id, name: p.name || '', orderCount: (p.order || []).length, hiddenCount: (p.hidden || []).length }); } catch {}
     },
-    del: id => { const a = Store.allPl(), i = a.findIndex(x => x.id === id); if (i < 0) return false; const ts = nowTs(), p = a[i]; a[i] = { ...p, deletedAt: ts, updatedAt: Math.max(Number(p.updatedAt || 0), ts) }; Store.setPl(a); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'delete', playlistId: id, name: p?.name || '' }); } catch {} return true; },
+    del: id => { const a = Store.allPl(), i = a.findIndex(x => x.id === id); if (i < 0) return false; const ts = nowTs(), p = a[i]; a[i] = { ...p, deletedAt: ts, updatedAt: Math.max(Number(p.updatedAt || 0), ts) }; Store.setPl(a); emitPlDirty(); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'delete', playlistId: id, name: p?.name || '' }); } catch {} return true; },
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
     ui: () => jGet('ui_v2', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui_v2', v),
     cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
