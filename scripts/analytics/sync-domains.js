@@ -21,7 +21,8 @@ export const SYNC_WATCH_KEYS = new Set([
   'logoPulseIntensity',
   'logoPulseDebug',
   'profileShowControls',
-  'dl_format_v1'
+  'dl_format_v1',
+  'backup:conflict_policy:v1'
 ]);
 
 export const STORAGE_KEY_TO_DOMAIN = new Map([
@@ -47,7 +48,8 @@ export const STORAGE_KEY_TO_DOMAIN = new Map([
   ['logoPulseIntensity', 'deviceSettings'],
   ['logoPulseDebug', 'deviceSettings'],
   ['profileShowControls', 'deviceSettings'],
-  ['dl_format_v1', 'deviceSettings']
+  ['dl_format_v1', 'deviceSettings'],
+  ['backup:conflict_policy:v1', 'deviceSettings']
 ]);
 
 export const DOMAIN_DEBOUNCE_MS = Object.freeze({
