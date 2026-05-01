@@ -14,7 +14,6 @@ export const DEVICE_STORAGE_KEYS = [
   'cloud:listenThreshold',
   'cloud:ttlDays',
   'playerVolume',
-  'playerStateV2',
   'sleepTimerState:v2',
   'app:first-install-ts',
   'sc3:activeId',
