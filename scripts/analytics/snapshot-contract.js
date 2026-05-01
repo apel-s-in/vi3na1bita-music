@@ -26,7 +26,8 @@ export const DEVICE_STORAGE_KEYS = [
   'logoPulseIntensity',
   'logoPulseDebug',
   'profileShowControls',
-  'dl_format_v1'
+  'dl_format_v1',
+  'backup:conflict_policy:v1'
 ];
 
 export const TRANSIENT_STORAGE_KEYS = [
