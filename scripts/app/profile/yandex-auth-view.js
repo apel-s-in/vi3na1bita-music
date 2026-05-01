@@ -1,5 +1,6 @@
 import { safeNum, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
 import { getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice, formatCloudDateTime, formatCloudTimeOnly } from './cloud-ui-helpers.js';
+import { renderAccountDevicesBlock, bindAccountDevicesBlock } from './account-devices-view.js';
 
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 
@@ -120,6 +121,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
       <div class="yandex-auth-autologin"><span class="yandex-auth-autologin-text">Автовход при истечении сессии</span><label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${aL ? 'checked' : ''}><span class="set-slider"></span></label></div>
       <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0;flex-wrap:wrap"><style>.syncPulse{animation:syncPulse 1s infinite}@keyframes syncPulse{0%,to{opacity:1}50%{opacity:.3}}</style><span id="ya-sync-dot" title="Авто-сохранение" style="width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0;transition:background .3s"></span><span style="flex:1">Авто-сохранение · <span id="ya-last-sync-label">${lastSyncLabel}</span></span><label class="set-switch" style="flex-shrink:0" title="Вкл/выкл автосохранение"><input type="checkbox" id="ya-autosave-toggle" ${autosaveChecked}><span class="set-slider"></span></label></div>
       <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px"><span style="flex:1;color:#888">Автосохранение срабатывает пакетно по значимым изменениям профиля</span><span style="color:#888;font-size:11px">Умный режим</span></div>
+      ${renderAccountDevicesBlock()}
       <div class="yandex-auth-note">Облачная копия хранит общий прогресс аккаунта: события, достижения, избранное, плейлисты, профиль и данные устройств. Восстановление выполняется вручную через предпросмотр, чтобы не затирать локальные данные без подтверждения.</div>
       <div class="yandex-auth-bottomactions"><button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button><button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button><button class="om-btn om-btn--ghost" data-ya-action="reconnect-rights">Переподключить права</button><button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button></div>
     </div>`;
@@ -133,6 +135,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
   }
 
   bindYandexActions(root, rr);
+  bindAccountDevicesBlock(root, rr);
   bindReactiveEvents(root, rr);
   updateSyncDot(root);
 }
