@@ -3,7 +3,7 @@ import DeviceRegistry from './device-registry.js';
 import { normalizeCloudBackupMeta } from './cloud-contract.js';
 import { collectSharedSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
-import { isBackupNoiseEvent } from './event-contract.js';
+import { isBackupSemanticNoiseEvent } from './event-contract.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -96,7 +96,11 @@ export const buildBackupDataSnapshot = async () => {
     metaDB.getStoreAll('collection_state').catch(()=>[]),
     metaDB.getStoreAll('intel_runtime').catch(()=>[])
   ]);
-  const wClean = [...(Array.isArray(w) ? w : []), ...(Array.isArray(h) ? h : [])].filter(x => !isBackupNoiseEvent(x));
+  const seenEvents = new Set();
+  const wClean = [...(Array.isArray(w) ? w : []), ...(Array.isArray(h) ? h : [])]
+    .filter(x => x?.eventId && !seenEvents.has(x.eventId) && seenEvents.add(x.eventId))
+    .filter(x => !isBackupSemanticNoiseEvent(x))
+    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
   const warmTrimmed = trimWarmEvents(wClean);
   if (warmTrimmed.length < w.length || wClean.length < w.length) console.debug(`[BackupVault] warm events trimmed/cleaned: ${w.length} → ${warmTrimmed.length}`);
   return {
@@ -175,12 +179,13 @@ export const buildFullBackupObject = async () => {
   const identity = await readBackupOwnerIdentity();
   const devices = await readDeviceRegistryForBackup();
   const data = await buildBackupDataSnapshot();
-  const cacheMeta = await readDeviceCacheMetaForBackup();
-  if (cacheMeta?.deviceHash || cacheMeta?.deviceStableId) {
-    const d = devices.find(x => (cacheMeta.deviceStableId && x.deviceStableId === cacheMeta.deviceStableId) || (cacheMeta.deviceHash && x.deviceHash === cacheMeta.deviceHash));
-    if (d) d._cacheMeta = cacheMeta.items;
-  }
-  const currentDevice = Array.isArray(devices) ? devices.find(x => (cacheMeta?.deviceStableId && x.deviceStableId === cacheMeta.deviceStableId) || (cacheMeta?.deviceHash && x.deviceHash === cacheMeta.deviceHash)) || devices[0] || null : null;
+  const curIdentity = DeviceRegistry.getCurrentDeviceIdentity();
+  const currentDevice = Array.isArray(devices)
+    ? devices.find(x =>
+        (curIdentity?.deviceStableId && x.deviceStableId === curIdentity.deviceStableId) ||
+        (curIdentity?.deviceHash && x.deviceHash === curIdentity.deviceHash)
+      ) || devices[0] || null
+    : null;
   const revision = buildBackupRevision({ identity, devices, data, currentDevice });
   const payloadHash = await sha256Hex(stableStringify({ identity, devices, revision, data }));
   return {
