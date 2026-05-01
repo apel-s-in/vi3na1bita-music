@@ -375,7 +375,7 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     getFavoritesState() {
       return Favorites.getSnapshot().reduce((r, i) => {
         const u = sUid(i?.uid);
-        if (u) r[i.inactiveAt ? 'inactive' : 'active'].push({ uid: u, sourceAlbum: sUid(i.sourceAlbum || i.albumKey || getTrackByUid(u)?.sourceAlbum), ...(i.inactiveAt && { inactiveAt: i.inactiveAt }) });
+        if (u && !i.deletedAt) r[i.inactiveAt ? 'inactive' : 'active'].push({ uid: u, sourceAlbum: sUid(i.sourceAlbum || i.albumKey || getTrackByUid(u)?.sourceAlbum), ...(i.inactiveAt && { inactiveAt: i.inactiveAt }) });
         return r;
       }, { active: [], inactive: [] });
     }
