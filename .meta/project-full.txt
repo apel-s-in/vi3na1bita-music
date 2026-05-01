@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 19:44:40 UTC
+Сгенерировано: 2026-05-01 19:45:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2560,7 +2560,8 @@ export const DEVICE_STORAGE_KEYS = [
   'logoPulseIntensity',
   'logoPulseDebug',
   'profileShowControls',
-  'dl_format_v1'
+  'dl_format_v1',
+  'backup:conflict_policy:v1'
 ];
 
 export const TRANSIENT_STORAGE_KEYS = [
