@@ -297,7 +297,13 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inher
       await new Promise(r => setTimeout(r, 100));
       window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason: 'cloud_restore_final' } }));
       window.dispatchEvent(new CustomEvent('stats:updated', { detail: { source: 'cloud_restore' } }));
-      window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { source: 'cloud_restore' } }));
+      window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
+        total: window.achievementEngine?.achievements?.length || 0,
+        unlocked: Object.keys(window.achievementEngine?.unlocked || {}).length,
+        items: window.achievementEngine?.unlocked || {},
+        profile: window.achievementEngine?.profile || { xp: 0, level: 1 },
+        source: 'cloud_restore'
+      } }));
       window.dispatchEvent(new CustomEvent('favorites:updated', { detail: { source: 'cloud_restore' } }));
       window.dispatchEvent(new CustomEvent('devices:updated', { detail: { source: 'cloud_restore' } }));
       window.PlayerUI?.updateMiniHeader?.();
