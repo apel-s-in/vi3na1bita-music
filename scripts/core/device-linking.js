@@ -11,7 +11,7 @@ const currentProfile = (registry = [], label = '') => detectCurrentDeviceProfile
   savedLabel: sS(label || localStorage.getItem(DEVICE_LABEL_KEY) || '')
 });
 
-export async function ensureCurrentDeviceRegistryRow({ label = '', registry = null } = {}) {
+export async function ensureCurrentDeviceRegistryRow({ label = '', registry = null, authEvent = false } = {}) {
   const rows = Array.isArray(registry) ? registry : DeviceRegistry.getDeviceRegistry();
   const [deviceHash, deviceStableId] = await Promise.all([getOrCreateDeviceHash(), getOrCreateDeviceStableId()]);
   const prof = currentProfile(rows, label);
@@ -21,7 +21,14 @@ export async function ensureCurrentDeviceRegistryRow({ label = '', registry = nu
     deviceStableId,
     label: sS(label || prof.label),
     firstSeenAt: sN(localStorage.getItem('app:first-install-ts')) || Date.now(),
+    os: prof.os || '',
+    browser: prof.browser || '',
+    screen: prof.screen || '',
+    lang: prof.lang || '',
+    pwa: !!window.Utils?.getPlatform?.()?.isPWA,
     lastSeenAt: Date.now(),
+    retiredAt: 0,
+    authHistory: authEvent ? [{ ts: Date.now(), browser: prof.browser || '', os: prof.os || '', lang: prof.lang || navigator.language || '', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '', pwa: !!window.Utils?.getPlatform?.()?.isPWA }] : [],
     seenHashes: [deviceHash]
   });
   const out = DeviceRegistry.saveDeviceRegistry([...rows, row]);
