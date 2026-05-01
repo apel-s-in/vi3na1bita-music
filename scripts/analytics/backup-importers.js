@@ -1,5 +1,5 @@
 import { metaDB } from './meta-db.js';
-import { toNum, maxDateStr, mergeAchievementsSafe, mergeProfileStorageValueSafe } from './backup-merge.js';
+import { toNum, maxDateStr, mergeAchievementsSafe, mergeProfileStorageValueSafe, getBackupConflictPolicy } from './backup-merge.js';
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
@@ -146,12 +146,17 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
 
 export const applyDeviceSettingsObject = async (deviceDoc, { allowPlaybackSensitive = false } = {}) => {
   const doc = normalizeDeviceSettingsSnapshot(deviceDoc || {});
+  const policy = getBackupConflictPolicy();
   const isPlaying = !!window.playerCore?.isPlaying?.();
+  const effectiveAllowSensitive = !!allowPlaybackSensitive || policy === 'latest';
   Object.entries(doc.localStorage || {}).forEach(([k, v]) => {
     if (!shouldApplyDeviceSettingKey(k)) return;
-    if (!allowPlaybackSensitive && isPlaying && isPlaybackSensitiveDeviceSettingKey(k)) return;
+    const sensitive = isPlaybackSensitiveDeviceSettingKey(k);
+    if (sensitive && isPlaying) return;
+    if (sensitive && !effectiveAllowSensitive) return;
     try { localStorage.setItem(k, v); } catch {}
   });
+  try { window.eventLogger?.log?.('DEVICE_UPDATED', null, { action: 'device_settings_restore', policy, keysCount: Object.keys(doc.localStorage || {}).length, sourceDeviceStableId: doc.deviceStableId || '' }); } catch {}
   window.dispatchEvent(new CustomEvent('analytics:logUpdated'));
   return true;
 };
