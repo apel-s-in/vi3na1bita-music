@@ -97,7 +97,7 @@ export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
     if (!uploaded.uploadedShared && !uploaded.uploadedDevice) { emitSyncState('idle'); return false; }
 
     setLastUploadAt(Date.now());
-    persistUploadResult({ meta: uploaded.meta, backup });
+    persistUploadResult({ meta: uploaded.meta, backup: uploaded.uploadedShared ? backup : null });
     emitSyncState('ok');
     setTimeout(() => emitSyncState('idle'), 3000);
     if (window.eventLogger) window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
