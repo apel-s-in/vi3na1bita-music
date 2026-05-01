@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 21:29:26 UTC
+Сгенерировано: 2026-05-01 21:30:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8060,7 +8060,7 @@ export const YandexAuth={
     this._showNamePickModal(rN,lg);
   },
   _showNamePickModal(rN,lg){
-    if(!window.Modals?.open)return;const sg=rN||lg||'Слушатель',esc=s=>window.Utils?.escapeHtml?.(String(s||''))||String(s||''),m=window.Modals.open({title:'👋 Добро пожаловать!',maxWidth:400,strictClose:true,bodyHtml:`<div style="color:#9db7dd;margin-bottom:16px;line-height:1.5">Вы вошли через Яндекс.<br>Как вас отображать в приложении?</div><div style="margin-bottom:14px"><label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Ваше имя</label><input type="text" id="ya-display-name" style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;outline:none" maxlength="20" placeholder="${esc(sg)}" value="${esc(sg)}" autocomplete="off"><div style="font-size:11px;color:#666;margin-top:6px">Или оставьте как есть — ${esc(sg)}</div></div><div class="om-actions"><button class="modal-action-btn online" id="ya-name-save" style="flex:1;justify-content:center">Сохранить</button></div><div id="ya-preload-status" style="margin-top:10px;font-size:11px;color:#666;text-align:center;min-height:16px;display:flex;align-items:center;justify-content:center;gap:6px"><span class="ya-preload-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(77,170,255,.2);border-top-color:#4daaff;border-radius:50%;animation:spin .8s linear infinite"></span>Проверяем облачную копию...</div>`}),i=m.querySelector('#ya-display-name'),b=m.querySelector('#ya-name-save');
+    if(!window.Modals?.open)return;const sg=rN||lg||'Слушатель',esc=s=>window.Utils?.escapeHtml?.(String(s||''))||String(s||''),m=window.Modals.open({title:'👋 Добро пожаловать!',maxWidth:400,strictClose:true,bodyHtml:`<div style="color:#9db7dd;margin-bottom:16px;line-height:1.5">Вы вошли через Яндекс.<br>Как вас отображать в приложении?</div><div style="margin-bottom:14px"><label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Ваше имя</label><input type="text" id="ya-display-name" style="width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;outline:none" maxlength="20" placeholder="${esc(sg)}" value="${esc(sg)}" autocomplete="off"><div style="font-size:11px;color:#666;margin-top:6px">Или оставьте как есть — ${esc(sg)}</div></div><div class="modal-choice-actions profile-inline-actions"><button class="modal-action-btn online" id="ya-name-save">Сохранить</button></div><div id="ya-preload-status" style="margin-top:10px;font-size:11px;color:#666;text-align:center;min-height:16px;display:flex;align-items:center;justify-content:center;gap:6px"><span class="ya-preload-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(77,170,255,.2);border-top-color:#4daaff;border-radius:50%;animation:spin .8s linear infinite"></span>Проверяем облачную копию...</div>`}),i=m.querySelector('#ya-display-name'),b=m.querySelector('#ya-name-save');
     setTimeout(()=>i?.focus(),100);
     // Следим за состоянием предзагрузки и обновляем статус в модалке
     const updatePreloadStatus=async(attemptRetry=false)=>{
