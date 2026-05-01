@@ -158,8 +158,8 @@ function showWelcomeNoBackupModal(profile) {
           <li>Включите автосохранение в настройках профиля</li>
         </ul>
       </div>
-      <div class="om-actions">
-        <button class="modal-action-btn online" id="ao-welcome-ok" style="flex:1;justify-content:center">Понятно</button>
+      <div class="modal-choice-actions profile-inline-actions">
+        <button class="modal-action-btn online" id="ao-welcome-ok">Понятно</button>
       </div>`
   });
 
