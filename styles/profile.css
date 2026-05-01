@@ -131,6 +131,10 @@
 .log-info{flex:1}
 .log-title{font-size:13px;font-weight:bold;color:#eaf2ff}
 .log-desc{font-size:11px;color:var(--secondary-color);margin-top:2px}
+#prof-logs-list .profile-list-item{align-items:flex-start}
+#prof-logs-list .log-info{min-width:0}
+#prof-logs-list .log-desc{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.35;word-break:break-word}
+#prof-logs-list .log-time{line-height:1.25;padding-top:2px}
 .rec-play-btn{background:rgba(77,170,255,.15);color:var(--secondary-color);border:none;width:36px;height:36px;border-radius:50%;display:flex;justify-content:center;align-items:center;cursor:pointer;transition:.2s}
 .rec-play-btn:hover{background:var(--secondary-color);color:#fff;transform:scale(1.1)}
 .profile-section-title{font-size:14px;font-weight:900;color:#eaf2ff;letter-spacing:.06em;text-transform:uppercase;margin:4px 0 2px}
