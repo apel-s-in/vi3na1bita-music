@@ -8,11 +8,12 @@ import { uploadBackupBundle } from './backup-upload-runner.js';
 import { canUpload, emitSyncState, getLastUploadAt, setLastUploadAt } from './sync-state.js';
 import { checkCloudSafe, writeCachedCloudMeta } from './sync-cloud-guard.js';
 
-let _timer = null;
+let _timer = null, _dueAt = 0;
 
 export const cancelScheduledSync = () => {
   clearTimeout(_timer);
   _timer = null;
+  _dueAt = 0;
 };
 
 const persistDirtyDomain = domain => {
@@ -113,11 +114,21 @@ export const scheduleSync = ({ immediate = false, domain = 'generic' } = {}) => 
   const cleanDomain = String(domain || 'generic').trim() || 'generic';
   markDomainDirty(cleanDomain);
   persistDirtyDomain(cleanDomain);
-  cancelScheduledSync();
 
   const dirtyState = consumeDirtyState();
   const delay = immediate ? DOMAIN_DEBOUNCE_MS.achievements : (dirtyState.debounceMs || DOMAIN_DEBOUNCE_MS.generic);
-  _timer = setTimeout(() => runScheduledSyncNow({ reason: 'autosync' }), Math.max(0, safeNum(delay)));
+  const dueAt = Date.now() + Math.max(0, safeNum(delay));
+
+  // Медленный домен не должен отодвигать уже запланированный быстрый save.
+  if (_timer && _dueAt && dueAt >= _dueAt) return true;
+
+  cancelScheduledSync();
+  _dueAt = dueAt;
+  _timer = setTimeout(() => {
+    _timer = null;
+    _dueAt = 0;
+    runScheduledSyncNow({ reason: 'autosync' });
+  }, Math.max(0, dueAt - Date.now()));
   return true;
 };
 
