@@ -30,6 +30,7 @@ export class MetaDB {
   addEvents(events, store = 'events_hot') { return this._exec(store, 'readwrite', s => events.forEach(ev => s.put(ev))); }
   getEvents(store = 'events_hot') { return this._exec(store, 'readonly', s => s.getAll()); }
   clearEvents(store = 'events_hot') { return this._exec(store, 'readwrite', s => s.clear()); }
+  deleteEvents(events, store = 'events_hot') { const ids = (Array.isArray(events) ? events : []).map(e => String(e?.eventId || '').trim()).filter(Boolean); return ids.length ? this._exec(store, 'readwrite', s => ids.forEach(id => s.delete(id))) : Promise.resolve(true); }
 
   updateStat(uid, fn) {
     return this._exec('stats', 'readwrite', s => {
