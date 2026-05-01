@@ -434,7 +434,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 17:41:21 UTC
+Сгенерировано: 2026-05-01 17:42:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4162,6 +4162,13 @@ import '../../analytics/device-registry.js';
 export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, tokens: tk, reloadProfile: rP }) => {
   if (!c || ctx._pB) return;
   ctx._pB = true;
+
+  c.addEventListener('wheel', e => {
+    const tabs = e.target.closest?.('.ach-classic-tabs');
+    if (!tabs || tabs.scrollWidth <= tabs.clientWidth) return;
+    e.preventDefault();
+    tabs.scrollLeft += e.deltaY || e.deltaX;
+  }, { passive: false });
 
   const handlers = [
     { sel: '.profile-tab-btn', run: ({ el }) => { c.querySelectorAll('.profile-tab-btn, .profile-tab-content').forEach(x => x.classList.remove('active')); el.classList.add('active'); c.querySelector(`#tab-${el.dataset.tab}`)?.classList.add('active'); } },
