@@ -433,7 +433,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 15:59:51 UTC
+Сгенерировано: 2026-05-01 16:00:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -892,6 +892,7 @@ export class AchievementEngine {
         }, 2000); 
       }
       await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('user_profile_rpg', this.profile)]);
+      try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'achievements', immediate: true } })); } catch {}
     }
     this.achievements = this._buildUIArray(); this.broadcast(agg.streak);
   }
