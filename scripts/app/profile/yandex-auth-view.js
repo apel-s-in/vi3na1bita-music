@@ -1,8 +1,7 @@
 import { safeNum, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
 import { getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice, formatCloudDateTime, formatCloudTimeOnly } from './cloud-ui-helpers.js';
 import { renderAccountDevicesBlock, bindAccountDevicesBlock } from './account-devices-view.js';
-
-const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+import { esc } from './profile-ui-kit.js';
 
 const bindYandexActions = (root, rerender) => {
   root.querySelectorAll('[data-ya-action]').forEach(btn => btn.onclick = async () => {
