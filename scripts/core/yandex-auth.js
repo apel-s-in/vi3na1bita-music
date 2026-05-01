@@ -1,6 +1,7 @@
 // scripts/core/yandex-auth.js Яндекс OAuth 2.0 (Implicit Flow) — авторизация без бэкенда. Хранит токен, профиль, displayName привязанный к yandexId. НЕ влияет на воспроизведение, статистику и офлайн-режим.
 const CLIENT_ID='70c0b7256956440eb5b55866d740ffae',REDIRECT_URI='https://vi3na1bita.website.yandexcloud.net/oauth-callback.html',LS_TOKEN='yandex:token',LS_TOKEN_EXP='yandex:token_exp',LS_TOKEN_SCOPE='yandex:token_scope',LS_PROFILE='yandex:profile',LS_AUTO_RELOGIN='yandex:auto_relogin',LS_FORCE_CONFIRM_NEXT='yandex:force_confirm_next',REQUIRED_SCOPES=['login:info','login:email','cloud_api:disk.app_folder'];
 const read=k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},write=(k,v)=>localStorage.setItem(k,JSON.stringify(v)),del=k=>localStorage.removeItem(k);
+const logAuth=(action,data={})=>{try{const p=read(LS_PROFILE)||{};window.eventLogger?.log?.('AUTH_EVENT',null,{action,login:p.login||'',displayName:p.displayName||'',yandexId:p.yandexId||'',device:[localStorage.getItem('yandex:onboarding:device_label')||'',localStorage.getItem('deviceStableId')||''].filter(Boolean).join(' · '),...data});window.dispatchEvent(new CustomEvent('analytics:forceFlush'));}catch{}};
 export const YandexAuth={
   getToken:()=>localStorage.getItem(LS_TOKEN)||null,
   getExpiry:()=>Number(localStorage.getItem(LS_TOKEN_EXP)||0),
@@ -14,6 +15,7 @@ export const YandexAuth={
   setAutoRelogin(v){localStorage.setItem(LS_AUTO_RELOGIN,v?'1':'0')},
   login(o={}){
     if(CLIENT_ID==='YOUR_YANDEX_CLIENT_ID')return window.NotificationSystem?.warning('ClientID не настроен.');
+    logAuth('login_start',{forceConfirm:!!o?.forceConfirm,status:'popup_open'});
     const fc=(!!o?.forceConfirm||localStorage.getItem(LS_FORCE_CONFIRM_NEXT)==='1')?'1':'0',sc=encodeURIComponent(REQUIRED_SCOPES.join(' ')),url=`https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&force_confirm=${fc}&scope=${sc}`,w=520,h=620,l=Math.round(window.screenX+(window.outerWidth-w)/2),t=Math.round(window.screenY+(window.outerHeight-h)/2),p=window.open(url,'yandex_oauth',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes`);
     if(!p)return window.NotificationSystem?.info('Разрешите всплывающие окна для входа через Яндекс.');
     const onMsg=async e=>{
@@ -29,11 +31,12 @@ export const YandexAuth={
     const tId=setTimeout(()=>{window.removeEventListener('message',onMsg);clearInterval(cC);try{if(!p.closed)p.close()}catch{}window.NotificationSystem?.warning('Время авторизации истекло. Попробуйте снова.')},300000);
     const cC=setInterval(()=>{if(p.closed){clearInterval(cC);clearTimeout(tId);window.removeEventListener('message',onMsg)}},1000);
   },
-  logout(){del(LS_TOKEN);del(LS_TOKEN_EXP);del(LS_TOKEN_SCOPE);del(LS_PROFILE);localStorage.setItem(LS_FORCE_CONFIRM_NEXT,'1');try{localStorage.removeItem('yandex:last_backup_check')}catch{}try{import('../app/profile/auth-onboarding-orchestrator.js').then(m=>m.clearPreloadCache?.()).catch(()=>{})}catch{}window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'logged_out'}}));window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс')},
+  logout(){logAuth('logout',{status:'logged_out'});del(LS_TOKEN);del(LS_TOKEN_EXP);del(LS_TOKEN_SCOPE);del(LS_PROFILE);localStorage.setItem(LS_FORCE_CONFIRM_NEXT,'1');try{localStorage.removeItem('yandex:last_backup_check')}catch{}try{import('../app/profile/auth-onboarding-orchestrator.js').then(m=>m.clearPreloadCache?.()).catch(()=>{})}catch{}window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'logged_out'}}));window.NotificationSystem?.info('Вы вышли из аккаунта Яндекс')},
   async fetchYandexProfile(t){try{const r=await fetch('https://login.yandex.ru/info?format=json',{headers:{'Authorization':`OAuth ${t}`}});return r.ok?await r.json():null}catch{return null}},
   async _onFirstLogin(yP,t){
     const yId=String(yP.id||'').trim(),rN=String(yP.real_name||yP.display_name||yP.login||'').trim(),lg=String(yP.login||'').trim(),av=yP.default_avatar_id?`https://avatars.yandex.net/get-yapic/${yP.default_avatar_id}/islands-200`:null;
     write(LS_PROFILE,{yandexId:yId,displayName:rN||lg,realName:rN,login:lg,avatar:av,lastSync:Date.now()});
+    logAuth('oauth_success',{login:lg,displayName:rN||lg,yandexId:yId,status:'active'});
     try{const {ensureCurrentDeviceRegistryRow}=await import('./device-linking.js');await ensureCurrentDeviceRegistryRow({authEvent:true});}catch{}
     window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:false,phase:'oauth_success'}}));
     // Предзагружаем backup в фоне, пока пользователь вводит имя
@@ -76,6 +79,7 @@ export const YandexAuth={
       try{window.playerCore?._persistPlaybackState?.(true)}catch{}
       const n=i?.value?.trim()||sg,p=read(LS_PROFILE)||{};
       write(LS_PROFILE,{...p,displayName:n});
+      logAuth('profile_name_saved',{displayName:n,status:'active'});
       window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:true,phase:'name_saved'}}));
       window.NotificationSystem?.success(`Имя сохранено: ${n} ✅`);
       m.remove();
@@ -93,7 +97,7 @@ export const YandexAuth={
     };
     b?.addEventListener('click',sv);i?.addEventListener('keydown',e=>e.key==='Enter'&&sv());
   },
-  updateDisplayName(n){const p=read(LS_PROFILE);if(!p)return;write(LS_PROFILE,{...p,displayName:String(n||'').trim()||p.displayName});window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE)}}))},
-  checkAutoRelogin(){if(this.isAutoRelogin()&&this.getSessionStatus()==='expired')window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'expired',needsRelogin:true}}))}
+  updateDisplayName(n){const p=read(LS_PROFILE);if(!p)return;const name=String(n||'').trim()||p.displayName;write(LS_PROFILE,{...p,displayName:name});logAuth('display_name_updated',{displayName:name,status:'active'});window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE)}}))},
+  checkAutoRelogin(){if(this.isAutoRelogin()&&this.getSessionStatus()==='expired'){logAuth('session_expired',{status:'expired',autoRelogin:true});window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'expired',needsRelogin:true}}))}}
 };
 window.YandexAuth=YandexAuth;export default YandexAuth;
