@@ -22,7 +22,8 @@ export class StatsAggregator {
 
     for (const ev of events) {
       if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
-        const { isFullListen: isF, isValidListen: isV, listenedSeconds: lSec, variant: v, trackDuration: tDur } = ev.data;
+        const { isFullListen: isF, isValidListen: isV, variant: v, trackDuration: tDur } = ev.data;
+        const lSec = Math.max(0, Number(ev.data.listenedSeconds || (isF ? tDur : 0)) || 0);
         const isRateLimited = isF && (ev.timestamp - (this.lastFullListens.get(ev.uid) || 0)) < (tDur || 0) * 900;
 
         await metaDB.updateStat(ev.uid, s => {
