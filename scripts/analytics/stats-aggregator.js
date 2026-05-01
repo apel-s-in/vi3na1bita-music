@@ -2,16 +2,23 @@
 import { metaDB } from './meta-db.js';
 
 export class StatsAggregator {
-  constructor() {
+  constructor({ bindEvents = true } = {}) {
     this.lastFullListens = new Map();
     this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
-    window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
+    this._processing = false;
+    this._rerun = false;
+    if (bindEvents) window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
   }
 
   async processHotEvents() {
-    const events = await metaDB.getEvents('events_hot'); if (!events.length) return;
-    const n = new Date(), dateStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
-    let dailyActive = false;
+    if (this._processing) { this._rerun = true; return; }
+    this._processing = true;
+    try {
+      do {
+        this._rerun = false;
+        const events = await metaDB.getEvents('events_hot'); if (!events.length) break;
+        const n = new Date(), dateStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+        let dailyActive = false;
 
     for (const ev of events) {
       if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
@@ -49,10 +56,10 @@ export class StatsAggregator {
         });
       } else if (ev.type === 'LISTEN_SKIP') { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; this.session.favShuffleEvents.clear(); this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; this.session.lastFullUid = null; }
       else if (ev.type === 'BACKUP_CREATED') {
+        if (!ev.data?.uploadedShared) continue;
         await metaDB.updateStat('global', s => {
           s.featuresUsed = s.featuresUsed || {};
           s.featuresUsed.backup = (s.featuresUsed.backup || 0) + 1;
-          s.lastPlayedAt = ev.timestamp;
           return s;
         });
       }
@@ -72,6 +79,10 @@ export class StatsAggregator {
       if (sObj.lastActiveDate !== dateStr) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const yStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`; sObj.current = (sObj.lastActiveDate === yStr) ? sObj.current + 1 : 1; sObj.longest = Math.max(sObj.longest, sObj.current); sObj.lastActiveDate = dateStr; await metaDB.setGlobal('global_streak', sObj); }
     }
 
-    await metaDB.addEvents(events, 'events_warm'); await metaDB.clearEvents('events_hot'); window.dispatchEvent(new CustomEvent('stats:updated'));
+        await metaDB.addEvents(events, 'events_warm'); await metaDB.clearEvents('events_hot'); window.dispatchEvent(new CustomEvent('stats:updated'));
+      } while (this._rerun);
+    } finally {
+      this._processing = false;
+    }
   }
 }
