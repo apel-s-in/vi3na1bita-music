@@ -59,7 +59,7 @@ export const getLocalBackupUiSnapshot = p => {
       ...cached,
       appVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
       timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts') || cached?.timestamp),
-      favoritesCount: Array.isArray(f) ? f.filter(i => !i?.inactiveAt).length : safeNum(cached?.favoritesCount),
+      favoritesCount: Array.isArray(f) ? f.filter(i => !i?.inactiveAt && !i?.deletedAt).length : safeNum(cached?.favoritesCount),
       playlistsCount: Array.isArray(pl) ? pl.filter(x => !x?.deletedAt).length : safeNum(cached?.playlistsCount),
       profileName: p?.name || cached?.profileName || 'Слушатель',
       level: safeNum(a?.profile?.level || cached?.level || 1),
