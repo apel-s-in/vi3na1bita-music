@@ -50,6 +50,8 @@ export const persistCloudMetaAfterRestore = async ({ disk, token, restoredBackup
   if (m) {
     localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
     localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
+    localStorage.setItem('backup:last_local_summary:v1', JSON.stringify(m));
+    localStorage.setItem('yandex:last_backup_check_ts', String(Date.now()));
   }
   localStorage.setItem('yandex:last_backup_local_ts', String(Number(restoredBackup?.revision?.timestamp || restoredBackup?.createdAt || Date.now())));
   return true;
