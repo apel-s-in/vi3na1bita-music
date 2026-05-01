@@ -4,7 +4,7 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
   const tM = ctx._achTimerMode ??= new Map(), esc = v => CSS.escape(String(v || '')), eng = () => window.achievementEngine || e;
   const gM = id => tM.get(id) || 'remaining';
   const tH = a => { const t = fmtAchTimerText(a, gM(a.id)); return t ? `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${t}</button>` : ''; };
-  const flt = f => (eng()?.achievements || []).filter(a => f === 'secret' ? a.isHidden : f === 'done' ? a.isUnlocked : f === 'available' ? !a.isUnlocked && !a.isHidden : !a.isHidden || a.isUnlocked);
+  const flt = f => (eng()?.achievements || []).filter(a => f === 'secret' ? (a.isSecret || a.isHidden) : f === 'done' ? a.isUnlocked : f === 'available' ? !a.isUnlocked && !a.isHidden : !a.isHidden || a.isUnlocked);
 
   return {
     render: (f = 'available') => {
