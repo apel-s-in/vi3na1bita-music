@@ -1,5 +1,6 @@
+import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
+
 const W = window;
-const dirtyDev = () => { try { W.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); } catch {} };
 
 export const renderInterfaceSettingsSection = () => `<div class="settings-content" id="set-interface"><button type="button" class="set-acc-btn">ПЛЕЕР</button><div class="set-acc-body"><div class="pl-prev-box"><div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div><div class="pl-prev-btns"><div class="pl-prev-btn">Т</div><div class="pl-prev-btn a-btn" id="prev-a-btn">A</div><div class="pl-prev-btn">≡</div><div class="pl-prev-btn">ılı</div><div class="pl-prev-btn" style="background:#e80100;color:#fff;border-color:#e80100">Я</div><div class="pl-prev-btn">🤍</div><div class="pl-prev-btn">⬇</div></div></div><div class="set-row"><div class="set-info"><div class="set-title">Кнопка Анимации (А)</div><div class="set-sub">Показывать кнопку (A) в меню управления плеера</div></div><label class="set-switch"><input type="checkbox" id="set-pl-btn-anim"><span class="set-slider"></span></label></div><div class="set-row"><div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div><label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label></div></div><button type="button" class="set-acc-btn">ПУЛЬСАЦИЯ</button><div class="set-acc-body" id="set-pulse-body"><div class="set-preview-box"><img class="logo-pulse-target" id="lp-preview-logo" src="img/logo.png" alt="Логотип" style="width:70px;height:auto"></div><div class="set-row"><div class="set-info"><div class="set-title">Включить пульсацию</div><div class="set-sub">Локальная реакция логотипа на музыку без сети</div></div><label class="set-switch"><input type="checkbox" id="lp-enabled"><span class="set-slider"></span></label></div><div class="set-row"><div class="set-info"><div class="set-title">Режим</div><div class="set-sub">Bass / Balanced / Aggressive</div></div><select id="lp-preset" style="max-width:160px"><option value="bass">Bass</option><option value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select></div><div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px"><div class="set-info"><div class="set-title">Интенсивность</div><div class="set-sub">Авто-ослабляется на слабых устройствах</div></div><div class="lp-slider-row"><span style="font-size:12px;color:#888">min</span><input type="range" id="lp-intensity" class="lp-slider" min="0.05" max="0.3" step="0.01" value="0.12"><span style="font-size:12px;color:#888">max</span></div></div><div class="set-row"><div class="set-info"><div class="set-title">Debug pulse</div><div class="set-sub">Показывать лёгкий индикатор raw/pulse</div></div><label class="set-switch"><input type="checkbox" id="lp-debug"><span class="set-slider"></span></label></div><button class="om-btn om-btn--outline om-fullw" id="lp-reset-btn">Сбросить по умолчанию</button></div><button type="button" class="set-acc-btn">КАРУСЕЛЬ</button><div class="set-acc-body"><div class="set-preview-box"><div class="sc-mini-preview" id="sc-mini-preview"><div class="sc-mini-card"><div class="sc-mini-ic">📊</div></div><div class="sc-mini-controls"><div>◀</div><div class="sel">ВЫБРАТЬ</div><div>▶</div></div></div></div><div class="set-row"><div class="set-info"><div class="set-title">Кнопки карусели</div><div class="set-sub">Показывать кнопки управления под 3D-каруселью</div></div><label class="set-switch"><input type="checkbox" id="set-car-controls"><span class="set-slider"></span></label></div></div></div>`;
 
@@ -13,7 +14,7 @@ export const bindInterfaceSettingsSection = root => {
     scPrev.classList.toggle('show-ctrl', isShow);
     ctrlInp.addEventListener('change', e => {
       localStorage.setItem('profileShowControls', e.target.checked ? '1' : '0');
-      dirtyDev();
+      markDeviceSettingsDirty();
       scPrev.classList.toggle('show-ctrl', e.target.checked);
       document.querySelector('.sc-3d-wrap')?.classList.toggle('show-controls', e.target.checked);
     });
@@ -28,13 +29,13 @@ export const bindInterfaceSettingsSection = root => {
     pABg.classList.toggle('active', baP.checked);
     baS.addEventListener('change', e => {
       localStorage.setItem('lyricsShowAnimBtn', e.target.checked ? '1' : '0');
-      dirtyDev();
+      markDeviceSettingsDirty();
       pABtn.style.display = e.target.checked ? '' : 'none';
       W.LyricsController?.restoreSettingsIntoDom?.();
     });
     baP.addEventListener('change', e => {
       localStorage.setItem('lyricsAnimationEnabled', e.target.checked ? '1' : '0');
-      dirtyDev();
+      markDeviceSettingsDirty();
       pABtn.classList.toggle('active', e.target.checked);
       pABg.classList.toggle('active', e.target.checked);
       W.LyricsController?.restoreSettingsIntoDom?.();
@@ -54,7 +55,7 @@ export const bindInterfaceSettingsSection = root => {
       localStorage.setItem('logoPulsePreset', lP.value);
       localStorage.setItem('logoPulseIntensity', lI.value);
       localStorage.setItem('logoPulseDebug', lD.checked ? '1' : '0');
-      dirtyDev();
+      markDeviceSettingsDirty();
       W.LogoPulse?.updateSettings?.();
     };
 
