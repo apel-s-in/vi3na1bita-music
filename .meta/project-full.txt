@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 19:48:51 UTC
+Сгенерировано: 2026-05-01 19:49:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4242,9 +4242,11 @@ const openDeviceModal = async ({ stableId = '', rerender } = {}) => {
   try {
     const ya = window.YandexAuth, disk = window.YandexDisk;
     const t = ya?.getToken?.();
-    if (t && ya?.isTokenAlive?.() && disk?.getDeviceSettingsMeta && d.deviceStableId) {
-      const m = await disk.getDeviceSettingsMeta(t, d.deviceStableId).catch(() => null);
-      deviceMetaHtml = `<div style="font-size:11px;color:#7f93b5">Device-settings в облаке: ${m ? `есть · ${fmt(m.timestamp)}` : 'не найдено'}</div>`;
+    if (t && ya?.isTokenAlive?.() && d.deviceStableId) {
+      const idx = disk?.getDeviceSettingsIndex ? await disk.getDeviceSettingsIndex(t).catch(() => null) : null;
+      const fromIdx = (idx?.items || []).find(x => String(x?.deviceStableId || '') === String(d.deviceStableId));
+      const m = fromIdx || (disk?.getDeviceSettingsMeta ? await disk.getDeviceSettingsMeta(t, d.deviceStableId).catch(() => null) : null);
+      deviceMetaHtml = `<div style="font-size:11px;color:#7f93b5">Device-settings в облаке: ${m ? `есть · ${fmt(m.timestamp)}${m.keysCount ? ` · ключей: ${m.keysCount}` : ''}` : 'не найдено'}</div>`;
     }
   } catch {}
 
