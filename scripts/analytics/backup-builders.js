@@ -3,7 +3,7 @@ import DeviceRegistry from './device-registry.js';
 import { normalizeCloudBackupMeta } from './cloud-contract.js';
 import { collectSharedSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
-import { isBackupSemanticNoiseEvent } from './event-contract.js';
+import { normalizeEventList } from './backup-event-cleanup.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -49,34 +49,11 @@ export const readDeviceRegistryForBackup = async () => {
   return finalList;
 };
 
-export const readDeviceCacheMetaForBackup = async () => {
-  try {
-    const [{ getAllTrackMetas }, { getCurrentDeviceHash, getCurrentDeviceStableId }] = await Promise.all([
-      import('../offline/cache-db.js'),
-      import('../core/device-identity.js')
-    ]);
-    return {
-      deviceHash: getCurrentDeviceHash?.() || localStorage.getItem('deviceHash') || '',
-      deviceStableId: getCurrentDeviceStableId?.() || localStorage.getItem('deviceStableId') || '',
-      items: (await getAllTrackMetas()).filter(m => ['pinned','cloud'].includes(m.type)).map(m => ({
-        uid:m.uid, type:m.type, quality:m.quality, size:m.size||0, cloudExpiresAt:m.cloudExpiresAt||null, pinnedAt:m.pinnedAt||null
-      }))
-    };
-  } catch { return null; }
-};
-
 const dedupIntel = arr => {
   if (!Array.isArray(arr) || !arr.length) return [];
   const m = new Map();
   arr.forEach(r => { if (r?.key) m.set(String(r.key), r); });
   return [...m.values()];
-};
-
-const WARM_MAX = 10000;
-export const trimWarmEvents = events => {
-  if (!Array.isArray(events)) return [];
-  if (events.length <= WARM_MAX) return events;
-  return [...events].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)).slice(-WARM_MAX);
 };
 
 export const buildBackupDataSnapshot = async () => {
@@ -96,13 +73,9 @@ export const buildBackupDataSnapshot = async () => {
     metaDB.getStoreAll('collection_state').catch(()=>[]),
     metaDB.getStoreAll('intel_runtime').catch(()=>[])
   ]);
-  const seenEvents = new Set();
-  const wClean = [...(Array.isArray(w) ? w : []), ...(Array.isArray(h) ? h : [])]
-    .filter(x => x?.eventId && !seenEvents.has(x.eventId) && seenEvents.add(x.eventId))
-    .filter(x => !isBackupSemanticNoiseEvent(x))
-    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-  const warmTrimmed = trimWarmEvents(wClean);
-  if (warmTrimmed.length < w.length || wClean.length < w.length) console.debug(`[BackupVault] warm events trimmed/cleaned: ${w.length} → ${warmTrimmed.length}`);
+  const rawEvents = [...(Array.isArray(w) ? w : []), ...(Array.isArray(h) ? h : [])];
+  const warmTrimmed = normalizeEventList(rawEvents, { limit: 10000 });
+  if (warmTrimmed.length < rawEvents.length) console.debug(`[BackupVault] warm events trimmed/cleaned: ${rawEvents.length} → ${warmTrimmed.length}`);
   return {
     stats: st,
     eventLog: { warm: warmTrimmed },
@@ -208,8 +181,6 @@ export default {
   sha256Hex,
   readBackupOwnerIdentity,
   readDeviceRegistryForBackup,
-  readDeviceCacheMetaForBackup,
-  trimWarmEvents,
   buildBackupDataSnapshot,
   buildBackupRevision,
   buildDeviceSettingsObject,
