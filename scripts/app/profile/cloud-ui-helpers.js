@@ -1,6 +1,5 @@
 import { safeNum, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
-
-const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+import { esc, renderMetaBox as renderUiMetaBox } from './profile-ui-kit.js';
 
 export const formatCloudDateTime = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleString('ru-RU') : '—';
 export const formatCloudTimeOnly = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
@@ -26,12 +25,7 @@ export const getCloudCompareViewModel = (localSummary, cloudSummary) => {
   };
 };
 
-export const renderCloudMetaBox = ({ label = '', value = '' } = {}) => `
-  <div class="yandex-auth-metabox">
-    <div class="yandex-auth-metabox-label">${esc(label)}</div>
-    <div class="yandex-auth-metabox-value">${esc(value)}</div>
-  </div>
-`;
+export const renderCloudMetaBox = renderUiMetaBox;
 
 export const renderCloudCompareNotice = ({ compareVm, restoreDone = false } = {}) => {
   if (restoreDone) return '';
