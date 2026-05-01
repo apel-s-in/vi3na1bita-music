@@ -86,7 +86,7 @@ export const openFreshLoginRestoreModal = ({
       { text: '🔕 Напомнить позже', attrs: 'data-fresh-act="later"' }
     ])}`;
 
-  const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 500, strictClose: true, bodyHtml });
+  const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 400, strictClose: true, bodyHtml });
   if (!m) return;
 
   const pickPath = () => {
