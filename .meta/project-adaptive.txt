@@ -434,7 +434,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 17:34:41 UTC
+Сгенерировано: 2026-05-01 17:35:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1531,27 +1531,43 @@ export const normalizeBackupSummary = (s = {}) => normalizeCloudMetaBase(s || {}
 
 export const getRichnessScore = s => { const x=normalizeBackupSummary(s); return safeNum(x.level)*1000 + safeNum(x.xp) + safeNum(x.achievementsCount)*250 + safeNum(x.favoritesCount)*40 + safeNum(x.playlistsCount)*60 + safeNum(x.statsCount)*6 + safeNum(x.eventCount)*2 + safeNum(x.devicesCount)*25 + safeNum(x.deviceStableCount)*30; };
 
-export const compareLocalVsCloud = (l, c) => { const ll=normalizeBackupSummary(l||{}), cc=normalizeBackupSummary(c||{}), lTs=safeNum(ll.timestamp), cTs=safeNum(cc.timestamp), lSc=getRichnessScore(ll), cSc=getRichnessScore(cc), sDf=cSc-lSc, tDf=cTs-lTs; if(!c||(!cTs&&cSc===0)) return{state:'no_cloud',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf}; if(lTs===0&&lSc<=1200&&cSc>0) return{state:'cloud_richer_new_device',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
+const domainValue = (s, d) => {
+  const x = normalizeBackupSummary(s || {});
+  if (d === 'favorites') return safeNum(x.favoritesCount);
+  if (d === 'playlists') return safeNum(x.playlistsCount);
+  if (d === 'achievements') return safeNum(x.achievementsCount) * 100 + safeNum(x.level) * 10 + safeNum(x.xp);
+  if (d === 'stats') return safeNum(x.statsCount) * 10 + safeNum(x.eventCount);
+  if (d === 'devices') return safeNum(x.deviceStableCount) * 10 + safeNum(x.devicesCount);
+  return 0;
+};
 
-// equivalent только если timestamps РЕАЛЬНО близки (1 минута) И разница очень маленькая (200 score = ~1 ачивка или 5 треков)
-if(Math.abs(tDf)<60000&&Math.abs(sDf)<200) return{state:'equivalent',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
+export const getBackupDomainDiff = (l, c) => {
+  const domains = ['favorites', 'playlists', 'achievements', 'stats', 'devices'];
+  return Object.fromEntries(domains.map(d => {
+    const local = domainValue(l, d), cloud = domainValue(c, d), diff = cloud - local;
+    return [d, { local, cloud, diff, winner: diff > 0 ? 'cloud' : (diff < 0 ? 'local' : 'equal') }];
+  }));
+};
 
-// Если облако явно богаче (>500 score = +1 уровень или +5 ачивок) — всегда cloud_richer
-if(cSc-lSc>500) return{state:'cloud_richer',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
+export const compareLocalVsCloud = (l, c) => {
+  const ll = normalizeBackupSummary(l || {}), cc = normalizeBackupSummary(c || {});
+  const lTs = safeNum(ll.timestamp), cTs = safeNum(cc.timestamp), lSc = getRichnessScore(ll), cSc = getRichnessScore(cc);
+  const scoreDiff = cSc - lSc, tsDiff = cTs - lTs, domainDiff = getBackupDomainDiff(ll, cc);
+  if (!c || (!cTs && cSc === 0)) return { state: 'no_cloud', localTs: lTs, cloudTs: cTs, localScore: lSc, cloudScore: cSc, scoreDiff, tsDiff, domainDiff };
 
-// Если локальное явно богаче (>500 score) — всегда local_richer (даже если cloud ts новее — это локальный backup-свежак, просто ещё не успел загрузиться)
-if(lSc-cSc>500) return{state:'local_richer',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
+  const vals = Object.values(domainDiff);
+  const cloudWins = vals.filter(x => x.winner === 'cloud').length;
+  const localWins = vals.filter(x => x.winner === 'local').length;
+  const bigCloud = vals.some(x => x.diff >= 10) || domainDiff.achievements.diff >= 100 || domainDiff.stats.diff >= 20;
+  const bigLocal = vals.some(x => x.diff <= -10) || domainDiff.achievements.diff <= -100 || domainDiff.stats.diff <= -20;
 
-if(cTs>lTs&&cSc>=lSc) return{state:'cloud_richer',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
-if(lTs>cTs&&lSc>=cSc) return{state:'local_richer',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
-if(cSc>lSc&&cTs>=lTs) return{state:'cloud_probably_richer',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
-if(lSc>cSc&&lTs>=cTs) return{state:'local_probably_richer',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
-
-// Если ts конфликтует, но score очень близок (diff < 200) — считаем equivalent
-if(Math.abs(sDf)<200) return{state:'equivalent',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf};
-
-// Последний fallback — явный conflict
-return{state:'conflict',localTs:lTs,cloudTs:cTs,localScore:lSc,cloudScore:cSc,scoreDiff:sDf,tsDiff:tDf}; };
+  if (lTs === 0 && lSc <= 1200 && cSc > 0) return { state: 'cloud_richer_new_device', localTs: lTs, cloudTs: cTs, localScore: lSc, cloudScore: cSc, scoreDiff, tsDiff, domainDiff };
+  if (!cloudWins && !localWins) return { state: 'equivalent', localTs: lTs, cloudTs: cTs, localScore: lSc, cloudScore: cSc, scoreDiff, tsDiff, domainDiff };
+  if (cloudWins && localWins) return { state: 'conflict', localTs: lTs, cloudTs: cTs, localScore: lSc, cloudScore: cSc, scoreDiff, tsDiff, domainDiff };
+  if (cloudWins) return { state: bigCloud || cTs >= lTs ? 'cloud_richer' : 'cloud_probably_richer', localTs: lTs, cloudTs: cTs, localScore: lSc, cloudScore: cSc, scoreDiff, tsDiff, domainDiff };
+  if (localWins) return { state: bigLocal || lTs >= cTs ? 'local_richer' : 'local_probably_richer', localTs: lTs, cloudTs: cTs, localScore: lSc, cloudScore: cSc, scoreDiff, tsDiff, domainDiff };
+  return { state: 'equivalent', localTs: lTs, cloudTs: cTs, localScore: lSc, cloudScore: cSc, scoreDiff, tsDiff, domainDiff };
+};
 
 export const getLocalBackupUiSnapshot = p => {
   try {
@@ -1601,7 +1617,7 @@ export const normalizeCloudBackupMeta = m => normalizeCloudMetaBase(m || {});
 
 export const getBackupCompareLabel = (l, c) => c ? ({no_cloud:'Облачная копия отсутствует',cloud_richer_new_device:'Облако выглядит как основной источник для нового устройства',cloud_richer:'Облако богаче и новее локального профиля',cloud_probably_richer:'Облако вероятно богаче локального профиля',local_richer:'Локальные данные богаче облачной копии',local_probably_richer:'Локальный профиль вероятно богаче облачного',equivalent:'Локальная и облачная копии практически эквивалентны',conflict:'Есть смешанные признаки: нужна ручная проверка'})[compareLocalVsCloud(l||{},c||{}).state] || 'Сравнение недоступно' : 'Нет данных о копии';
 
-export default { safeNum, safeString, safeJsonParse, normalizeBackupSummary, normalizeCloudBackupMeta, getRichnessScore, compareLocalVsCloud, getLocalBackupUiSnapshot, getBackupCompareLabel };
+export default { safeNum, safeString, safeJsonParse, normalizeBackupSummary, normalizeCloudBackupMeta, getRichnessScore, getBackupDomainDiff, compareLocalVsCloud, getLocalBackupUiSnapshot, getBackupCompareLabel };
 
 //=================================================
 // FILE: /scripts/analytics/backup-sync-engine.js
