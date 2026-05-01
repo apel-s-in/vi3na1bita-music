@@ -2,6 +2,7 @@ export const YANDEX_DISK_API = 'https://cloud-api.yandex.net/v1/disk';
 export const YANDEX_DISK_PROXY = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
 
 const sS = v => String(v == null ? '' : v).trim();
+const ensuredDirs = new Set();
 export const authHeaders = t => ({ Authorization: `OAuth ${t}` });
 export const safeParseJson = t => { try { return JSON.parse(t); } catch { return null; } };
 
@@ -45,12 +46,32 @@ export async function fetchProxyJson(url, token, retries = 2) {
 }
 
 export async function ensureResourceDir(token, path) {
-  if (!token || !path) return false;
-  const res = await fetch(`${YANDEX_DISK_API}/resources?path=${encodeURIComponent(path)}`, {
+  const p = sS(path);
+  if (!token || !p) return false;
+  if (ensuredDirs.has(p)) return true;
+
+  const check = await fetch(`${YANDEX_DISK_API}/resources?path=${encodeURIComponent(p)}`, {
+    method: 'GET',
+    headers: authHeaders(token)
+  }).catch(() => null);
+
+  if (check?.ok) {
+    ensuredDirs.add(p);
+    return true;
+  }
+
+  if (check && check.status !== 404) return false;
+
+  const res = await fetch(`${YANDEX_DISK_API}/resources?path=${encodeURIComponent(p)}`, {
     method: 'PUT',
     headers: authHeaders(token)
   });
-  return res.ok || res.status === 409;
+
+  if (res.ok || res.status === 409) {
+    ensuredDirs.add(p);
+    return true;
+  }
+  return false;
 }
 
 export async function uploadJson(token, path, data) {
