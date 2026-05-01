@@ -34,6 +34,7 @@ export const YandexAuth={
   async _onFirstLogin(yP,t){
     const yId=String(yP.id||'').trim(),rN=String(yP.real_name||yP.display_name||yP.login||'').trim(),lg=String(yP.login||'').trim(),av=yP.default_avatar_id?`https://avatars.yandex.net/get-yapic/${yP.default_avatar_id}/islands-200`:null;
     write(LS_PROFILE,{yandexId:yId,displayName:rN||lg,realName:rN,login:lg,avatar:av,lastSync:Date.now()});
+    try{const {ensureCurrentDeviceRegistryRow}=await import('./device-linking.js');await ensureCurrentDeviceRegistryRow({authEvent:true});}catch{}
     window.dispatchEvent(new CustomEvent('yandex:auth:changed',{detail:{status:'active',profile:read(LS_PROFILE),isFreshLogin:false,phase:'oauth_success'}}));
     // Предзагружаем backup в фоне, пока пользователь вводит имя
     try{const {startPreload}=await import('../app/profile/auth-onboarding-orchestrator.js');startPreload(t).catch(()=>{});}catch{}
