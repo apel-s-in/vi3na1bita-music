@@ -71,7 +71,10 @@
 .fb-modal-link--mail{background:#4daaff}
 .fb-modal-link--gh{background:#333}
 
-.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,520px));max-width:var(--modal-max-width,520px)}
+.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,420px));max-width:min(var(--modal-max-width,420px),420px);overflow-x:hidden}
+.modal-feedback--dynamic .modal-body{max-width:100%;overflow-x:hidden}
+.profile-inline-actions{margin-top:14px}
+.profile-inline-actions .modal-action-btn{width:100%;min-height:48px;justify-content:center;text-align:center;white-space:normal;line-height:1.2}
 .modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}
 .modal-confirm-btn{min-width:130px}
 .modal-choice-actions{display:flex;flex-direction:column;gap:8px;width:100%}
