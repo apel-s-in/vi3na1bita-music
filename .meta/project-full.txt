@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 19:46:58 UTC
+Сгенерировано: 2026-05-01 19:48:04 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5990,7 +5990,7 @@ export default { renderInterfaceSettingsSection, bindInterfaceSettingsSection };
 // FILE: /scripts/app/profile/settings-view.js
 import { renderDownloadSettingsSection, bindDownloadSettingsSection } from './settings-download-section.js';
 import { renderInterfaceSettingsSection, bindInterfaceSettingsSection } from './settings-interface-section.js';
-import { renderDataSettingsSection } from './settings-data-section.js';
+import { renderDataSettingsSection, bindDataSettingsSection } from './settings-data-section.js';
 
 const W = window;
 
@@ -6028,6 +6028,7 @@ export const renderProfileSettings = root => {
 
   bindInterfaceSettingsSection(root);
   bindDownloadSettingsSection(root);
+  bindDataSettingsSection(root);
 };
 
 export default { renderProfileSettings };
