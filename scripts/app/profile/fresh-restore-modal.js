@@ -1,8 +1,7 @@
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
 import { renderCloudStatPair } from './cloud-ui-helpers.js';
 import { renderRestoreDiffHtml } from './restore-diff.js';
-
-const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+import { esc, fmtDateTime, renderInlineActions } from './profile-ui-kit.js';
 const sS = v => String(v == null ? '' : v).trim();
 
 const deviceLabel = d => sS(d?.label || d?.sourceDeviceLabel || d?.class || d?.sourceDeviceClass || 'Устройство');
@@ -54,7 +53,7 @@ export const openFreshLoginRestoreModal = ({
     <label class="fresh-row" data-path="${esc(it.path || '')}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:10px;cursor:pointer;margin-bottom:6px">
       <input type="radio" name="fresh-ver" value="${i}" ${i === 0 ? 'checked' : ''} style="accent-color:var(--secondary-color)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:#fff">${it.isLatest ? '☁ Latest' : '🕘 Архив'} · ${it.timestamp ? new Date(it.timestamp).toLocaleString('ru-RU') : '—'}</div>
+        <div style="font-size:13px;font-weight:700;color:#fff">${it.isLatest ? '☁ Latest' : '🕘 Архив'} · ${fmtDateTime(it.timestamp)}</div>
         <div style="font-size:11px;color:#9db7dd">${esc(it.sizeHuman || '')}${it.appVersion ? ` · v${esc(it.appVersion)}` : ''}</div>
       </div>
     </label>`).join('') || '<div class="fav-empty">Облачных версий пока нет</div>';
@@ -80,12 +79,12 @@ export const openFreshLoginRestoreModal = ({
     <div style="font-size:12px;font-weight:700;color:#eaf2ff;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.8px">Устройства в облаке</div>
     <div id="fresh-dev-list" style="display:flex;flex-wrap:wrap">${renderDevices()}</div>
 
-    <div class="modal-choice-actions" style="margin-top:14px">
-      <button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить shared + выбранное устройство</button>
-      <button type="button" class="modal-action-btn" data-fresh-act="shared-only">Восстановить только shared</button>
-      ${devices.length ? `<button type="button" class="modal-action-btn" data-fresh-act="new-device">📱 Создать новое устройство</button>` : ''}
-      <button type="button" class="modal-action-btn" data-fresh-act="later">🔕 Напомнить позже</button>
-    </div>`;
+    ${renderInlineActions([
+      { text: 'Восстановить shared + выбранное устройство', primary: true, attrs: 'data-fresh-act="restore"' },
+      { text: 'Восстановить только shared', attrs: 'data-fresh-act="shared-only"' },
+      ...(devices.length ? [{ text: '📱 Создать новое устройство', attrs: 'data-fresh-act="new-device"' }] : []),
+      { text: '🔕 Напомнить позже', attrs: 'data-fresh-act="later"' }
+    ])}`;
 
   const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 500, strictClose: true, bodyHtml });
   if (!m) return;
