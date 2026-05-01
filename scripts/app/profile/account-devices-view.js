@@ -49,9 +49,11 @@ const openDeviceModal = async ({ stableId = '', rerender } = {}) => {
   try {
     const ya = window.YandexAuth, disk = window.YandexDisk;
     const t = ya?.getToken?.();
-    if (t && ya?.isTokenAlive?.() && disk?.getDeviceSettingsMeta && d.deviceStableId) {
-      const m = await disk.getDeviceSettingsMeta(t, d.deviceStableId).catch(() => null);
-      deviceMetaHtml = `<div style="font-size:11px;color:#7f93b5">Device-settings в облаке: ${m ? `есть · ${fmt(m.timestamp)}` : 'не найдено'}</div>`;
+    if (t && ya?.isTokenAlive?.() && d.deviceStableId) {
+      const idx = disk?.getDeviceSettingsIndex ? await disk.getDeviceSettingsIndex(t).catch(() => null) : null;
+      const fromIdx = (idx?.items || []).find(x => String(x?.deviceStableId || '') === String(d.deviceStableId));
+      const m = fromIdx || (disk?.getDeviceSettingsMeta ? await disk.getDeviceSettingsMeta(t, d.deviceStableId).catch(() => null) : null);
+      deviceMetaHtml = `<div style="font-size:11px;color:#7f93b5">Device-settings в облаке: ${m ? `есть · ${fmt(m.timestamp)}${m.keysCount ? ` · ключей: ${m.keysCount}` : ''}` : 'не найдено'}</div>`;
     }
   } catch {}
 
