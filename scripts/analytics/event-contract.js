@@ -14,6 +14,7 @@ export const EVENT_TYPES = Object.freeze({
   PLAYLIST_CHANGED: 'PLAYLIST_CHANGED',
   PROFILE_UPDATED: 'PROFILE_UPDATED',
   DEVICE_UPDATED: 'DEVICE_UPDATED',
+  AUTH_EVENT: 'AUTH_EVENT',
   BACKUP_CREATED: 'BACKUP_CREATED',
   RESTORE_APPLIED: 'RESTORE_APPLIED',
   SYNC_STATE_CHANGED: 'SYNC_STATE_CHANGED'
@@ -32,6 +33,7 @@ export const getEventDomain = type => ({
   PLAYLIST_CHANGED: 'playlists',
   PROFILE_UPDATED: 'profile',
   DEVICE_UPDATED: 'devices',
+  AUTH_EVENT: 'auth',
   BACKUP_CREATED: 'cloud',
   RESTORE_APPLIED: 'cloud',
   SYNC_STATE_CHANGED: 'cloud'
@@ -86,6 +88,7 @@ export const describeEventForUi = ev => {
   if (type === EVENT_TYPES.PLAYLIST_CHANGED) return { icon: '📋', title: 'Плейлист изменён', desc: `${sS(d.action || 'update')}${d.name ? ` · ${sS(d.name)}` : ''}` };
   if (type === EVENT_TYPES.PROFILE_UPDATED) return { icon: '👤', title: 'Профиль обновлён', desc: sS(d.field || 'profile') };
   if (type === EVENT_TYPES.DEVICE_UPDATED) return { icon: '📱', title: 'Устройство обновлено', desc: sS(d.action || 'device') };
+  if (type === EVENT_TYPES.AUTH_EVENT) return { icon: '🔐', title: 'Авторизация', desc: [sS(d.action || 'auth'), sS(d.login || ''), sS(d.displayName || ''), sS(d.device || ''), sS(d.status || '')].filter(Boolean).join(' · ') };
   if (type === EVENT_TYPES.BACKUP_CREATED) return { icon: '☁️', title: 'Backup сохранён', desc: `${sS(d.reason || 'save')}${d.uploadedDevice ? ' · device settings' : ''}` };
   if (type === EVENT_TYPES.RESTORE_APPLIED) return { icon: '📥', title: 'Backup восстановлен', desc: `${sS(d.mode || 'all')}${d.deviceApplied ? ' · device settings' : ''}` };
   if (type === EVENT_TYPES.FEATURE_USED) return { icon: '🛠️', title: 'Функция использована', desc: sS(d.feature || '') };
