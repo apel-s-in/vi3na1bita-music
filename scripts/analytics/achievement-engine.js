@@ -78,6 +78,7 @@ export class AchievementEngine {
         }, 2000); 
       }
       await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('user_profile_rpg', this.profile)]);
+      try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'achievements', immediate: true } })); } catch {}
     }
     this.achievements = this._buildUIArray(); this.broadcast(agg.streak);
   }
