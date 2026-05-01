@@ -433,7 +433,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 16:05:44 UTC
+Сгенерировано: 2026-05-01 16:06:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7659,7 +7659,7 @@ export const YandexBackupDisk={
     await pJP(t,BP,dO);
     if(writeHistory&&m.historyPath) try{await pJP(t,m.historyPath,dO)}catch{}
     await pJP(t,MP,m);
-    this.deleteOldBackups(t,{keep:5}).catch(()=>{});
+    if(writeHistory) this.deleteOldBackups(t,{keep:5}).catch(()=>{});
     return await this.getMeta(t).catch(()=>null)||m;
   },
   async getMeta(t){
