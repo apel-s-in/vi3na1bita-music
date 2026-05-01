@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 20:52:27 UTC
+Сгенерировано: 2026-05-01 21:20:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5423,7 +5423,7 @@ export const renderSmallListRow = ({ icon = '', title = '', desc = '', attrs = '
 `;
 
 export const renderInlineActions = actions => `
-  <div class="om-actions">
+  <div class="modal-choice-actions profile-inline-actions">
     ${(actions || []).map(a => `<button type="button" class="modal-action-btn ${a.primary ? 'online' : ''}" ${a.attrs || ''}>${esc(a.text || 'OK')}</button>`).join('')}
   </div>
 `;
