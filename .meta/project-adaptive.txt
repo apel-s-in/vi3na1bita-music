@@ -433,7 +433,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 16:03:56 UTC
+Сгенерировано: 2026-05-01 16:05:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2951,7 +2951,7 @@ export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
     if (!uploaded.uploadedShared && !uploaded.uploadedDevice) { emitSyncState('idle'); return false; }
 
     setLastUploadAt(Date.now());
-    persistUploadResult({ meta: uploaded.meta, backup });
+    persistUploadResult({ meta: uploaded.meta, backup: uploaded.uploadedShared ? backup : null });
     emitSyncState('ok');
     setTimeout(() => emitSyncState('idle'), 3000);
     if (window.eventLogger) window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
