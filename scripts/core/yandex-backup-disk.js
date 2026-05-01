@@ -15,7 +15,7 @@ export const YandexBackupDisk={
     await pJP(t,BP,dO);
     if(writeHistory&&m.historyPath) try{await pJP(t,m.historyPath,dO)}catch{}
     await pJP(t,MP,m);
-    this.deleteOldBackups(t,{keep:5}).catch(()=>{});
+    if(writeHistory) this.deleteOldBackups(t,{keep:5}).catch(()=>{});
     return await this.getMeta(t).catch(()=>null)||m;
   },
   async getMeta(t){
