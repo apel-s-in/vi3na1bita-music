@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 20:48:56 UTC
+Сгенерировано: 2026-05-01 20:49:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2798,7 +2798,7 @@ export const getLocalSyncSummary = () => {
     level: safeNum(a?.profile?.level || 1),
     xp: safeNum(a?.profile?.xp || 0),
     achievementsCount: Object.keys(a?.unlocked || {}).length,
-    favoritesCount: Array.isArray(f) ? f.filter(i => !i?.inactiveAt).length : 0,
+    favoritesCount: Array.isArray(f) ? f.filter(i => !i?.inactiveAt && !i?.deletedAt).length : 0,
     playlistsCount: Array.isArray(pl) ? pl.filter(p => !p?.deletedAt).length : 0,
     statsCount: 0,
     eventCount: 0,
