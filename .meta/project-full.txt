@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 19:37:08 UTC
+Сгенерировано: 2026-05-01 19:39:04 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2109,6 +2109,7 @@ export default DeviceRegistry;
 import { DEVICE_STORAGE_KEYS, DEVICE_STORAGE_KEY_SET, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 
 export const DEVICE_SETTINGS_DIR = 'app:/Backup/device-settings';
+export const DEVICE_SETTINGS_INDEX_PATH = `${DEVICE_SETTINGS_DIR}/index.json`;
 
 export const safeDeviceString = v => String(v == null ? '' : v).trim();
 export const safeDeviceNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -2133,6 +2134,27 @@ export const normalizeDeviceSettingsSnapshot = (raw = {}) => ({
   )
 });
 
+export const buildDeviceSettingsIndexItem = doc => {
+  const d = normalizeDeviceSettingsSnapshot(doc || {});
+  return {
+    deviceStableId: d.deviceStableId,
+    deviceHash: d.deviceHash,
+    sourceDeviceLabel: d.sourceDeviceLabel,
+    sourceDeviceClass: d.sourceDeviceClass,
+    sourcePlatform: d.sourcePlatform,
+    timestamp: d.timestamp,
+    path: d.path || buildDeviceSettingsPath(d.deviceStableId),
+    keysCount: Object.keys(d.localStorage || {}).length
+  };
+};
+
+export const normalizeDeviceSettingsIndex = rows => ({
+  version: '1.0',
+  updatedAt: Date.now(),
+  items: [...new Map((Array.isArray(rows?.items) ? rows.items : rows || []).map(buildDeviceSettingsIndexItem).filter(x => x.deviceStableId).map(x => [x.deviceStableId, x])).values()]
+    .sort((a, b) => safeDeviceNum(b.timestamp) - safeDeviceNum(a.timestamp))
+});
+
 export const collectDeviceSettingsLocalStorage = (storage = localStorage) => DEVICE_STORAGE_KEYS.reduce((acc, key) => {
   try {
     const v = storage.getItem(key);
@@ -2146,10 +2168,13 @@ export const isPlaybackSensitiveDeviceSettingKey = key => PLAYBACK_SENSITIVE_DEV
 
 export default {
   DEVICE_SETTINGS_DIR,
+  DEVICE_SETTINGS_INDEX_PATH,
   safeDeviceString,
   safeDeviceNum,
   buildDeviceSettingsPath,
   normalizeDeviceSettingsSnapshot,
+  buildDeviceSettingsIndexItem,
+  normalizeDeviceSettingsIndex,
   collectDeviceSettingsLocalStorage,
   shouldApplyDeviceSettingKey,
   isPlaybackSensitiveDeviceSettingKey
