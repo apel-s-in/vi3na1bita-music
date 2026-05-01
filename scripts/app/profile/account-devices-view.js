@@ -1,10 +1,9 @@
 import DeviceRegistry from '../../analytics/device-registry.js';
 import { markDevicesDirty } from '../../analytics/sync-dirty-events.js';
 import { ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
+import { esc, fmtDateTime as fmt, renderMetaBox, renderSmallListRow, renderInlineActions } from './profile-ui-kit.js';
 
-const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 const sS = v => String(v == null ? '' : v).trim();
-const fmt = ts => Number(ts || 0) > 0 ? new Date(Number(ts)).toLocaleString('ru-RU') : '—';
 const icon = d => d?.platform === 'ios' ? '📱' : d?.platform === 'android' ? '🤖' : '💻';
 const curId = () => localStorage.getItem('deviceStableId') || '';
 
@@ -12,13 +11,13 @@ const rows = () => DeviceRegistry.normalizeDeviceRegistry(DeviceRegistry.getDevi
 
 const renderMiniRow = d => {
   const isCur = DeviceRegistry.isCurrentDevice(d), retired = Number(d.retiredAt || 0) > 0;
-  return `<button type="button" class="profile-list-item" data-dev-open="${esc(d.deviceStableId || d.deviceHash || '')}" style="width:100%;text-align:left;cursor:pointer;opacity:${retired ? '.48' : '1'}">
-    <div style="font-size:22px;width:28px;text-align:center">${icon(d)}</div>
-    <div class="log-info">
-      <div class="log-title">${esc(d.label || 'Устройство')}${isCur ? ' · это устройство' : ''}${retired ? ' · скрыто' : ''}</div>
-      <div class="log-desc">${esc([d.class, d.browser, d.pwa ? 'PWA' : 'браузер'].filter(Boolean).join(' · '))} · ${fmt(d.lastSeenAt)}</div>
-    </div>
-  </button>`;
+  return renderSmallListRow({
+    icon: icon(d),
+    title: `${d.label || 'Устройство'}${isCur ? ' · это устройство' : ''}${retired ? ' · скрыто' : ''}`,
+    desc: `${[d.class, d.browser, d.pwa ? 'PWA' : 'браузер'].filter(Boolean).join(' · ')} · ${fmt(d.lastSeenAt)}`,
+    attrs: `data-dev-open="${esc(d.deviceStableId || d.deviceHash || '')}"`,
+    style: `width:100%;text-align:left;cursor:pointer;opacity:${retired ? '.48' : '1'}`
+  });
 };
 
 export const renderAccountDevicesBlock = () => {
@@ -36,10 +35,11 @@ export const renderAccountDevicesBlock = () => {
 
 const renderAuthHistory = d => {
   const a = Array.isArray(d.authHistory) ? d.authHistory : [];
-  return a.length ? a.slice(0,10).map(x => `<div class="profile-list-item" style="padding:9px 10px">
-    <div class="log-time">${fmt(x.ts)}</div>
-    <div class="log-info"><div class="log-title">${esc([x.os, x.browser, x.pwa ? 'PWA' : 'браузер'].filter(Boolean).join(' · ') || 'Авторизация')}</div><div class="log-desc">${esc([x.lang, x.timezone].filter(Boolean).join(' · '))}</div></div>
-  </div>`).join('') : '<div class="fav-empty">История авторизаций пока пуста</div>';
+  return a.length ? a.slice(0,10).map(x => renderSmallListRow({
+    title: [x.os, x.browser, x.pwa ? 'PWA' : 'браузер'].filter(Boolean).join(' · ') || 'Авторизация',
+    desc: [fmt(x.ts), x.lang, x.timezone].filter(Boolean).join(' · '),
+    style: 'padding:9px 10px'
+  })).join('') : '<div class="fav-empty">История авторизаций пока пуста</div>';
 };
 
 const openDeviceModal = async ({ stableId = '', rerender } = {}) => {
@@ -64,19 +64,19 @@ const openDeviceModal = async ({ stableId = '', rerender } = {}) => {
     bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px">
       <div class="profile-list-item"><div style="font-size:28px">${icon(d)}</div><div class="log-info"><div class="log-title">${esc(d.label || 'Устройство')}${isCur ? ' · это устройство' : ''}</div><div class="log-desc">${esc([d.class, d.platform, d.browser, d.pwa ? 'PWA' : 'браузер'].filter(Boolean).join(' · '))}</div></div></div>
       <div class="yandex-auth-meta" style="grid-template-columns:1fr 1fr">
-        <div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Первый вход</div><div class="yandex-auth-metabox-value">${fmt(d.firstSeenAt)}</div></div>
-        <div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Последний раз</div><div class="yandex-auth-metabox-value">${fmt(d.lastSeenAt)}</div></div>
-        <div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Экран</div><div class="yandex-auth-metabox-value">${esc(d.screen || '—')}</div></div>
-        <div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">Язык</div><div class="yandex-auth-metabox-value">${esc(d.lang || '—')}</div></div>
+        ${renderMetaBox({ label: 'Первый вход', value: fmt(d.firstSeenAt) })}
+        ${renderMetaBox({ label: 'Последний раз', value: fmt(d.lastSeenAt) })}
+        ${renderMetaBox({ label: 'Экран', value: d.screen || '—' })}
+        ${renderMetaBox({ label: 'Язык', value: d.lang || '—' })}
       </div>
       ${deviceMetaHtml}
       <div style="font-size:10px;color:#556;word-break:break-all">stableId: ${esc(d.deviceStableId || '—')}<br>hash: ${esc(d.deviceHash || '—')}<br>aliases: ${(d.seenHashes || []).length}</div>
       <div style="font-size:12px;font-weight:900;color:#eaf2ff;text-transform:uppercase;letter-spacing:.7px;margin-top:4px">История авторизаций</div>
       <div style="display:flex;flex-direction:column;gap:6px">${renderAuthHistory(d)}</div>
-      <div class="om-actions">
-        <button type="button" class="modal-action-btn online" data-dev-act="rename">✏️ Переименовать</button>
-        ${isCur ? '<button type="button" class="modal-action-btn" data-dev-act="refresh">↻ Обновить</button>' : '<button type="button" class="modal-action-btn" data-dev-act="retire">🗑 Удалить из списка</button>'}
-      </div>
+      ${renderInlineActions([
+        { text: '✏️ Переименовать', primary: true, attrs: 'data-dev-act="rename"' },
+        isCur ? { text: '↻ Обновить', attrs: 'data-dev-act="refresh"' } : { text: '🗑 Удалить из списка', attrs: 'data-dev-act="retire"' }
+      ])}
     </div>`
   });
 
