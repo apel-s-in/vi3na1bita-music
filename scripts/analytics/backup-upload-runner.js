@@ -19,7 +19,14 @@ const normalizeDeviceForHash = d => ({
   label: sS(d?.label),
   class: sS(d?.class),
   platform: sS(d?.platform),
+  os: sS(d?.os),
+  browser: sS(d?.browser),
+  screen: sS(d?.screen),
+  lang: sS(d?.lang),
+  pwa: !!d?.pwa,
   firstSeenAt: sN(d?.firstSeenAt),
+  retiredAt: sN(d?.retiredAt),
+  authHistory: (Array.isArray(d?.authHistory) ? d.authHistory : []).map(x => ({ ts:sN(x?.ts), browser:sS(x?.browser), os:sS(x?.os), lang:sS(x?.lang), timezone:sS(x?.timezone), pwa:!!x?.pwa })).filter(x => x.ts > 0).slice(0,20),
   seenHashes: [...new Set((Array.isArray(d?.seenHashes) ? d.seenHashes : []).map(sS).filter(Boolean))].sort()
 });
 
