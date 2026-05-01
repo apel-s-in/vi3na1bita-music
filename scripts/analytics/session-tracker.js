@@ -40,7 +40,7 @@ export class SessionTracker {
     if (!isE) this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
     const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
     if (duration <= 0 && !isE) return;
-    const sec = Math.floor(accumulatedMs / 1000), prg = duration > 0 ? (lastPos / duration) : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
+    const rawSec = Math.floor(accumulatedMs / 1000), sec = isE ? Math.max(rawSec, Math.floor(duration || lastPos || 0)) : rawSec, prg = duration > 0 ? Math.max(lastPos, isE ? duration : 0) / duration : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
 
     if (isV || isF) {
       const n = new Date(), h = n.getHours(), m = n.getMinutes();
