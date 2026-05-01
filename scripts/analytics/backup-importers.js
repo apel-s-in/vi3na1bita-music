@@ -3,16 +3,18 @@ import { toNum, maxDateStr, mergeAchievementsSafe, mergeProfileStorageValueSafe 
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
-import { isBackupSemanticNoiseEvent } from './event-contract.js';
+import { normalizeEventList } from './backup-event-cleanup.js';
 
 export const rebuildStatsFromWarmEvents = async () => {
   try {
     const [{ StatsAggregator }] = await Promise.all([import('./stats-aggregator.js')]);
     const agg = new StatsAggregator({ bindEvents: false });
-    const warm = await metaDB.getEvents('events_warm').catch(() => []);
+    const warm = normalizeEventList(await metaDB.getEvents('events_warm').catch(() => []), { limit: 10000 });
+    await metaDB.clearEvents('events_warm').catch(() => {});
+    if (warm.length) await metaDB.addEvents(warm, 'events_warm');
     await metaDB.tx('stats', 'readwrite', s => s.clear());
     await metaDB.clearEvents('events_hot').catch(() => {});
-    if (!Array.isArray(warm) || !warm.length) { await new Promise(r => setTimeout(r, 0)); return true; }
+    if (!warm.length) { await new Promise(r => setTimeout(r, 0)); return true; }
     console.debug(`[rbdStats] rebuilding from ${warm.length} events...`);
     const BATCH_SIZE = 500;
     let processed = 0;
@@ -56,16 +58,9 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
         metaDB.getGlobal('global_streak'),
         metaDB.getGlobal('user_profile_rpg')
       ]);
-      const seen = new Set();
-      let mergedEvents = [...lW, ...(backup.data.eventLog.warm || [])]
-        .filter(x => x?.eventId && !seen.has(x.eventId) && seen.add(x.eventId))
-        .filter(x => !isBackupSemanticNoiseEvent(x))
-        .sort((x, y) => x.timestamp - y.timestamp);
-      const WARM_LIMIT = 10000;
-      if (mergedEvents.length > WARM_LIMIT) {
-        console.debug(`[BackupVault] warm merge trimmed: ${mergedEvents.length} → ${WARM_LIMIT}`);
-        mergedEvents = mergedEvents.slice(-WARM_LIMIT);
-      }
+      const beforeMergeCount = (Array.isArray(lW) ? lW.length : 0) + (Array.isArray(backup.data.eventLog.warm) ? backup.data.eventLog.warm.length : 0);
+      let mergedEvents = normalizeEventList([...lW, ...(backup.data.eventLog.warm || [])], { limit: 10000 });
+      if (mergedEvents.length < beforeMergeCount) console.debug(`[BackupVault] warm merge cleaned: ${beforeMergeCount} → ${mergedEvents.length}`);
       await metaDB.clearEvents('events_warm');
       await metaDB.addEvents(mergedEvents, 'events_warm');
       await rebuildStatsFromWarmEvents();
