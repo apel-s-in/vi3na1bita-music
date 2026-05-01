@@ -432,7 +432,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 15:20:02 UTC
+Сгенерировано: 2026-05-01 15:21:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4069,7 +4069,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
     { sel: '[data-ach-timer]', run: ({ el }) => aV.toggleTimerMode(el.dataset.achTimer) },
     { sel: '.chart-title', run: ({ el }) => { const box = c.querySelector('#' + el.dataset.tg); if (!box) return; const vis = box.style.display !== 'none'; box.style.display = vis ? 'none' : ''; localStorage.setItem(el.dataset.ls, vis ? '0' : '1'); } },
     { sel: '.auth-btn', run: ({ el }) => { window.NotificationSystem?.info('Используйте кнопки Яндекс выше'); } },
-    { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
+    { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); } catch {} window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
     { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
     { sel: '#cleanup-devices-btn', run: async () => {
       if (!window.Modals?.open) return;
