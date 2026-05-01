@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 21:23:24 UTC
+Сгенерировано: 2026-05-01 21:24:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11847,9 +11847,11 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 .log-title{font-size:13px;font-weight:bold;color:#eaf2ff}
 .log-desc{font-size:11px;color:var(--secondary-color);margin-top:2px}
 #prof-logs-list .profile-list-item{align-items:flex-start}
-#prof-logs-list .log-info{min-width:0}
+#prof-logs-list .profile-log-row{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:3px;padding:12px 14px}
+#prof-logs-list .profile-log-info{width:100%;min-width:0}
+#prof-logs-list .log-title{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
 #prof-logs-list .log-desc{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.35;word-break:break-word}
-#prof-logs-list .log-time{line-height:1.25;padding-top:2px}
+#prof-logs-list .profile-log-date{min-width:0;width:100%;font-size:11px;color:#888;line-height:1.25;padding-top:0;margin-bottom:1px;text-align:left}
 .rec-play-btn{background:rgba(77,170,255,.15);color:var(--secondary-color);border:none;width:36px;height:36px;border-radius:50%;display:flex;justify-content:center;align-items:center;cursor:pointer;transition:.2s}
 .rec-play-btn:hover{background:var(--secondary-color);color:#fff;transform:scale(1.1)}
 .profile-section-title{font-size:14px;font-weight:900;color:#eaf2ff;letter-spacing:.06em;text-transform:uppercase;margin:4px 0 2px}
