@@ -22,14 +22,8 @@
             DR.saveDeviceRegistry(cleaned);
             console.debug(`[Migration] device registry cleaned: ${before.length} → ${cleaned.length}`);
           }
-          // Ограничиваем warm если сильно раздут
-          const warm = await M.metaDB.getEvents('events_warm').catch(() => []);
-          if (Array.isArray(warm) && warm.length > 10000) {
-            const trimmed = [...warm].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)).slice(-10000);
-            await M.metaDB.clearEvents('events_warm');
-            await M.metaDB.addEvents(trimmed, 'events_warm');
-            console.debug(`[Migration] warm events trimmed: ${warm.length} → ${trimmed.length}`);
-          }
+          const { cleanupWarmEventsStore } = await import('./analytics/backup-event-cleanup.js');
+          await cleanupWarmEventsStore(M.metaDB, { migrationLabel: 'Migration' });
           localStorage.setItem(MIGRATION_KEY, String(Date.now()));
         }
       } catch (e) {
