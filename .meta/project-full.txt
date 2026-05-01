@@ -434,7 +434,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 17:36:45 UTC
+Сгенерировано: 2026-05-01 17:37:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2601,7 +2601,8 @@ export class StatsAggregator {
 
     for (const ev of events) {
       if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
-        const { isFullListen: isF, isValidListen: isV, listenedSeconds: lSec, variant: v, trackDuration: tDur } = ev.data;
+        const { isFullListen: isF, isValidListen: isV, variant: v, trackDuration: tDur } = ev.data;
+        const lSec = Math.max(0, Number(ev.data.listenedSeconds || (isF ? tDur : 0)) || 0);
         const isRateLimited = isF && (ev.timestamp - (this.lastFullListens.get(ev.uid) || 0)) < (tDur || 0) * 900;
 
         await metaDB.updateStat(ev.uid, s => {
