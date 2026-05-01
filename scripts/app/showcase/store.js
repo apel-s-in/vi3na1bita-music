@@ -1,10 +1,15 @@
 // Компактный Store витрины.
 const NS = 'sc3:', deep = v => JSON.parse(JSON.stringify(v)), nowTs = () => Date.now();
 const emitPlDirty = () => { try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } })); } catch {} };
+const emitDevDirty = () => { try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); } catch {} };
 
 export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
   const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
-  const jSet = (k, v) => { try { ls.setItem(NS + k, JSON.stringify(v)); } catch {} };
+  const jSet = (k, v) => {
+    try { ls.setItem(NS + k, JSON.stringify(v)); } catch {}
+    if (['default', 'albumColors'].includes(k)) emitPlDirty();
+    if (['activeId', 'ui_v2'].includes(k)) emitDevDirty();
+  };
 
   const normSnap = (c, fbOrd = getCat()) => {
     c = c && typeof c === 'object' ? deep(c) : {}; const o = [], h = [], s = new Set();
