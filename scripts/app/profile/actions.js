@@ -105,6 +105,26 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
         rP?.();
       } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
     }},
+    { sel: '[data-fav-restore]', run: async ({ el }) => {
+      try {
+        const uid = String(el.dataset.favRestore || '').trim();
+        if (!uid) return;
+        window.playerCore?.restoreInactive?.(uid);
+        try { window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: true, source: 'favorites_trash_restore' }); } catch {}
+        window.NotificationSystem?.success?.('Трек возвращён в избранное ✅');
+        rP?.();
+      } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
+    }},
+    { sel: '[data-fav-purge]', run: async ({ el }) => {
+      try {
+        const uid = String(el.dataset.favPurge || '').trim();
+        if (!uid) return;
+        window.FavoritesManager?.purge?.(uid);
+        try { window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: false, source: 'favorites_trash_purge', purged: true }); } catch {}
+        window.NotificationSystem?.success?.('След избранного удалён окончательно');
+        rP?.();
+      } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
+    }},
     {
       sel: '#stats-reset-open-btn',
       run: async () => {
