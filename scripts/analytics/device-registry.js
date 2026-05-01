@@ -10,7 +10,7 @@ export const normalizeDeviceRow = (r = {}) => {
   const pf=safeString(r?.platform||'web')||'web';
   const cl=((v,p)=>{const x=safeString(v).toLowerCase();if(['iphone','ipad','android','desktop','tablet'].includes(x))return x.charAt(0).toUpperCase()+x.slice(1);if(p==='ios')return 'iPhone';if(p==='android')return 'Android';return 'Desktop';})(r?.class,pf);
   const lb=safeString(r?.label||'')||({ ios:'Мой iPhone', android:'Моё Android устройство', web:'Мой Desktop' }[pf]||'Моё устройство');
-  return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:pf, class:cl, label:lb, userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), seenHashes:sH };
+  return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:pf, class:cl, label:lb, userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), lastBackupAt:safeNum(r?.lastBackupAt), seenHashes:sH };
 };
 
 export const normalizeDeviceRegistry = rows => {
@@ -55,17 +55,20 @@ export const normalizeDeviceRegistry = rows => {
       return;
     }
 
-    // Мержим записи с одинаковым ключом
+    // Мержим записи с одинаковым ключом. Более свежая запись побеждает в label/class/platform.
+    const newer = safeNum(r.lastSeenAt) >= safeNum(existing.lastSeenAt) ? r : existing;
+    const older = newer === r ? existing : r;
     const merged = normalizeDeviceRow({
-      ...existing,
-      ...r,
+      ...older,
+      ...newer,
       deviceStableId: existing.deviceStableId || r.deviceStableId,
-      deviceHash: existing.deviceHash || r.deviceHash,
+      deviceHash: newer.deviceHash || older.deviceHash,
       firstSeenAt: Math.min(...[safeNum(existing.firstSeenAt), safeNum(r.firstSeenAt)].filter(v => v > 0)) || 0,
       lastSeenAt: Math.max(safeNum(existing.lastSeenAt), safeNum(r.lastSeenAt)),
-      label: existing.label || r.label,
-      platform: existing.platform || r.platform,
-      class: existing.class || r.class,
+      lastBackupAt: Math.max(safeNum(existing.lastBackupAt), safeNum(r.lastBackupAt)),
+      label: newer.label || older.label,
+      platform: newer.platform || older.platform,
+      class: newer.class || older.class,
       seenHashes: [
         ...new Set([
           ...(existing.seenHashes || []),
