@@ -1,15 +1,15 @@
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
-
-const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+import { renderCloudStatPair } from './cloud-ui-helpers.js';
+import { esc, fmtDateTime, renderInlineActions } from './profile-ui-kit.js';
 
 export const openRestorePreviewModal = (d, oC) => {
-  const s = BackupVault.summarizeBackupObject(d), lI = getLocalBackupUiSnapshot({ name: 'Слушатель' }), c = compareLocalVsCloud(lI, s || {}), cL = getBackupCompareLabel(lI, s || {}), lR = window.achievementEngine?.profile || { level: 1, xp: 0 }, lA = Object.keys(window.achievementEngine?.unlocked || {}).length, lF = (() => { try { return JSON.parse(localStorage.getItem('__favorites_v2__') || '[]').filter(i => !i.inactiveAt).length; } catch { return 0; } })(), cR = d.data?.userProfileRpg || { level: 1, xp: 0 };
-  const tH = `<div style="display:flex;gap:10px;margin:16px 0;text-align:center"><div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:12px 8px"><div style="font-size:11px;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">💾 На устройстве</div><div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Ур. ${lR.level} <span style="font-size:11px;color:#ff9800">(${lR.xp} XP)</span></div><div style="font-size:12px;color:#eaf2ff;margin-bottom:2px">🏆 Ачивок: <b>${lA}</b></div><div style="font-size:12px;color:#eaf2ff">⭐ Избранных: <b>${lF}</b></div></div><div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);border-radius:12px;padding:12px 8px"><div style="font-size:11px;color:#8ab8fd;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">☁️ В облаке</div><div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Ур. ${cR.level || 1} <span style="font-size:11px;color:#ff9800">(${cR.xp || 0} XP)</span></div><div style="font-size:12px;color:#eaf2ff;margin-bottom:2px">🏆 Ачивок: <b>${s.achievementsCount}</b></div><div style="font-size:12px;color:#eaf2ff">⭐ Избранных: <b>${s.favoritesCount}</b></div></div></div>`;
+  const s = BackupVault.summarizeBackupObject(d), lI = getLocalBackupUiSnapshot({ name: 'Слушатель' }), c = compareLocalVsCloud(lI, s || {}), cL = getBackupCompareLabel(lI, s || {});
+  const tH = renderCloudStatPair({ localSummary: lI, cloudSummary: s });
   const m = window.Modals?.open?.({
     title: 'Предпросмотр восстановления',
-    maxWidth: 500,
-    bodyHtml: `<div class="modal-confirm-text" style="font-size:13px"><b>Дата backup:</b> ${s.timestamp ? new Date(s.timestamp).toLocaleString('ru-RU') : 'неизвестно'}<br><b>Версия приложения:</b> ${esc(s.appVersion)}<br>${tH}<span style="color:#9db7dd">Сравнение: ${esc(cL)} (${esc(c.state)}). При восстановлении применяется безопасное слияние: высокие результаты (XP, уровни, достижения) не будут понижены, а добавятся к текущим.</span><br><br><b>Выберите режим:</b></div><div class="modal-choice-actions"><button type="button" class="modal-action-btn online" data-restore-mode="all">Восстановить всё</button><button type="button" class="modal-action-btn" data-restore-mode="profile">Профиль, избранное, плейлисты</button><button type="button" class="modal-action-btn" data-restore-mode="stats">Статистику и достижения</button></div>`
+    maxWidth: 400,
+    bodyHtml: `<div class="modal-confirm-text" style="font-size:13px"><b>Дата backup:</b> ${fmtDateTime(s.timestamp)}<br><b>Версия приложения:</b> ${esc(s.appVersion)}<br>${tH}<span style="color:#9db7dd">Сравнение: ${esc(cL)} (${esc(c.state)}). При восстановлении применяется безопасное слияние: высокие результаты (XP, уровни, достижения) не будут понижены, а добавятся к текущим.</span><br><br><b>Выберите режим:</b></div>${renderInlineActions([{ text: 'Восстановить всё', primary: true, attrs: 'data-restore-mode="all"' }, { text: 'Профиль, избранное, плейлисты', attrs: 'data-restore-mode="profile"' }, { text: 'Статистику и достижения', attrs: 'data-restore-mode="stats"' }])}`
   });
   m?.addEventListener('click', e => {
     const b = e.target.closest('[data-restore-mode]');
@@ -22,8 +22,8 @@ export const openRestorePreviewModal = (d, oC) => {
 
 export const openRestoreVersionPickerModal = (i, oP) => {
   const l = (Array.isArray(i) ? i : []).slice(0, 5);
-  const bH = l.length ? `<div class="modal-confirm-text">Доступные версии backup в облаке:</div><div class="modal-choice-actions">${l.map((it, idx) => { const dev = [it?.sourceDeviceLabel, it?.sourceDeviceClass].filter(Boolean).join(' · '); return `<button type="button" class="modal-action-btn ${idx === 0 ? 'online' : ''}" data-restore-path="${esc(it.path || '')}">${it.isLatest ? '☁️ Latest' : '🕘 Архив'} · ${it.timestamp ? new Date(it.timestamp).toLocaleString('ru-RU') : 'без даты'} · ${esc(it.sizeHuman || 'unknown')}${it.appVersion ? ` · v${esc(String(it.appVersion))}` : ''}${dev ? ` · ${esc(dev)}` : ''}${it.checksum ? ` · ✓` : ''}</button>`; }).join('')}</div>` : `<div class="modal-confirm-text" style="text-align:center;color:#9db7dd"><div style="font-size:32px;margin-bottom:12px">☁️</div><div>Список версий backup не получен.</div><div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div></div>`;
-  const m = window.Modals?.open?.({ title: 'Выберите облачную версию', maxWidth: 500, bodyHtml: bH });
+  const bH = l.length ? `<div class="modal-confirm-text">Доступные версии backup в облаке:</div>${renderInlineActions(l.map((it, idx) => { const dev = [it?.sourceDeviceLabel, it?.sourceDeviceClass].filter(Boolean).join(' · '); return { text: `${it.isLatest ? '☁️ Latest' : '🕘 Архив'} · ${fmtDateTime(it.timestamp)} · ${it.sizeHuman || 'unknown'}${it.appVersion ? ` · v${String(it.appVersion)}` : ''}${dev ? ` · ${dev}` : ''}${it.checksum ? ' · ✓' : ''}`, primary: idx === 0, attrs: `data-restore-path="${esc(it.path || '')}"` }; }))}` : `<div class="modal-confirm-text" style="text-align:center;color:#9db7dd"><div style="font-size:32px;margin-bottom:12px">☁️</div><div>Список версий backup не получен.</div><div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div></div>`;
+  const m = window.Modals?.open?.({ title: 'Выберите облачную версию', maxWidth: 400, bodyHtml: bH });
   m?.addEventListener('click', e => {
     const b = e.target.closest('[data-restore-path]');
     if (b) {
