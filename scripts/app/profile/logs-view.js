@@ -9,6 +9,7 @@ const FILTERS = [
   ['playlists', 'Плейлисты'],
   ['achievement', 'Достижения'],
   ['profile', 'Профиль'],
+  ['auth', 'Авторизация'],
   ['cloud', 'Облако']
 ];
 
@@ -37,7 +38,7 @@ const bindWheelScroll = tabs => {
 const renderEventRow = ev => {
   const vm = describeEventForUi(ev);
   const tr = eventTrackTitle(ev), dev = eventDeviceLabel(ev);
-  const time = ev?.timestamp ? new Date(ev.timestamp).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+  const time = ev?.timestamp ? new Date(ev.timestamp).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
   return `<div class="profile-list-item" data-event-domain="${esc(eventDomain(ev))}" data-event-type="${esc(ev?.type || '')}">
     <div class="log-time">${esc(time)}</div>
     <div class="log-info">
