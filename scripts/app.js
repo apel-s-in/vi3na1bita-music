@@ -13,7 +13,7 @@
 
       // Разовая миграция: чистим раздутый device registry и warm events от накопленных дублей (cleanup после старых версий)
       try {
-        const MIGRATION_KEY = 'migration:cleanup_duplicates:v2';
+        const MIGRATION_KEY = 'migration:cleanup_duplicates:v3';
         if (!localStorage.getItem(MIGRATION_KEY)) {
           const { default: DR } = await import('./analytics/device-registry.js');
           const before = DR.getDeviceRegistry();
@@ -30,7 +30,7 @@
         console.warn('[Migration] cleanup failed:', e?.message);
       }
       W.addEventListener('achievements:updated', e => {
-        const { total, unlocked, profile } = e.detail, $el = id => $(id);
+        const d = e.detail || {}, total = Number.isFinite(Number(d.total)) ? Number(d.total) : (W.achievementEngine?.achievements?.length || 0), unlocked = Number.isFinite(Number(d.unlocked)) ? Number(d.unlocked) : Object.keys(W.achievementEngine?.unlocked || {}).length, profile = d.profile || W.achievementEngine?.profile || null, $el = id => $(id);
         if ($el('achievementsCount')) $el('achievementsCount').textContent = `ВЫПОЛНЕНО: ${unlocked} / ${total}`;
         if ($el('achievementsFill') && total) $el('achievementsFill').style.width = `${(unlocked / total) * 100}%`;
         if (profile) {
