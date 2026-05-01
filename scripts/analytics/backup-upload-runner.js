@@ -40,7 +40,7 @@ export const buildSharedSemanticPayload = backup => {
     devices: (Array.isArray(backup?.devices) ? backup.devices : []).map(normalizeDeviceForHash).sort((a, b) => a.deviceStableId.localeCompare(b.deviceStableId) || a.deviceHash.localeCompare(b.deviceHash)),
     data: {
       stats: normalizeStatsForHash(data.stats),
-      eventLog: { warm: (Array.isArray(data?.eventLog?.warm) ? data.eventLog.warm : []).filter(x => !isBackupSemanticNoiseEvent(x)) },
+      eventLog: { warm: (Array.isArray(data?.eventLog?.warm) ? data.eventLog.warm : []).filter(x => x?.eventId && !isBackupSemanticNoiseEvent(x)) },
       achievements: data.achievements || {},
       streaks: data.streaks || {},
       userProfile: data.userProfile || {},
