@@ -72,7 +72,7 @@ export const normalizeEventEnvelope = ({
 
 export const describeEventForUi = ev => {
   const type = sS(ev?.type), d = ev?.data || {};
-  if (type === EVENT_TYPES.LISTEN_COMPLETE) return { icon: '🎵', title: 'Прослушано', desc: `Валидно: ${d.isValidListen ? 'да' : 'нет'} · полностью: ${d.isFullListen ? 'да' : 'нет'} · ${sN(d.listenedSeconds)} сек` };
+  if (type === EVENT_TYPES.LISTEN_COMPLETE) { const sec = sN(d.listenedSeconds || (d.isFullListen ? d.trackDuration : 0)); return { icon: '🎵', title: 'Прослушано', desc: `Валидно: ${d.isValidListen ? 'да' : 'нет'} · полностью: ${d.isFullListen ? 'да' : 'нет'} · ${sec} сек` }; }
   if (type === EVENT_TYPES.LISTEN_SKIP) return { icon: '⏭️', title: 'Пропущено', desc: `${sN(d.listenedSeconds)} сек` };
   if (type === EVENT_TYPES.LISTEN_START) return { icon: '▶️', title: 'Старт прослушивания', desc: sS(d.variant || 'audio') };
   if (type === EVENT_TYPES.ACHIEVEMENT_UNLOCK) return { icon: '🏆', title: 'Достижение открыто', desc: `${sS(d.name || d.id || 'Достижение')} · +${sN(d.xp)} XP` };
