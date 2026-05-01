@@ -16,7 +16,7 @@ export const getLocalSyncSummary = () => {
     level: safeNum(a?.profile?.level || 1),
     xp: safeNum(a?.profile?.xp || 0),
     achievementsCount: Object.keys(a?.unlocked || {}).length,
-    favoritesCount: Array.isArray(f) ? f.filter(i => !i?.inactiveAt).length : 0,
+    favoritesCount: Array.isArray(f) ? f.filter(i => !i?.inactiveAt && !i?.deletedAt).length : 0,
     playlistsCount: Array.isArray(pl) ? pl.filter(p => !p?.deletedAt).length : 0,
     statsCount: 0,
     eventCount: 0,
