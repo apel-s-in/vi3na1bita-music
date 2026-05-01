@@ -1,6 +1,6 @@
 import { renderDownloadSettingsSection, bindDownloadSettingsSection } from './settings-download-section.js';
 import { renderInterfaceSettingsSection, bindInterfaceSettingsSection } from './settings-interface-section.js';
-import { renderDataSettingsSection } from './settings-data-section.js';
+import { renderDataSettingsSection, bindDataSettingsSection } from './settings-data-section.js';
 
 const W = window;
 
@@ -38,6 +38,7 @@ export const renderProfileSettings = root => {
 
   bindInterfaceSettingsSection(root);
   bindDownloadSettingsSection(root);
+  bindDataSettingsSection(root);
 };
 
 export default { renderProfileSettings };
