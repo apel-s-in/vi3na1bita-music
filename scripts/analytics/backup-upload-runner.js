@@ -6,6 +6,7 @@ import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1';
 const LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:';
 const LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1';
+const LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1';
 const HISTORY_MIN_INTERVAL_MS = 6 * 3600 * 1000;
 
 const sS = v => String(v == null ? '' : v).trim();
@@ -76,7 +77,8 @@ const persistMeta = ({ meta, backup, sharedHash } = {}) => {
       localStorage.setItem('yandex:last_backup_check_ts', String(Date.now()));
       window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
     }
-    if (backup) localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
+    if (backup && sharedHash) localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now())));
+    if (meta && sharedHash) localStorage.setItem(LS_LOCAL_SUMMARY, JSON.stringify(meta));
     if (sharedHash) localStorage.setItem(LS_SHARED_HASH, sharedHash);
   } catch {}
 };
@@ -131,8 +133,8 @@ export const uploadBackupBundle = async ({
     } catch {}
   }
 
-  if (!uploadedShared && meta) persistMeta({ meta, backup: b });
-  if (uploadedShared || uploadedDevice) {
+  if (!uploadedShared && meta) persistMeta({ meta });
+  if (uploadedShared) {
     try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared, uploadedDevice, checksum: b?.integrity?.payloadHash || '' }); } catch {}
   }
 
