@@ -436,7 +436,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 21:21:55 UTC
+Сгенерировано: 2026-05-01 21:22:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5236,7 +5236,7 @@ export const openFreshLoginRestoreModal = ({
       { text: '🔕 Напомнить позже', attrs: 'data-fresh-act="later"' }
     ])}`;
 
-  const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 500, strictClose: true, bodyHtml });
+  const m = window.Modals?.open?.({ title: 'Обнаружена облачная копия', maxWidth: 400, strictClose: true, bodyHtml });
   if (!m) return;
 
   const pickPath = () => {
