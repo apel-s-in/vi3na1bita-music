@@ -433,7 +433,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 16:00:33 UTC
+Сгенерировано: 2026-05-01 16:01:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2461,7 +2461,6 @@ export const DEVICE_STORAGE_KEYS = [
   'cloud:listenThreshold',
   'cloud:ttlDays',
   'playerVolume',
-  'playerStateV2',
   'sleepTimerState:v2',
   'app:first-install-ts',
   'sc3:activeId',
