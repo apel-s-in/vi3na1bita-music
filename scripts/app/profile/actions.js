@@ -5,6 +5,13 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
   if (!c || ctx._pB) return;
   ctx._pB = true;
 
+  c.addEventListener('wheel', e => {
+    const tabs = e.target.closest?.('.ach-classic-tabs');
+    if (!tabs || tabs.scrollWidth <= tabs.clientWidth) return;
+    e.preventDefault();
+    tabs.scrollLeft += e.deltaY || e.deltaX;
+  }, { passive: false });
+
   const handlers = [
     { sel: '.profile-tab-btn', run: ({ el }) => { c.querySelectorAll('.profile-tab-btn, .profile-tab-content').forEach(x => x.classList.remove('active')); el.classList.add('active'); c.querySelector(`#tab-${el.dataset.tab}`)?.classList.add('active'); } },
     { sel: '.ach-classic-tab', run: ({ el }) => { const p = el.closest('.profile-tab-content'); if (!p) return; p.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active')); el.classList.add('active'); if (p.id === 'tab-achievements') aV.render(el.dataset.filter); else if (p.id === 'tab-settings') { p.querySelectorAll('.settings-content').forEach(x => x.classList.remove('active')); p.querySelector(`#set-${el.dataset.setTab}`)?.classList.add('active'); } } },
