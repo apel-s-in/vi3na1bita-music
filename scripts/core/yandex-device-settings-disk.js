@@ -1,5 +1,5 @@
 import { CLOUD_BACKUP_DIR } from '../analytics/cloud-contract.js';
-import { DEVICE_SETTINGS_DIR, buildDeviceSettingsPath, normalizeDeviceSettingsSnapshot, safeDeviceString } from '../analytics/device-settings-contract.js';
+import { DEVICE_SETTINGS_DIR, DEVICE_SETTINGS_INDEX_PATH, buildDeviceSettingsPath, normalizeDeviceSettingsSnapshot, buildDeviceSettingsIndexItem, normalizeDeviceSettingsIndex, safeDeviceString } from '../analytics/device-settings-contract.js';
 import { YANDEX_DISK_PROXY as PROXY, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir, mapProxyError as mPE } from './yandex-disk-transport.js';
 
 const sS=safeDeviceString;
@@ -13,7 +13,25 @@ export const YandexDeviceSettingsDisk={
     await ensureResourceDir(t,CLOUD_BACKUP_DIR).catch(()=>null);
     await ensureResourceDir(t,DEVICE_SETTINGS_DIR).catch(()=>null);
     await pJP(t,path,doc);
+    try{
+      const old=await this.getDeviceSettingsIndex(t).catch(()=>({items:[]}));
+      await pJP(t,DEVICE_SETTINGS_INDEX_PATH,normalizeDeviceSettingsIndex([...(old?.items||[]),buildDeviceSettingsIndexItem(doc)]));
+    }catch{}
     return doc;
+  },
+  async getDeviceSettingsIndex(t){
+    if(!t) throw new Error('no_token');
+    const u=new URL(PROXY);u.searchParams.set('mode','device_index');
+    try{
+      const d=await fPJ(u.toString(),t,2);
+      return normalizeDeviceSettingsIndex(d?.index||d||{items:[]});
+    }catch(e){
+      const s=Number(e?.status||0);
+      if(s===404) return normalizeDeviceSettingsIndex([]);
+      if(s===401) throw mPE('disk_auth_error',e);
+      if(s===403) throw mPE('disk_forbidden',e);
+      return normalizeDeviceSettingsIndex([]);
+    }
   },
   async getDeviceSettingsMeta(t,stableId){
     if(!t) throw new Error('no_token');
