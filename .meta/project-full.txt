@@ -432,7 +432,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 15:10:36 UTC
+Сгенерировано: 2026-05-01 15:12:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1310,12 +1310,12 @@ import { toNum, maxDateStr, mergeAchievementsSafe, mergeProfileStorageValueSafe 
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
-import { isBackupNoiseEvent } from './event-contract.js';
+import { isBackupSemanticNoiseEvent } from './event-contract.js';
 
 export const rebuildStatsFromWarmEvents = async () => {
   try {
     const [{ StatsAggregator }] = await Promise.all([import('./stats-aggregator.js')]);
-    const agg = new StatsAggregator();
+    const agg = new StatsAggregator({ bindEvents: false });
     const warm = await metaDB.getEvents('events_warm').catch(() => []);
     await metaDB.tx('stats', 'readwrite', s => s.clear());
     await metaDB.clearEvents('events_hot').catch(() => {});
@@ -1366,7 +1366,7 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
       const seen = new Set();
       let mergedEvents = [...lW, ...(backup.data.eventLog.warm || [])]
         .filter(x => x?.eventId && !seen.has(x.eventId) && seen.add(x.eventId))
-        .filter(x => !isBackupNoiseEvent(x))
+        .filter(x => !isBackupSemanticNoiseEvent(x))
         .sort((x, y) => x.timestamp - y.timestamp);
       const WARM_LIMIT = 10000;
       if (mergedEvents.length > WARM_LIMIT) {
@@ -1376,6 +1376,18 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
       await metaDB.clearEvents('events_warm');
       await metaDB.addEvents(mergedEvents, 'events_warm');
       await rebuildStatsFromWarmEvents();
+
+      try {
+        const remoteGlobal = (Array.isArray(backup?.data?.stats) ? backup.data.stats : []).find(s => s?.uid === 'global') || null;
+        const remoteBackupCount = toNum(remoteGlobal?.featuresUsed?.backup);
+        if (remoteBackupCount > 0) {
+          await metaDB.updateStat('global', s => {
+            s.featuresUsed = s.featuresUsed || {};
+            s.featuresUsed.backup = Math.max(toNum(s.featuresUsed.backup), remoteBackupCount);
+            return s;
+          });
+        }
+      } catch {}
 
       const mergedAchievements = mergeAchievementsSafe(lA?.value || {}, backup.data.achievements || {});
       await metaDB.setGlobal('unlocked_achievements', mergedAchievements);
