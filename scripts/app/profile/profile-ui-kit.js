@@ -28,4 +28,11 @@ export const renderInlineActions = actions => `
   </div>
 `;
 
-export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderSmallListRow, renderInlineActions };
+export const renderSectionCard = ({ title = '', body = '', style = '' } = {}) => `
+  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;${esc(style)}">
+    ${title ? `<div style="font-size:11px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${esc(title)}</div>` : ''}
+    ${body}
+  </div>
+`;
+
+export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderSmallListRow, renderInlineActions, renderSectionCard };
