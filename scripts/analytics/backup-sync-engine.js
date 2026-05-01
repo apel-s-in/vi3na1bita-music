@@ -13,7 +13,7 @@ import {
 } from './sync-state.js';
 import { cancelScheduledSync, scheduleSync } from './sync-scheduler.js';
 
-let _bound = false;
+let _bound = false, _lastUnlockedSeen = -1;
 
 export const setSyncEnabled = value => {
   setSyncEnabledState(!!value);
@@ -25,7 +25,10 @@ export const initBackupSyncEngine = () => {
   _bound = true;
 
   window.addEventListener('achievements:updated', e => {
-    if (e.detail?.unlocked > 0 && isSyncReady()) scheduleSync({ immediate: true, domain: 'achievements' });
+    const n = Number(e.detail?.unlocked || 0);
+    if (_lastUnlockedSeen < 0) { _lastUnlockedSeen = n; return; }
+    if (n > _lastUnlockedSeen && isSyncReady()) scheduleSync({ immediate: true, domain: 'achievements' });
+    _lastUnlockedSeen = Math.max(_lastUnlockedSeen, n);
   });
 
   window.addEventListener('backup:domain-dirty', e => {
