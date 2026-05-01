@@ -3,6 +3,7 @@ import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
 import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-resolver.js';
 import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
+import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.js';
 
 // UID.001_(Playback safety invariant)_(защитить священное правило проигрывания)_(никакие intel/recs/providers/telemetry не имеют права стопать/сбрасывать playback кроме уже разрешённых сценариев) UID.008_(No playback mutation by intel)_(развести ядро плеера и интеллектуальный слой)_(PlayerCore остаётся единственным владельцем playback state, intel только читает и рекомендует) UID.011_(Media variants registry)_(подготовить future playback для richer variants)_(PlayerCore должен оставаться тонким исполнителем, а выбор variant/source — вне его) UID.012_(Quality dimension)_(сохранить quality-aware playback как часть ядра)_(Hi/Lo/Lossless логика должна заходить в PlayerCore только через безопасные resolver/registry bridges) UID.050_(Session profile)_(дать future session-aware recommendations корректный источник контекста)_(события play/pause/tick/trackChanged отсюда питают session/intel слой, но не наоборот) UID.060_(Session-aware next-track strategy)_(подготовить безопасную стыковку next-track intelligence)_(любые future next suggestions могут предлагаться intel-слоем, но применять их может только PlayerCore по явному действию/разрешённому autoplay) UID.062_(Recommendation memory and feedback)_(готовить reaction signals без влияния на playback)_(recs telemetry может читать player transitions, но не должна вмешиваться в них) UID.079_(VK social/media actions)_(не смешивать external provider actions с ядром аудио)_(PlayerCore не должен знать о VK/Yandex/Google actions beyond already resolved media URLs) UID.094_(No-paralysis rule)_(оставить плеер работоспособным при любых сбоях нового слоя)_(если intel/providers/telemetry недоступны, PlayerCore работает полностью автономно)
 
@@ -14,7 +15,6 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
   const sUid = v => (v == null ? '' : String(v)).trim() || null;
   const qNorm = v => String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
   const emitG = (n, d) => W.dispatchEvent(new CustomEvent(n, d ? { detail: d } : undefined));
-  const dirtyDev = () => { try { W.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); } catch {} };
   const isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
   class PlayerCore {
@@ -148,7 +148,7 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
       if (isMob) return; 
       const vol = clamp(Number(v)/100, 0, 1); 
       ls.setItem(LS_VOL, String(Math.round(vol * 100)));
-      dirtyDev();
+      markDeviceSettingsDirty();
       if (!this.flags.mute) Howler.volume(vol);
     }
     getVolume() { return isMob ? 100 : Number(ls.getItem(LS_VOL) ?? 100); }
@@ -318,7 +318,7 @@ import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
     canToggleQualityForCurrentTrack() { return !!this.getCurrentTrack() && !!(getTrackByUid(this.getCurrentTrackUid())?.audio_low || this.getCurrentTrack()?.sources?.audio?.lo); }
     switchQuality(m) {
       const nq = qNorm(m); if (this.qMode === nq) return;
-      this.qMode = nq; ls.setItem(LS_PQ, nq); dirtyDev(); emitG('quality:changed', { quality: nq }); emitG('offline:uiChanged');
+      this.qMode = nq; ls.setItem(LS_PQ, nq); markDeviceSettingsDirty(); emitG('quality:changed', { quality: nq }); emitG('offline:uiChanged');
       if (this.currentIndex >= 0 && this.sound) this.load(this.currentIndex, { autoPlay: this.isPlaying(), resumePosition: this.getPosition(), dir: 1 });
       W.NotificationSystem?.show?.(`Качество переключено на ${nq === 'hi' ? 'Hi' : 'Lo'}`, 'info');
     }
