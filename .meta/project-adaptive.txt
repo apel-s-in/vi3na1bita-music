@@ -434,7 +434,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 18:46:44 UTC
+Сгенерировано: 2026-05-01 18:49:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1977,6 +1977,14 @@ export default {
 import { safeJsonParse, safeString, safeNum } from './backup-summary.js';
 
 const LS_REGISTRY = 'backup:device_registry:v1';
+const normAuthHistory = a => (Array.isArray(a) ? a : []).map(x => ({
+  ts: safeNum(x?.ts || x?.at),
+  browser: safeString(x?.browser || ''),
+  os: safeString(x?.os || ''),
+  lang: safeString(x?.lang || ''),
+  timezone: safeString(x?.timezone || ''),
+  pwa: !!x?.pwa
+})).filter(x => x.ts > 0).sort((a,b)=>b.ts-a.ts).slice(0, 20);
 
 export const getDeviceRegistry = () => (safeJsonParse(localStorage.getItem(LS_REGISTRY), [])||[]).filter(Boolean);
 
@@ -1986,7 +1994,7 @@ export const normalizeDeviceRow = (r = {}) => {
   const pf=safeString(r?.platform||'web')||'web';
   const cl=((v,p)=>{const x=safeString(v).toLowerCase();if(['iphone','ipad','android','desktop','tablet'].includes(x))return x.charAt(0).toUpperCase()+x.slice(1);if(p==='ios')return 'iPhone';if(p==='android')return 'Android';return 'Desktop';})(r?.class,pf);
   const lb=safeString(r?.label||'')||({ ios:'Мой iPhone', android:'Моё Android устройство', web:'Мой Desktop' }[pf]||'Моё устройство');
-  return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:pf, class:cl, label:lb, userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), lastBackupAt:safeNum(r?.lastBackupAt), seenHashes:sH };
+  return { ...r, deviceHash:dH, deviceStableId:safeString(r?.deviceStableId||''), platform:pf, class:cl, label:lb, os:safeString(r?.os||''), browser:safeString(r?.browser||''), screen:safeString(r?.screen||''), lang:safeString(r?.lang||''), pwa:!!r?.pwa, userAgent:safeString(r?.userAgent||''), firstSeenAt:safeNum(r?.firstSeenAt), lastSeenAt:safeNum(r?.lastSeenAt), lastBackupAt:safeNum(r?.lastBackupAt), retiredAt:safeNum(r?.retiredAt), authHistory:normAuthHistory(r?.authHistory), seenHashes:sH };
 };
 
 export const normalizeDeviceRegistry = rows => {
@@ -2045,6 +2053,8 @@ export const normalizeDeviceRegistry = rows => {
       label: newer.label || older.label,
       platform: newer.platform || older.platform,
       class: newer.class || older.class,
+      retiredAt: Math.max(safeNum(existing.retiredAt), safeNum(r.retiredAt)),
+      authHistory: normAuthHistory([...(existing.authHistory || []), ...(r.authHistory || [])]),
       seenHashes: [
         ...new Set([
           ...(existing.seenHashes || []),
@@ -2075,7 +2085,12 @@ export const countDeviceStableIds = r => new Set(normalizeDeviceRegistry(r).map(
 
 export const removeDevicesFromRegistry = (r, sR) => { const sD=normalizeDeviceRegistry(sR), stI=new Set(sD.map(d=>safeString(d?.deviceStableId)).filter(Boolean)), hsI=new Set(sD.map(d=>safeString(d?.deviceHash)).filter(Boolean)); return normalizeDeviceRegistry(r).filter(d => !(safeString(d?.deviceStableId) && stI.has(safeString(d?.deviceStableId))) && !(!safeString(d?.deviceStableId) && safeString(d?.deviceHash) && hsI.has(safeString(d?.deviceHash)))); };
 
-const DeviceRegistry = { getDeviceRegistry, normalizeDeviceRow, normalizeDeviceRegistry, saveDeviceRegistry, getCurrentDeviceIdentity, isSameDevice, isCurrentDevice, getOtherDevices, countDeviceStableIds, removeDevicesFromRegistry };
+export const retireDevicesInRegistry = (r, sR, ts = Date.now()) => {
+  const sD=normalizeDeviceRegistry(sR), stI=new Set(sD.map(d=>safeString(d?.deviceStableId)).filter(Boolean)), hsI=new Set(sD.map(d=>safeString(d?.deviceHash)).filter(Boolean));
+  return normalizeDeviceRegistry(r).map(d => (stI.has(safeString(d?.deviceStableId)) || (!safeString(d?.deviceStableId) && hsI.has(safeString(d?.deviceHash)))) ? normalizeDeviceRow({ ...d, retiredAt: safeNum(ts) || Date.now(), lastSeenAt: Math.max(safeNum(d.lastSeenAt), safeNum(ts)) }) : d);
+};
+
+const DeviceRegistry = { getDeviceRegistry, normalizeDeviceRow, normalizeDeviceRegistry, saveDeviceRegistry, getCurrentDeviceIdentity, isSameDevice, isCurrentDevice, getOtherDevices, countDeviceStableIds, removeDevicesFromRegistry, retireDevicesInRegistry };
 
 if(typeof window!=='undefined') window.DeviceRegistry = DeviceRegistry;
 export default DeviceRegistry;
