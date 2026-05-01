@@ -434,7 +434,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-01 17:56:27 UTC
+Сгенерировано: 2026-05-01 18:40:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -909,7 +909,7 @@ export class AchievementEngine {
         else pM = { kind: 'count', live: false, toggleableTimer: false, currentRaw: rC, targetRaw: rT };
       }
       const vC = r.formatters?.target_hours ? r.formatters.target_hours(eC) : eC, vT = r.formatters?.target_hours ? r.formatters.target_hours(rT) : rT;
-      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, unlockedAt: uAt || null, xpReward: lvl ? this._getSc(r, lvl, true) : (r.reward.xp || 0), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
+      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, isSecret: !!r.hidden || r.category === 'secret', unlockedAt: uAt || null, xpReward: lvl ? this._getSc(r, lvl, true) : (r.reward.xp || 0), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
     };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.type === 'static') add(k, r, null, !!this.unlocked[k], this.unlocked[k], agg[r.trigger.conditions[0].metric] || 0, r.trigger.conditions[0].target);
