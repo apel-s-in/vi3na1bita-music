@@ -1,5 +1,6 @@
+import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
+
 const W = window, esc = s => W.Utils?.escapeHtml?.(String(s || '')) || String(s || ''), isFavOnlyOn = () => localStorage.getItem('favoritesOnlyMode') === '1';
-const dirtyDev = () => { try { W.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); } catch {} };
 
 export function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite, hidden = false } = {}) {
   if (!W.Modals?.choice || !track) return null;
@@ -30,9 +31,9 @@ export function syncFavoritesOnlyPlayback({ player = W.playerCore, autoPlayIfNee
 
 export function toggleFavoritesOnlyMode({ player = W.playerCore, storage = localStorage, syncUi } = {}) {
   if (!player) return { ok: false, enabled: isFavOnlyOn(), reason: 'no_player' };
-  const next = !isFavOnlyOn(); storage.setItem('favoritesOnlyMode', next ? '1' : '0'); dirtyDev();
+  const next = !isFavOnlyOn(); storage.setItem('favoritesOnlyMode', next ? '1' : '0'); markDeviceSettingsDirty();
   const res = syncFavoritesOnlyPlayback({ player, autoPlayIfNeeded: true, forceReload: false, syncUi });
-  if (next && !res.ok) { storage.setItem('favoritesOnlyMode', '0'); dirtyDev(); syncUi?.(); return { ok: false, enabled: false, reason: 'empty' }; }
+  if (next && !res.ok) { storage.setItem('favoritesOnlyMode', '0'); markDeviceSettingsDirty(); syncUi?.(); return { ok: false, enabled: false, reason: 'empty' }; }
   return { ok: true, enabled: next };
 }
 
