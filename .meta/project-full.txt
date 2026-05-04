@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 14:08:40 UTC
+Сгенерировано: 2026-05-04 14:10:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11153,7 +11153,7 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       }, { active: [], inactive: [] });
     }
 
-    getLikedUidsForAlbum(key) { const k = sUid(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && sUid(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
+    getLikedUidsForAlbum(key) { const k = sUid(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && !i.deletedAt && sUid(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
     
     applyFavoritesOnlyFilter(opts = {}) {
       const pA = W.AlbumsManager?.getPlayingAlbum?.();
