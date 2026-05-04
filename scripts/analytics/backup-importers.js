@@ -1,10 +1,10 @@
 import { metaDB } from './meta-db.js';
-import { toNum, maxDateStr, mergeAchievementsSafe, mergeProfileStorageValueSafe, getBackupConflictPolicy } from './backup-merge.js';
+import { toNum, mergeProfileStorageValueSafe, getBackupConflictPolicy } from './backup-merge.js';
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
-import { buildAchievementBackupState, normalizeAchievementState, mergeAchievementStates, applyAchievementStateToMetaDB } from './achievement-state.js';
+import { buildAchievementBackupState, normalizeAchievementState, mergeAchievementStates, applyAchievementStateToMetaDB, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
 
 export const rebuildStatsFromWarmEvents = async () => {
   try {
@@ -53,9 +53,10 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
     const intel = backup.data.intel || {};
 
     if (mode === 'all' || mode === 'stats') {
-      const [lW, lA, lS, lR] = await Promise.all([
+      const [lW, lA, lM, lS, lR] = await Promise.all([
         metaDB.getEvents('events_warm'),
         metaDB.getGlobal('unlocked_achievements'),
+        metaDB.getGlobal('achievement_unlock_meta'),
         metaDB.getGlobal('global_streak'),
         metaDB.getGlobal('user_profile_rpg')
       ]);
@@ -78,17 +79,22 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
         }
       } catch {}
 
-      const localAchState = buildAchievementBackupState({ unlocked: lA?.value || {}, profileRpg: lR?.value || { xp: 0, level: 1 }, streaks: lS?.value || {} });
+      const eventUnlockMeta = deriveAchievementUnlockMetaFromEvents(mergedEvents);
+      const eventUnlockMap = Object.fromEntries(Object.entries(eventUnlockMeta).map(([id, x]) => [id, x.unlockedAt]));
+      const localAchState = buildAchievementBackupState({ unlocked: lA?.value || {}, unlockMeta: lM?.value || {}, profileRpg: lR?.value || { xp: 0, level: 1 }, streaks: lS?.value || {}, events: lW || [] });
       const remoteAchState = normalizeAchievementState(backup.data.achievementState || {
         unlocked: backup.data.achievements || {},
+        unlockMeta: {},
         profileRpg: backup.data.userProfileRpg || {},
         streaks: backup.data.streaks || {}
       });
-      const mergedAchState = mergeAchievementStates(localAchState, remoteAchState);
+      const eventAchState = buildAchievementBackupState({ unlocked: eventUnlockMap, unlockMeta: eventUnlockMeta });
+      const mergedAchState = mergeAchievementStates(mergeAchievementStates(localAchState, remoteAchState), eventAchState);
       await applyAchievementStateToMetaDB(metaDB, mergedAchState);
       if (window.achievementEngine) {
         window.achievementEngine.unlocked = mergedAchState.unlocked;
         window.achievementEngine.profile = mergedAchState.profileRpg;
+        window.achievementEngine.unlockMeta = mergedAchState.unlockMeta;
         window.achievementEngine.achievements = window.achievementEngine._buildUIArray?.() || window.achievementEngine.achievements || [];
       }
 
