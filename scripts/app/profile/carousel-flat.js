@@ -27,7 +27,7 @@ export function mountProfileCarouselFlat({ root }) {
         const tab = root.querySelector(`#tab-${cardsData[((currIdx % TOTAL) + TOTAL) % TOTAL].id}`);
         if (!tab || tab.classList.contains('active')) { if(tab) tab.style.cssText = ''; return; }
         const prev = root.querySelector('.profile-tab-content.active');
-        const enter = () => { root.querySelectorAll('.profile-tab-content').forEach(x => { x.classList.remove('active'); x.style.cssText = ''; }); requestAnimationFrame(() => requestAnimationFrame(() => tab.classList.add('active'))); };
+        const enter = () => { root.querySelectorAll('.profile-tab-content').forEach(x => { x.classList.remove('active'); x.style.cssText = ''; }); requestAnimationFrame(() => requestAnimationFrame(() => { tab.classList.add('active'); window.dispatchEvent(new CustomEvent('profile:main-tab-selected', { detail: { tabId: cardsData[((currIdx % TOTAL) + TOTAL) % TOTAL].id } })); })); };
         if (prev && prev !== tab && !inst) { prev.style.transition = 'opacity .18s ease, transform .18s cubic-bezier(.22,1,.36,1)'; prev.style.opacity = '0'; prev.style.transform = 'translateY(26px) scale(.965)'; setTimeout(enter, 180); } else enter();
       }, 80);
     };
