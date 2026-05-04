@@ -48,7 +48,6 @@ export const renderRestoreDiffHtml = ({ backup, localSummary, cloudSummary, devi
     ${row('События журнала', localSummary?.eventCount || 0, cloudEventCount, 'merge по eventId')}
     ${row('Устройства', localSummary?.devicesCount || 0, cloudDeviceCount, 'выбор device settings вручную')}
     ${deletedCloud ? `<div style="margin-top:8px;color:#ffb74d;font-size:11px">В облаке есть удалённые плейлисты в корзине: <b>${deletedCloud}</b>. Они не считаются активными, но могут быть восстановлены.</div>` : ''}
-    <div style="margin-top:8px;color:#7f93b5;font-size:11px;line-height:1.35">Shared-данные объединяются безопасно. Device-настройки применяются только если вы выбрали конкретное устройство.</div>
   `});
 };
 
