@@ -1,5 +1,6 @@
 import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
 import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
+import { saveRestoreRecoverySnapshot, restoreRecoverySnapshot } from '../../analytics/backup-recovery.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
@@ -88,6 +89,8 @@ export const runBackupRestore = async ({
   refreshReason = 'cloud_restore',
   keepCurrentAlbum = true
 } = {}) => {
+  await saveRestoreRecoverySnapshot({ BackupVault, reason: refreshReason }).catch(() => false);
+  try {
   await importBackupWithFallback({ BackupVault, backup, mode });
   await maybeApplyDeviceSettings({
     BackupVault,
@@ -116,6 +119,23 @@ export const runBackupRestore = async ({
   try { window.eventLogger?.log?.('RESTORE_APPLIED', null, { mode, refreshReason, asNewDevice: !!asNewDevice, skipDeviceSettings: !!skipDeviceSettings }); } catch {}
   await refreshAfterRestore({ reason: refreshReason, keepCurrentAlbum });
   return true;
+  } catch (e) {
+    window.Modals?.confirm?.({
+      title: 'Ошибка восстановления',
+      textHtml: `Restore не завершился: ${window.Utils?.escapeHtml?.(String(e?.message || '')) || ''}<br><br>Вернуть локальное состояние, сохранённое перед восстановлением?`,
+      confirmText: 'Откатить',
+      cancelText: 'Оставить как есть',
+      onConfirm: async () => {
+        try {
+          await restoreRecoverySnapshot({ BackupVault });
+          window.NotificationSystem?.success?.('Локальное состояние восстановлено ✅');
+        } catch (err) {
+          window.NotificationSystem?.error?.('Откат не удался: ' + String(err?.message || ''));
+        }
+      }
+    });
+    throw e;
+  }
 };
 
 export default {
