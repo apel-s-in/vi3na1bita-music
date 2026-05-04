@@ -2,7 +2,7 @@
 import { markDeviceSettingsDirty, markPlaylistsDirty } from '../../analytics/sync-dirty-events.js';
 
 const NS = 'sc3:', deep = v => JSON.parse(JSON.stringify(v)), nowTs = () => Date.now();
-const emitPlDirty = markPlaylistsDirty;
+const emitPlDirty = detail => markPlaylistsDirty({ immediate: true, ...(detail || {}) });
 const emitDevDirty = markDeviceSettingsDirty;
 
 export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
