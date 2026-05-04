@@ -441,7 +441,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 19:41:37 UTC
+Сгенерировано: 2026-05-04 19:42:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7646,7 +7646,7 @@ export default { buildShowcaseSearchDisplay, addSearchResultsToContext, handleSh
 import { markDeviceSettingsDirty, markPlaylistsDirty } from '../../analytics/sync-dirty-events.js';
 
 const NS = 'sc3:', deep = v => JSON.parse(JSON.stringify(v)), nowTs = () => Date.now();
-const emitPlDirty = markPlaylistsDirty;
+const emitPlDirty = detail => markPlaylistsDirty({ immediate: true, ...(detail || {}) });
 const emitDevDirty = markDeviceSettingsDirty;
 
 export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
