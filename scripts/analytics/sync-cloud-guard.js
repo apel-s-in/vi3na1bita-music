@@ -5,6 +5,7 @@
 import { safeNum, safeString, safeJsonParse, compareLocalVsCloud } from './backup-summary.js';
 
 const META_CACHE_MAX_AGE_MS = 10 * 60000;
+const LEASE_GRACE_MS = 2000;
 
 export const getLocalSyncSummary = () => {
   const a = window.achievementEngine;
@@ -52,6 +53,14 @@ export const readCachedCloudMeta = (maxAgeMs = META_CACHE_MAX_AGE_MS) => {
   }
 };
 
+export const hasActiveForeignLease = meta => {
+  const l = meta?.syncLease;
+  if (!l || typeof l !== 'object') return false;
+  const exp = safeNum(l.expiresAt), sid = safeString(localStorage.getItem('deviceStableId') || ''), hid = safeString(localStorage.getItem('deviceHash') || '');
+  const same = (sid && safeString(l.deviceStableId) === sid) || (hid && safeString(l.deviceHash) === hid);
+  return !same && exp > Date.now() + LEASE_GRACE_MS;
+};
+
 export const writeCachedCloudMeta = meta => {
   try {
     if (!meta) return false;
@@ -69,6 +78,7 @@ export const checkCloudSafe = async (disk, token) => {
     const cloudMeta = cached || await disk.getMeta(token).catch(() => null);
     if (cloudMeta && !cached) writeCachedCloudMeta(cloudMeta);
 
+    if (hasActiveForeignLease(cloudMeta)) return { ok: false, reason: 'cloud_sync_lease_active', cloudMeta, lease: cloudMeta.syncLease };
     const localSummary = await enrichLocalSyncSummary(getLocalSyncSummary());
     const compare = compareLocalVsCloud(localSummary, cloudMeta);
 
@@ -91,6 +101,7 @@ export default {
   getLocalSyncSummary,
   enrichLocalSyncSummary,
   readCachedCloudMeta,
+  hasActiveForeignLease,
   writeCachedCloudMeta,
   checkCloudSafe
 };
