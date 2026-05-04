@@ -7,6 +7,7 @@ import { markDomainDirty, consumeDirtyState, DOMAIN_DEBOUNCE_MS } from './sync-d
 import { uploadBackupBundle } from './backup-upload-runner.js';
 import { canUpload, emitSyncState, getLastUploadAt, setLastUploadAt } from './sync-state.js';
 import { checkCloudSafe, writeCachedCloudMeta } from './sync-cloud-guard.js';
+import { recordSyncRevision } from './sync-revisions.js';
 
 let _timer = null, _dueAt = 0;
 
@@ -85,6 +86,7 @@ export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
     const safe = await checkCloudSafe(disk, token);
     if (!safe.ok) {
       emitSyncState('idle');
+      recordSyncRevision({ reason, ok: false, error: safe.reason || 'cloud_not_safe' });
       if (safe.cloudMeta) {
         writeCachedCloudMeta(safe.cloudMeta);
         window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
@@ -93,7 +95,9 @@ export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
       return false;
     }
 
-    const uploaded = await uploadBackupBundle({ disk, token, BackupVault, backup, force: false, uploadDevice: true, reason });
+    const lease = { deviceStableId: String(localStorage.getItem('deviceStableId') || ''), deviceHash: String(localStorage.getItem('deviceHash') || ''), startedAt: Date.now(), expiresAt: Date.now() + 30000, reason };
+    await disk.writeSyncLease?.(token, lease).catch(() => null);
+    const uploaded = await uploadBackupBundle({ disk, token, BackupVault, backup, force: false, uploadDevice: true, reason, syncLease: lease });
     if (!uploaded.uploadedShared && !uploaded.uploadedDevice) { emitSyncState('idle'); return false; }
 
     setLastUploadAt(Date.now());
@@ -104,6 +108,7 @@ export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
     return true;
   } catch (e) {
     emitSyncState('idle');
+    recordSyncRevision({ reason, ok: false, error: e?.message || 'sync_failed' });
     console.debug('[BackupSyncEngine] skip:', e?.message);
     return false;
   }
