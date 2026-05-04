@@ -301,6 +301,7 @@ async function applyPreloadedBackup({ backup, token, asNewDevice, profile, inher
         total: window.achievementEngine?.achievements?.length || 0,
         unlocked: Object.keys(window.achievementEngine?.unlocked || {}).length,
         items: window.achievementEngine?.unlocked || {},
+        unlockMeta: window.achievementEngine?.unlockMeta || {},
         profile: window.achievementEngine?.profile || { xp: 0, level: 1 },
         source: 'cloud_restore'
       } }));
