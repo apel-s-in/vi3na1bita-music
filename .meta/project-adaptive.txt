@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 14:00:23 UTC
+Сгенерировано: 2026-05-04 14:01:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5958,8 +5958,23 @@ export const openRestorePreviewModal = (d, oC) => {
 
 export const openRestoreVersionPickerModal = (i, oP) => {
   const l = (Array.isArray(i) ? i : []).slice(0, 5);
-  const bH = l.length ? `<div class="modal-confirm-text">Доступные версии backup в облаке:</div>${renderInlineActions(l.map((it, idx) => { const dev = [it?.sourceDeviceLabel, it?.sourceDeviceClass].filter(Boolean).join(' · '); return { text: `${it.isLatest ? '☁️ Latest' : '🕘 Архив'} · ${fmtDateTime(it.timestamp)} · ${it.sizeHuman || 'unknown'}${it.appVersion ? ` · v${String(it.appVersion)}` : ''}${dev ? ` · ${dev}` : ''}${it.checksum ? ' · ✓' : ''}`, primary: idx === 0, attrs: `data-restore-path="${esc(it.path || '')}"` }; }))}` : `<div class="modal-confirm-text" style="text-align:center;color:#9db7dd"><div style="font-size:32px;margin-bottom:12px">☁️</div><div>Список версий backup не получен.</div><div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div></div>`;
-  const m = window.Modals?.open?.({ title: 'Выберите облачную версию', maxWidth: 400, bodyHtml: bH });
+  const bH = l.length ? `<div class="restore-version-picker">
+    <div class="fresh-hero" style="margin-bottom:10px">
+      <div class="fresh-hero-icon">☁️</div>
+      <div><div class="fresh-hero-title">Версии backup</div><div class="fresh-hero-sub">Выберите копию для предпросмотра восстановления.</div></div>
+    </div>
+    <div class="fresh-scroll fresh-version-list">${l.map((it, idx) => {
+      const dev = [it?.sourceDeviceLabel, it?.sourceDeviceClass].filter(Boolean).join(' · ');
+      return `<button type="button" class="fresh-version-card ${idx === 0 ? 'is-picked' : ''}" data-restore-path="${esc(it.path || '')}">
+        <span class="fresh-version-mark">${it.isLatest ? '☁️' : '🕘'}</span>
+        <span class="fresh-version-main">
+          <b>${it.isLatest ? 'Последняя копия' : 'Архивная версия'}</b>
+          <small>${fmtDateTime(it.timestamp)} · ${esc(it.sizeHuman || 'unknown')}${it.appVersion ? ` · v${esc(String(it.appVersion))}` : ''}${dev ? ` · ${esc(dev)}` : ''}${it.checksum ? ' · ✓' : ''}</small>
+        </span>
+      </button>`;
+    }).join('')}</div>
+  </div>` : `<div class="modal-confirm-text" style="text-align:center;color:#9db7dd"><div style="font-size:32px;margin-bottom:12px">☁️</div><div>Список версий backup не получен.</div><div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div></div>`;
+  const m = window.Modals?.open?.({ title: '', maxWidth: 390, bodyHtml: bH });
   m?.addEventListener('click', e => {
     const b = e.target.closest('[data-restore-path]');
     if (b) {
