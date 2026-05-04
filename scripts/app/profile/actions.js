@@ -79,12 +79,14 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
                 await db.setGlobal('global_streak', { current: 0, longest: 0, lastActiveDate: '' }).catch(() => {});
               } else if (act === 'ach') {
                 await db.setGlobal('unlocked_achievements', {});
+                await db.setGlobal('achievement_unlock_meta', {});
                 await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 });
               } else if (act === 'all') {
                 await db.tx('stats', 'readwrite', s => s.clear());
                 await db.clearEvents?.('events_hot').catch(() => {});
                 await db.clearEvents?.('events_warm').catch(() => {});
                 await db.setGlobal('unlocked_achievements', {});
+                await db.setGlobal('achievement_unlock_meta', {});
                 await db.setGlobal('user_profile_rpg', { xp: 0, level: 1 });
                 await db.setGlobal('global_streak', { current: 0, longest: 0, lastActiveDate: '' });
                 await db.setGlobal('listener_profile_summary', null).catch(() => {});
