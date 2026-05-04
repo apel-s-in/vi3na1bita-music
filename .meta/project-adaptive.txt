@@ -441,7 +441,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 20:31:47 UTC
+Сгенерировано: 2026-05-04 20:33:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4640,15 +4640,16 @@ export default api;
 import { esc } from './profile-ui-kit.js';
 
 export const renderAccountBenefitsBlock = () => `<div class="yandex-auth-note account-benefits-block">
-  <div style="font-size:12px;font-weight:900;color:#4daaff;margin-bottom:12px">☁️ Зачем авторизоваться?</div>
+  <div style="font-size:12px;font-weight:900;color:#4daaff;margin-bottom:8px">☁️ Зачем авторизоваться?</div>
+  <div style="font-size:11px;color:#9db7dd;line-height:1.45;margin-bottom:12px">Яндекс нужен только для сохранения и восстановления вашего прогресса в личной папке приложения. Пароль нам не передаётся.</div>
   <div style="display:flex;flex-direction:column;gap:10px">
     ${[
-      ['💾','Сохранение прогресса','Достижения, XP, стрики и плейлисты не потеряются при очистке браузера'],
-      ['📱','Синхронизация устройств','Войдите на телефоне и планшете — прогресс подтянется автоматически'],
-      ['🏆','Призовые акции','Только верифицированные пользователи смогут участвовать в розыгрышах'],
-      ['🎮','Игры и лидерборд','Будущий режим «Угадай мелодию» и глобальные таблицы лидеров'],
-      ['🪙','Коины Vi3N','Будущая валюта за активность — обменивается на мерч и эксклюзивы'],
-      ['🔒','Безопасность','Пароль Яндекса нам не передаётся. Мы видим только ваш ID и имя']
+      ['💾','Прогресс не потеряется','Достижения, XP, стрики, избранное и плейлисты сохраняются в backup'],
+      ['📱','Синхронизация устройств','Войдите на телефоне, планшете или ПК — данные можно объединить вручную'],
+      ['☁️','Безопасное восстановление','Перед restore показывается предпросмотр, ничего не затирается без подтверждения'],
+      ['🏆','Призовые акции','В будущем верифицированные пользователи смогут участвовать в розыгрышах'],
+      ['🎮','Игры и лидерборд','Будущие режимы и таблицы лидеров будут привязаны к verified-профилю'],
+      ['🔒','Приватность','OAuth Яндекса даёт нам только ваш ID/имя и доступ к папке приложения на Диске']
     ].map(([ic, t, d]) => `<div style="display:flex;gap:10px;align-items:flex-start">
       <span style="font-size:20px;flex-shrink:0">${esc(ic)}</span>
       <div><div style="font-size:13px;font-weight:800;color:#fff">${esc(t)}</div><div style="font-size:11px;color:#888;margin-top:2px;line-height:1.35">${esc(d)}</div></div>
@@ -5899,6 +5900,8 @@ export default { renderProfileLogs };
 //=================================================
 // FILE: /scripts/app/profile/model.js
 // UID.044_(ListenerProfile core)_(profile model должен стать местом мягкой сборки user portrait)_(future сюда можно подмешивать listener profile summary без ломки legacy stats model) UID.070_(Linked providers)_(model должен уметь принимать provider identity snapshot)_(но truth linked accounts хранится не здесь, а в intel/providers/provider-identity.js) UID.072_(Provider consents)_(model сможет отдавать consent snapshot для profile UI)_(но хранение consent state вынесено в intel/providers/provider-consents.js) UID.073_(Hybrid sync orchestrator)_(model должен принять sync state как optional extension)_(но orchestration logic не должна появляться в этом файле) UID.094_(No-paralysis rule)_(legacy profile model остаётся валидным fallback)_(если intel слой недоступен, этот model продолжает работать сам)
+import { getStatsSummary } from '../../analytics/stats-state.js';
+
 export const loadProfileModel = async () => {
   let db = null, all = [], ach = {}, streak = 0, profile = { name: 'Слушатель', avatar: '😎' };
   try {
@@ -5907,8 +5910,8 @@ export const loadProfileModel = async () => {
     const [s, aD, sD, pD] = await Promise.all([db.getAllStats().catch(()=>[]), db.getGlobal('unlocked_achievements').catch(()=>null), db.getGlobal('global_streak').catch(()=>null), db.getGlobal('user_profile').catch(()=>null)]);
     all = s || []; ach = aD?.value || {}; streak = sD?.value?.current || 0; profile = pD?.value || profile;
   } catch (e) { console.error('[Profile] init err:', e); }
-  const { f: totalFull, s: totalSec } = all.reduce((a, b) => ({ f: a.f + (b.globalFullListenCount||0), s: a.s + (b.globalListenSeconds||0) }), { f: 0, s: 0 });
-  return { metaDB: db, all, ach, streak, profile, totalFull, totalSec, tokens: {} };
+  const sum = getStatsSummary(all);
+  return { metaDB: db, all, ach, streak, profile, totalFull: sum.totalFull, totalSec: sum.totalSec, tokens: {} };
 };
 export default { loadProfileModel };
 
