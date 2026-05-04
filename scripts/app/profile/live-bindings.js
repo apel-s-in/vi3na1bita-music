@@ -1,3 +1,4 @@
+import { readStatsSummary } from '../../analytics/stats-state.js';
 import { renderProfileStats } from './stats-view.js';
 
 export const bindProfileLiveBindings = ({ ctx, getContainer: gC, achView: aV, metaDB } = {}) => {
@@ -11,11 +12,9 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: gC, achView: aV, me
 
   const renderStats = async () => {
     if (!isProfile() || !statsTabActive() || !metaDB) return;
-    const c = gC(), all = await metaDB.getAllStats().catch(() => []);
+    const c = gC(), summary = await readStatsSummary(metaDB), all = summary.rows;
     renderProfileStats({ container: c, all });
-    const vs = (all || []).filter(s => s.uid && s.uid !== 'global');
-    const totalFull = vs.reduce((a, s) => a + (s.globalFullListenCount || 0), 0);
-    const totalSec = vs.reduce((a, s) => a + (s.globalListenSeconds || 0), 0);
+    const totalFull = summary.totalFull, totalSec = summary.totalSec;
     const streak = (await metaDB.getGlobal('global_streak').catch(() => null))?.value?.current || 0;
     const set = (id, v) => { const el = c?.querySelector(id); if (el) el.textContent = String(v); };
     set('#prof-stat-tracks', totalFull);
