@@ -1,4 +1,5 @@
 import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
+import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
@@ -28,6 +29,12 @@ export const maybeApplyDeviceSettings = async ({
   try {
     const meta = await disk.getDeviceSettingsMeta?.(token, deviceKey).catch(() => null);
     if (!meta?.deviceStableId) return false;
+
+    if (meta?.semanticHash && typeof BackupVault.buildDeviceSettingsObject === 'function') {
+      const localDoc = await BackupVault.buildDeviceSettingsObject().catch(() => null);
+      const localHash = localDoc ? await getDeviceSettingsSemanticHash(localDoc).catch(() => '') : '';
+      if (localHash && localHash === meta.semanticHash) return false;
+    }
 
     const doc = await disk.downloadDeviceSettings?.(token, deviceKey).catch(() => null);
     if (!doc || !doc.deviceStableId) return false;
