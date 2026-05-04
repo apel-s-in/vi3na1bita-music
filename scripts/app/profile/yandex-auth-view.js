@@ -3,6 +3,7 @@ import { getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice,
 import { renderAccountDevicesBlock, bindAccountDevicesBlock } from './account-devices-view.js';
 import { renderAccountBenefitsBlock } from './account-benefits-view.js';
 import { esc } from './profile-ui-kit.js';
+import { getSyncStatusLine } from '../../analytics/sync-revisions.js';
 
 const bindYandexActions = (root, rerender) => {
   root.querySelectorAll('[data-ya-action]').forEach(btn => btn.onclick = async () => {
@@ -67,11 +68,14 @@ const bindReactiveEvents = (root, rerender) => {
       } catch {}
       // Просто обновляем UI (бейдж "!" появится сам через render-shell badge-listener)
     },
+    onSyncRevision: () => {
+      const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = getSyncStatusLine();
+    },
     onSyncState: e => {
       const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
       const st = e.detail?.state, map = { syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true }, ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false }, idle: { title: 'Авто-сохранение активно', color: '#4caf50', anim: false } }, cfg = map[st] || map.idle;
       Object.assign(dot.style, { background: cfg.color, animation: cfg.anim ? 'syncPulse 1s infinite' : '' }); dot.title = cfg.title;
-      if (st === 'ok') { const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = `последнее: ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`; }
+      if (st === 'ok') { const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = getSyncStatusLine(); }
     }
   };
   window.addEventListener('yandex:auth:changed', root._yaReactiveHandlers.onAuthChanged);
@@ -80,6 +84,7 @@ const bindReactiveEvents = (root, rerender) => {
   window.addEventListener('backup:sync:settings:changed', root._yaReactiveHandlers.onSyncSettingsChanged);
   window.addEventListener('yandex:cloud:newer', root._yaReactiveHandlers.onCloudNewer);
   window.addEventListener('backup:sync:state', root._yaReactiveHandlers.onSyncState);
+  window.addEventListener('backup:sync:revision', root._yaReactiveHandlers.onSyncRevision);
 };
 
 export function renderYandexAuthBlock({ root, localProfile }) {
@@ -96,7 +101,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
 
   const lastSyncLabel = (() => {
     const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-    return ts > 0 ? `последнее: ${formatCloudTimeOnly(ts)}` : 'ещё не сохранялось';
+    return getSyncStatusLine() || (ts > 0 ? `последнее: ${formatCloudTimeOnly(ts)}` : 'ещё не сохранялось');
   })();
 
   const autosaveChecked = (() => { try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; } })();
