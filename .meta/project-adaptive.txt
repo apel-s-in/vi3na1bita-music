@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 18:42:36 UTC
+Сгенерировано: 2026-05-04 18:43:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6587,6 +6587,7 @@ import { loadProfileModel } from './model.js';
 import { renderProfileShell } from './render-shell.js';
 import { renderProfileTabsData } from './profile-tab-renderers.js';
 import { bindProfileTabControllers } from './profile-tab-bindings.js';
+import { renderProfileStats } from './stats-view.js';
 import { initYandexActions } from './yandex-actions.js';
 
 export const refreshProfileViewSoft = async (ctx) => {
@@ -6603,6 +6604,7 @@ export const refreshProfileViewSoft = async (ctx) => {
     const statTime = c.querySelector('#prof-stat-time'); if (statTime) statTime.textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSec || 0) : `${Math.floor((totalSec || 0) / 60)}м`;
     const statStreak = c.querySelector('#prof-stat-streak'); if (statStreak) statStreak.textContent = String(streak || 0);
     const statAch = c.querySelector('#prof-stat-ach'); if (statAch) statAch.textContent = String(Object.keys(ach || {}).length);
+    try { renderProfileStats({ container: c, all }); } catch {}
     const profName = c.querySelector('#prof-name-inp'); if (profName) profName.value = profile?.name || 'Слушатель';
     const profAvatar = c.querySelector('#prof-avatar-btn'); if (profAvatar) profAvatar.textContent = profile?.avatar || '😎';
     const sinceEl = c.querySelector('#prof-meta-since'); if (sinceEl) sinceEl.textContent = `📅 Слушаю с: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('ru-RU') : (localStorage.getItem('app:first-install-ts') ? new Date(Number(localStorage.getItem('app:first-install-ts'))).toLocaleDateString('ru-RU') : '—')}`;
