@@ -299,3 +299,7 @@ button.fresh-version-card{appearance:none;font:inherit}
 .fresh-version-main small,.fresh-device-main small{font-size:10.5px;color:#8ea8cc;line-height:1.25}
 .fresh-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px}
 .fresh-actions .modal-action-btn{width:100%;min-height:48px;justify-content:center;text-align:center}
+
+/* Physics horizontal tabs */
+.physics-tabs{scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,transparent 0,#000 22px,#000 calc(100% - 22px),transparent 100%)}
+.physics-tabs .ach-classic-tab{scroll-snap-align:center;flex:0 0 auto;min-width:max-content}
