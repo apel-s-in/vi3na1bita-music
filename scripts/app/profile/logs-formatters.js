@@ -42,14 +42,7 @@ export const renderEventRow = ev => {
 };
 
 export const bindHorizontalWheelScroll = tabs => {
-  if (!tabs || tabs._wheelScrollBound) return;
-  tabs._wheelScrollBound = true;
-  tabs.addEventListener('wheel', e => {
-    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) && !e.deltaX) return;
-    if (tabs.scrollWidth <= tabs.clientWidth) return;
-    e.preventDefault();
-    tabs.scrollLeft += e.deltaY || e.deltaX;
-  }, { passive: false });
+  import('./tab-strip-physics.js').then(m => m.bindTabStripPhysics?.(tabs)).catch(() => {});
 };
 
 export default {
