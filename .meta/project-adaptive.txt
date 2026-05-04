@@ -438,7 +438,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 15:31:49 UTC
+Сгенерировано: 2026-05-04 15:33:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -826,7 +826,7 @@ export class AchievementEngine {
   constructor() {
     this.dict = { ...AchievementDictionary };
     this.unlocked = {}; this.profile = { xp: 0, level: 1 };
-    this.achievements = []; this.lastAgg = {};
+    this.achievements = []; this.lastAgg = {}; this._checking = false; this._silentNotify = false;
     this._initBoot();
     window.addEventListener('stats:updated', () => this.check());
   }
@@ -851,8 +851,11 @@ export class AchievementEngine {
   _evalCondition(c, agg) { const v = agg[c.metric] || 0; return c.operator === 'gte' ? v >= c.target : v === c.target; }
   _getSc(r, lvl, isXp) { if (isXp) return Math.floor(r.reward.xpBase * Math.pow(r.reward.xpMultiplier, lvl - 1)); const s = r.scaling; return s.math === 'custom' ? (s.steps[lvl - 1] ?? s.steps[s.steps.length - 1]) : r.trigger.conditions[0].startTarget * Math.pow(s.factor, lvl - 1); }
 
-  async check() {
-    if (window._isRestoring) return;
+  async check({ force = false } = {}) {
+    if (window._isRestoring && !force) return;
+    if (this._checking) return;
+    this._checking = true;
+    try {
     const statsArr = await metaDB.getAllStats(), gStat = statsArr.find(s => s.uid === 'global')?.featuresUsed || {};
     const trStats = statsArr.filter(s => s.uid !== 'global'), strk = (await metaDB.getGlobal('global_streak'))?.value?.current || 0;
     const favCount = window.FavoritesManager ? window.FavoritesManager.getSnapshot().filter(i => !i.inactiveAt && !i.deletedAt).length : 0;
@@ -900,6 +903,34 @@ export class AchievementEngine {
       try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'achievements', immediate: true } })); } catch {}
     }
     this.achievements = this._buildUIArray(); this.broadcast(agg.streak);
+    } finally {
+      this._checking = false;
+    }
+  }
+
+  async hydrateFromStorage({ forceCheck = true, silent = true, reason = 'hydrate' } = {}) {
+    const [unData, profData] = await Promise.all([
+      metaDB.getGlobal('unlocked_achievements'),
+      metaDB.getGlobal('user_profile_rpg')
+    ]);
+    this.unlocked = unData?.value || {};
+    this.profile = profData?.value || { xp: 0, level: 1 };
+    if (forceCheck) {
+      const old = this._silentNotify;
+      this._silentNotify = !!silent;
+      try { await this.check({ force: true }); } finally { this._silentNotify = old; }
+    } else {
+      this.achievements = this._buildUIArray();
+      this.broadcast(0);
+    }
+    window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
+      total: this.achievements.length,
+      unlocked: Object.keys(this.unlocked || {}).length,
+      items: this.unlocked || {},
+      profile: this.profile,
+      reason
+    } }));
+    return true;
   }
 
   _buildUIArray() {
@@ -924,7 +955,7 @@ export class AchievementEngine {
     }
     return arr.sort((a, b) => a.isUnlocked === b.isUnlocked ? (b.unlockedAt || 0) - (a.unlockedAt || 0) : (a.isUnlocked ? -1 : 1));
   }
-  _notifyUnlock(name, icon, xp, id = '') { eventLogger.log('ACHIEVEMENT_UNLOCK', null, { id, name, icon, xp }); window.NotificationSystem?.success(`🏆 ${icon} Открыто: ${name} (+${xp} XP)`); }
+  _notifyUnlock(name, icon, xp, id = '') { eventLogger.log('ACHIEVEMENT_UNLOCK', null, { id, name, icon, xp }); if (!this._silentNotify) window.NotificationSystem?.success(`🏆 ${icon} Открыто: ${name} (+${xp} XP)`); }
   broadcast(streak) { window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(this.unlocked).length, items: this.unlocked, streak, profile: this.profile } })); }
 }
 
