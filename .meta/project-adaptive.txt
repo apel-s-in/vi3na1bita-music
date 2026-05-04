@@ -442,7 +442,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 21:09:15 UTC
+Сгенерировано: 2026-05-04 21:09:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2334,6 +2334,7 @@ export const normalizeCloudBackupMeta = (m = {}) => ({
   path: safeCloudString(m?.path || ''),
   name: safeCloudString(m?.name || ''),
   modified: m?.modified || null,
+  syncLease: m?.syncLease && typeof m.syncLease === 'object' ? m.syncLease : null,
   isLatest: !!m?.isLatest
 });
 
