@@ -1,6 +1,7 @@
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
 import { renderCloudStatPair } from './cloud-ui-helpers.js';
 import { renderRestoreDiffHtml } from './restore-diff.js';
+import { compareBackupBranches } from '../../analytics/backup-branch-compare.js';
 import { esc, fmtDateTime } from './profile-ui-kit.js';
 
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
@@ -55,7 +56,7 @@ export const openFreshLoginRestoreModal = ({
   const cmp = compareLocalVsCloud(localSnap, cloudSnap);
   const cL = getBackupCompareLabel(localSnap, cloudSnap);
   const devices = collectRestoreDevices({ backup, items: safe, meta });
-  const diffHtml = renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices });
+  const diffHtml = `<div id="fresh-diff-box">${renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices })}</div>`;
   const defaultDeviceValue = devices.length ? devices[0].key : '__new__';
 
   const currentDeviceHtml = currentDeviceInfo ? `
@@ -139,7 +140,10 @@ export const openFreshLoginRestoreModal = ({
 
   const m = window.Modals?.open?.({ title: '', maxWidth: 390, strictClose: true, bodyHtml });
   if (!m) return;
-
+  if (backup) compareBackupBranches({ backup }).then(branch => {
+    const box = m.querySelector('#fresh-diff-box');
+    if (box) box.innerHTML = renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices, branch });
+  }).catch(() => {});
   const refreshPicked = () => {
     m.querySelectorAll('.fresh-version-card').forEach(x => x.classList.toggle('is-picked', !!x.querySelector('input')?.checked));
     m.querySelectorAll('.fresh-device-card').forEach(x => x.classList.toggle('is-picked', !!x.querySelector('input')?.checked));
