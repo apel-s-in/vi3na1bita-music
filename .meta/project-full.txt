@@ -288,6 +288,7 @@ vi3na1bita-music/
 │   │   │   ├── account-bindings.js
 │   │   │   ├── account-devices-view.js
 │   │   │   ├── achievements-view.js
+│   │   │   ├── actions-trash.js
 │   │   │   ├── actions.js
 │   │   │   ├── auth-onboarding-orchestrator.js
 │   │   │   ├── backup-info-modal.js
@@ -442,7 +443,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 21:20:27 UTC
+Сгенерировано: 2026-05-04 21:22:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4962,6 +4963,49 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
 };
 
 //=================================================
+// FILE: /scripts/app/profile/actions-trash.js
+export const createTrashActionHandlers = ({ reloadProfile: rP } = {}) => [
+  { sel: '[data-pl-restore]', run: async ({ el }) => {
+    try {
+      const id = String(el.dataset.plRestore || '').trim(), rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [], i = rows.findIndex(p => p?.id === id);
+      if (i < 0) return;
+      rows[i] = { ...rows[i], deletedAt: 0, updatedAt: Date.now() };
+      localStorage.setItem('sc3:playlists', JSON.stringify(rows));
+      window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } }));
+      window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: rows[i]?.name || '' });
+      window.NotificationSystem?.success?.('Плейлист восстановлен ✅'); rP?.();
+    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
+  }},
+  { sel: '[data-pl-purge]', run: async ({ el }) => {
+    try {
+      const id = String(el.dataset.plPurge || '').trim(), rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [], p = rows.find(x => x?.id === id);
+      localStorage.setItem('sc3:playlists', JSON.stringify(rows.filter(x => x?.id !== id)));
+      window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } }));
+      window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' });
+      window.NotificationSystem?.success?.('Плейлист удалён окончательно'); rP?.();
+    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
+  }},
+  { sel: '[data-fav-restore]', run: async ({ el }) => {
+    try {
+      const uid = String(el.dataset.favRestore || '').trim(); if (!uid) return;
+      window.playerCore?.restoreInactive?.(uid);
+      window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: true, source: 'favorites_trash_restore' });
+      window.NotificationSystem?.success?.('Трек возвращён в избранное ✅'); rP?.();
+    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
+  }},
+  { sel: '[data-fav-purge]', run: async ({ el }) => {
+    try {
+      const uid = String(el.dataset.favPurge || '').trim(); if (!uid) return;
+      window.FavoritesManager?.purge?.(uid);
+      window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: false, source: 'favorites_trash_purge', purged: true });
+      window.NotificationSystem?.success?.('След избранного удалён окончательно'); rP?.();
+    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
+  }}
+];
+
+export default { createTrashActionHandlers };
+
+//=================================================
 // FILE: /scripts/app/profile/actions.js
 // UID.070_(Linked providers)_(сделать profile actions точкой управления связками аккаунтов)_(future link/unlink/set-primary flows будут входить здесь, но храниться в intel provider layer) UID.072_(Provider consents)_(здесь будут user-facing consent toggles)_(analytics/personalization/social/cloud/AI switches должны жить в profile actions UI) UID.073_(Hybrid sync orchestrator)_(profile actions станут control surface для primary/mirror sync roles)_(текущий cloud sync buttons — временный legacy bridge) UID.080_(Provider actions bridge)_(социальные/provider действия из профиля должны идти через единый bridge)_(не вызывать provider API напрямую из view) UID.083_(Yandex Metrica safe export)_(profile interactions можно маппить наружу только через mapper)_(не писать external telemetry напрямую из action handlers) UID.094_(No-paralysis rule)_(profile actions должны сохранять старое поведение при отсутствии intel layer)_(новые provider/consent controls strictly optional)
 export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, tokens: tk, reloadProfile: rP }) => {
@@ -6951,6 +6995,7 @@ import { getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice,
 import { renderAccountDevicesBlock, bindAccountDevicesBlock } from './account-devices-view.js';
 import { renderAccountBenefitsBlock } from './account-benefits-view.js';
 import { esc } from './profile-ui-kit.js';
+import { getSyncStatusLine } from '../../analytics/sync-revisions.js';
 
 const bindYandexActions = (root, rerender) => {
   root.querySelectorAll('[data-ya-action]').forEach(btn => btn.onclick = async () => {
@@ -7015,11 +7060,14 @@ const bindReactiveEvents = (root, rerender) => {
       } catch {}
       // Просто обновляем UI (бейдж "!" появится сам через render-shell badge-listener)
     },
+    onSyncRevision: () => {
+      const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = getSyncStatusLine();
+    },
     onSyncState: e => {
       const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
       const st = e.detail?.state, map = { syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true }, ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false }, idle: { title: 'Авто-сохранение активно', color: '#4caf50', anim: false } }, cfg = map[st] || map.idle;
       Object.assign(dot.style, { background: cfg.color, animation: cfg.anim ? 'syncPulse 1s infinite' : '' }); dot.title = cfg.title;
-      if (st === 'ok') { const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = `последнее: ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`; }
+      if (st === 'ok') { const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = getSyncStatusLine(); }
     }
   };
   window.addEventListener('yandex:auth:changed', root._yaReactiveHandlers.onAuthChanged);
@@ -7028,6 +7076,7 @@ const bindReactiveEvents = (root, rerender) => {
   window.addEventListener('backup:sync:settings:changed', root._yaReactiveHandlers.onSyncSettingsChanged);
   window.addEventListener('yandex:cloud:newer', root._yaReactiveHandlers.onCloudNewer);
   window.addEventListener('backup:sync:state', root._yaReactiveHandlers.onSyncState);
+  window.addEventListener('backup:sync:revision', root._yaReactiveHandlers.onSyncRevision);
 };
 
 export function renderYandexAuthBlock({ root, localProfile }) {
@@ -7044,7 +7093,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
 
   const lastSyncLabel = (() => {
     const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-    return ts > 0 ? `последнее: ${formatCloudTimeOnly(ts)}` : 'ещё не сохранялось';
+    return getSyncStatusLine() || (ts > 0 ? `последнее: ${formatCloudTimeOnly(ts)}` : 'ещё не сохранялось');
   })();
 
   const autosaveChecked = (() => { try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; } })();
