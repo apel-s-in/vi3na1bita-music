@@ -33,8 +33,8 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
 
       const bodyHtml = `
         <div style="color:#9db7dd;margin-bottom:12px;font-size:13px;line-height:1.4">
-          Выберите устройства для удаления.<br>
-          Текущее устройство удалить нельзя.
+          Выберите устройства, которые нужно скрыть из активного списка.<br>
+          Текущее устройство скрыть нельзя.
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
           ${others.map((d, i) => {
@@ -53,7 +53,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
         </div>
         <div class="om-actions">
           <button type="button" class="om-btn om-btn--ghost" id="dev-sel-all">Выбрать все</button>
-          <button type="button" class="modal-action-btn" id="dev-del-btn" style="background:rgba(244,67,54,.12);border-color:rgba(244,67,54,.3);color:#ef9a9a">🗑 Удалить</button>
+          <button type="button" class="modal-action-btn" id="dev-del-btn" style="background:rgba(244,67,54,.12);border-color:rgba(244,67,54,.3);color:#ef9a9a">🗑 Скрыть</button>
         </div>`;
 
       const m = window.Modals.open({ title: '📱 Управление устройствами', maxWidth: 440, bodyHtml });
@@ -69,10 +69,11 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
 
         try {
           const selected = others.filter((_, i) => toDelete.has(i));
-          const cleaned = window.DeviceRegistry?.removeDevicesFromRegistry?.(reg, selected) || reg;
+          const cleaned = window.DeviceRegistry?.retireDevicesInRegistry?.(reg, selected) || reg;
           window.DeviceRegistry?.saveDeviceRegistry?.(cleaned);
+          try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'devices', immediate: true } })); } catch {}
           m.remove();
-          window.NotificationSystem?.success(`Удалено устройств: ${toDelete.size} ✅`);
+          window.NotificationSystem?.success(`Скрыто устройств: ${toDelete.size} ✅`);
           window.AlbumsManager?.loadAlbum?.(window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
         } catch (e) {
           window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
