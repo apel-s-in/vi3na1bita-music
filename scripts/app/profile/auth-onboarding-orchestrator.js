@@ -10,6 +10,7 @@ import { runBackupRestore } from './restore-backup-runner.js';
 import { sessionKeyForCloudSnapshot, isReminderSuppressedForSnapshot, isSnoozedUntilNow, snoozeReminder } from './restore-decision.js';
 
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
+const NEW_DEVICE_CONFIRMED_KEY = 'yandex:onboarding:new_device_confirmed';
 
 // Кэш предзагрузки в памяти
 let _preloadPromise = null;
@@ -59,8 +60,18 @@ export async function runOnboardingFlow({ token, profile, isFirstLogin = true } 
     const backup = result?.backup || null;
 
     if (!meta) {
-      console.debug('[AuthOnboarding] no cloud backup found, showing welcome');
-      if (isFirstLogin) showWelcomeNoBackupModal(profile);
+      console.debug('[AuthOnboarding] no cloud backup found');
+      if (sessionStorage.getItem(NEW_DEVICE_CONFIRMED_KEY) === '1') {
+        sessionStorage.removeItem(NEW_DEVICE_CONFIRMED_KEY);
+        try {
+          const { ensureCurrentDeviceRegistryRow } = await import('../../core/device-linking.js');
+          await ensureCurrentDeviceRegistryRow({ authEvent: true }).catch(() => null);
+          const se = await import('../../analytics/backup-sync-engine.js');
+          se.markSyncReady?.('no_cloud_backup');
+          se.markRestoreOrSkipDone?.('no_cloud_backup');
+        } catch {}
+        window.NotificationSystem?.success?.('Новое устройство подключено ✅');
+      } else if (isFirstLogin) showWelcomeNoBackupModal(profile);
       _onboardingActive = false;
       return;
     }
