@@ -380,7 +380,7 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       }, { active: [], inactive: [] });
     }
 
-    getLikedUidsForAlbum(key) { const k = sUid(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && sUid(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
+    getLikedUidsForAlbum(key) { const k = sUid(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && !i.deletedAt && sUid(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
     
     applyFavoritesOnlyFilter(opts = {}) {
       const pA = W.AlbumsManager?.getPlayingAlbum?.();
