@@ -38,6 +38,7 @@ class ShowcaseManager {
   _toggleHiddenPersist(uid, id = this._ctxId()) {
     const c = isDef(id) ? Store.def() : Store.get(id); if (!c) return;
     const h = new Set(c.hidden || []); h.has(uid) ? h.delete(uid) : h.add(uid); c.hidden = [...h]; isDef(id) ? Store.setDef(c) : Store.save(c);
+    try { W.eventLogger?.log?.('PLAYLIST_CHANGED', uid, { action: h.has(uid) ? 'showcase_hide' : 'showcase_show', playlistId: id, name: this._ctxName(id), hidden: h.has(uid), source: 'showcase_eye' }); } catch {}
     if (localStorage.getItem('favoritesOnlyMode') === '1' && W.Utils?.isShowcaseContext?.(W.AlbumsManager?.getPlayingAlbum?.())) W.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: W.playerCore, autoPlayIfNeeded: true, forceReload: W.playerCore?.getCurrentTrackUid?.() === uid, syncUi: () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.() });
     this.renderTab();
   }
