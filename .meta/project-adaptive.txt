@@ -437,7 +437,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 14:01:51 UTC
+Сгенерировано: 2026-05-04 14:03:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12316,7 +12316,11 @@ body.news-view #cover-wrap{display:none!important}
 .fb-modal-link--mail{background:#4daaff}
 .fb-modal-link--gh{background:#333}
 
-.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,420px));max-width:min(var(--modal-max-width,420px),420px);overflow-x:hidden}
+.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,400px));max-width:min(var(--modal-max-width,400px),400px);overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(23,58,101,.9) transparent}
+.modal-feedback--dynamic::-webkit-scrollbar,.modal-feedback--dynamic .modal-body::-webkit-scrollbar{width:3px;height:3px}
+.modal-feedback--dynamic::-webkit-scrollbar-track,.modal-feedback--dynamic .modal-body::-webkit-scrollbar-track{background:transparent}
+.modal-feedback--dynamic::-webkit-scrollbar-thumb,.modal-feedback--dynamic .modal-body::-webkit-scrollbar-thumb{background:rgba(23,58,101,.9);border-radius:999px}
+.modal-feedback--dynamic::-webkit-scrollbar-button,.modal-feedback--dynamic .modal-body::-webkit-scrollbar-button{display:none;width:0;height:0}
 .modal-feedback--dynamic .modal-body{max-width:100%;overflow-x:hidden}
 .profile-inline-actions{margin-top:14px}
 .profile-inline-actions .modal-action-btn{width:100%;min-height:48px;justify-content:center;text-align:center;white-space:normal;line-height:1.2}
