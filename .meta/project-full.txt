@@ -440,20 +440,35 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 16:55:30 UTC
+Сгенерировано: 2026-05-04 18:39:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
 name: Deploy App to Yandex Cloud S3
+
 on:
   push:
     branches: [main, master]
+    paths-ignore:
+      - '.meta/**'
+      - '.github/workflows/generate-context.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: yc-s3-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - env:
+        with:
+          fetch-depth: 2
+
+      - name: Configure CORS
+        if: github.event_name == 'workflow_dispatch'
+        env:
           AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: 'ru-central1'
@@ -462,11 +477,80 @@ jobs:
           {"CORSRules":[{"AllowedOrigins":["https://vi3na1bita.website.yandexcloud.net","https://apel-s-in.github.io","http://localhost:*","http://127.0.0.1:*"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"MaxAgeSeconds":86400}]}
           EOF
           aws --endpoint-url=https://storage.yandexcloud.net s3api put-bucket-cors --bucket vi3na1bita --cors-configuration file:///tmp/cors.json
-      - env:
+
+      - name: Incremental deploy public files
+        env:
           AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: 'ru-central1'
-        run: aws --endpoint-url=https://storage.yandexcloud.net s3 sync ./ s3://vi3na1bita/ --delete --exclude ".git/*" --exclude ".github/*" --exclude "albums/*" --include "albums/gallery/*"
+          BEFORE_SHA: ${{ github.event.before }}
+          BUCKET: vi3na1bita
+        run: |
+          set -euo pipefail
+
+          is_public_file() {
+            case "$1" in
+              .git/*|.github/*|.meta/*|albums/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
+              albums/gallery/*|audio/*|data/*|icons/*|img/*|news/*|scripts/*|src/*|styles/*) return 0 ;;
+              index.html|oauth-callback.html|manifest.json|albums.json|service-worker.js) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          upload_file() {
+            local f="$1"
+            [ -f "$f" ] || return 0
+            is_public_file "$f" || return 0
+            echo "PUT $f"
+            aws --endpoint-url=https://storage.yandexcloud.net s3 cp "$f" "s3://$BUCKET/$f" --only-show-errors
+          }
+
+          delete_file() {
+            local f="$1"
+            is_public_file "$f" || return 0
+            echo "DELETE $f"
+            aws --endpoint-url=https://storage.yandexcloud.net s3 rm "s3://$BUCKET/$f" --only-show-errors || true
+          }
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "${BEFORE_SHA:-}" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "Manual/initial deploy: full public sync"
+            aws --endpoint-url=https://storage.yandexcloud.net s3 sync ./ "s3://$BUCKET/" --delete --only-show-errors \
+              --exclude "*" \
+              --include "index.html" \
+              --include "oauth-callback.html" \
+              --include "manifest.json" \
+              --include "albums.json" \
+              --include "service-worker.js" \
+              --include "styles/*" \
+              --include "scripts/*" \
+              --include "scripts/**" \
+              --include "src/*" \
+              --include "src/**" \
+              --include "data/*" \
+              --include "data/**" \
+              --include "icons/*" \
+              --include "img/*" \
+              --include "img/**" \
+              --include "audio/*" \
+              --include "news/*" \
+              --include "albums/gallery/*" \
+              --include "albums/gallery/**" \
+              --exclude ".meta/*" \
+              --exclude ".github/*" \
+              --exclude "scripts/ci/*" \
+              --exclude "scripts/e2e/*" \
+              --exclude "generate-context.js"
+            exit 0
+          fi
+
+          git diff --name-status "$BEFORE_SHA" "$GITHUB_SHA" | while IFS=$'\t' read -r status a b; do
+            file="${b:-$a}"
+            if [[ "$status" == D* ]]; then
+              delete_file "$a"
+            else
+              upload_file "$file"
+            fi
+          done
 
 //=================================================
 // FILE: /.github/workflows/e2e.yml
