@@ -440,7 +440,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 18:41:33 UTC
+Сгенерировано: 2026-05-04 18:42:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5807,7 +5807,7 @@ import { bindProfileAccount } from './account-bindings.js';
 export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, tokens, onProfileChanged, reloadProfile } = {}) => {
   if (!container) return;
   bindProfileAccount({ container, profile, metaDB, onProfileChanged });
-  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
+  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView, metaDB });
   bindProfileActions({ ctx, container, achView, metaDB, tokens, reloadProfile });
 };
 export default { bindProfileTabControllers };
