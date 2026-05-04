@@ -244,6 +244,7 @@ vi3na1bita-music/
 │   │   ├── achievement-engine.js
 │   │   ├── achievement-state.js
 │   │   ├── achievements-dict.js
+│   │   ├── backup-branch-compare.js
 │   │   ├── backup-builders.js
 │   │   ├── backup-event-cleanup.js
 │   │   ├── backup-importers.js
@@ -448,7 +449,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 22:06:02 UTC
+Сгенерировано: 2026-05-04 22:07:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1440,6 +1441,47 @@ export const AchievementDictionary = {
 };
 
 //=================================================
+// FILE: /scripts/analytics/backup-branch-compare.js
+// UID.003_(Event log truth)_(branch compare должен работать по eventId)_(restore UI показывает реальные ветки)
+// UID.099_(Multi-device sync model)_(local/cloud divergence видна до restore)_(localOnly/cloudOnly/overlap/watermarks)
+
+import { metaDB as defaultMetaDB } from './meta-db.js';
+import { readLocalEventLog } from './stats-state.js';
+import { normalizeEventList } from './backup-event-cleanup.js';
+
+const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+
+export const compareEventBranches = ({ localEvents = [], cloudEvents = [] } = {}) => {
+  const l = normalizeEventList(localEvents, { limit: 10000 }), c = normalizeEventList(cloudEvents, { limit: 10000 });
+  const lIds = new Set(l.map(e => e.eventId).filter(Boolean)), cIds = new Set(c.map(e => e.eventId).filter(Boolean));
+  const localOnlyEvents = l.filter(e => !cIds.has(e.eventId));
+  const cloudOnlyEvents = c.filter(e => !lIds.has(e.eventId));
+  const overlapCount = l.filter(e => cIds.has(e.eventId)).length;
+  const localEventWatermark = Math.max(0, ...l.map(e => n(e.timestamp)));
+  const cloudEventWatermark = Math.max(0, ...c.map(e => n(e.timestamp)));
+  return {
+    localCount: l.length,
+    cloudCount: c.length,
+    localOnlyCount: localOnlyEvents.length,
+    cloudOnlyCount: cloudOnlyEvents.length,
+    overlapCount,
+    localEventWatermark,
+    cloudEventWatermark,
+    state: localOnlyEvents.length && cloudOnlyEvents.length ? 'diverged' : (cloudOnlyEvents.length ? 'cloud_ahead' : (localOnlyEvents.length ? 'local_ahead' : 'same')),
+    localOnlyEvents,
+    cloudOnlyEvents
+  };
+};
+
+export const compareBackupBranches = async ({ backup, metaDB = defaultMetaDB } = {}) =>
+  compareEventBranches({
+    localEvents: await readLocalEventLog(metaDB, { forceFlush: true }),
+    cloudEvents: Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm : []
+  });
+
+export default { compareEventBranches, compareBackupBranches };
+
+//=================================================
 // FILE: /scripts/analytics/backup-builders.js
 import { metaDB } from './meta-db.js';
 import DeviceRegistry from './device-registry.js';
@@ -1845,71 +1887,22 @@ export default {
 //=================================================
 // FILE: /scripts/analytics/backup-merge.js
 // scripts/analytics/backup-merge.js
-// Все чистые merge-функции для backup/restore. Импортируется из backup-vault.js и может использоваться в hybrid-sync.
+// Thin compatibility facade. Favorites/playlists merge вынесены в отдельные файлы.
+
+import { mergeFavoritesStorageSafe } from './favorites-storage-merge.js';
+import { mergePlaylistsStorageSafe } from './playlists-storage-merge.js';
 
 export const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 export const minPositive = (...vs) => Math.min(...vs.map(toNum).filter(v => v > 0)) || 0;
 
-const parseS = (r, f) => { try { return JSON.parse(r); } catch { return f; } };
-const uniq = a => [...new Set((Array.isArray(a)?a:[]).filter(Boolean))];
 export const getBackupConflictPolicy = () => {
   try { return ['ask','latest','trash'].includes(localStorage.getItem('backup:conflict_policy:v1')) ? localStorage.getItem('backup:conflict_policy:v1') : 'ask'; } catch { return 'ask'; }
 };
 
-const favClock = i => Math.max(toNum(i?.updatedAt), toNum(i?.deletedAt), toNum(i?.inactiveAt), toNum(i?.addedAt));
-const normFav = i => ({ ...(i||{}), uid:String(i?.uid||'').trim(), addedAt:toNum(i?.addedAt)||Date.now(), updatedAt:favClock(i)||Date.now(), inactiveAt:toNum(i?.inactiveAt), deletedAt:toNum(i?.deletedAt), sourceAlbum:i?.sourceAlbum||i?.albumKey||null, albumKey:i?.albumKey||i?.sourceAlbum||null });
-const mergeFavPair = (a, b, policy) => {
-  const newest = favClock(b) >= favClock(a) ? b : a, oldest = newest === b ? a : b;
-  if (policy === 'latest') return newest;
-  if (policy === 'trash' && (toNum(a.deletedAt) || toNum(b.deletedAt))) {
-    const del = toNum(a.deletedAt) >= toNum(b.deletedAt) ? a : b, live = del === a ? b : a;
-    return toNum(del.deletedAt) >= favClock(live) ? { ...live, ...del, inactiveAt: 0 } : { ...oldest, ...newest, deletedAt: 0, inactiveAt: 0 };
-  }
-  const active = (!a.inactiveAt && !a.deletedAt) || (!b.inactiveAt && !b.deletedAt);
-  if (newest.deletedAt && !active) return { ...oldest, ...newest };
-  if (newest.deletedAt && favClock(newest) >= favClock(oldest)) return { ...oldest, ...newest, inactiveAt: 0 };
-  if (active) return { ...oldest, ...newest, inactiveAt: 0, deletedAt: 0, addedAt: minPositive(a.addedAt,b.addedAt)||Date.now(), updatedAt: Math.max(favClock(a),favClock(b)) };
-  return { ...oldest, ...newest, inactiveAt: Math.max(toNum(a.inactiveAt),toNum(b.inactiveAt)), deletedAt: 0, updatedAt: Math.max(favClock(a),favClock(b)) };
-};
-export const mergeFavoritesStorageSafe = (lR, rR, policy = getBackupConflictPolicy()) => {
-  const m = new Map();
-  [...parseS(lR,[]), ...parseS(rR,[])].map(normFav).forEach(i => {
-    if (!i.uid) return;
-    const p = m.get(i.uid);
-    m.set(i.uid, p ? { ...mergeFavPair(p, i, policy), uid: i.uid } : i);
-  });
-  return JSON.stringify([...m.values()]);
-};
+export { mergeFavoritesStorageSafe, mergePlaylistsStorageSafe };
 
-const plClock = p => Math.max(toNum(p?.updatedAt), toNum(p?.deletedAt), toNum(p?.createdAt));
-const normPl = pl => ({ ...(pl||{}), id:String(pl?.id||'').trim(), name:String(pl?.name||'Плейлист'), color:String(pl?.color||''), createdAt:toNum(pl?.createdAt)||Date.now(), updatedAt:toNum(pl?.updatedAt)||toNum(pl?.createdAt)||0, deletedAt:toNum(pl?.deletedAt), order:uniq(pl?.order), hidden:uniq(pl?.hidden), ops:Array.isArray(pl?.ops)?pl.ops:[] });
-const mergePlPair = (p, pl, policy) => {
-  const newest = plClock(pl) >= plClock(p) ? pl : p, oldest = newest === pl ? p : pl;
-  if (policy === 'latest') return { ...oldest, ...newest, id: pl.id };
-  if (policy === 'trash' && (toNum(p.deletedAt) || toNum(pl.deletedAt))) {
-    const del = toNum(p.deletedAt) >= toNum(pl.deletedAt) ? p : pl, live = del === p ? pl : p;
-    if (toNum(del.deletedAt) >= plClock(live)) return { ...live, ...del, id: pl.id, deletedAt: toNum(del.deletedAt), updatedAt: Math.max(plClock(live), plClock(del)) };
-  }
-  let ord=[],ops=[];
-  if((p.ops?.length||0)||(pl.ops?.length||0)){
-    const oM=new Map(); [...(p.ops||[]),...(pl.ops||[])].forEach(op=>oM.set(`${op.t}:${op.u}:${op.ts}`,op));
-    ops=[...oM.values()].sort((a,b)=>toNum(a.ts)-toNum(b.ts));
-    const st=new Set(); ops.forEach(op=>op.t==='add'?st.add(op.u):st.delete(op.u)); ord=[...st];
-  } else ord=uniq([...(p.order||[]),...(pl.order||[])]);
-  const deletedAt=Math.max(toNum(p.deletedAt),toNum(pl.deletedAt)), updatedAt=Math.max(toNum(p.updatedAt),toNum(pl.updatedAt));
-  return { ...p, ...pl, id:pl.id, name:pl.name||p.name||'Плейлист', color:pl.color||p.color||'', createdAt:minPositive(p.createdAt,pl.createdAt)||Date.now(), updatedAt, deletedAt:deletedAt>=updatedAt?deletedAt:0, order:ord, hidden:uniq([...(p.hidden||[]),...(pl.hidden||[])]).filter(u=>ord.includes(u)), ops:ops.slice(-300) };
-};
-export const mergePlaylistsStorageSafe = (lR, rR, policy = getBackupConflictPolicy()) => {
-  const m = new Map();
-  [...parseS(lR,[]), ...parseS(rR,[])].map(normPl).forEach(pl => {
-    if (!pl.id) return;
-    const p = m.get(pl.id);
-    m.set(pl.id, p ? mergePlPair(p, pl, policy) : pl);
-  });
-  return JSON.stringify([...m.values()].filter(x=>x.id));
-};
-
-export const mergeProfileStorageValueSafe = (k, l, r) => r == null ? l : (l == null ? r : (k === '__favorites_v2__' ? mergeFavoritesStorageSafe(l, r) : (k === 'sc3:playlists' ? mergePlaylistsStorageSafe(l, r) : r)));
+export const mergeProfileStorageValueSafe = (k, l, r) =>
+  r == null ? l : (l == null ? r : (k === '__favorites_v2__' ? mergeFavoritesStorageSafe(l, r) : (k === 'sc3:playlists' ? mergePlaylistsStorageSafe(l, r) : r)));
 
 export default { toNum, minPositive, getBackupConflictPolicy, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe };
 
@@ -6489,52 +6482,51 @@ import { safeNum } from '../../analytics/backup-summary.js';
 import { esc, renderSectionCard } from './profile-ui-kit.js';
 const jp = (r, f = []) => { try { return JSON.parse(r || ''); } catch { return f; } };
 
-const localCounts = () => {
-  const f = jp(localStorage.getItem('__favorites_v2__') || '[]', []);
-  const p = jp(localStorage.getItem('sc3:playlists') || '[]', []);
-  return {
-    favorites: Array.isArray(f) ? f.filter(x => !x?.inactiveAt && !x?.deletedAt).length : 0,
-    playlists: Array.isArray(p) ? p.filter(x => !x?.deletedAt).length : 0,
-    deletedPlaylists: Array.isArray(p) ? p.filter(x => x?.deletedAt).length : 0
-  };
-};
+const activeFav = rows => new Set((Array.isArray(rows) ? rows : []).filter(x => x?.uid && !x.inactiveAt && !x.deletedAt).map(x => String(x.uid)));
+const activePl = rows => new Map((Array.isArray(rows) ? rows : []).filter(x => x?.id && !x.deletedAt).map(x => [String(x.id), x]));
 
-const cloudCountsFromBackup = backup => {
+const localRaw = () => ({
+  fav: jp(localStorage.getItem('__favorites_v2__') || '[]', []),
+  pl: jp(localStorage.getItem('sc3:playlists') || '[]', [])
+});
+
+const cloudRaw = backup => {
   const ls = backup?.data?.localStorage || {};
-  const f = jp(ls['__favorites_v2__'] || '[]', []);
-  const p = jp(ls['sc3:playlists'] || '[]', []);
-  return {
-    favorites: Array.isArray(f) ? f.filter(x => !x?.inactiveAt && !x?.deletedAt).length : 0,
-    playlists: Array.isArray(p) ? p.filter(x => !x?.deletedAt).length : 0,
-    deletedPlaylists: Array.isArray(p) ? p.filter(x => x?.deletedAt).length : 0
-  };
+  return { fav: jp(ls['__favorites_v2__'] || '[]', []), pl: jp(ls['sc3:playlists'] || '[]', []) };
 };
 
 const row = (name, l, c, hint = '') => {
-  const d = safeNum(c) - safeNum(l);
-  const sign = d > 0 ? `+${d}` : String(d);
-  const cls = d > 0 ? '#81c784' : (d < 0 ? '#ffb74d' : '#9db7dd');
-  return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-    <div style="color:#eaf2ff;font-size:12px">${esc(name)}${hint ? `<div style="color:#667;font-size:10px;margin-top:2px">${esc(hint)}</div>` : ''}</div>
-    <div style="font-size:12px;font-weight:900;color:${cls};white-space:nowrap">${safeNum(l)} → ${safeNum(c)} <span style="opacity:.75">(${esc(sign)})</span></div>
-  </div>`;
+  const d = safeNum(c) - safeNum(l), sign = d > 0 ? `+${d}` : String(d), cls = d > 0 ? '#81c784' : (d < 0 ? '#ffb74d' : '#9db7dd');
+  return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="color:#eaf2ff;font-size:12px">${esc(name)}${hint ? `<div style="color:#667;font-size:10px;margin-top:2px">${esc(hint)}</div>` : ''}</div><div style="font-size:12px;font-weight:900;color:${cls};white-space:nowrap">${safeNum(l)} → ${safeNum(c)} <span style="opacity:.75">(${esc(sign)})</span></div></div>`;
 };
 
-export const renderRestoreDiffHtml = ({ backup, localSummary, cloudSummary, devices = [] } = {}) => {
-  const lc = localCounts(), cc = backup ? cloudCountsFromBackup(backup) : {};
-  const deletedCloud = safeNum(cc.deletedPlaylists);
+const exactDiff = backup => {
+  const l = localRaw(), c = cloudRaw(backup);
+  const lf = activeFav(l.fav), cf = activeFav(c.fav), lp = activePl(l.pl), cp = activePl(c.pl);
+  const favCloudOnly = [...cf].filter(x => !lf.has(x)).length, favLocalOnly = [...lf].filter(x => !cf.has(x)).length;
+  const plCloudOnly = [...cp.keys()].filter(x => !lp.has(x)).length, plLocalOnly = [...lp.keys()].filter(x => !cp.has(x)).length;
+  const deletedCloud = (Array.isArray(c.pl) ? c.pl : []).filter(x => x?.deletedAt).length;
+  return { lf, cf, lp, cp, favCloudOnly, favLocalOnly, plCloudOnly, plLocalOnly, deletedCloud };
+};
+
+export const renderRestoreDiffHtml = ({ backup, localSummary, cloudSummary, devices = [], branch = null, deviceSettingsState = '' } = {}) => {
+  const ex = backup ? exactDiff(backup) : null;
   const cloudEventCount = safeNum(cloudSummary?.eventCount || backup?.data?.eventLog?.warm?.length || 0);
   const cloudDeviceCount = safeNum(cloudSummary?.devicesCount || devices.length || 0);
+  const branchHtml = branch ? `<div style="margin-top:9px;color:#9db7dd;font-size:11px;line-height:1.45">Ветки событий: <b>${esc(branch.state)}</b><br>Только локально: <b>${branch.localOnlyCount}</b> · только в облаке: <b>${branch.cloudOnlyCount}</b> · пересечение: <b>${branch.overlapCount}</b></div>` : '';
+  const preciseHtml = ex ? `<div style="margin-top:9px;color:#9db7dd;font-size:11px;line-height:1.45">Точный diff: ⭐ из облака +${ex.favCloudOnly}, локальных ⭐ +${ex.favLocalOnly}; плейлистов из облака +${ex.plCloudOnly}, локальных плейлистов +${ex.plLocalOnly}.${deviceSettingsState ? `<br>Device settings: <b>${esc(deviceSettingsState)}</b>` : ''}</div>` : '';
 
   return renderSectionCard({ title: 'Что будет объединено', style: 'margin:12px 0', body: `
     ${row('Уровень', localSummary?.level || 1, cloudSummary?.level || 1, 'не понижается')}
     ${row('XP', localSummary?.xp || 0, cloudSummary?.xp || 0, 'берётся максимум')}
     ${row('Достижения', localSummary?.achievementsCount || 0, cloudSummary?.achievementsCount || 0, 'unlock-time сохраняется')}
-    ${row('Избранное', lc.favorites || localSummary?.favoritesCount || 0, cc.favorites || cloudSummary?.favoritesCount || 0, 'active ⭐ имеет приоритет')}
-    ${row('Плейлисты', lc.playlists || localSummary?.playlistsCount || 0, cc.playlists || cloudSummary?.playlistsCount || 0, 'удаления идут через корзину')}
+    ${row('Избранное', ex ? ex.lf.size : localSummary?.favoritesCount || 0, ex ? ex.cf.size : cloudSummary?.favoritesCount || 0, 'active ⭐ имеет приоритет')}
+    ${row('Плейлисты', ex ? ex.lp.size : localSummary?.playlistsCount || 0, ex ? ex.cp.size : cloudSummary?.playlistsCount || 0, 'удаления идут через корзину')}
     ${row('События журнала', localSummary?.eventCount || 0, cloudEventCount, 'merge по eventId')}
     ${row('Устройства', localSummary?.devicesCount || 0, cloudDeviceCount, 'выбор device settings вручную')}
-    ${deletedCloud ? `<div style="margin-top:8px;color:#ffb74d;font-size:11px">В облаке есть удалённые плейлисты в корзине: <b>${deletedCloud}</b>. Они не считаются активными, но могут быть восстановлены.</div>` : ''}
+    ${preciseHtml}
+    ${branchHtml}
+    ${ex?.deletedCloud ? `<div style="margin-top:8px;color:#ffb74d;font-size:11px">В облаке есть удалённые плейлисты в корзине: <b>${ex.deletedCloud}</b>.</div>` : ''}
   `});
 };
 
