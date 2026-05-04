@@ -4,7 +4,7 @@ import { normalizeCloudBackupMeta } from './cloud-contract.js';
 import { collectSharedSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
-import { buildAchievementBackupState } from './achievement-state.js';
+import { buildAchievementBackupState, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -59,11 +59,12 @@ const dedupIntel = arr => {
 
 export const buildBackupDataSnapshot = async () => {
   try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 80)); } catch {}
-  const [st, h, w, a, str, uP, uR, lP, pI, hS, rS, cS, iR] = await Promise.all([
+  const [st, h, w, a, aM, str, uP, uR, lP, pI, hS, rS, cS, iR] = await Promise.all([
     metaDB.getAllStats(),
     metaDB.getEvents('events_hot').catch(() => []),
     metaDB.getEvents('events_warm'),
     metaDB.getGlobal('unlocked_achievements'),
+    metaDB.getGlobal('achievement_unlock_meta'),
     metaDB.getGlobal('global_streak'),
     metaDB.getGlobal('user_profile'),
     metaDB.getGlobal('user_profile_rpg'),
@@ -77,6 +78,7 @@ export const buildBackupDataSnapshot = async () => {
   const rawEvents = [...(Array.isArray(w) ? w : []), ...(Array.isArray(h) ? h : [])];
   const warmTrimmed = normalizeEventList(rawEvents, { limit: 10000 });
   if (warmTrimmed.length < rawEvents.length) console.debug(`[BackupVault] warm events trimmed/cleaned: ${rawEvents.length} → ${warmTrimmed.length}`);
+  const achUnlockMeta = { ...deriveAchievementUnlockMetaFromEvents(warmTrimmed), ...(aM?.value || {}) };
   return {
     stats: st,
     eventLog: { warm: warmTrimmed },
@@ -84,7 +86,7 @@ export const buildBackupDataSnapshot = async () => {
     streaks: str?.value || {},
     userProfile: uP?.value || { name: 'Слушатель', avatar: '😎' },
     userProfileRpg: uR?.value || { xp: 0, level: 1 },
-    achievementState: buildAchievementBackupState({ unlocked: a?.value || {}, profileRpg: uR?.value || { xp: 0, level: 1 }, streaks: str?.value || {} }),
+    achievementState: buildAchievementBackupState({ unlocked: a?.value || {}, unlockMeta: achUnlockMeta, profileRpg: uR?.value || { xp: 0, level: 1 }, streaks: str?.value || {}, events: warmTrimmed }),
     localStorage: collectSharedSnapshotLocalStorage(localStorage),
     intel: {
       listenerProfile: dedupIntel(lP),
