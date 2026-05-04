@@ -103,7 +103,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
 
   if (st === 'active' && pr) {
     const avatarHtml = pr.avatar
-      ? `<img class="yandex-auth-avatar" src="${esc(pr.avatar)}" alt="avatar">`
+      ? `<img class="yandex-auth-avatar" src="${esc(pr.avatar)}" alt="avatar" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'yandex-auth-avatar--fallback',textContent:'Я'}))">`
       : `<div class="yandex-auth-avatar--fallback">Я</div>`;
 
     let restoreDone = false;
