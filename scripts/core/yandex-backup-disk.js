@@ -62,6 +62,28 @@ export const YandexBackupDisk={
       throw mPE(sS(e?.message||'list_proxy_failed'),e);
     }
   },
+  async getSyncLease(t){
+    if(!t) throw new Error('no_token');
+    const u=new URL(PROXY);u.searchParams.set('mode','lease_get');
+    const d=await fPJ(u.toString(),t,1);
+    return d?.lease||null;
+  },
+  async acquireSyncLease(t,{reason='autosync',ttlMs=45000}={}){
+    if(!t) throw new Error('no_token');
+    const u=new URL(PROXY);u.searchParams.set('mode','lease_acquire');
+    u.searchParams.set('deviceStableId',localStorage.getItem('deviceStableId')||'');
+    u.searchParams.set('deviceHash',localStorage.getItem('deviceHash')||'');
+    u.searchParams.set('reason',reason);u.searchParams.set('ttlMs',String(ttlMs));
+    return await fPJ(u.toString(),t,1);
+  },
+  async releaseSyncLease(t,lease=null){
+    if(!t) throw new Error('no_token');
+    const u=new URL(PROXY);u.searchParams.set('mode','lease_release');
+    u.searchParams.set('deviceStableId',localStorage.getItem('deviceStableId')||'');
+    u.searchParams.set('deviceHash',localStorage.getItem('deviceHash')||'');
+    if(lease?.revision)u.searchParams.set('revision',lease.revision);
+    return await fPJ(u.toString(),t,1);
+  },
   async writeSyncLease(t,lease=null){
     if(!t) throw new Error('no_token');
     const cur=await this.getMeta(t).catch(()=>null);
