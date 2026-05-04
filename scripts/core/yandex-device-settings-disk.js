@@ -9,7 +9,7 @@ export const YandexDeviceSettingsDisk={
     if(!t) throw new Error('no_token');
     const stableId=sS(d?.deviceStableId||''),path=buildDeviceSettingsPath(stableId);
     if(!path) throw new Error('device_settings_no_stable_id');
-    const doc=normalizeDeviceSettingsSnapshot({...d,path});
+    const doc=normalizeDeviceSettingsSnapshot({...d,path,semanticHash:sS(d?.semanticHash||'')});
     await ensureResourceDir(t,CLOUD_BACKUP_DIR).catch(()=>null);
     await ensureResourceDir(t,DEVICE_SETTINGS_DIR).catch(()=>null);
     await pJP(t,path,doc);
