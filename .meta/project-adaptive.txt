@@ -441,7 +441,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 19:37:34 UTC
+Сгенерировано: 2026-05-04 19:39:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1687,33 +1687,13 @@ import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
+import { readLocalEventLog, mergeEventLogs, rebuildStatsFromEvents } from './stats-state.js';
 import { buildAchievementBackupState, normalizeAchievementState, mergeAchievementStates, applyAchievementStateToMetaDB, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
 
 export const rebuildStatsFromWarmEvents = async () => {
   try {
-    const [{ StatsAggregator }] = await Promise.all([import('./stats-aggregator.js')]);
-    const agg = new StatsAggregator({ bindEvents: false });
     const warm = normalizeEventList(await metaDB.getEvents('events_warm').catch(() => []), { limit: 10000 });
-    await metaDB.clearEvents('events_warm').catch(() => {});
-    if (warm.length) await metaDB.addEvents(warm, 'events_warm');
-    await metaDB.tx('stats', 'readwrite', s => s.clear());
-    await metaDB.clearEvents('events_hot').catch(() => {});
-    if (!warm.length) { await new Promise(r => setTimeout(r, 0)); return true; }
-    console.debug(`[rbdStats] rebuilding from ${warm.length} events...`);
-    const BATCH_SIZE = 500;
-    let processed = 0;
-    for (let i = 0; i < warm.length; i += BATCH_SIZE) {
-      const batch = warm.slice(i, i + BATCH_SIZE);
-      await metaDB.addEvents(batch, 'events_hot');
-      await agg.processHotEvents();
-      const remaining = await metaDB.getEvents('events_hot').catch(() => []);
-      if (Array.isArray(remaining) && remaining.length) await agg.processHotEvents();
-      processed += batch.length;
-      if (i + BATCH_SIZE < warm.length) await new Promise(r => setTimeout(r, 10));
-    }
-    console.debug(`[rbdStats] processed ${processed} events`);
-    await new Promise(r => setTimeout(r, 50));
-    return true;
+    return await rebuildStatsFromEvents(metaDB, warm, { reason: 'legacy_warm_rebuild' });
   } catch (e) {
     console.warn('[rbdStats] failed:', e?.message);
     return false;
@@ -1736,24 +1716,18 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
     const intel = backup.data.intel || {};
 
     if (mode === 'all' || mode === 'stats') {
-      try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 120)); } catch {}
-      const [lH, lW, lA, lM, lS, lR] = await Promise.all([
-        metaDB.getEvents('events_hot').catch(() => []),
-        metaDB.getEvents('events_warm').catch(() => []),
+      const [localEvents, lA, lM, lS, lR] = await Promise.all([
+        readLocalEventLog(metaDB, { forceFlush: true }),
         metaDB.getGlobal('unlocked_achievements'),
         metaDB.getGlobal('achievement_unlock_meta'),
         metaDB.getGlobal('global_streak'),
         metaDB.getGlobal('user_profile_rpg')
       ]);
-      const localEvents = normalizeEventList([...(Array.isArray(lW) ? lW : []), ...(Array.isArray(lH) ? lH : [])], { limit: 10000 });
       const remoteEvents = Array.isArray(backup.data.eventLog.warm) ? backup.data.eventLog.warm : [];
       const beforeMergeCount = localEvents.length + remoteEvents.length;
-      let mergedEvents = normalizeEventList([...localEvents, ...remoteEvents], { limit: 10000 });
-      if (mergedEvents.length < beforeMergeCount) console.debug(`[BackupVault] warm merge cleaned: ${beforeMergeCount} → ${mergedEvents.length}`);
-      await metaDB.clearEvents('events_warm');
-      if (mergedEvents.length) await metaDB.addEvents(mergedEvents, 'events_warm');
-      await rebuildStatsFromWarmEvents();
-      try { window.dispatchEvent(new CustomEvent('stats:rebuilt', { detail: { reason: 'backup_restore', events: mergedEvents.length } })); } catch {}
+      const mergedEvents = mergeEventLogs(localEvents, remoteEvents);
+      if (mergedEvents.length < beforeMergeCount) console.debug(`[BackupVault] event merge cleaned: ${beforeMergeCount} → ${mergedEvents.length}`);
+      await rebuildStatsFromEvents(metaDB, mergedEvents, { reason: 'backup_restore' });
 
       try {
         const remoteGlobal = (Array.isArray(backup?.data?.stats) ? backup.data.stats : []).find(s => s?.uid === 'global') || null;
