@@ -441,7 +441,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 20:36:00 UTC
+Сгенерировано: 2026-05-04 20:36:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12789,6 +12789,14 @@ body.news-view #cover-wrap{display:none!important}
 .offline-ind--cloud:hover{color:#29b6f6}
 .offline-ind--cloud-loading{opacity:.4;color:#888;animation:offline-ind-blink 1s ease-in-out infinite}
 @keyframes offline-ind-blink{50%{opacity:.4}}
+
+/* Service Worker update prompt */
+.sw-update-visible #toast-container{bottom:148px!important}
+.sw-update-panel{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10020;width:min(360px,calc(100vw - 28px));display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px;border-radius:18px;background:rgba(10,12,18,.82);border:1px solid rgba(124,77,255,.35);box-shadow:0 12px 38px rgba(0,0,0,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:fadeIn .22s ease-out}
+.sw-update-btn{min-height:46px;border:0;border-radius:14px;cursor:pointer;color:#fff;font-size:13px;font-weight:900;letter-spacing:.7px;background:linear-gradient(135deg,#7c4dff,#651fff);box-shadow:0 5px 18px rgba(124,77,255,.28);transition:transform .12s,filter .16s,box-shadow .16s}
+.sw-update-btn:hover{filter:brightness(1.08);box-shadow:0 7px 22px rgba(124,77,255,.38)}
+.sw-update-btn:active{transform:scale(.97)}
+.sw-update-btn--later{background:linear-gradient(135deg,#4a2bb8,#2d1b7a)}
 
 //=================================================
 // FILE: /data/track-profiles/README.txt
