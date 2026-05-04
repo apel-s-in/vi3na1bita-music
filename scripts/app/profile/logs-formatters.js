@@ -24,7 +24,7 @@ export const eventTrackTitle = ev => {
 };
 
 export const eventDeviceLabel = ev =>
-  [ev?.deviceLabel, ev?.deviceClass || ev?.platform, ev?.devicePwa ? 'PWA' : ''].filter(Boolean).join(' · ');
+  [ev?.deviceLabel, ev?.deviceOs || ev?.deviceClass || ev?.platform, ev?.deviceBrowser, ev?.devicePwa ? 'PWA' : ''].filter(Boolean).join(' · ');
 
 export const renderLogFilters = cur =>
   `<div class="ach-classic-tabs" id="prof-log-filters">${LOG_FILTERS.map(([k, t]) => `<div class="ach-classic-tab ${cur === k ? 'active' : ''}" data-log-filter="${k}">${esc(t)}</div>`).join('')}</div>`;
