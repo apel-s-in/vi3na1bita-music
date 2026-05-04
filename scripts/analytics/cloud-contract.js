@@ -47,6 +47,7 @@ export const normalizeCloudBackupMeta = (m = {}) => ({
   path: safeCloudString(m?.path || ''),
   name: safeCloudString(m?.name || ''),
   modified: m?.modified || null,
+  syncLease: m?.syncLease && typeof m.syncLease === 'object' ? m.syncLease : null,
   isLatest: !!m?.isLatest
 });
 
