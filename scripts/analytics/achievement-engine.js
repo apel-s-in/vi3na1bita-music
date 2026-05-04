@@ -36,7 +36,7 @@ export class AchievementEngine {
     if (window._isRestoring) return;
     const statsArr = await metaDB.getAllStats(), gStat = statsArr.find(s => s.uid === 'global')?.featuresUsed || {};
     const trStats = statsArr.filter(s => s.uid !== 'global'), strk = (await metaDB.getGlobal('global_streak'))?.value?.current || 0;
-    const favCount = window.FavoritesManager ? window.FavoritesManager.getSnapshot().filter(i => !i.inactiveAt).length : 0;
+    const favCount = window.FavoritesManager ? window.FavoritesManager.getSnapshot().filter(i => !i.inactiveAt && !i.deletedAt).length : 0;
 
     const agg = trStats.reduce((a, b) => {
       const f = b.featuresUsed || {}; a.validPlays += b.globalValidListenCount || 0; a.fullPlays += b.globalFullListenCount || 0; a.totalSec += b.globalListenSeconds || 0;
