@@ -438,7 +438,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 15:30:37 UTC
+Сгенерировано: 2026-05-04 15:31:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1449,6 +1449,7 @@ import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
+import { buildAchievementBackupState, normalizeAchievementState, mergeAchievementStates, applyAchievementStateToMetaDB } from './achievement-state.js';
 
 export const rebuildStatsFromWarmEvents = async () => {
   try {
@@ -1522,28 +1523,19 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
         }
       } catch {}
 
-      const mergedAchievements = mergeAchievementsSafe(lA?.value || {}, backup.data.achievements || {});
-      await metaDB.setGlobal('unlocked_achievements', mergedAchievements);
-      if (window.achievementEngine) window.achievementEngine.unlocked = mergedAchievements;
-
-      const remoteStreak = backup.data.streaks || {}, localStreak = lS?.value || {};
-      await metaDB.setGlobal('global_streak', {
-        ...localStreak,
-        ...remoteStreak,
-        current: Math.max(toNum(localStreak.current), toNum(remoteStreak.current)),
-        longest: Math.max(toNum(localStreak.longest), toNum(remoteStreak.longest)),
-        lastActiveDate: maxDateStr(localStreak.lastActiveDate, remoteStreak.lastActiveDate)
+      const localAchState = buildAchievementBackupState({ unlocked: lA?.value || {}, profileRpg: lR?.value || { xp: 0, level: 1 }, streaks: lS?.value || {} });
+      const remoteAchState = normalizeAchievementState(backup.data.achievementState || {
+        unlocked: backup.data.achievements || {},
+        profileRpg: backup.data.userProfileRpg || {},
+        streaks: backup.data.streaks || {}
       });
-
-      const remoteRpg = backup.data.userProfileRpg || {}, localRpg = lR?.value || {};
-      const mergedRpg = {
-        ...localRpg,
-        ...remoteRpg,
-        xp: Math.max(toNum(localRpg.xp), toNum(remoteRpg.xp)),
-        level: Math.max(toNum(localRpg.level || 1), toNum(remoteRpg.level || 1), 1)
-      };
-      await metaDB.setGlobal('user_profile_rpg', mergedRpg);
-      if (window.achievementEngine) window.achievementEngine.profile = mergedRpg;
+      const mergedAchState = mergeAchievementStates(localAchState, remoteAchState);
+      await applyAchievementStateToMetaDB(metaDB, mergedAchState);
+      if (window.achievementEngine) {
+        window.achievementEngine.unlocked = mergedAchState.unlocked;
+        window.achievementEngine.profile = mergedAchState.profileRpg;
+        window.achievementEngine.achievements = window.achievementEngine._buildUIArray?.() || window.achievementEngine.achievements || [];
+      }
 
       await replaceStoreRows('listener_profile', intel.listenerProfile);
       await replaceStoreRows('provider_identity', intel.providerIdentity);
