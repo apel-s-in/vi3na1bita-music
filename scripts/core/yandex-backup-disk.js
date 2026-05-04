@@ -4,13 +4,13 @@ import { YANDEX_DISK_API as API, YANDEX_DISK_PROXY as PROXY, authHeaders as aH, 
 const BD=CLOUD_BACKUP_DIR,BP=CLOUD_BACKUP_LATEST_PATH,MP=CLOUD_BACKUP_META_PATH,BPV=s=>buildBackupHistoryPath(s),sS=safeCloudString,sN=safeCloudNum;
 
 export const YandexBackupDisk={
-  async upload(t,dO,{writeHistory=true,changedDomains=[]}={}){
+  async upload(t,dO,{writeHistory=true,changedDomains=[],syncLease=null}={}){
     if(!t) throw new Error('no_token');
     const st=new Date().toISOString().replace(/[:.]/g,'-'),hPath=writeHistory?BPV(st):'',rg=dO?.data?.userProfileRpg||{},fs=dO?.data?.localStorage?.['__favorites_v2__']||'[]',ps=dO?.data?.localStorage?.['sc3:playlists']||'[]',ss=Array.isArray(dO?.data?.stats)?dO.data.stats:[],wm=Array.isArray(dO?.data?.eventLog?.warm)?dO.data.eventLog.warm:[],dv=Array.isArray(dO?.devices)?dO.devices:[];
     let fC=0,pC=0;
     try{fC=JSON.parse(fs).filter(i=>!i?.inactiveAt&&!i?.deletedAt).length}catch{}
     try{pC=JSON.parse(ps).filter(p=>!p?.deletedAt).length}catch{}
-    const sI=new Set(dv.map(d=>sS(d?.deviceStableId)).filter(Boolean)),src=dv.find(d=>sS(d?.deviceStableId)===sS(dO?.revision?.sourceDeviceStableId))||dv[0]||null,m=normalizeCloudBackupMeta({latestPath:BP,historyPath:hPath,timestamp:sN(dO?.revision?.timestamp||dO?.createdAt||Date.now()),appVersion:dO?.revision?.appVersion||'unknown',schemaVersion:sS(dO?.version||dO?.revision?.version||'6.0'),changedDomains,lastHistoryAt:writeHistory?Date.now():0,ownerYandexId:dO?.identity?.ownerYandexId||null,profileName:sS(dO?.revision?.profileName||dO?.data?.userProfile?.name||'Слушатель')||'Слушатель',sourceDeviceStableId:sS(dO?.revision?.sourceDeviceStableId||src?.deviceStableId||''),sourceDeviceLabel:sS(dO?.revision?.sourceDeviceLabel||src?.label||''),sourceDeviceClass:sS(dO?.revision?.sourceDeviceClass||src?.class||''),sourcePlatform:sS(dO?.revision?.sourcePlatform||src?.platform||''),level:sN(rg.level||1),xp:sN(rg.xp||0),achievementsCount:Object.keys(dO?.data?.achievements||{}).length,favoritesCount:sN(fC),playlistsCount:sN(pC),statsCount:ss.filter(x=>x?.uid&&x.uid!=='global').length,eventCount:wm.length,devicesCount:dv.length,deviceStableCount:sI.size,checksum:sS(dO?.integrity?.payloadHash||''),version:sS(dO?.version||dO?.revision?.schemaVersion||dO?.revision?.version||'unknown')});
+    const sI=new Set(dv.map(d=>sS(d?.deviceStableId)).filter(Boolean)),src=dv.find(d=>sS(d?.deviceStableId)===sS(dO?.revision?.sourceDeviceStableId))||dv[0]||null,m=normalizeCloudBackupMeta({latestPath:BP,historyPath:hPath,timestamp:sN(dO?.revision?.timestamp||dO?.createdAt||Date.now()),appVersion:dO?.revision?.appVersion||'unknown',schemaVersion:sS(dO?.version||dO?.revision?.version||'6.0'),changedDomains,lastHistoryAt:writeHistory?Date.now():0,ownerYandexId:dO?.identity?.ownerYandexId||null,profileName:sS(dO?.revision?.profileName||dO?.data?.userProfile?.name||'Слушатель')||'Слушатель',sourceDeviceStableId:sS(dO?.revision?.sourceDeviceStableId||src?.deviceStableId||''),sourceDeviceLabel:sS(dO?.revision?.sourceDeviceLabel||src?.label||''),sourceDeviceClass:sS(dO?.revision?.sourceDeviceClass||src?.class||''),sourcePlatform:sS(dO?.revision?.sourcePlatform||src?.platform||''),level:sN(rg.level||1),xp:sN(rg.xp||0),achievementsCount:Object.keys(dO?.data?.achievements||{}).length,favoritesCount:sN(fC),playlistsCount:sN(pC),statsCount:ss.filter(x=>x?.uid&&x.uid!=='global').length,eventCount:wm.length,devicesCount:dv.length,deviceStableCount:sI.size,checksum:sS(dO?.integrity?.payloadHash||''),version:sS(dO?.version||dO?.revision?.schemaVersion||dO?.revision?.version||'unknown'),syncLease:syncLease&&typeof syncLease==='object'?syncLease:null});
     await ensureResourceDir(t,BD).catch(()=>null);
     await pJP(t,BP,dO);
     if(writeHistory&&m.historyPath) try{await pJP(t,m.historyPath,dO)}catch{}
@@ -61,6 +61,14 @@ export const YandexBackupDisk={
       if([502,503,504].includes(s)) throw mPE('list_proxy_failed',e);
       throw mPE(sS(e?.message||'list_proxy_failed'),e);
     }
+  },
+  async writeSyncLease(t,lease=null){
+    if(!t) throw new Error('no_token');
+    const cur=await this.getMeta(t).catch(()=>null);
+    const next=normalizeCloudBackupMeta({...(cur||{}),syncLease:lease&&typeof lease==='object'?lease:null});
+    await ensureResourceDir(t,BD).catch(()=>null);
+    await pJP(t,MP,next);
+    return next;
   },
   async checkExists(t){
     if(!t) return false;
