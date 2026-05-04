@@ -4,6 +4,7 @@ import { normalizeCloudBackupMeta } from './cloud-contract.js';
 import { collectSharedSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
+import { buildAchievementBackupState } from './achievement-state.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -83,6 +84,7 @@ export const buildBackupDataSnapshot = async () => {
     streaks: str?.value || {},
     userProfile: uP?.value || { name: 'Слушатель', avatar: '😎' },
     userProfileRpg: uR?.value || { xp: 0, level: 1 },
+    achievementState: buildAchievementBackupState({ unlocked: a?.value || {}, profileRpg: uR?.value || { xp: 0, level: 1 }, streaks: str?.value || {} }),
     localStorage: collectSharedSnapshotLocalStorage(localStorage),
     intel: {
       listenerProfile: dedupIntel(lP),
