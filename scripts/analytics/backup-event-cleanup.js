@@ -8,13 +8,25 @@ export const WARM_EVENT_LIMIT = 10000;
 
 const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 
-export const normalizeEventList = (events = [], { limit = WARM_EVENT_LIMIT, dropNoise = true, sort = true } = {}) => {
-  const seen = new Set();
+export const normalizeEventList = (events = [], { limit = WARM_EVENT_LIMIT, dropNoise = true, sort = true, dedupeAchievementUnlocks = true } = {}) => {
+  const seen = new Set(), achSeen = new Set();
   let out = (Array.isArray(events) ? events : [])
     .filter(ev => ev?.eventId && !seen.has(ev.eventId) && seen.add(ev.eventId))
     .filter(ev => !dropNoise || !isBackupSemanticNoiseEvent(ev));
 
   if (sort) out = out.sort((a, b) => toNum(a?.timestamp) - toNum(b?.timestamp));
+
+  if (dedupeAchievementUnlocks) {
+    out = out.filter(ev => {
+      if (String(ev?.type || '') !== 'ACHIEVEMENT_UNLOCK') return true;
+      const id = String(ev?.data?.id || '').trim();
+      if (!id) return true;
+      if (achSeen.has(id)) return false;
+      achSeen.add(id);
+      return true;
+    });
+  }
+
   if (limit > 0 && out.length > limit) out = out.slice(-limit);
   return out;
 };
