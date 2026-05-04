@@ -439,7 +439,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 16:39:20 UTC
+Сгенерировано: 2026-05-04 16:43:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -822,19 +822,20 @@ self.addEventListener('message', e => {
 import { metaDB } from './meta-db.js';
 import { eventLogger } from './event-logger.js';
 import { AchievementDictionary } from './achievements-dict.js';
+import { normalizeAchievementUnlockMeta, normalizeAchievementUnlockMetaRow } from './achievement-state.js';
 
 export class AchievementEngine {
   constructor() {
     this.dict = { ...AchievementDictionary };
-    this.unlocked = {}; this.profile = { xp: 0, level: 1 };
+    this.unlocked = {}; this.unlockMeta = {}; this.profile = { xp: 0, level: 1 };
     this.achievements = []; this.lastAgg = {}; this._checking = false; this._silentNotify = false;
     this._initBoot();
     window.addEventListener('stats:updated', () => this.check());
   }
 
   async _initBoot() {
-    const [unData, profData] = await Promise.all([metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('user_profile_rpg')]);
-    this.unlocked = unData?.value || {}; this.profile = profData?.value || { xp: 0, level: 1 };
+    const [unData, metaData, profData] = await Promise.all([metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('achievement_unlock_meta'), metaDB.getGlobal('user_profile_rpg')]);
+    this.unlocked = unData?.value || {}; this.unlockMeta = normalizeAchievementUnlockMeta(metaData?.value || {}, this.unlocked); this.profile = profData?.value || { xp: 0, level: 1 };
     try {
       const d = window.Utils?.fetchCache?.getJson ? await window.Utils.fetchCache.getJson({ key: 'custom:achievements:v1', url: './data/custom_achievements.json', ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch('./data/custom_achievements.json', { cache: 'force-cache' }).then(r => r.ok ? r.json() : null);
       if (d && typeof d === 'object') Object.assign(this.dict, d);
@@ -875,14 +876,15 @@ export class AchievementEngine {
     }
 
     let chg = false, eXp = 0, now = Date.now();
+    const unlock = (id, name, icon, xp) => { this.unlocked[id] = now; const ev = this._notifyUnlock(name, icon, xp, id); this.unlockMeta[id] = normalizeAchievementUnlockMetaRow(id, { unlockedAt: now, eventId: ev?.eventId, sessionId: ev?.sessionId, deviceStableId: ev?.deviceStableId, deviceHash: ev?.deviceHash, deviceLabel: ev?.deviceLabel, deviceClass: ev?.deviceClass, devicePwa: ev?.devicePwa, platform: ev?.platform, source: 'achievement_engine' }); };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.seasonal && ((r.seasonal.start && now < r.seasonal.start) || (r.seasonal.end && now > r.seasonal.end) || (r.seasonal.months && !r.seasonal.months.includes(new Date().getMonth())))) continue;
       if (r.type === 'static' && !this.unlocked[k]) {
-        if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { this.unlocked[k] = now; eXp += r.reward.xp; chg = true; this._notifyUnlock(r.ui.name, r.ui.icon, r.reward.xp, k); }
+        if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { unlock(k, r.ui.name, r.ui.icon, r.reward.xp); eXp += r.reward.xp; chg = true; }
       } else if (r.type === 'scalable') {
         let lvl = 1, sft = 50; while (this.unlocked[`${k}_${lvl}`]) lvl++;
         while (sft-- > 0 && (!r.scaling.maxLevel || lvl <= r.scaling.maxLevel) && (!r.scaling.steps || lvl <= r.scaling.steps.length)) {
-          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { this.unlocked[`${k}_${lvl}`] = now; const xp = this._getSc(r, lvl, true); eXp += xp; chg = true; this._notifyUnlock(r.ui.name.replace('{level}', lvl), r.ui.icon, xp, `${k}_${lvl}`); lvl++; } else break;
+          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { const id = `${k}_${lvl}`, xp = this._getSc(r, lvl, true); unlock(id, r.ui.name.replace('{level}', lvl), r.ui.icon, xp); eXp += xp; chg = true; lvl++; } else break;
         }
       }
     }
@@ -900,7 +902,7 @@ export class AchievementEngine {
           }
         }, 2000); 
       }
-      await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('user_profile_rpg', this.profile)]);
+      await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('achievement_unlock_meta', this.unlockMeta), metaDB.setGlobal('user_profile_rpg', this.profile)]);
       try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'achievements', immediate: true } })); } catch {}
     }
     this.achievements = this._buildUIArray(); this.broadcast(agg.streak);
@@ -910,11 +912,13 @@ export class AchievementEngine {
   }
 
   async hydrateFromStorage({ forceCheck = true, silent = true, reason = 'hydrate' } = {}) {
-    const [unData, profData] = await Promise.all([
+    const [unData, metaData, profData] = await Promise.all([
       metaDB.getGlobal('unlocked_achievements'),
+      metaDB.getGlobal('achievement_unlock_meta'),
       metaDB.getGlobal('user_profile_rpg')
     ]);
     this.unlocked = unData?.value || {};
+    this.unlockMeta = normalizeAchievementUnlockMeta(metaData?.value || {}, this.unlocked);
     this.profile = profData?.value || { xp: 0, level: 1 };
     if (forceCheck) {
       const old = this._silentNotify;
@@ -928,6 +932,7 @@ export class AchievementEngine {
       total: this.achievements.length,
       unlocked: Object.keys(this.unlocked || {}).length,
       items: this.unlocked || {},
+      unlockMeta: this.unlockMeta || {},
       profile: this.profile,
       reason
     } }));
@@ -945,7 +950,7 @@ export class AchievementEngine {
         else pM = { kind: 'count', live: false, toggleableTimer: false, currentRaw: rC, targetRaw: rT };
       }
       const vC = r.formatters?.target_hours ? r.formatters.target_hours(eC) : eC, vT = r.formatters?.target_hours ? r.formatters.target_hours(rT) : rT;
-      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, isSecret: !!r.hidden || r.category === 'secret', unlockedAt: uAt || null, xpReward: lvl ? this._getSc(r, lvl, true) : (r.reward.xp || 0), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
+      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, isSecret: !!r.hidden || r.category === 'secret', unlockedAt: uAt || null, unlockMeta: this.unlockMeta?.[id] || null, xpReward: lvl ? this._getSc(r, lvl, true) : (r.reward.xp || 0), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
     };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.type === 'static') add(k, r, null, !!this.unlocked[k], this.unlocked[k], agg[r.trigger.conditions[0].metric] || 0, r.trigger.conditions[0].target);
@@ -956,8 +961,8 @@ export class AchievementEngine {
     }
     return arr.sort((a, b) => a.isUnlocked === b.isUnlocked ? (b.unlockedAt || 0) - (a.unlockedAt || 0) : (a.isUnlocked ? -1 : 1));
   }
-  _notifyUnlock(name, icon, xp, id = '') { eventLogger.log('ACHIEVEMENT_UNLOCK', null, { id, name, icon, xp }); if (!this._silentNotify) window.NotificationSystem?.success(`🏆 ${icon} Открыто: ${name} (+${xp} XP)`); }
-  broadcast(streak) { window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(this.unlocked).length, items: this.unlocked, streak, profile: this.profile } })); }
+  _notifyUnlock(name, icon, xp, id = '') { const ev = eventLogger.log('ACHIEVEMENT_UNLOCK', null, { id, name, icon, xp }); if (!this._silentNotify) window.NotificationSystem?.success(`🏆 ${icon} Открыто: ${name} (+${xp} XP)`); return ev; }
+  broadcast(streak) { window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(this.unlocked).length, items: this.unlocked, unlockMeta: this.unlockMeta || {}, streak, profile: this.profile } })); }
 }
 
 //=================================================
