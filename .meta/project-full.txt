@@ -444,7 +444,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 21:59:08 UTC
+Сгенерировано: 2026-05-04 22:00:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7221,7 +7221,14 @@ export default { renderYandexAuthBlock };
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { safeNum, safeString, compareLocalVsCloud, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
 
-const getLocalProfileSummary = () => getLocalBackupUiSnapshot({ name: (() => { try { return JSON.parse(localStorage.getItem('profile:last_snapshot') || 'null')?.name || 'Слушатель'; } catch { return 'Слушатель'; } })() });
+const getLocalProfileSummary = async () => {
+  let name = 'Слушатель';
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    name = (await metaDB.getGlobal('user_profile').catch(() => null))?.value?.name || name;
+  } catch {}
+  return getLocalBackupUiSnapshot({ name });
+};
 
 const enrichLocalSummaryWithDb = async s => { try { const { metaDB } = await import('../../analytics/meta-db.js'), [st, wm] = await Promise.all([metaDB.getAllStats().catch(() => []), metaDB.getEvents('events_warm').catch(() => [])]); return { ...s, statsCount: Array.isArray(st) ? st.filter(x => x?.uid && x.uid !== 'global').length : safeNum(s?.statsCount), eventCount: Array.isArray(wm) ? wm.length : safeNum(s?.eventCount) }; } catch { return s; } };
 
@@ -7235,7 +7242,7 @@ const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return _markReady('offline_skip');
   try {
     const m = await YandexDisk.getMeta(ya.getToken()).catch((e) => { console.warn('[AutoSync] getMeta failed:', e?.message); return null; });
-    const lS = await enrichLocalSummaryWithDb(getLocalProfileSummary());
+    const lS = await enrichLocalSummaryWithDb(await getLocalProfileSummary());
 
     if (!m) {
       try { localStorage.removeItem('yandex:last_backup_meta'); localStorage.removeItem('yandex:last_backup_check'); } catch {}
