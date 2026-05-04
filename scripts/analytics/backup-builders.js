@@ -165,6 +165,8 @@ export const buildFullBackupObject = async () => {
     : null;
   const revision = buildBackupRevision({ identity, devices, data, currentDevice });
   const payloadHash = await sha256Hex(stableStringify({ identity, devices, revision, data }));
+  const eventLogHash = await sha256Hex(stableStringify(data?.eventLog?.warm || []));
+  const sharedStorageHash = await sha256Hex(stableStringify(data?.localStorage || {}));
   return {
     version: '6.0',
     createdAt: Date.now(),
@@ -174,7 +176,13 @@ export const buildFullBackupObject = async () => {
     integrity: {
       algorithm: 'SHA-256',
       payloadHash,
-      ownerBinding: await sha256Hex(`${identity.ownerYandexId||'anon'}::${identity.internalUserId||'local'}::${payloadHash}`)
+      ownerBinding: await sha256Hex(`${identity.ownerYandexId||'anon'}::${identity.internalUserId||'local'}::${payloadHash}`),
+      createdByAppVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
+      schemaVersion: '6.0',
+      minReaderVersion: '8.3.0',
+      sourceDeviceStableId: String(currentDevice?.deviceStableId || ''),
+      eventLogHash,
+      sharedStorageHash
     },
     data
   };
