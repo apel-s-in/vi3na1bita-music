@@ -9,42 +9,15 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
     ]);
 
     if (W.achievementEngine) {
-      W.achievementEngine.unlocked = u?.value || {};
-      W.achievementEngine.profile = r?.value || { xp: 0, level: 1 };
-
-      // ТРОЙНОЙ пересчёт: каждый check() может разблокировать достижения, которые дают XP,
-      // что может вызвать повышение уровня и разблокировку level-dependent achievements.
-      // Продолжаем до тех пор, пока check() не перестанет менять state (fixed point).
       try {
-        let prevXp = -1, prevUnlockedCount = -1, iterations = 0;
-        const MAX_ITER = 5;
-
-        while (iterations < MAX_ITER) {
-          await W.achievementEngine.check?.();
-          await new Promise(r => setTimeout(r, 30));
-
-          const [u2, r2] = await Promise.all([
-            metaDB.getGlobal('unlocked_achievements').catch(() => null),
-            metaDB.getGlobal('user_profile_rpg').catch(() => null)
-          ]);
-          if (u2?.value) W.achievementEngine.unlocked = u2.value;
-          if (r2?.value) W.achievementEngine.profile = r2.value;
-
-          const curXp = W.achievementEngine.profile.xp || 0;
-          const curUnlocked = Object.keys(W.achievementEngine.unlocked).length;
-
-          if (curXp === prevXp && curUnlocked === prevUnlockedCount) {
-            console.debug(`[PostRestoreRefresh] achievements converged after ${iterations + 1} iterations (xp=${curXp}, unlocked=${curUnlocked})`);
-            break;
-          }
-          prevXp = curXp;
-          prevUnlockedCount = curUnlocked;
-          iterations++;
-        }
+        const { refreshAchievementEngineFromDb } = await import('../../analytics/achievement-state.js');
+        await refreshAchievementEngineFromDb({ metaDB, reason, forceCheck: true, silent: true });
       } catch (e) {
-        console.warn('[PostRestoreRefresh] achievement recheck failed:', e?.message);
+        console.warn('[PostRestoreRefresh] achievement state refresh failed:', e?.message);
+        W.achievementEngine.unlocked = u?.value || {};
+        W.achievementEngine.profile = r?.value || { xp: 0, level: 1 };
+        W.achievementEngine.achievements = W.achievementEngine._buildUIArray?.() || W.achievementEngine.achievements || [];
       }
-      W.achievementEngine.achievements = W.achievementEngine._buildUIArray?.() || W.achievementEngine.achievements || [];
     }
 
     if (p?.value && typeof p.value === 'object') {
