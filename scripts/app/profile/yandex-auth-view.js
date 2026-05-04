@@ -129,8 +129,6 @@ export function renderYandexAuthBlock({ root, localProfile }) {
   } else {
     root.innerHTML = `<div class="yandex-auth-block">
       <div class="yandex-auth-statusline"><div class="yandex-auth-statusdot" style="background:${sC}"></div><div class="yandex-auth-statustext">${esc(sL)}</div></div>
-      <div class="yandex-auth-caption" style="margin-bottom:10px">Подключение Яндекса позволяет безопасно сохранять прогресс в личную папку приложения на Яндекс Диске и восстанавливать его на других устройствах.</div>
-      <div class="yandex-auth-note" style="margin-top:0">Мы не получаем пароль Яндекса. Авторизация идёт через официальный OAuth, а доступ даётся только к папке приложения.</div>
       <button class="yandex-auth-mainbtn" data-ya-action="login"><span style="font-size:22px;line-height:1">Я</span><span>Войти через Яндекс</span></button>
       ${renderAccountBenefitsBlock()}
     </div>`;
