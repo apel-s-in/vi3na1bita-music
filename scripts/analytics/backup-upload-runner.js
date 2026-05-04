@@ -49,6 +49,7 @@ export const buildSharedSemanticPayload = backup => {
       stats: normalizeStatsForHash(data.stats),
       eventLog: { warm: (Array.isArray(data?.eventLog?.warm) ? data.eventLog.warm : []).filter(x => x?.eventId && !isBackupSemanticNoiseEvent(x)) },
       achievements: data.achievements || {},
+      achievementState: data.achievementState || {},
       streaks: data.streaks || {},
       userProfile: data.userProfile || {},
       userProfileRpg: data.userProfileRpg || {},
