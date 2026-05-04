@@ -5,7 +5,7 @@ export const listenerProfile = {
   async build() {
     let stats = []; try { const { metaDB } = await import('../../analytics/meta-db.js'); stats = await metaDB.getAllStats(); } catch {}
     const trks = stats.filter(s => s.uid && s.uid !== 'global');
-    state.profile = { version: 'listener-profile-v1', builtAt: Date.now(), summary: { totalTracksTouched: trks.filter(s => (s.globalValidListenCount || 0) > 0).length, totalFullListens: trks.reduce((a, s) => a + (s.globalFullListenCount || 0), 0), totalListenSeconds: trks.reduce((a, s) => a + (s.globalListenSeconds || 0), 0), activeFavorites: window.FavoritesManager?.getSnapshot?.().filter(i => !i.inactiveAt).length || 0 }, preferences: { tags: {}, axes: {}, themes: {}, styles: {}, useCases: {} }, behavior: { archetype: '', featureAffinity: {}, timeProfile: {}, sessionProfile: {} } };
+    state.profile = { version: 'listener-profile-v1', builtAt: Date.now(), summary: { totalTracksTouched: trks.filter(s => (s.globalValidListenCount || 0) > 0).length, totalFullListens: trks.reduce((a, s) => a + (s.globalFullListenCount || 0), 0), totalListenSeconds: trks.reduce((a, s) => a + (s.globalListenSeconds || 0), 0), activeFavorites: window.FavoritesManager?.getSnapshot?.().filter(i => !i.inactiveAt && !i.deletedAt).length || 0 }, preferences: { tags: {}, axes: {}, themes: {}, styles: {}, useCases: {} }, behavior: { archetype: '', featureAffinity: {}, timeProfile: {}, sessionProfile: {} } };
     state.lastBuiltAt = Date.now(); window.dispatchEvent(new CustomEvent('intel:listener-profile:updated', { detail: state.profile })); return state.profile;
   },
   scheduleRebuild() { clearTimeout(this._t); this._t = setTimeout(() => this.build().catch(() => {}), 250); },
