@@ -444,7 +444,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 21:23:36 UTC
+Сгенерировано: 2026-05-04 21:25:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6235,6 +6235,7 @@ export default { renderProfileShell };
 //=================================================
 // FILE: /scripts/app/profile/restore-backup-runner.js
 import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
+import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
@@ -6264,6 +6265,12 @@ export const maybeApplyDeviceSettings = async ({
   try {
     const meta = await disk.getDeviceSettingsMeta?.(token, deviceKey).catch(() => null);
     if (!meta?.deviceStableId) return false;
+
+    if (meta?.semanticHash && typeof BackupVault.buildDeviceSettingsObject === 'function') {
+      const localDoc = await BackupVault.buildDeviceSettingsObject().catch(() => null);
+      const localHash = localDoc ? await getDeviceSettingsSemanticHash(localDoc).catch(() => '') : '';
+      if (localHash && localHash === meta.semanticHash) return false;
+    }
 
     const doc = await disk.downloadDeviceSettings?.(token, deviceKey).catch(() => null);
     if (!doc || !doc.deviceStableId) return false;
