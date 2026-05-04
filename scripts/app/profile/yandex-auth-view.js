@@ -128,7 +128,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
       <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px"><span style="flex:1;color:#888">Автосохранение срабатывает пакетно по значимым изменениям профиля</span><span style="color:#888;font-size:11px">Умный режим</span></div>
       ${renderAccountDevicesBlock()}
       <div class="yandex-auth-note">Облачная копия хранит общий прогресс аккаунта: события, достижения, избранное, плейлисты, профиль и реестр устройств. Локальные настройки каждого устройства хранятся отдельно в device-settings. Восстановление всегда выполняется вручную через предпросмотр.</div>
-      <div class="yandex-auth-bottomactions"><button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button><button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button><button class="om-btn om-btn--ghost" data-ya-action="reconnect-rights">Переподключить права</button><button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button></div>
+      <div class="yandex-auth-bottomactions"><button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button><button class="om-btn om-btn--ghost" data-ya-action="sync-log">Журнал синхронизации</button><button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button><button class="om-btn om-btn--ghost" data-ya-action="reconnect-rights">Переподключить права</button><button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button></div>
       ${renderAccountBenefitsBlock()}
     </div>`;
   } else {
