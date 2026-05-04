@@ -441,7 +441,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 19:46:47 UTC
+Сгенерировано: 2026-05-04 19:47:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12553,6 +12553,7 @@ body.news-view #cover-wrap{display:none!important}
 .om-btn--disabled{opacity:.35!important;pointer-events:none!important;cursor:not-allowed!important;filter:grayscale(.6)}
 .modal-action-btn{background:rgba(77,170,255,.15);border:1px solid rgba(77,170,255,.3);color:var(--secondary-color);padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;transition:.2s}
 .modal-action-btn:hover{background:rgba(77,170,255,.25);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
+.modal-action-btn:disabled{opacity:.45!important;cursor:not-allowed!important;filter:grayscale(.35);transform:none!important;box-shadow:none!important}
 .modal-action-btn:active{transform:translateY(0)}
 
 /* 2. МОДАЛЬНЫЕ ОКНА И ОВЕРЛЕИ */
