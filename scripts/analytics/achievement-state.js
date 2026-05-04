@@ -164,7 +164,7 @@ export const refreshAchievementEngineFromDb = async ({ metaDB, reason = 'achieve
     metaDB.getGlobal('achievement_unlock_meta').catch(() => null),
     metaDB.getGlobal('user_profile_rpg').catch(() => null),
     metaDB.getGlobal('global_streak').catch(() => null),
-    metaDB.getEvents('events_warm').catch(() => [])
+    Promise.all([metaDB.getEvents('events_warm').catch(() => []), metaDB.getEvents('events_hot').catch(() => [])]).then(([w, h]) => [...(w || []), ...(h || [])])
   ]);
   const fromEvents = deriveAchievementUnlockMetaFromEvents(warm);
   const merged = mergeAchievementStates(
