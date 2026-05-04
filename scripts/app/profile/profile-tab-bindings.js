@@ -5,7 +5,7 @@ import { bindProfileAccount } from './account-bindings.js';
 export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, tokens, onProfileChanged, reloadProfile } = {}) => {
   if (!container) return;
   bindProfileAccount({ container, profile, metaDB, onProfileChanged });
-  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView });
+  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView, metaDB });
   bindProfileActions({ ctx, container, achView, metaDB, tokens, reloadProfile });
 };
 export default { bindProfileTabControllers };
