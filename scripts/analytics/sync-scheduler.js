@@ -28,7 +28,7 @@ const isEffectivelyEmptyBackup = data => {
   const fRaw = data?.localStorage?.['__favorites_v2__'];
   const pRaw = data?.localStorage?.['sc3:playlists'];
   let favoritesCount = 0, playlistsCount = 0;
-  try { favoritesCount = JSON.parse(fRaw || '[]').filter(i => !i?.inactiveAt).length; } catch {}
+  try { favoritesCount = JSON.parse(fRaw || '[]').filter(i => !i?.inactiveAt && !i?.deletedAt).length; } catch {}
   try { playlistsCount = JSON.parse(pRaw || '[]').filter(p => !p?.deletedAt).length; } catch {}
   return (data?.stats?.length || 0) <= 1 &&
     (data?.eventLog?.warm?.length || 0) === 0 &&
