@@ -450,7 +450,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 22:13:38 UTC
+Сгенерировано: 2026-05-04 22:14:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3755,9 +3755,19 @@ export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
       return false;
     }
 
-    const lease = { deviceStableId: String(localStorage.getItem('deviceStableId') || ''), deviceHash: String(localStorage.getItem('deviceHash') || ''), startedAt: Date.now(), expiresAt: Date.now() + 30000, reason };
-    await disk.writeSyncLease?.(token, lease).catch(() => null);
-    const uploaded = await uploadBackupBundle({ disk, token, BackupVault, backup, force: false, uploadDevice: true, reason, syncLease: lease });
+    const leaseRes = disk.acquireSyncLease ? await disk.acquireSyncLease(token, { reason, ttlMs: 45000 }).catch(e => ({ ok: false, reason: e?.message || 'lease_failed' })) : { ok: true, lease: { deviceStableId: String(localStorage.getItem('deviceStableId') || ''), deviceHash: String(localStorage.getItem('deviceHash') || ''), startedAt: Date.now(), expiresAt: Date.now() + 30000, reason } };
+    if (!leaseRes?.ok) {
+      emitSyncState('idle');
+      recordSyncRevision({ reason, ok: false, error: leaseRes?.reason || 'lease_busy' });
+      return false;
+    }
+    const lease = leaseRes.lease;
+    let uploaded;
+    try {
+      uploaded = await uploadBackupBundle({ disk, token, BackupVault, backup, force: false, uploadDevice: true, reason, syncLease: lease });
+    } finally {
+      if (lease) disk.releaseSyncLease?.(token, lease).catch(() => null);
+    }
     if (!uploaded.uploadedShared && !uploaded.uploadedDevice) { emitSyncState('idle'); return false; }
 
     setLastUploadAt(Date.now());
