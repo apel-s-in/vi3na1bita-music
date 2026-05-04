@@ -446,7 +446,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 22:03:53 UTC
+Сгенерировано: 2026-05-04 22:04:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6720,6 +6720,7 @@ export default { readDeletedPlaylists, readDeletedFavorites, renderPlaylistTrash
 import { renderDownloadSettingsSection, bindDownloadSettingsSection } from './settings-download-section.js';
 import { renderInterfaceSettingsSection, bindInterfaceSettingsSection } from './settings-interface-section.js';
 import { renderDataSettingsSection, bindDataSettingsSection } from './settings-data-section.js';
+import { bindTabStripPhysics } from './tab-strip-physics.js';
 
 const W = window;
 
@@ -6735,6 +6736,7 @@ export const renderProfileSettings = root => {
     if (!o) b.classList.add('open');
   });
 
+  bindTabStripPhysics(root);
   bindInterfaceSettingsSection(root);
   bindDownloadSettingsSection(root);
   bindDataSettingsSection(root);
