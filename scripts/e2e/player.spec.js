@@ -11,3 +11,26 @@ test('social achievement tracks all four news social links',async({page})=>{awai
 test('logo pulse module is loaded without import/runtime crash',async({page})=>{await loginByPromo(page);const s=await page.evaluate(()=>({hasLogoPulse:!!window.LogoPulse,hasToggle:typeof window.LogoPulse?.toggle==='function',hasUpdate:typeof window.LogoPulse?.updateSettings==='function'}));expect(s.hasLogoPulse).toBeTruthy();expect(s.hasToggle).toBeTruthy();expect(s.hasUpdate).toBeTruthy()});
 test('profile smoke: open profile, change avatar/name, no console errors, playback survives',async({page})=>{const er=[];page.on('pageerror',e=>er.push(String(e?.message||e)));page.on('console',m=>{if(m.type()==='error')er.push(m.text())});await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});await page.click('.album-icon[data-akey="__profile__"]');await page.waitForSelector('#tab-account',{timeout:1e4});await page.click('#prof-avatar-btn');await page.waitForSelector('.prof-ava-btn',{timeout:1e4});await page.locator('.prof-ava-btn').nth(1).click();await page.click('#prof-name-edit');await page.fill('#prof-name-inp','Тестовый профиль');await page.keyboard.press('Enter');await page.waitForTimeout(300);const st=await page.evaluate(()=>({playing:!!window.playerCore?.isPlaying?.(),name:document.querySelector('#prof-name-inp')?.value||'',avatar:document.querySelector('#prof-avatar-btn')?.textContent||''}));expect(st.playing).toBeTruthy();expect(st.name).toBe('Тестовый профиль');expect(st.avatar.length).toBeGreaterThan(0);expect(er.filter(e=>!/favicon/i.test(e)&&!/ERR_ABORTED/i.test(e))).toEqual([])});
 test('sleep timer logs feature usage into global stats',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});await page.evaluate(()=>window.SleepTimer?.startMinutes?.(0.001));await page.waitForTimeout(1500);const gF=await page.evaluate(()=>new Promise((r,j)=>{const d=indexedDB.open('MetaDB_v4');d.onerror=()=>j(d.error);d.onsuccess=()=>{const g=d.result.transaction('stats','readonly').objectStore('stats').get('global');g.onerror=()=>j(g.error);g.onsuccess=()=>r(g.result?.featuresUsed||{})}}));expect(gF.sleep_timer||0).toBeGreaterThan(0)});
+test('backup restore smoke: import current backup does not stop playback',async({page})=>{
+  await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});
+  const before=await page.evaluate(()=>String(window.playerCore?.getCurrentTrackUid?.()||''));
+  await page.evaluate(async()=>{window.YandexAuth={...(window.YandexAuth||{}),getProfile:()=>({yandexId:'e2e'}),getSessionStatus:()=> 'active',isTokenAlive:()=>true};const {BackupVault}=await import('./scripts/analytics/backup-vault.js');const b=await BackupVault.buildBackupObject();b.identity.ownerYandexId='e2e';await BackupVault.importBackupObject(b,'all');});
+  const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}));
+  expect(after.playing).toBeTruthy();expect(after.uid).toBe(before);
+});
+test('backup reset stats smoke: clearing stats does not stop playback',async({page})=>{
+  await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});
+  await page.evaluate(async()=>{const {metaDB}=await import('./scripts/analytics/meta-db.js');await metaDB.tx('stats','readwrite',s=>s.clear());window.dispatchEvent(new CustomEvent('stats:updated'));});
+  expect(await page.evaluate(()=>!!window.playerCore?.isPlaying?.())).toBeTruthy();
+});
+test('sync revision smoke: revision appears in local log',async({page})=>{
+  await loginByPromo(page);
+  const ok=await page.evaluate(async()=>{const m=await import('./scripts/analytics/sync-revisions.js');m.recordSyncRevision({hash:'abc123',domains:['favorites'],uploadedShared:true,reason:'e2e',ok:true});return m.readSyncRevisions()[0]?.reason==='e2e';});
+  expect(ok).toBeTruthy();
+});
+test('favoritesOnly survives backup self-restore',async({page})=>{
+  await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});const r=page.locator('#track-list .track');await r.nth(0).locator('.like-star').click();await r.nth(0).click();await page.click('#favorites-btn');
+  await page.evaluate(async()=>{window.YandexAuth={...(window.YandexAuth||{}),getProfile:()=>({yandexId:'e2e'}),getSessionStatus:()=> 'active',isTokenAlive:()=>true};const {BackupVault}=await import('./scripts/analytics/backup-vault.js');const b=await BackupVault.buildBackupObject();b.identity.ownerYandexId='e2e';await BackupVault.importBackupObject(b,'all');});
+  const st=await page.evaluate(()=>({playing:!!window.playerCore?.isPlaying?.(),favOn:localStorage.getItem('favoritesOnlyMode')==='1'}));
+  expect(st.playing).toBeTruthy();expect(st.favOn).toBeTruthy();
+});
