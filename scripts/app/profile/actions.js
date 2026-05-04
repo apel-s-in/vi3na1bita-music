@@ -1,6 +1,4 @@
 // UID.070_(Linked providers)_(сделать profile actions точкой управления связками аккаунтов)_(future link/unlink/set-primary flows будут входить здесь, но храниться в intel provider layer) UID.072_(Provider consents)_(здесь будут user-facing consent toggles)_(analytics/personalization/social/cloud/AI switches должны жить в profile actions UI) UID.073_(Hybrid sync orchestrator)_(profile actions станут control surface для primary/mirror sync roles)_(текущий cloud sync buttons — временный legacy bridge) UID.080_(Provider actions bridge)_(социальные/provider действия из профиля должны идти через единый bridge)_(не вызывать provider API напрямую из view) UID.083_(Yandex Metrica safe export)_(profile interactions можно маппить наружу только через mapper)_(не писать external telemetry напрямую из action handlers) UID.094_(No-paralysis rule)_(profile actions должны сохранять старое поведение при отсутствии intel layer)_(новые provider/consent controls strictly optional)
-import '../../analytics/device-registry.js';
-
 export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, tokens: tk, reloadProfile: rP }) => {
   if (!c || ctx._pB) return;
   ctx._pB = true;
@@ -21,65 +19,6 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
     { sel: '.auth-btn', run: ({ el }) => { window.NotificationSystem?.info('Используйте кнопки Яндекс выше'); } },
     { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); } catch {} window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
     { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
-    { sel: '#cleanup-devices-btn', run: async () => {
-      if (!window.Modals?.open) return;
-
-      const reg = window.DeviceRegistry?.getDeviceRegistry?.() || [];
-      const others = window.DeviceRegistry?.getOtherDevices?.(reg) || [];
-      if (!others.length) return window.NotificationSystem?.info('Других устройств нет');
-
-      const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
-      const platformLabel = p => ({ ios: '📱 iOS', android: '📱 Android', web: '💻 Desktop' }[p] || '💻');
-
-      const bodyHtml = `
-        <div style="color:#9db7dd;margin-bottom:12px;font-size:13px;line-height:1.4">
-          Выберите устройства, которые нужно скрыть из активного списка.<br>
-          Текущее устройство скрыть нельзя.
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-          ${others.map((d, i) => {
-            const lastSeen = d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleDateString('ru-RU') : '—';
-            const stable = String(d?.deviceStableId || '').trim();
-            const hashes = Array.isArray(d?.seenHashes) ? d.seenHashes.filter(Boolean).length : 0;
-            return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;cursor:pointer">
-              <input type="checkbox" data-dev-idx="${i}" style="width:18px;height:18px;accent-color:var(--secondary-color);cursor:pointer">
-              <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:700;color:#fff">${platformLabel(d.platform)}</div>
-                <div style="font-size:11px;color:#888;margin-top:2px">Последний раз: ${esc(lastSeen)}</div>
-                <div style="font-size:10px;color:#555;margin-top:1px">${esc((stable || d.deviceHash || '').slice(0, 24))}${hashes > 1 ? ` · aliases: ${hashes}` : ''}</div>
-              </div>
-            </label>`;
-          }).join('')}
-        </div>
-        <div class="om-actions">
-          <button type="button" class="om-btn om-btn--ghost" id="dev-sel-all">Выбрать все</button>
-          <button type="button" class="modal-action-btn" id="dev-del-btn" style="background:rgba(244,67,54,.12);border-color:rgba(244,67,54,.3);color:#ef9a9a">🗑 Скрыть</button>
-        </div>`;
-
-      const m = window.Modals.open({ title: '📱 Управление устройствами', maxWidth: 440, bodyHtml });
-      if (!m) return;
-
-      m.querySelector('#dev-sel-all')?.addEventListener('click', () => {
-        m.querySelectorAll('[data-dev-idx]').forEach(cb => cb.checked = true);
-      });
-
-      m.querySelector('#dev-del-btn')?.addEventListener('click', () => {
-        const toDelete = new Set([...m.querySelectorAll('[data-dev-idx]:checked')].map(cb => Number(cb.dataset.devIdx)));
-        if (!toDelete.size) return window.NotificationSystem?.info('Ничего не выбрано');
-
-        try {
-          const selected = others.filter((_, i) => toDelete.has(i));
-          const cleaned = window.DeviceRegistry?.retireDevicesInRegistry?.(reg, selected) || reg;
-          window.DeviceRegistry?.saveDeviceRegistry?.(cleaned);
-          try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'devices', immediate: true } })); } catch {}
-          m.remove();
-          window.NotificationSystem?.success(`Скрыто устройств: ${toDelete.size} ✅`);
-          window.AlbumsManager?.loadAlbum?.(window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
-        } catch (e) {
-          window.NotificationSystem?.error('Ошибка: ' + String(e?.message || ''));
-        }
-      });
-    }},
     { sel: '[data-pl-restore]', run: async ({ el }) => {
       try {
         const id = String(el.dataset.plRestore || '').trim();
