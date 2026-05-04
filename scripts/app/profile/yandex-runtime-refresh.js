@@ -20,9 +20,8 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
       }
     }
 
-    if (p?.value && typeof p.value === 'object') {
-      try { localStorage.setItem('profile:last_snapshot', JSON.stringify(p.value)); } catch {}
-    }
+    // user_profile теперь хранится в MetaDB и summary backup:last_local_summary:v1.
+    // profile:last_snapshot больше не используется.
 
     // Перезагрузить FavoritesManager из обновлённого localStorage после restore
     // ВАЖНО: не триггерим onFavoritesChanged callbacks если плеер играет, чтобы не вызвать applyFavoritesOnlyFilter → unload звука
