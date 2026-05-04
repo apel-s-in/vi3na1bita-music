@@ -439,7 +439,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 16:45:24 UTC
+Сгенерировано: 2026-05-04 16:46:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7110,6 +7110,7 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
         total: W.achievementEngine?.achievements?.length || 0,
         unlocked: Object.keys(W.achievementEngine?.unlocked || {}).length,
         items: W.achievementEngine?.unlocked || {},
+        unlockMeta: W.achievementEngine?.unlockMeta || {},
         streak: 0,
         profile: W.achievementEngine?.profile || { xp: 0, level: 1 },
         reason
