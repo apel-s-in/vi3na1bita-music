@@ -1,4 +1,4 @@
-import { readStatsSummary } from '../../analytics/stats-state.js';
+import { readStatsViewModel } from '../../analytics/stats-state.js';
 import { renderProfileStats } from './stats-view.js';
 
 export const bindProfileLiveBindings = ({ ctx, getContainer: gC, achView: aV, metaDB } = {}) => {
@@ -12,8 +12,8 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: gC, achView: aV, me
 
   const renderStats = async () => {
     if (!isProfile() || !statsTabActive() || !metaDB) return;
-    const c = gC(), summary = await readStatsSummary(metaDB), all = summary.rows;
-    renderProfileStats({ container: c, all });
+    const c = gC(), vm = await readStatsViewModel(metaDB), summary = vm.summary;
+    renderProfileStats({ container: c, vm });
     const totalFull = summary.totalFull, totalSec = summary.totalSec;
     const streak = (await metaDB.getGlobal('global_streak').catch(() => null))?.value?.current || 0;
     const set = (id, v) => { const el = c?.querySelector(id); if (el) el.textContent = String(v); };
