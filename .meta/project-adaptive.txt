@@ -444,7 +444,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 21:25:06 UTC
+Сгенерировано: 2026-05-04 21:26:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1845,11 +1845,6 @@ export default {
 
 export const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 export const minPositive = (...vs) => Math.min(...vs.map(toNum).filter(v => v > 0)) || 0;
-export const maxDateStr = (a, b) => [String(a||'').trim(), String(b||'').trim()].sort().pop() || '';
-export const mergeNumArrayMax = (a, b, len = 0) => Array.from({ length: Math.max(len, a?.length||0, b?.length||0) }, (_, i) => Math.max(toNum(a?.[i]), toNum(b?.[i])));
-export const mergeNumericMapMax = (a = {}, b = {}) => Object.fromEntries([...new Set([...Object.keys(a||{}), ...Object.keys(b||{})])].map(k => [k, Math.max(toNum(a?.[k]), toNum(b?.[k]))]).filter(([,v]) => v > 0));
-export const mergeStatRowSafe = (l = {}, r = {}) => ({ uid: String(r.uid || l.uid || '').trim(), globalListenSeconds: Math.max(toNum(l.globalListenSeconds), toNum(r.globalListenSeconds)), globalValidListenCount: Math.max(toNum(l.globalValidListenCount), toNum(r.globalValidListenCount)), globalFullListenCount: Math.max(toNum(l.globalFullListenCount), toNum(r.globalFullListenCount)), firstPlayedAt: minPositive(l.firstPlayedAt, r.firstPlayedAt), lastPlayedAt: Math.max(toNum(l.lastPlayedAt), toNum(r.lastPlayedAt)), featuresUsed: mergeNumericMapMax(l.featuresUsed, r.featuresUsed), ...(l.byHour?.length || r.byHour?.length ? { byHour: mergeNumArrayMax(l.byHour, r.byHour, 24) } : {}), ...(l.byWeekday?.length || r.byWeekday?.length ? { byWeekday: mergeNumArrayMax(l.byWeekday, r.byWeekday, 7) } : {}) });
-export const mergeAchievementsSafe = (l = {}, r = {}) => { const o = { ...l }; Object.entries(r||{}).forEach(([k, v]) => o[k] = (toNum(o[k]) > 0 && toNum(v) > 0) ? Math.min(toNum(o[k]), toNum(v)) : (toNum(v) || toNum(o[k]) || Date.now())); return o; };
 
 const parseS = (r, f) => { try { return JSON.parse(r); } catch { return f; } };
 const uniq = a => [...new Set((Array.isArray(a)?a:[]).filter(Boolean))];
@@ -1912,7 +1907,7 @@ export const mergePlaylistsStorageSafe = (lR, rR, policy = getBackupConflictPoli
 
 export const mergeProfileStorageValueSafe = (k, l, r) => r == null ? l : (l == null ? r : (k === '__favorites_v2__' ? mergeFavoritesStorageSafe(l, r) : (k === 'sc3:playlists' ? mergePlaylistsStorageSafe(l, r) : r)));
 
-export default { toNum, minPositive, maxDateStr, mergeNumArrayMax, mergeNumericMapMax, mergeStatRowSafe, mergeAchievementsSafe, getBackupConflictPolicy, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe };
+export default { toNum, minPositive, getBackupConflictPolicy, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe };
 
 //=================================================
 // FILE: /scripts/analytics/backup-summary.js
