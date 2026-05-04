@@ -20,6 +20,7 @@ export const normalizeDeviceSettingsSnapshot = (raw = {}) => ({
   sourceDeviceLabel: safeDeviceString(raw?.sourceDeviceLabel || ''),
   sourceDeviceClass: safeDeviceString(raw?.sourceDeviceClass || ''),
   sourcePlatform: safeDeviceString(raw?.sourcePlatform || ''),
+  semanticHash: safeDeviceString(raw?.semanticHash || ''),
   path: safeDeviceString(raw?.path || ''),
   localStorage: Object.fromEntries(
     Object.entries(raw?.localStorage || {}).filter(([k]) => DEVICE_STORAGE_KEY_SET.has(String(k || '')))
@@ -36,6 +37,7 @@ export const buildDeviceSettingsIndexItem = doc => {
     sourcePlatform: d.sourcePlatform,
     timestamp: d.timestamp,
     path: d.path || buildDeviceSettingsPath(d.deviceStableId),
+    semanticHash: d.semanticHash || '',
     keysCount: Object.keys(d.localStorage || {}).length
   };
 };
