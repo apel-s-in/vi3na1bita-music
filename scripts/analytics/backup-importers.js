@@ -53,19 +53,24 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
     const intel = backup.data.intel || {};
 
     if (mode === 'all' || mode === 'stats') {
-      const [lW, lA, lM, lS, lR] = await Promise.all([
-        metaDB.getEvents('events_warm'),
+      try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 120)); } catch {}
+      const [lH, lW, lA, lM, lS, lR] = await Promise.all([
+        metaDB.getEvents('events_hot').catch(() => []),
+        metaDB.getEvents('events_warm').catch(() => []),
         metaDB.getGlobal('unlocked_achievements'),
         metaDB.getGlobal('achievement_unlock_meta'),
         metaDB.getGlobal('global_streak'),
         metaDB.getGlobal('user_profile_rpg')
       ]);
-      const beforeMergeCount = (Array.isArray(lW) ? lW.length : 0) + (Array.isArray(backup.data.eventLog.warm) ? backup.data.eventLog.warm.length : 0);
-      let mergedEvents = normalizeEventList([...lW, ...(backup.data.eventLog.warm || [])], { limit: 10000 });
+      const localEvents = normalizeEventList([...(Array.isArray(lW) ? lW : []), ...(Array.isArray(lH) ? lH : [])], { limit: 10000 });
+      const remoteEvents = Array.isArray(backup.data.eventLog.warm) ? backup.data.eventLog.warm : [];
+      const beforeMergeCount = localEvents.length + remoteEvents.length;
+      let mergedEvents = normalizeEventList([...localEvents, ...remoteEvents], { limit: 10000 });
       if (mergedEvents.length < beforeMergeCount) console.debug(`[BackupVault] warm merge cleaned: ${beforeMergeCount} → ${mergedEvents.length}`);
       await metaDB.clearEvents('events_warm');
-      await metaDB.addEvents(mergedEvents, 'events_warm');
+      if (mergedEvents.length) await metaDB.addEvents(mergedEvents, 'events_warm');
       await rebuildStatsFromWarmEvents();
+      try { window.dispatchEvent(new CustomEvent('stats:rebuilt', { detail: { reason: 'backup_restore', events: mergedEvents.length } })); } catch {}
 
       try {
         const remoteGlobal = (Array.isArray(backup?.data?.stats) ? backup.data.stats : []).find(s => s?.uid === 'global') || null;
@@ -81,7 +86,7 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
 
       const eventUnlockMeta = deriveAchievementUnlockMetaFromEvents(mergedEvents);
       const eventUnlockMap = Object.fromEntries(Object.entries(eventUnlockMeta).map(([id, x]) => [id, x.unlockedAt]));
-      const localAchState = buildAchievementBackupState({ unlocked: lA?.value || {}, unlockMeta: lM?.value || {}, profileRpg: lR?.value || { xp: 0, level: 1 }, streaks: lS?.value || {}, events: lW || [] });
+      const localAchState = buildAchievementBackupState({ unlocked: lA?.value || {}, unlockMeta: lM?.value || {}, profileRpg: lR?.value || { xp: 0, level: 1 }, streaks: lS?.value || {}, events: localEvents });
       const remoteAchState = normalizeAchievementState(backup.data.achievementState || {
         unlocked: backup.data.achievements || {},
         unlockMeta: {},
