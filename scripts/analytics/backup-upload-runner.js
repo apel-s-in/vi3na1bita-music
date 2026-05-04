@@ -2,6 +2,7 @@ import { BackupVault as DefaultBackupVault } from './backup-vault.js';
 import { stableStringify, sha256Hex } from './backup-builders.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
+import { recordSyncRevision } from './sync-revisions.js';
 
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1';
 const LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:';
@@ -98,7 +99,8 @@ export const uploadBackupBundle = async ({
   backup = null,
   force = false,
   uploadDevice = true,
-  reason = 'autosave'
+  reason = 'autosave',
+  syncLease = null
 } = {}) => {
   if (!disk || !token || !BackupVault) throw new Error('upload_runner_invalid_input');
 
@@ -109,13 +111,14 @@ export const uploadBackupBundle = async ({
 
   let meta = readCachedMeta();
   let uploadedShared = false;
+  let changedDomains = [];
 
   if (shouldUploadShared) {
     const lastHistoryAt = sN(localStorage.getItem(LS_LAST_HISTORY_AT) || 0);
     const writeHistory = !!force || reason === 'manual_save' || Date.now() - lastHistoryAt > HISTORY_MIN_INTERVAL_MS;
     const dirtyRaw = jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []);
-    const changedDomains = Array.isArray(dirtyRaw) ? dirtyRaw.map(sS).filter(Boolean) : [];
-    meta = await disk.upload(token, b, { writeHistory, changedDomains });
+    changedDomains = Array.isArray(dirtyRaw) ? dirtyRaw.map(sS).filter(Boolean) : [];
+    meta = await disk.upload(token, b, { writeHistory, changedDomains, syncLease });
     uploadedShared = true;
     persistMeta({ meta, backup: b, sharedHash });
     if (writeHistory) try { localStorage.setItem(LS_LAST_HISTORY_AT, String(Date.now())); } catch {}
@@ -133,7 +136,7 @@ export const uploadBackupBundle = async ({
         const key = `${LS_DEVICE_HASH_PREFIX}${deviceDoc.deviceStableId}`;
         const prevDeviceHash = sS(localStorage.getItem(key) || '');
         if (force || deviceHash !== prevDeviceHash) {
-          await disk.uploadDeviceSettings(token, deviceDoc);
+          await disk.uploadDeviceSettings(token, { ...deviceDoc, semanticHash: deviceHash });
           uploadedDevice = true;
           try { localStorage.setItem(key, deviceHash); } catch {}
         }
@@ -146,6 +149,7 @@ export const uploadBackupBundle = async ({
     try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared, uploadedDevice, checksum: b?.integrity?.payloadHash || '' }); } catch {}
   }
 
+  recordSyncRevision({ hash: sharedHash, domains: changedDomains, uploadedShared, uploadedDevice, reason, ok: true });
   return {
     ok: true,
     reason,
