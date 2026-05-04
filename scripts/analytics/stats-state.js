@@ -59,8 +59,36 @@ export const getStatsSummary = (rows = []) => {
   };
 };
 
+export const buildStatsViewModel = (rows = []) => {
+  const summary = getStatsSummary(rows), byHour = Array(24).fill(0), byWeekday = Array(7).fill(0);
+  summary.tracks.forEach(s => {
+    Array.isArray(s.byHour) && s.byHour.forEach((v, h) => h >= 0 && h < 24 && (byHour[h] += n(v)));
+    Array.isArray(s.byWeekday) && s.byWeekday.forEach((v, d) => d >= 0 && d < 7 && (byWeekday[d] += n(v)));
+  });
+  const dayparts = [{ label: 'Ночь', from: 0, to: 5 }, { label: 'Утро', from: 6, to: 11 }, { label: 'День', from: 12, to: 17 }, { label: 'Вечер', from: 18, to: 23 }]
+    .map(x => ({ label: x.label, value: byHour.slice(x.from, x.to + 1).reduce((a, v) => a + v, 0) }));
+  const top = (key, limit = 5) => [...summary.tracks].sort((a, b) => n(b[key]) - n(a[key])).slice(0, limit);
+  const global = summary.rows.find(s => s?.uid === 'global') || {};
+  return {
+    summary,
+    global,
+    globalFeatures: global.featuresUsed || {},
+    byHour,
+    byWeekday,
+    dayparts,
+    peakHour: byHour.some(Boolean) ? byHour.indexOf(Math.max(...byHour)) : 0,
+    peakDaypart: [...dayparts].sort((a, b) => b.value - a.value)[0]?.label || '—',
+    topFull: top('globalFullListenCount'),
+    topValid: top('globalValidListenCount'),
+    topTime: top('globalListenSeconds')
+  };
+};
+
 export const readStatsSummary = async (db = defaultMetaDB) =>
   getStatsSummary(await db.getAllStats().catch(() => []));
+
+export const readStatsViewModel = async (db = defaultMetaDB) =>
+  buildStatsViewModel(await db.getAllStats().catch(() => []));
 
 export default {
   readLocalEventLog,
@@ -68,5 +96,7 @@ export default {
   rebuildStatsFromEvents,
   rebuildStatsFromLocalEventLog,
   getStatsSummary,
-  readStatsSummary
+  buildStatsViewModel,
+  readStatsSummary,
+  readStatsViewModel
 };
