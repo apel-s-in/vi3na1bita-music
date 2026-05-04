@@ -438,7 +438,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-04 15:29:44 UTC
+Сгенерировано: 2026-05-04 15:30:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1922,6 +1922,7 @@ export const buildSharedSemanticPayload = backup => {
       stats: normalizeStatsForHash(data.stats),
       eventLog: { warm: (Array.isArray(data?.eventLog?.warm) ? data.eventLog.warm : []).filter(x => x?.eventId && !isBackupSemanticNoiseEvent(x)) },
       achievements: data.achievements || {},
+      achievementState: data.achievementState || {},
       streaks: data.streaks || {},
       userProfile: data.userProfile || {},
       userProfileRpg: data.userProfileRpg || {},
