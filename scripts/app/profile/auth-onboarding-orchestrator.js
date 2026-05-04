@@ -236,19 +236,22 @@ async function executeRestore({ token, pickedPath, inheritDeviceKey, asNewDevice
       return;
     }
 
-    // Fallback: грузим через стандартный flow (двойной запрос getMeta + download)
-    const { openYandexRestoreFlow } = await import('./yandex-restore-flow.js');
-    await openYandexRestoreFlow({
-      token,
+    // Fallback без legacy yandex-restore-flow: скачиваем выбранный backup и применяем тем же runner-ом.
+    const { BackupVault } = await import('../../analytics/backup-vault.js');
+    const data = await YandexDisk.download(token, pickedPath || meta?.path || null);
+    if (!data) throw new Error('backup_not_found');
+    await runBackupRestore({
+      BackupVault,
       disk: YandexDisk,
-      notify: nSys,
-      autoPickedPath: pickedPath,
+      token,
+      backup: data,
+      mode: 'all',
       inheritDeviceKey: inheritDeviceKey || null,
       asNewDevice: !!asNewDevice,
       skipDeviceSettings: !!skipDeviceSettings,
-      skipPreview: true,
-      applyMode: 'all',
-      localProfile: profile || { name: 'Слушатель' }
+      allowPlaybackSensitive: false,
+      refreshReason: asNewDevice ? 'cloud_restore_new_device' : 'cloud_restore',
+      keepCurrentAlbum: true
     });
   } catch (err) {
     const msg = String(err?.message || '');
