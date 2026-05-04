@@ -44,6 +44,7 @@ export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlb
         total: W.achievementEngine?.achievements?.length || 0,
         unlocked: Object.keys(W.achievementEngine?.unlocked || {}).length,
         items: W.achievementEngine?.unlocked || {},
+        unlockMeta: W.achievementEngine?.unlockMeta || {},
         streak: 0,
         profile: W.achievementEngine?.profile || { xp: 0, level: 1 },
         reason
