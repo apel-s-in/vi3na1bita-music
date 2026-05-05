@@ -1,4 +1,4 @@
-import { toNum, minPositive, getBackupConflictPolicy } from './backup-merge.js';
+import { toNum, minPositive, getBackupConflictPolicy } from './storage-merge-utils.js';
 
 const parseS = (r, f) => { try { return JSON.parse(r); } catch { return f; } };
 const favClock = i => Math.max(toNum(i?.updatedAt), toNum(i?.deletedAt), toNum(i?.inactiveAt), toNum(i?.addedAt));
