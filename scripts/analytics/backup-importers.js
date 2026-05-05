@@ -1,5 +1,5 @@
 import { metaDB } from './meta-db.js';
-import { toNum, mergeProfileStorageValueSafe, getBackupConflictPolicy } from './backup-merge.js';
+import { toNum, mergeProfileStorageValueSafe, getBackupConflictPolicy } from './storage-merge.js';
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
