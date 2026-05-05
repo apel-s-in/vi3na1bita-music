@@ -451,7 +451,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-05 09:31:56 UTC
+Сгенерировано: 2026-05-05 09:32:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7007,10 +7007,12 @@ export default { renderProfileStats };
 
 //=================================================
 // FILE: /scripts/app/profile/tab-strip-physics.js
-// UID.096_(Helper-first anti-duplication policy)_(единая физика горизонтальных вкладок)_(логи/ачивки/настройки не дублируют wheel handlers)
-// UID.112_(Profile command center)_(tab strip должен быть mobile-friendly)_(активный пункт центрируется, wheel/touch по шагам)
+// UID.096_(Helper-first anti-duplication policy)_(единая круговая физика горизонтальных вкладок)_(без длинного scrollTo в начало/конец)
+// UID.112_(Profile command center)_(tab strip как плоская круговая карусель)_(после последней идёт первая, активная центрируется)
 
 const qsa = (root, sel) => [...(root?.querySelectorAll?.(sel) || [])];
+
+const itemsOf = (strip, itemSelector) => qsa(strip, itemSelector).filter(x => x.offsetParent !== null);
 
 const centerItem = (strip, item, behavior = 'smooth') => {
   if (!strip || !item) return;
@@ -7018,9 +7020,24 @@ const centerItem = (strip, item, behavior = 'smooth') => {
   strip.scrollTo({ left: Math.max(0, left), behavior });
 };
 
-const stepSize = strip => {
-  const first = strip.querySelector('.ach-classic-tab');
-  return Math.max(88, Math.round((first?.offsetWidth || 90) + 12));
+const activeIndex = (strip, itemSelector) => {
+  const items = itemsOf(strip, itemSelector);
+  const active = strip.querySelector(`${itemSelector}.active`);
+  const i = items.indexOf(active);
+  if (i >= 0) return i;
+  const mid = strip.scrollLeft + strip.clientWidth / 2;
+  return Math.max(0, items.reduce((best, el, idx) => Math.abs((el.offsetLeft + el.offsetWidth / 2) - mid) < Math.abs((items[best].offsetLeft + items[best].offsetWidth / 2) - mid) ? idx : best, 0));
+};
+
+const activateCircular = (strip, dir, itemSelector) => {
+  const items = itemsOf(strip, itemSelector);
+  if (!items.length) return;
+  const cur = activeIndex(strip, itemSelector);
+  const next = (cur + dir + items.length) % items.length;
+  const item = items[next];
+  if (!item) return;
+  item.click();
+  requestAnimationFrame(() => centerItem(strip, item));
 };
 
 export const bindTabStripPhysics = (root = document, { selector = '.ach-classic-tabs', itemSelector = '.ach-classic-tab' } = {}) => {
@@ -7030,26 +7047,36 @@ export const bindTabStripPhysics = (root = document, { selector = '.ach-classic-
     strip._tabPhysicsBound = true;
     strip.classList.add('physics-tabs');
 
-    const centerActive = (behavior = 'smooth') => centerItem(strip, strip.querySelector(`${itemSelector}.active`) || strip.querySelector(itemSelector), behavior);
-
     strip.addEventListener('click', e => {
       const item = e.target.closest(itemSelector);
-      if (item) setTimeout(() => centerItem(strip, item), 30);
+      if (item) setTimeout(() => centerItem(strip, item), 20);
     });
 
     strip.addEventListener('wheel', e => {
-      if (strip.scrollWidth <= strip.clientWidth) return;
+      const items = itemsOf(strip, itemSelector);
+      if (items.length < 2) return;
       e.preventDefault();
-      const dir = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) > 0 ? 1 : -1;
-      const max = strip.scrollWidth - strip.clientWidth;
-      const atStart = strip.scrollLeft <= 2, atEnd = strip.scrollLeft >= max - 2;
-      if (dir < 0 && atStart) return strip.scrollTo({ left: max, behavior: 'smooth' });
-      if (dir > 0 && atEnd) return strip.scrollTo({ left: 0, behavior: 'smooth' });
-      const mult = Math.min(3, Math.max(1, Math.ceil(Math.abs(e.deltaY || e.deltaX) / 90)));
-      strip.scrollBy({ left: dir * stepSize(strip) * mult, behavior: 'smooth' });
+      const now = Date.now();
+      if (strip._tabWheelLock && now - strip._tabWheelLock < 170) return;
+      strip._tabWheelLock = now;
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      activateCircular(strip, delta > 0 ? 1 : -1, itemSelector);
     }, { passive: false });
 
-    requestAnimationFrame(() => centerActive('auto'));
+    let sx = 0, sy = 0;
+    strip.addEventListener('touchstart', e => {
+      sx = e.touches?.[0]?.clientX || 0;
+      sy = e.touches?.[0]?.clientY || 0;
+    }, { passive: true });
+
+    strip.addEventListener('touchend', e => {
+      const x = e.changedTouches?.[0]?.clientX || 0, y = e.changedTouches?.[0]?.clientY || 0;
+      const dx = x - sx, dy = y - sy;
+      if (Math.abs(dx) < 34 || Math.abs(dx) < Math.abs(dy) + 10) return;
+      activateCircular(strip, dx < 0 ? 1 : -1, itemSelector);
+    }, { passive: true });
+
+    requestAnimationFrame(() => centerItem(strip, strip.querySelector(`${itemSelector}.active`) || strip.querySelector(itemSelector), 'auto'));
   });
 };
 
