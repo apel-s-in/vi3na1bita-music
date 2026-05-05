@@ -207,6 +207,8 @@ async function showRestoreChoiceModal({ token, meta, items, profile, preloadedBa
     items,
     backup: preloadedBackup || null,
     currentDeviceInfo: device,
+    disk: YandexDisk,
+    token,
     onLater: async () => {
       console.debug('[AuthOnboarding] user chose later');
       snoozeReminder(24);
