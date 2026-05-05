@@ -451,7 +451,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-05 09:26:06 UTC
+Сгенерировано: 2026-05-05 09:28:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7106,6 +7106,7 @@ import { BackupVault } from '../../analytics/backup-vault.js';
 import { uploadBackupBundle } from '../../analytics/backup-upload-runner.js';
 import { YandexDisk } from '../../core/yandex-disk.js';
 import { openBackupInfoModal, openBackupFoundModal } from './yandex-modals.js';
+import { renderSyncLogRow, renderCloudSectionCard, fmtDateTime, esc } from './cloud-card-renderers.js';
 
 const pickBackupFile = () => new Promise(res => {
   const inp = document.createElement('input');
@@ -7126,21 +7127,33 @@ const readMetaProfile = async () => {
 
 const openSyncLogModal = async () => {
   const { readSyncRevisions } = await import('../../analytics/sync-revisions.js');
-  const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
   const rows = readSyncRevisions();
   window.Modals?.open?.({
     title: 'Журнал синхронизации',
     maxWidth: 420,
-    bodyHtml: rows.length ? `<div class="sync-log-list">${rows.map(r => `
-      <div class="profile-list-item sync-log-row">
-        <div style="font-size:20px">${r.ok ? '✅' : '⚠️'}</div>
-        <div class="log-info">
-          <div class="log-title">${esc(new Date(r.timestamp).toLocaleString('ru-RU'))} · ${esc(r.reason || 'sync')}</div>
-          <div class="log-desc">${esc(r.ok ? 'успешно' : `ошибка: ${r.error || 'unknown'}`)}</div>
-          <div class="log-desc">hash: ${esc(r.hash || '—')} · domains: ${esc((r.domains || []).join(', ') || '—')}</div>
-          <div class="log-desc">shared: ${r.uploadedShared ? 'да' : 'нет'} · device: ${r.uploadedDevice ? 'да' : 'нет'}</div>
-        </div>
-      </div>`).join('')}</div>` : '<div class="fav-empty">Журнал синхронизации пока пуст</div>'
+    bodyHtml: rows.length ? `<div class="sync-log-list">${rows.map(renderSyncLogRow).join('')}</div>` : '<div class="fav-empty">Журнал синхронизации пока пуст</div>'
+  });
+};
+
+const openRecoverySnapshotModal = async () => {
+  const { getRestoreRecoverySnapshotInfo, restoreRecoverySnapshot } = await import('../../analytics/backup-recovery.js');
+  const info = await getRestoreRecoverySnapshotInfo();
+  if (!info) return window.Modals?.open?.({ title: 'Recovery snapshot', maxWidth: 390, bodyHtml: '<div class="fav-empty">Локальный recovery snapshot пока не создан</div>' });
+
+  window.Modals?.confirm?.({
+    title: 'Последний локальный recovery snapshot',
+    maxWidth: 430,
+    textHtml: `${renderCloudSectionCard({ title: 'Сохранён перед restore', body: `<div class="modal-confirm-text" style="margin:0"><b>Дата:</b> ${fmtDateTime(info.savedAt)}<br><b>Причина:</b> ${esc(info.reason || 'before_restore')}</div>` })}<div style="font-size:12px;color:#9db7dd;line-height:1.45;margin-top:10px">Можно откатить локальное состояние к этому снимку. Воспроизведение напрямую не трогаем.</div>`,
+    confirmText: 'Откатить',
+    cancelText: 'Отмена',
+    onConfirm: async () => {
+      try {
+        await restoreRecoverySnapshot({ BackupVault });
+        window.NotificationSystem?.success?.('Recovery snapshot восстановлен ✅');
+      } catch (e) {
+        window.NotificationSystem?.error?.('Откат не удался: ' + String(e?.message || ''));
+      }
+    }
   });
 };
 
@@ -7169,6 +7182,7 @@ export function initYandexActions() {
       },
       'backup-info': () => openBackupInfoModal(),
       'sync-log': () => openSyncLogModal(),
+      'recovery-snapshot': () => openRecoverySnapshotModal(),
       'reconnect-rights': () => mods?.confirm?.({
         title: 'Переподключить права Яндекса?',
         textHtml: 'Приложение выполнит локальный выход и при следующем входе попросит заново подтвердить доступ к Яндекс Диску.',
