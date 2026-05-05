@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-05 09:35:02 UTC
+Сгенерировано: 2026-05-05 09:35:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1743,7 +1743,7 @@ export default {
 //=================================================
 // FILE: /scripts/analytics/backup-importers.js
 import { metaDB } from './meta-db.js';
-import { toNum, mergeProfileStorageValueSafe, getBackupConflictPolicy } from './backup-merge.js';
+import { toNum, mergeProfileStorageValueSafe, getBackupConflictPolicy } from './storage-merge.js';
 import DeviceRegistry from './device-registry.js';
 import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedStorageKey, isDeviceStorageKey, PLAYBACK_SENSITIVE_DEVICE_KEYS } from './snapshot-contract.js';
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
@@ -1890,25 +1890,9 @@ export default {
 
 //=================================================
 // FILE: /scripts/analytics/backup-merge.js
-// scripts/analytics/backup-merge.js
-// Thin compatibility facade. Favorites/playlists merge вынесены в отдельные файлы.
-
-import { mergeFavoritesStorageSafe } from './favorites-storage-merge.js';
-import { mergePlaylistsStorageSafe } from './playlists-storage-merge.js';
-
-export const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
-export const minPositive = (...vs) => Math.min(...vs.map(toNum).filter(v => v > 0)) || 0;
-
-export const getBackupConflictPolicy = () => {
-  try { return ['ask','latest','trash'].includes(localStorage.getItem('backup:conflict_policy:v1')) ? localStorage.getItem('backup:conflict_policy:v1') : 'ask'; } catch { return 'ask'; }
-};
-
-export { mergeFavoritesStorageSafe, mergePlaylistsStorageSafe };
-
-export const mergeProfileStorageValueSafe = (k, l, r) =>
-  r == null ? l : (l == null ? r : (k === '__favorites_v2__' ? mergeFavoritesStorageSafe(l, r) : (k === 'sc3:playlists' ? mergePlaylistsStorageSafe(l, r) : r)));
-
-export default { toNum, minPositive, getBackupConflictPolicy, mergeFavoritesStorageSafe, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe };
+// Compatibility facade. Use /scripts/analytics/storage-merge.js in new code.
+export * from './storage-merge.js';
+export { default } from './storage-merge.js';
 
 //=================================================
 // FILE: /scripts/analytics/backup-recovery.js
