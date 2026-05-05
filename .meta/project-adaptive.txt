@@ -451,7 +451,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-05 09:31:22 UTC
+Сгенерировано: 2026-05-05 09:31:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5406,6 +5406,8 @@ async function showRestoreChoiceModal({ token, meta, items, profile, preloadedBa
     items,
     backup: preloadedBackup || null,
     currentDeviceInfo: device,
+    disk: YandexDisk,
+    token,
     onLater: async () => {
       console.debug('[AuthOnboarding] user chose later');
       snoozeReminder(24);
