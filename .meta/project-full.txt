@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-05 09:35:44 UTC
+Сгенерировано: 2026-05-05 09:37:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2508,14 +2508,12 @@ export const getOtherDevices = (r, c = getCurrentDeviceIdentity()) => normalizeD
 
 export const countDeviceStableIds = r => new Set(normalizeDeviceRegistry(r).map(d => safeString(d?.deviceStableId)).filter(Boolean)).size;
 
-export const removeDevicesFromRegistry = (r, sR) => { const sD=normalizeDeviceRegistry(sR), stI=new Set(sD.map(d=>safeString(d?.deviceStableId)).filter(Boolean)), hsI=new Set(sD.map(d=>safeString(d?.deviceHash)).filter(Boolean)); return normalizeDeviceRegistry(r).filter(d => !(safeString(d?.deviceStableId) && stI.has(safeString(d?.deviceStableId))) && !(!safeString(d?.deviceStableId) && safeString(d?.deviceHash) && hsI.has(safeString(d?.deviceHash)))); };
-
 export const retireDevicesInRegistry = (r, sR, ts = Date.now()) => {
   const sD=normalizeDeviceRegistry(sR), stI=new Set(sD.map(d=>safeString(d?.deviceStableId)).filter(Boolean)), hsI=new Set(sD.map(d=>safeString(d?.deviceHash)).filter(Boolean));
   return normalizeDeviceRegistry(r).map(d => (stI.has(safeString(d?.deviceStableId)) || (!safeString(d?.deviceStableId) && hsI.has(safeString(d?.deviceHash)))) ? normalizeDeviceRow({ ...d, retiredAt: safeNum(ts) || Date.now(), lastSeenAt: Math.max(safeNum(d.lastSeenAt), safeNum(ts)) }) : d);
 };
 
-const DeviceRegistry = { getDeviceRegistry, normalizeDeviceRow, normalizeDeviceRegistry, saveDeviceRegistry, getCurrentDeviceIdentity, isSameDevice, isCurrentDevice, getOtherDevices, countDeviceStableIds, removeDevicesFromRegistry, retireDevicesInRegistry };
+const DeviceRegistry = { getDeviceRegistry, normalizeDeviceRow, normalizeDeviceRegistry, saveDeviceRegistry, getCurrentDeviceIdentity, isSameDevice, isCurrentDevice, getOtherDevices, countDeviceStableIds, retireDevicesInRegistry };
 
 if(typeof window!=='undefined') window.DeviceRegistry = DeviceRegistry;
 export default DeviceRegistry;
