@@ -270,6 +270,7 @@ vi3na1bita-music/
 │   │   ├── snapshot-contract.js
 │   │   ├── stats-aggregator.js
 │   │   ├── stats-state.js
+│   │   ├── storage-merge-utils.js
 │   │   ├── sync-cloud-guard.js
 │   │   ├── sync-dirty-events.js
 │   │   ├── sync-domains.js
@@ -451,7 +452,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-05 09:32:32 UTC
+Сгенерировано: 2026-05-05 09:33:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3348,6 +3349,22 @@ export default {
 };
 
 //=================================================
+// FILE: /scripts/analytics/storage-merge-utils.js
+export const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+export const minPositive = (...vs) => Math.min(...vs.map(toNum).filter(v => v > 0)) || 0;
+
+export const getBackupConflictPolicy = () => {
+  try {
+    const v = localStorage.getItem('backup:conflict_policy:v1');
+    return ['ask', 'latest', 'trash'].includes(v) ? v : 'ask';
+  } catch {
+    return 'ask';
+  }
+};
+
+export default { toNum, minPositive, getBackupConflictPolicy };
+
+//=================================================
 // FILE: /scripts/analytics/sync-cloud-guard.js
 // UID.099_(Multi-device sync model)_(compare-before-write)_(облако не затирается без проверки)
 // UID.100_(Backup snapshot as life capsule)_(summary должен быть лёгким и честным)_(cloud meta cache экономит запросы)
@@ -5174,7 +5191,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
 
   const handlers = [
     { sel: '.profile-tab-btn', run: ({ el }) => { c.querySelectorAll('.profile-tab-btn, .profile-tab-content').forEach(x => x.classList.remove('active')); el.classList.add('active'); c.querySelector(`#tab-${el.dataset.tab}`)?.classList.add('active'); } },
-    { sel: '.ach-classic-tab', run: ({ el }) => { const p = el.closest('.profile-tab-content'); if (!p) return; p.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active')); el.classList.add('active'); if (p.id === 'tab-achievements') aV.render(el.dataset.filter); else if (p.id === 'tab-settings') { p.querySelectorAll('.settings-content').forEach(x => x.classList.remove('active')); p.querySelector(`#set-${el.dataset.setTab}`)?.classList.add('active'); } bindTabStripPhysics(p); setTimeout(() => el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 30); } },
+    { sel: '.ach-classic-tab', run: ({ el }) => { const p = el.closest('.profile-tab-content'); if (!p) return; p.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active')); el.classList.add('active'); if (p.id === 'tab-achievements') aV.render(el.dataset.filter); else if (p.id === 'tab-settings') { p.querySelectorAll('.settings-content').forEach(x => x.classList.remove('active')); p.querySelector(`#set-${el.dataset.setTab}`)?.classList.add('active'); } bindTabStripPhysics(p); setTimeout(() => el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 20); } },
     { sel: '.ach-more, .ach-main', run: ({ el }) => { const d = el.closest('.ach-item')?.querySelector('.ach-details'), b = el.closest('.ach-item')?.querySelector('.ach-more'); if (!d) return; const open = d.style.display === 'none'; d.style.display = open ? 'block' : 'none'; if (b) b.textContent = open ? 'Свернуть' : 'Подробнее'; } },
     { sel: '[data-ach-timer]', run: ({ el }) => aV.toggleTimerMode(el.dataset.achTimer) },
     { sel: '.chart-title', run: ({ el }) => { const box = c.querySelector('#' + el.dataset.tg); if (!box) return; const vis = box.style.display !== 'none'; box.style.display = vis ? 'none' : ''; localStorage.setItem(el.dataset.ls, vis ? '0' : '1'); } },
