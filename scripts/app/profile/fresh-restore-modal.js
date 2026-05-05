@@ -2,6 +2,8 @@ import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } 
 import { renderCloudStatPair } from './cloud-ui-helpers.js';
 import { renderRestoreDiffHtml } from './restore-diff.js';
 import { compareBackupBranches } from '../../analytics/backup-branch-compare.js';
+import { BackupVault } from '../../analytics/backup-vault.js';
+import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
 import { esc, fmtDateTime } from './profile-ui-kit.js';
 
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
@@ -28,7 +30,24 @@ const collectRestoreDevices = ({ backup, items = [], meta = null } = {}) => {
   [meta, ...(Array.isArray(items) ? items : [])].filter(Boolean).forEach(add);
   return [...map.values()].sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
 };
-
+const resolveDeviceSettingsState = async ({ disk, token, deviceKey } = {}) => {
+  const key = sS(deviceKey);
+  if (!key || key === '__new__') return 'новое устройство — не применяется';
+  if (key === '__shared_only__') return 'только общий прогресс';
+  if (!disk || !token) return 'проверка недоступна';
+  try {
+    const idx = await disk.getDeviceSettingsIndex?.(token).catch(() => null);
+    const item = (idx?.items || []).find(x => sS(x.deviceStableId) === key);
+    if (!item) return 'не найдено в облаке';
+    if (!item.semanticHash) return 'hash недоступен';
+    const localDoc = await BackupVault.buildDeviceSettingsObject().catch(() => null);
+    const localHash = localDoc ? await getDeviceSettingsSemanticHash(localDoc).catch(() => '') : '';
+    if (!localHash) return 'локальный hash недоступен';
+    return localHash === item.semanticHash ? 'совпадают' : 'отличаются';
+  } catch {
+    return 'проверка не удалась';
+  }
+};
 const askNewDeviceName = currentDeviceInfo => new Promise(resolve => {
   const fallback = sS(currentDeviceInfo?.label || localStorage.getItem(DEVICE_LABEL_KEY) || 'Моё устройство');
   const prompt = window.Utils?.profileModals?.promptName;
@@ -48,7 +67,9 @@ export const openFreshLoginRestoreModal = ({
   onRestore,
   onNewDevice,
   onLater,
-  currentDeviceInfo = null
+  currentDeviceInfo = null,
+  disk = null,
+  token = null
 } = {}) => {
   const safe = Array.isArray(items) && items.length ? items : (meta ? [meta] : []);
   const localSnap = getLocalBackupUiSnapshot({ name: 'Слушатель' });
@@ -140,15 +161,12 @@ export const openFreshLoginRestoreModal = ({
 
   const m = window.Modals?.open?.({ title: '', maxWidth: 390, strictClose: true, bodyHtml });
   if (!m) return;
-  if (backup) compareBackupBranches({ backup }).then(branch => {
-    const box = m.querySelector('#fresh-diff-box');
-    if (box) box.innerHTML = renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices, branch });
-  }).catch(() => {});
+  let branchCache = null, deviceSettingsState = '';
   const refreshPicked = () => {
     m.querySelectorAll('.fresh-version-card').forEach(x => x.classList.toggle('is-picked', !!x.querySelector('input')?.checked));
     m.querySelectorAll('.fresh-device-card').forEach(x => x.classList.toggle('is-picked', !!x.querySelector('input')?.checked));
   };
-  m.addEventListener('change', refreshPicked);
+  m.addEventListener('change', () => { refreshPicked(); refreshDeviceSettingsState().catch(() => {}); });
   refreshPicked();
 
   const pickPath = () => {
@@ -157,6 +175,19 @@ export const openFreshLoginRestoreModal = ({
     return sS(safe[idx]?.path || safe[0]?.path || '');
   };
   const pickDeviceMode = () => sS(m.querySelector('input[name="fresh-dev"]:checked')?.value || defaultDeviceValue);
+
+  const updateDiffBox = () => {
+    const box = m.querySelector('#fresh-diff-box');
+    if (box) box.innerHTML = renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices, branch: branchCache, deviceSettingsState });
+  };
+
+  const refreshDeviceSettingsState = async () => {
+    deviceSettingsState = await resolveDeviceSettingsState({ disk, token, deviceKey: pickDeviceMode() });
+    updateDiffBox();
+  };
+
+  if (backup) compareBackupBranches({ backup }).then(branch => { branchCache = branch; updateDiffBox(); }).catch(() => {});
+  refreshDeviceSettingsState().catch(() => {});
 
   m.addEventListener('click', async e => {
     const btn = e.target.closest('[data-fresh-act]');
