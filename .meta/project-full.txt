@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 15:37:52 UTC
+Сгенерировано: 2026-05-08 15:48:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3338,225 +3338,48 @@ export default { openRestorePreviewModal, openRestoreVersionPickerModal };
 //=================================================
 // FILE: /scripts/app/profile/settings-conflict-section.js
 import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
-
-export const renderConflictSettingsSection = () => {
-  const v = localStorage.getItem('backup:conflict_policy:v1') || 'ask';
-  return `<button type="button" class="set-acc-btn">ПОЛИТИКА КОНФЛИКТОВ</button><div class="set-acc-body"><div class="set-row"><div class="set-info"><div class="set-title">Как решать конфликт restore</div><div class="set-sub">Применяется к merge избранного, плейлистов и device settings</div></div><select id="backup-conflict-policy" style="max-width:190px"><option value="ask" ${v==='ask'?'selected':''}>Спрашивать</option><option value="latest" ${v==='latest'?'selected':''}>Latest-write-wins</option><option value="trash" ${v==='trash'?'selected':''}>Удалённое в корзину</option></select></div></div>`;
-};
-
-export const bindConflictSettingsSection = root => {
-  const sel = root?.querySelector('#backup-conflict-policy');
-  if (!sel || sel._bound) return;
-  sel._bound = true;
-  sel.addEventListener('change', e => {
-    localStorage.setItem('backup:conflict_policy:v1', e.target.value || 'ask');
-    markDeviceSettingsDirty();
-    window.NotificationSystem?.success?.('Политика конфликтов сохранена');
-  });
-};
-
+export const renderConflictSettingsSection = () => `<button type="button" class="set-acc-btn">ПОЛИТИКА КОНФЛИКТОВ</button><div class="set-acc-body"><div class="set-row"><div class="set-info"><div class="set-title">Как решать конфликт restore</div><div class="set-sub">Применяется к merge избранного, плейлистов и device settings</div></div><select id="backup-conflict-policy" style="max-width:190px"><option value="ask" ${localStorage.getItem('backup:conflict_policy:v1')==='ask'||!localStorage.getItem('backup:conflict_policy:v1')?'selected':''}>Спрашивать</option><option value="latest" ${localStorage.getItem('backup:conflict_policy:v1')==='latest'?'selected':''}>Latest-write-wins</option><option value="trash" ${localStorage.getItem('backup:conflict_policy:v1')==='trash'?'selected':''}>Удалённое в корзину</option></select></div></div>`;
+export const bindConflictSettingsSection = r => { const s=r?.querySelector('#backup-conflict-policy'); if(!s||s._bound)return; s._bound=true; s.addEventListener('change',e=>{localStorage.setItem('backup:conflict_policy:v1',e.target.value||'ask'); markDeviceSettingsDirty(); window.NotificationSystem?.success?.('Политика конфликтов сохранена');});};
 export default { renderConflictSettingsSection, bindConflictSettingsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-data-section.js
-import { renderConflictSettingsSection, bindConflictSettingsSection } from './settings-conflict-section.js';
-import { renderTrashSettingsSections, readDeletedPlaylists, readDeletedFavorites } from './settings-trash-section.js';
-
+import { renderConflictSettingsSection, bindConflictSettingsSection } from './settings-conflict-section.js'; import { renderTrashSettingsSections, readDeletedPlaylists, readDeletedFavorites } from './settings-trash-section.js';
 export { readDeletedPlaylists, readDeletedFavorites };
-
-export const bindDataSettingsSection = root => bindConflictSettingsSection(root);
-
+export const bindDataSettingsSection = r => bindConflictSettingsSection(r);
 export const renderDataSettingsSection = () => `<div class="settings-content" id="set-data">${renderConflictSettingsSection()}${renderTrashSettingsSections()}</div>`;
-
 export default { readDeletedPlaylists, readDeletedFavorites, renderDataSettingsSection, bindDataSettingsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-download-section.js
 import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
-
-const getDlFmt = () => {
-  try {
-    const d = JSON.parse(localStorage.getItem('dl_format_v1') || '{}');
-    return { ord: d.ord || ['custom', 'band', 'album', 'num', 'title'], en: d.en || { custom: true, title: true }, cst: d.cst || '' };
-  } catch {
-    return { ord: ['custom', 'band', 'album', 'num', 'title'], en: { custom: true, title: true }, cst: '' };
-  }
-};
-
+const getDlFmt = () => { try { const d = JSON.parse(localStorage.getItem('dl_format_v1')||'{}'); return { ord: d.ord||['custom','band','album','num','title'], en: d.en||{custom:true,title:true}, cst: d.cst||'' }; } catch { return { ord: ['custom','band','album','num','title'], en: {custom:true,title:true}, cst: '' }; } };
 const setDlFmt = v => { localStorage.setItem('dl_format_v1', JSON.stringify(v)); markDeviceSettingsDirty(); };
-
 export const renderDownloadSettingsSection = () => `<div class="settings-content active" id="set-general"><button type="button" class="set-acc-btn">СКАЧИВАНИЕ ТРЕКОВ</button><div class="set-acc-body"><div class="set-sub" style="margin-bottom:4px;padding:0 4px">Соберите формат имени файла по умолчанию.</div><div class="dl-fmt-container"><div class="dl-preview-box"><div class="dl-preview-lbl">Пример файла:</div><div class="dl-preview-val" id="dl-fmt-preview"></div></div><div id="dl-fmt-list"></div><input type="text" id="dl-fmt-custom" class="dl-inp-custom" placeholder="Свой текст или Vi3na1bita" autocomplete="off"></div></div></div>`;
-
-export const bindDownloadSettingsSection = root => {
-  let fmtSt = getDlFmt();
-  const listEl = root?.querySelector('#dl-fmt-list'), custInp = root?.querySelector('#dl-fmt-custom'), prevEl = root?.querySelector('#dl-fmt-preview');
-  if (!listEl || !custInp || !prevEl) return;
-
-  const labels = { band: 'Название группы', album: 'Название альбома', num: 'Номер трека', title: 'Название песни', custom: 'Свой текст' };
-  const sample = { custom: () => fmtSt.cst || 'Vi3na1bita', band: () => 'Витрина разбита', album: () => 'Название Альбома', num: () => '01', title: () => 'Название Песни' };
-
-  const upd = () => {
-    prevEl.textContent = (fmtSt.ord.filter(k => fmtSt.en[k]).map(k => sample[k]?.()).filter(Boolean).join(' - ') || 'track') + '.mp3';
-    setDlFmt(fmtSt);
-  };
-
-  const render = () => {
-    listEl.innerHTML = fmtSt.ord.map((k, i) => `<div class="dl-fmt-row" data-key="${k}"><button type="button" class="dl-arr up" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button><div class="dl-fmt-lbl">${labels[k] || k}</div><label class="set-switch"><input type="checkbox" class="dl-chk" data-key="${k}" ${fmtSt.en[k] ? 'checked' : ''}><span class="set-slider"></span></label><button type="button" class="dl-arr down" data-dir="1" ${i === fmtSt.ord.length - 1 ? 'disabled' : ''}>▼</button></div>`).join('');
-    upd();
-  };
-
-  listEl.addEventListener('click', e => {
-    const arr = e.target.closest('.dl-arr');
-    if (!arr || arr.disabled) return;
-    const k = arr.closest('.dl-fmt-row')?.dataset.key, d = parseInt(arr.dataset.dir, 10), i = fmtSt.ord.indexOf(k);
-    if (i < 0 || !fmtSt.ord[i + d]) return;
-    [fmtSt.ord[i], fmtSt.ord[i + d]] = [fmtSt.ord[i + d], fmtSt.ord[i]];
-    render();
-  });
-
-  listEl.addEventListener('change', e => {
-    if (!e.target.classList.contains('dl-chk')) return;
-    fmtSt.en[e.target.dataset.key] = e.target.checked;
-    upd();
-  });
-
-  custInp.value = fmtSt.cst;
-  custInp.addEventListener('input', e => {
-    fmtSt.cst = e.target.value.trim();
-    upd();
-  });
-
-  render();
-};
-
+export const bindDownloadSettingsSection = r => { let f=getDlFmt(); const l=r?.querySelector('#dl-fmt-list'), c=r?.querySelector('#dl-fmt-custom'), p=r?.querySelector('#dl-fmt-preview'); if(!l||!c||!p)return; const L={band:'Название группы',album:'Название альбома',num:'Номер трека',title:'Название песни',custom:'Свой текст'}, S={custom:()=>f.cst||'Vi3na1bita',band:()=>'Витрина разбита',album:()=>'Название Альбома',num:()=>'01',title:()=>'Название Песни'}, u=()=>{p.textContent=(f.ord.filter(k=>f.en[k]).map(k=>S[k]?.()).filter(Boolean).join(' - ')||'track')+'.mp3'; setDlFmt(f);}, rnd=()=>{l.innerHTML=f.ord.map((k,i)=>`<div class="dl-fmt-row" data-key="${k}"><button type="button" class="dl-arr up" data-dir="-1" ${i===0?'disabled':''}>▲</button><div class="dl-fmt-lbl">${L[k]||k}</div><label class="set-switch"><input type="checkbox" class="dl-chk" data-key="${k}" ${f.en[k]?'checked':''}><span class="set-slider"></span></label><button type="button" class="dl-arr down" data-dir="1" ${i===f.ord.length-1?'disabled':''}>▼</button></div>`).join(''); u();}; l.addEventListener('click',e=>{const a=e.target.closest('.dl-arr'); if(!a||a.disabled)return; const k=a.closest('.dl-fmt-row')?.dataset.key, d=parseInt(a.dataset.dir,10), i=f.ord.indexOf(k); if(i<0||!f.ord[i+d])return; [f.ord[i],f.ord[i+d]]=[f.ord[i+d],f.ord[i]]; rnd();}); l.addEventListener('change',e=>{if(e.target.classList.contains('dl-chk')){f.en[e.target.dataset.key]=e.target.checked; u();}}); c.value=f.cst; c.addEventListener('input',e=>{f.cst=e.target.value.trim(); u();}); rnd(); };
 export default { renderDownloadSettingsSection, bindDownloadSettingsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-interface-section.js
 import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
-
-const W = window;
-
 export const renderInterfaceSettingsSection = () => `<div class="settings-content" id="set-interface"><button type="button" class="set-acc-btn">ПЛЕЕР</button><div class="set-acc-body"><div class="pl-prev-box"><div class="pl-prev-lyr"><div class="pl-prev-bg" id="prev-a-bg"></div><div class="pl-prev-txt">Играет трек...</div></div><div class="pl-prev-btns"><div class="pl-prev-btn">Т</div><div class="pl-prev-btn a-btn" id="prev-a-btn">A</div><div class="pl-prev-btn">≡</div><div class="pl-prev-btn">ılı</div><div class="pl-prev-btn" style="background:#e80100;color:#fff;border-color:#e80100">Я</div><div class="pl-prev-btn">🤍</div><div class="pl-prev-btn">⬇</div></div></div><div class="set-row"><div class="set-info"><div class="set-title">Кнопка Анимации (А)</div><div class="set-sub">Показывать кнопку (A) в меню управления плеера</div></div><label class="set-switch"><input type="checkbox" id="set-pl-btn-anim"><span class="set-slider"></span></label></div><div class="set-row"><div class="set-info"><div class="set-title">Анимация фона</div><div class="set-sub">Цветовая пульсация фона в режиме лирики</div></div><label class="set-switch"><input type="checkbox" id="set-pl-anim-play"><span class="set-slider"></span></label></div></div><button type="button" class="set-acc-btn">ПУЛЬСАЦИЯ</button><div class="set-acc-body" id="set-pulse-body"><div class="set-preview-box"><img class="logo-pulse-target" id="lp-preview-logo" src="img/logo.png" alt="Логотип" style="width:70px;height:auto"></div><div class="set-row"><div class="set-info"><div class="set-title">Включить пульсацию</div><div class="set-sub">Локальная реакция логотипа на музыку без сети</div></div><label class="set-switch"><input type="checkbox" id="lp-enabled"><span class="set-slider"></span></label></div><div class="set-row"><div class="set-info"><div class="set-title">Режим</div><div class="set-sub">Bass / Balanced / Aggressive</div></div><select id="lp-preset" style="max-width:160px"><option value="bass">Bass</option><option value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select></div><div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px"><div class="set-info"><div class="set-title">Интенсивность</div><div class="set-sub">Авто-ослабляется на слабых устройствах</div></div><div class="lp-slider-row"><span style="font-size:12px;color:#888">min</span><input type="range" id="lp-intensity" class="lp-slider" min="0.05" max="0.3" step="0.01" value="0.12"><span style="font-size:12px;color:#888">max</span></div></div><div class="set-row"><div class="set-info"><div class="set-title">Debug pulse</div><div class="set-sub">Показывать лёгкий индикатор raw/pulse</div></div><label class="set-switch"><input type="checkbox" id="lp-debug"><span class="set-slider"></span></label></div><button class="om-btn om-btn--outline om-fullw" id="lp-reset-btn">Сбросить по умолчанию</button></div><button type="button" class="set-acc-btn">КАРУСЕЛЬ</button><div class="set-acc-body"><div class="set-preview-box"><div class="sc-mini-preview" id="sc-mini-preview"><div class="sc-mini-card"><div class="sc-mini-ic">📊</div></div><div class="sc-mini-controls"><div>◀</div><div class="sel">ВЫБРАТЬ</div><div>▶</div></div></div></div><div class="set-row"><div class="set-info"><div class="set-title">Кнопки карусели</div><div class="set-sub">Показывать кнопки управления под 3D-каруселью</div></div><label class="set-switch"><input type="checkbox" id="set-car-controls"><span class="set-slider"></span></label></div></div></div>`;
-
-export const bindInterfaceSettingsSection = root => {
-  const $ = s => root?.querySelector(s);
-
-  const ctrlInp = $('#set-car-controls'), scPrev = $('#sc-mini-preview');
-  if (ctrlInp && scPrev) {
-    const isShow = localStorage.getItem('profileShowControls') === '1';
-    ctrlInp.checked = isShow;
-    scPrev.classList.toggle('show-ctrl', isShow);
-    ctrlInp.addEventListener('change', e => {
-      localStorage.setItem('profileShowControls', e.target.checked ? '1' : '0');
-      markDeviceSettingsDirty();
-      scPrev.classList.toggle('show-ctrl', e.target.checked);
-      document.querySelector('.sc-3d-wrap')?.classList.toggle('show-controls', e.target.checked);
-    });
-  }
-
-  const baS = $('#set-pl-btn-anim'), baP = $('#set-pl-anim-play'), pABtn = $('#prev-a-btn'), pABg = $('#prev-a-bg');
-  if (baS && baP && pABtn && pABg) {
-    baS.checked = localStorage.getItem('lyricsShowAnimBtn') === '1';
-    baP.checked = localStorage.getItem('lyricsAnimationEnabled') !== '0';
-    pABtn.style.display = baS.checked ? '' : 'none';
-    pABtn.classList.toggle('active', baP.checked);
-    pABg.classList.toggle('active', baP.checked);
-    baS.addEventListener('change', e => {
-      localStorage.setItem('lyricsShowAnimBtn', e.target.checked ? '1' : '0');
-      markDeviceSettingsDirty();
-      pABtn.style.display = e.target.checked ? '' : 'none';
-      W.LyricsController?.restoreSettingsIntoDom?.();
-    });
-    baP.addEventListener('change', e => {
-      localStorage.setItem('lyricsAnimationEnabled', e.target.checked ? '1' : '0');
-      markDeviceSettingsDirty();
-      pABtn.classList.toggle('active', e.target.checked);
-      pABg.classList.toggle('active', e.target.checked);
-      W.LyricsController?.restoreSettingsIntoDom?.();
-    });
-  }
-
-  const lE = $('#lp-enabled'), lP = $('#lp-preset'), lI = $('#lp-intensity'), lD = $('#lp-debug'), lR = $('#lp-reset-btn');
-  if (lE && lP && lI && lD && lR) {
-    const d = { e: '0', p: 'balanced', i: '0.12', d: '0' }, s = k => localStorage.getItem(k);
-    lE.checked = (s('logoPulseEnabled') ?? d.e) === '1';
-    lP.value = s('logoPulsePreset') ?? d.p;
-    lI.value = s('logoPulseIntensity') ?? d.i;
-    lD.checked = (s('logoPulseDebug') ?? d.d) === '1';
-
-    const app = () => {
-      localStorage.setItem('logoPulseEnabled', lE.checked ? '1' : '0');
-      localStorage.setItem('logoPulsePreset', lP.value);
-      localStorage.setItem('logoPulseIntensity', lI.value);
-      localStorage.setItem('logoPulseDebug', lD.checked ? '1' : '0');
-      markDeviceSettingsDirty();
-      W.LogoPulse?.updateSettings?.();
-    };
-
-    [[lE, 'change'], [lP, 'change'], [lI, 'input'], [lD, 'change']].forEach(([el, ev]) => el.addEventListener(ev, app));
-    lR.addEventListener('click', () => {
-      lE.checked = false;
-      lP.value = d.p;
-      lI.value = d.i;
-      lD.checked = false;
-      app();
-      W.NotificationSystem?.success('Настройки пульсации сброшены');
-    });
-  }
-};
-
+export const bindInterfaceSettingsSection = r => { const $ = s => r?.querySelector(s), cI=$('#set-car-controls'), sP=$('#sc-mini-preview'); if(cI&&sP){const iS=localStorage.getItem('profileShowControls')==='1'; cI.checked=iS; sP.classList.toggle('show-ctrl',iS); cI.addEventListener('change',e=>{localStorage.setItem('profileShowControls',e.target.checked?'1':'0'); markDeviceSettingsDirty(); sP.classList.toggle('show-ctrl',e.target.checked); document.querySelector('.sc-3d-wrap')?.classList.toggle('show-controls',e.target.checked);});} const baS=$('#set-pl-btn-anim'), baP=$('#set-pl-anim-play'), pA=$('#prev-a-btn'), pBg=$('#prev-a-bg'); if(baS&&baP&&pA&&pBg){baS.checked=localStorage.getItem('lyricsShowAnimBtn')==='1'; baP.checked=localStorage.getItem('lyricsAnimationEnabled')!=='0'; pA.style.display=baS.checked?'':'none'; pA.classList.toggle('active',baP.checked); pBg.classList.toggle('active',baP.checked); baS.addEventListener('change',e=>{localStorage.setItem('lyricsShowAnimBtn',e.target.checked?'1':'0'); markDeviceSettingsDirty(); pA.style.display=e.target.checked?'':'none'; window.LyricsController?.restoreSettingsIntoDom?.();}); baP.addEventListener('change',e=>{localStorage.setItem('lyricsAnimationEnabled',e.target.checked?'1':'0'); markDeviceSettingsDirty(); pA.classList.toggle('active',e.target.checked); pBg.classList.toggle('active',e.target.checked); window.LyricsController?.restoreSettingsIntoDom?.();});} const lE=$('#lp-enabled'), lP=$('#lp-preset'), lI=$('#lp-intensity'), lD=$('#lp-debug'), lR=$('#lp-reset-btn'); if(lE&&lP&&lI&&lD&&lR){const d={e:'0',p:'balanced',i:'0.12',d:'0'}, s=k=>localStorage.getItem(k); lE.checked=(s('logoPulseEnabled')??d.e)==='1'; lP.value=s('logoPulsePreset')??d.p; lI.value=s('logoPulseIntensity')??d.i; lD.checked=(s('logoPulseDebug')??d.d)==='1'; const app=()=>{localStorage.setItem('logoPulseEnabled',lE.checked?'1':'0'); localStorage.setItem('logoPulsePreset',lP.value); localStorage.setItem('logoPulseIntensity',lI.value); localStorage.setItem('logoPulseDebug',lD.checked?'1':'0'); markDeviceSettingsDirty(); window.LogoPulse?.updateSettings?.();}; [[lE,'change'],[lP,'change'],[lI,'input'],[lD,'change']].forEach(([el,ev])=>el.addEventListener(ev,app)); lR.addEventListener('click',()=>{lE.checked=false; lP.value=d.p; lI.value=d.i; lD.checked=false; app(); window.NotificationSystem?.success('Настройки пульсации сброшены');});} };
 export default { renderInterfaceSettingsSection, bindInterfaceSettingsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-trash-section.js
-const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
-const jp = (r, f = []) => { try { return JSON.parse(r || ''); } catch { return f; } };
-
-export const readDeletedPlaylists = () => jp(localStorage.getItem('sc3:playlists') || '[]', []).filter(p => p?.id && Number(p.deletedAt || 0) > 0);
-export const readDeletedFavorites = () => jp(localStorage.getItem('__favorites_v2__') || '[]', []).filter(x => x?.uid && Number(x.deletedAt || 0) > 0);
-
-export const renderPlaylistTrashSection = () => {
-  const del = readDeletedPlaylists();
-  return `<button type="button" class="set-acc-btn">КОРЗИНА ПЛЕЙЛИСТОВ</button><div class="set-acc-body">${del.length ? del.map(p => `<div class="set-row" style="gap:10px"><div class="set-info"><div class="set-title">🗑 ${esc(p.name || 'Плейлист')}</div><div class="set-sub">Удалён: ${new Date(Number(p.deletedAt || 0)).toLocaleString('ru-RU')} · треков: ${(p.order || []).length}</div></div><button class="om-btn om-btn--ghost" data-pl-restore="${esc(p.id)}">↩</button><button class="om-btn om-btn--danger" data-pl-purge="${esc(p.id)}">×</button></div>`).join('') : '<div class="fav-empty">Удалённых плейлистов нет</div>'}</div>`;
-};
-
-export const renderFavoritesTrashSection = () => {
-  const del = readDeletedFavorites();
-  return `<button type="button" class="set-acc-btn">КОРЗИНА ИЗБРАННОГО</button><div class="set-acc-body">${del.length ? del.map(x => { const t = window.TrackRegistry?.getTrackByUid?.(x.uid); return `<div class="set-row" style="gap:10px"><div class="set-info"><div class="set-title">⭐ ${esc(t?.title || x.uid)}</div><div class="set-sub">Удалён: ${new Date(Number(x.deletedAt || 0)).toLocaleString('ru-RU')} · ${esc(t?.album || x.sourceAlbum || x.albumKey || '')}</div></div><button class="om-btn om-btn--ghost" data-fav-restore="${esc(x.uid)}">↩</button><button class="om-btn om-btn--danger" data-fav-purge="${esc(x.uid)}">×</button></div>`; }).join('') : '<div class="fav-empty">Удалённых избранных нет</div>'}</div>`;
-};
-
+const esc = s => window.Utils?.escapeHtml?.(String(s||'')) || String(s||''), jp = (r,f=[]) => { try { return JSON.parse(r||''); } catch { return f; } };
+export const readDeletedPlaylists = () => jp(localStorage.getItem('sc3:playlists')||'[]',[]).filter(p=>p?.id&&Number(p.deletedAt||0)>0);
+export const readDeletedFavorites = () => jp(localStorage.getItem('__favorites_v2__')||'[]',[]).filter(x=>x?.uid&&Number(x.deletedAt||0)>0);
+export const renderPlaylistTrashSection = () => { const d=readDeletedPlaylists(); return `<button type="button" class="set-acc-btn">КОРЗИНА ПЛЕЙЛИСТОВ</button><div class="set-acc-body">${d.length?d.map(p=>`<div class="set-row" style="gap:10px"><div class="set-info"><div class="set-title">🗑 ${esc(p.name||'Плейлист')}</div><div class="set-sub">Удалён: ${new Date(Number(p.deletedAt||0)).toLocaleString('ru-RU')} · треков: ${(p.order||[]).length}</div></div><button class="om-btn om-btn--ghost" data-pl-restore="${esc(p.id)}">↩</button><button class="om-btn om-btn--danger" data-pl-purge="${esc(p.id)}">×</button></div>`).join(''):'<div class="fav-empty">Удалённых плейлистов нет</div>'}</div>`; };
+export const renderFavoritesTrashSection = () => { const d=readDeletedFavorites(); return `<button type="button" class="set-acc-btn">КОРЗИНА ИЗБРАННОГО</button><div class="set-acc-body">${d.length?d.map(x=>{const t=window.TrackRegistry?.getTrackByUid?.(x.uid); return `<div class="set-row" style="gap:10px"><div class="set-info"><div class="set-title">⭐ ${esc(t?.title||x.uid)}</div><div class="set-sub">Удалён: ${new Date(Number(x.deletedAt||0)).toLocaleString('ru-RU')} · ${esc(t?.album||x.sourceAlbum||x.albumKey||'')}</div></div><button class="om-btn om-btn--ghost" data-fav-restore="${esc(x.uid)}">↩</button><button class="om-btn om-btn--danger" data-fav-purge="${esc(x.uid)}">×</button></div>`;}).join(''):'<div class="fav-empty">Удалённых избранных нет</div>'}</div>`; };
 export const renderTrashSettingsSections = () => `${renderPlaylistTrashSection()}${renderFavoritesTrashSection()}`;
-
 export default { readDeletedPlaylists, readDeletedFavorites, renderPlaylistTrashSection, renderFavoritesTrashSection, renderTrashSettingsSections };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-view.js
-import { renderDownloadSettingsSection, bindDownloadSettingsSection } from './settings-download-section.js';
-import { renderInterfaceSettingsSection, bindInterfaceSettingsSection } from './settings-interface-section.js';
-import { renderDataSettingsSection, bindDataSettingsSection } from './settings-data-section.js';
-import { bindTabStripPhysics } from './tab-strip-physics.js';
-
-const W = window;
-
-export const renderProfileSettings = root => {
-  if (!root) return;
-  root.innerHTML = `<div class="ach-classic-tabs"><div class="ach-classic-tab active" data-set-tab="general">Общие</div><div class="ach-classic-tab" data-set-tab="interface">Интерфейс</div><div class="ach-classic-tab" data-set-tab="data">Данные</div><div class="ach-classic-tab" data-set-tab="keys" id="set-tab-keys" style="display:none">Клавиатура</div></div>${renderDownloadSettingsSection()}${renderInterfaceSettingsSection()}${renderDataSettingsSection()}<div class="settings-content" id="set-keys"><div class="fav-empty">Раздел в разработке 🛠️</div></div>`;
-  const keysTab = root.querySelector('#set-tab-keys');
-  if (!W.Utils?.isMobile?.() && keysTab) keysTab.style.display = '';
-
-  root.querySelectorAll('.set-acc-btn').forEach(b => b.onclick = () => {
-    const o = b.classList.contains('open');
-    root.querySelectorAll('.set-acc-btn').forEach(x => x.classList.remove('open'));
-    if (!o) b.classList.add('open');
-  });
-
-  bindTabStripPhysics(root);
-  bindInterfaceSettingsSection(root);
-  bindDownloadSettingsSection(root);
-  bindDataSettingsSection(root);
-};
-
+import { renderDownloadSettingsSection, bindDownloadSettingsSection } from './settings-download-section.js'; import { renderInterfaceSettingsSection, bindInterfaceSettingsSection } from './settings-interface-section.js'; import { renderDataSettingsSection, bindDataSettingsSection } from './settings-data-section.js'; import { bindTabStripPhysics } from './tab-strip-physics.js';
+export const renderProfileSettings = r => { if(!r)return; r.innerHTML=`<div class="ach-classic-tabs"><div class="ach-classic-tab active" data-set-tab="general">Общие</div><div class="ach-classic-tab" data-set-tab="interface">Интерфейс</div><div class="ach-classic-tab" data-set-tab="data">Данные</div><div class="ach-classic-tab" data-set-tab="keys" id="set-tab-keys" style="display:none">Клавиатура</div></div>${renderDownloadSettingsSection()}${renderInterfaceSettingsSection()}${renderDataSettingsSection()}<div class="settings-content" id="set-keys"><div class="fav-empty">Раздел в разработке 🛠️</div></div>`; const kT=r.querySelector('#set-tab-keys'); if(!window.Utils?.isMobile?.()&&kT)kT.style.display=''; r.querySelectorAll('.set-acc-btn').forEach(b=>b.onclick=()=>{const o=b.classList.contains('open'); r.querySelectorAll('.set-acc-btn').forEach(x=>x.classList.remove('open')); if(!o)b.classList.add('open');}); bindTabStripPhysics(r); bindInterfaceSettingsSection(r); bindDownloadSettingsSection(r); bindDataSettingsSection(r); };
 export default { renderProfileSettings };
 
 //=================================================
