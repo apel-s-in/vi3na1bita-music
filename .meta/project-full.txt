@@ -459,7 +459,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 20:31:28 UTC
+Сгенерировано: 2026-05-08 20:32:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4220,10 +4220,10 @@ export default { RESTORE_SKIP_REMINDER_KEY, sessionKeyForCloudSnapshot, isRemind
 
 //=================================================
 // FILE: /scripts/app/profile/restore-diff.js
-import { safeNum } from '../../analytics/backup-summary.js'; import { describeEventForUi } from '../../analytics/event-contract.js'; import { esc, renderCloudSectionCard, fmtDateTime } from './profile-render-kit.js';
+import { safeNum } from '../../analytics/backup-summary.js'; import { describeEventForUi } from '../../analytics/event-contract.js'; import { esc, renderCloudSectionCard, fmtDateTime, renderKeyValueRow } from './profile-render-kit.js';
 const jp = (r, f = []) => { try{return JSON.parse(r||'');}catch{return f;} }, aF = r => new Set((Array.isArray(r)?r:[]).filter(x=>x?.uid&&!x.inactiveAt&&!x.deletedAt).map(x=>String(x.uid))), aP = r => new Map((Array.isArray(r)?r:[]).filter(x=>x?.id&&!x.deletedAt).map(x=>[String(x.id),x]));
 const lR = () => ({ fav:jp(localStorage.getItem('__favorites_v2__')||'[]',[]), pl:jp(localStorage.getItem('sc3:playlists')||'[]',[]) }), cR = b => ({ fav:jp(b?.data?.localStorage?.['__favorites_v2__']||'[]',[]), pl:jp(b?.data?.localStorage?.['sc3:playlists']||'[]',[]) });
-const row = (n, l, c, h = '') => { const d=safeNum(c)-safeNum(l), s=d>0?`+${d}`:String(d), cls=d>0?'#81c784':(d<0?'#ffb74d':'#9db7dd'); return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="color:#eaf2ff;font-size:12px">${esc(n)}${h?`<div style="color:#667;font-size:10px;margin-top:2px">${esc(h)}</div>`:''}</div><div style="font-size:12px;font-weight:900;color:${cls};white-space:nowrap">${safeNum(l)} → ${safeNum(c)} <span style="opacity:.75">(${esc(s)})</span></div></div>`; };
+const row = (label, l, c, hint = '') => { const d=safeNum(c)-safeNum(l), v=`${safeNum(l)} → ${safeNum(c)} (${d>0?`+${d}`:d})`; return renderKeyValueRow({ label, value:v, hint, valueColor:d>0?'#81c784':(d<0?'#ffb74d':'#9db7dd'), wordBreak:false }); };
 const exactDiff = b => { const l=lR(), c=cR(b), lf=aF(l.fav), cf=aF(c.fav), lp=aP(l.pl), cp=aP(c.pl); return { lf,cf,lp,cp, favCloudOnly:[...cf].filter(x=>!lf.has(x)).length, favLocalOnly:[...lf].filter(x=>!cf.has(x)).length, plCloudOnly:[...cp.keys()].filter(x=>!lp.has(x)).length, plLocalOnly:[...lp.keys()].filter(x=>!cp.has(x)).length, deletedCloud:(Array.isArray(c.pl)?c.pl:[]).filter(x=>x?.deletedAt).length }; };
 const renderEventExample = ev => { const v=describeEventForUi(ev), t=[v.title,ev?.uid||''].filter(Boolean).join(' · '); return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-size:11px;color:#eaf2ff">${esc(v.icon)} ${esc(t)}</div><div style="font-size:10px;color:#7f93b5;margin-top:1px">${esc(fmtDateTime(ev?.timestamp))}${v.desc?` · ${esc(v.desc)}`:''}</div></div>`; };
 const renderBranchExamples = br => { if(!br)return ''; const loc=(br.localOnlyEvents||[]).slice(-3).reverse(), cld=(br.cloudOnlyEvents||[]).slice(-3).reverse(); return `<div style="margin-top:10px;display:grid;grid-template-columns:1fr;gap:8px"><div style="font-size:11px;color:#9db7dd;line-height:1.45">Ветки событий: <b>${esc(br.state)}</b><br>Только локально: <b>${br.localOnlyCount}</b> · только в облаке: <b>${br.cloudOnlyCount}</b> · пересечение: <b>${br.overlapCount}</b></div>${loc.length?`<div><div style="font-size:10px;font-weight:900;color:#ffb74d;text-transform:uppercase;letter-spacing:.7px">Последние локальные</div>${loc.map(renderEventExample).join('')}</div>`:''}${cld.length?`<div><div style="font-size:10px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.7px">Последние из облака</div>${cld.map(renderEventExample).join('')}</div>`:''}</div>`; };
@@ -4371,23 +4371,23 @@ export default { getProfileTemplateHtml };
 
 import { refreshTrustState } from '../../analytics/trust-state.js';
 import { metaDB } from '../../analytics/meta-db.js';
-import { esc, fmtDateTime, renderCloudSectionCard, renderInlineActions } from './profile-render-kit.js';
+import { esc, fmtDateTime, renderCloudSectionCard, renderInlineActions, renderKeyValueRow, renderScoreBar } from './profile-render-kit.js';
 
 const color = s => s === 'high' ? '#ff6b6b' : (s === 'medium' ? '#ffb74d' : '#9db7dd');
-const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="color:#8ea8cc;font-size:12px">${esc(k)}</span><b style="color:#eaf2ff;font-size:12px;text-align:right">${esc(v)}</b></div>`;
 const flag = f => `<div style="padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="font-size:12px;font-weight:900;color:${color(f.severity)}">${esc(f.title || f.code)} · ${esc(f.severity)} · ${Number(f.count || 0)}</div><div style="font-size:11px;color:#9db7dd;line-height:1.35;margin-top:3px">${esc(f.desc || '')}</div></div>`;
 
-const render = st => `${renderCloudSectionCard({ title: 'Trust summary', body: `
-  ${row('Статус', st.label || st.status || '—')}
-  ${row('Score', `${st.score || 0}/100`)}
-  ${row('Событий проверено', st.eventsChecked || 0)}
-  ${row('High / Medium / Low', `${st.highCount || 0} / ${st.mediumCount || 0} / ${st.lowCount || 0}`)}
-  ${row('Обновлено', st.updatedAt ? fmtDateTime(st.updatedAt) : '—')}
-` })}${renderCloudSectionCard({ title: 'Флаги', style: 'margin-top:10px', body: st.flags?.length ? st.flags.map(flag).join('') : '<div style="font-size:12px;color:#81c784">Подозрительных признаков не найдено</div>' })}${renderInlineActions([{ text: 'Обновить проверку', primary: true, attrs: 'data-trust-refresh="1"' }])}<div style="margin-top:10px;color:#7f93b5;font-size:11px;line-height:1.45">Проверка доверия ничего не блокирует. Локальные достижения и статистика остаются у пользователя. Для будущих призов потребуется отдельная server-side validation.</div>`;
+const render = st => `${renderCloudSectionCard({ title:'Trust summary', body: `
+  ${renderKeyValueRow({ label:'Статус', value:st.label || st.status || '—' })}
+  ${renderKeyValueRow({ label:'Score', value:`${st.score || 0}/100` })}
+  ${renderKeyValueRow({ label:'Событий проверено', value:st.eventsChecked || 0 })}
+  ${renderKeyValueRow({ label:'High / Medium / Low', value:`${st.highCount || 0} / ${st.mediumCount || 0} / ${st.lowCount || 0}` })}
+  ${renderKeyValueRow({ label:'Обновлено', value:st.updatedAt ? fmtDateTime(st.updatedAt) : '—' })}
+  ${renderScoreBar({ score:st.score || 0, status:st.status || 'ok' })}
+` })}${renderCloudSectionCard({ title:'Флаги', style:'margin-top:10px', body: st.flags?.length ? st.flags.map(flag).join('') : '<div style="font-size:12px;color:#81c784">Подозрительных признаков не найдено</div>' })}${renderInlineActions([{ text:'Обновить проверку', primary:true, attrs:'data-trust-refresh="1"' }])}<div style="margin-top:10px;color:#7f93b5;font-size:11px;line-height:1.45">Проверка доверия ничего не блокирует. Локальные достижения и статистика остаются у пользователя. Для будущих призов потребуется отдельная server-side validation.</div>`;
 
 export const openTrustCheckModal = async () => {
-  const load = () => refreshTrustState({ db: metaDB, reason: 'trust_modal' }).catch(e => ({ status: 'error', label: 'Ошибка проверки', score: 0, eventsChecked: 0, flags: [{ code: 'trust_error', severity: 'high', count: 1, title: 'Ошибка trust-state', desc: String(e?.message || '') }] }));
-  const m = window.Modals?.open?.({ title: 'Проверка доверия', maxWidth: 430, bodyHtml: render(await load()) });
+  const load = () => refreshTrustState({ db: metaDB, reason:'trust_modal' }).catch(e => ({ status:'error', label:'Ошибка проверки', score:0, eventsChecked:0, flags:[{ code:'trust_error', severity:'high', count:1, title:'Ошибка trust-state', desc:String(e?.message || '') }] }));
+  const m = window.Modals?.open?.({ title:'Проверка доверия', maxWidth:430, bodyHtml:render(await load()) });
   m?.addEventListener('click', async e => {
     if (!e.target.closest('[data-trust-refresh]')) return;
     const st = await load();
