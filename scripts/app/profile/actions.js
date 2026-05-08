@@ -1,5 +1,4 @@
-// UID.096_(Helper-first anti-duplication policy)_(actions.js должен быть router-слоем)_(reset/trash вынесены в отдельные modules)
-// UID.094_(No-paralysis rule)_(profile actions не должны влиять на playback)_(клики профиля не стопают и не сбрасывают плеер)
+// UID.096_(Helper-first anti-duplication policy)_(actions.js должен быть router-слоем)_(reset/trash вынесены в отдельные modules) UID.094_(No-paralysis rule)_(profile actions не должны влиять на playback)_(клики профиля не стопают и не сбрасывают плеер)
 
 import { createTrashActionHandlers } from './actions-trash.js';
 import { createResetActionHandlers } from './actions-reset.js';
@@ -7,9 +6,7 @@ import { bindTabStripPhysics } from './tab-strip-physics.js';
 
 export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, tokens: tk, reloadProfile: rP }) => {
   if (!c || ctx._pB) return;
-  ctx._pB = true;
-
-  bindTabStripPhysics(c);
+  ctx._pB = true; bindTabStripPhysics(c);
 
   const handlers = [
     { sel: '.profile-tab-btn', run: ({ el }) => { c.querySelectorAll('.profile-tab-btn, .profile-tab-content').forEach(x => x.classList.remove('active')); el.classList.add('active'); c.querySelector(`#tab-${el.dataset.tab}`)?.classList.add('active'); } },
@@ -24,12 +21,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
     ...createResetActionHandlers({ metaDB: db, reloadProfile: rP })
   ];
 
-  c.addEventListener('click', async e => {
-    for (const h of handlers) {
-      const el = e.target.closest(h.sel);
-      if (el) { await h.run({ el, event: e }); break; }
-    }
-  });
+  c.addEventListener('click', async e => { for (const h of handlers) { const el = e.target.closest(h.sel); if (el) { await h.run({ el, event: e }); break; } } });
 };
 
 export default { bindProfileActions };
