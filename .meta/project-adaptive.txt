@@ -456,7 +456,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:38:46 UTC
+Сгенерировано: 2026-05-08 17:39:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2100,7 +2100,9 @@ const chainId = () => {
     let id = localStorage.getItem(CHAIN_ID_KEY);
     if (!id) localStorage.setItem(CHAIN_ID_KEY, id = `chain_${crypto.randomUUID()}`);
     return id;
-  } catch { return `chain_${crypto.randomUUID()}`; }
+  } catch {
+    return `chain_${crypto.randomUUID()}`;
+  }
 };
 
 export const normalizeLedgerCheckpoint = raw => ({
@@ -2110,7 +2112,10 @@ export const normalizeLedgerCheckpoint = raw => ({
   headHash: s(raw?.headHash || ''),
   deviceStableId: s(raw?.deviceStableId || localStorage.getItem('deviceStableId') || ''),
   deviceHash: s(raw?.deviceHash || localStorage.getItem('deviceHash') || ''),
-  updatedAt: n(raw?.updatedAt) || 0
+  updatedAt: n(raw?.updatedAt) || 0,
+  repairedAt: n(raw?.repairedAt) || 0,
+  repairReason: s(raw?.repairReason || ''),
+  repairedEvents: Math.max(0, n(raw?.repairedEvents))
 });
 
 export const readLedgerCheckpoint = async (db = defaultMetaDB) =>
@@ -2151,13 +2156,50 @@ export const buildLedgerEvents = async (events = [], { db = defaultMetaDB, check
       chainId: cp.chainId,
       deviceSeq,
       prevHash: cp.headHash || '',
-      ownerYandexIdHash
+      ownerYandexIdHash: raw.ownerYandexIdHash || ownerYandexIdHash
     };
     ev.eventHash = await hashEvent(ev);
-    cp = normalizeLedgerCheckpoint({ ...cp, deviceSeq, headHash: ev.eventHash, deviceStableId: ev.deviceStableId || cp.deviceStableId, deviceHash: ev.deviceHash || cp.deviceHash, updatedAt: Date.now() });
+    cp = normalizeLedgerCheckpoint({
+      ...cp,
+      deviceSeq,
+      headHash: ev.eventHash,
+      deviceStableId: ev.deviceStableId || cp.deviceStableId,
+      deviceHash: ev.deviceHash || cp.deviceHash,
+      updatedAt: Date.now()
+    });
     out.push(ev);
   }
   return { events: out, checkpoint: cp };
+};
+
+export const rebuildLedgerCheckpointFromEvents = async ({ db = defaultMetaDB, reason = 'manual_repair' } = {}) => {
+  const [warmRaw, hotRaw, oldCp] = await Promise.all([
+    db.getEvents('events_warm').catch(() => []),
+    db.getEvents('events_hot').catch(() => []),
+    readLedgerCheckpoint(db).catch(() => normalizeLedgerCheckpoint({}))
+  ]);
+  const warmIds = new Set((warmRaw || []).map(e => e?.eventId).filter(Boolean));
+  const hotIds = new Set((hotRaw || []).map(e => e?.eventId).filter(Boolean));
+  const merged = normalizeEventList([...(warmRaw || []), ...(hotRaw || [])], { limit: 10000, sort: true, dedupeAchievementUnlocks: false });
+  const base = normalizeLedgerCheckpoint({ ...oldCp, deviceSeq: 0, headHash: '', updatedAt: 0 });
+  const built = await buildLedgerEvents(merged, { db, checkpoint: base });
+  const byId = new Map(built.events.map(e => [e.eventId, e]));
+  const warm = [...warmIds].map(id => byId.get(id)).filter(Boolean);
+  const hot = [...hotIds].filter(id => !warmIds.has(id)).map(id => byId.get(id)).filter(Boolean);
+
+  await db.clearEvents('events_warm').catch(() => {});
+  await db.clearEvents('events_hot').catch(() => {});
+  if (warm.length) await db.addEvents(warm, 'events_warm');
+  if (hot.length) await db.addEvents(hot, 'events_hot');
+
+  const checkpoint = await writeLedgerCheckpoint(db, {
+    ...built.checkpoint,
+    repairedAt: Date.now(),
+    repairReason: reason,
+    repairedEvents: built.events.length
+  });
+  try { window.dispatchEvent(new CustomEvent('event-ledger:repaired', { detail: checkpoint })); } catch {}
+  return { ok: true, checkpoint, events: built.events.length, warm: warm.length, hot: hot.length };
 };
 
 export const getLedgerHealth = async ({ db = defaultMetaDB, cloudMeta = null } = {}) => {
@@ -2166,7 +2208,7 @@ export const getLedgerHealth = async ({ db = defaultMetaDB, cloudMeta = null } =
     db.getEvents('events_warm').catch(() => []),
     readLedgerCheckpoint(db).catch(() => normalizeLedgerCheckpoint({}))
   ]);
-  const all = normalizeEventList([...(warm || []), ...(hot || [])], { limit: 10000, sort: true });
+  const all = normalizeEventList([...(warm || []), ...(hot || [])], { limit: 10000, sort: true, dedupeAchievementUnlocks: false });
   const noHashCount = all.filter(e => !e.eventHash).length;
   const seqs = all.map(e => n(e.deviceSeq)).filter(Boolean);
   const maxSeqInEvents = Math.max(0, ...seqs);
@@ -2180,10 +2222,35 @@ export const getLedgerHealth = async ({ db = defaultMetaDB, cloudMeta = null } =
     maxSeqInEvents > cp.deviceSeq ? 'в событиях seq выше checkpoint' : '',
     cloudHead && cloudHead !== cp.headHash ? 'cloud ledger head отличается от локального' : ''
   ].filter(Boolean);
-  return { checkpoint: cp, hotCount: hot?.length || 0, warmCount: warm?.length || 0, totalCount: all.length, noHashCount, maxSeqInEvents, branchState, cloudHead, cloudSeq, warnings };
+  return {
+    checkpoint: cp,
+    hotCount: hot?.length || 0,
+    warmCount: warm?.length || 0,
+    totalCount: all.length,
+    noHashCount,
+    maxSeqInEvents,
+    branchState,
+    cloudHead,
+    cloudSeq,
+    lastRepairAt: cp.repairedAt || 0,
+    repairReason: cp.repairReason || '',
+    repairedEvents: cp.repairedEvents || 0,
+    warnings
+  };
 };
 
-export default { LEDGER_CHECKPOINT_KEY, stableStringify, sha256Hex, normalizeLedgerCheckpoint, readLedgerCheckpoint, writeLedgerCheckpoint, hashEvent, buildLedgerEvents, getLedgerHealth };
+export default {
+  LEDGER_CHECKPOINT_KEY,
+  stableStringify,
+  sha256Hex,
+  normalizeLedgerCheckpoint,
+  readLedgerCheckpoint,
+  writeLedgerCheckpoint,
+  hashEvent,
+  buildLedgerEvents,
+  rebuildLedgerCheckpointFromEvents,
+  getLedgerHealth
+};
 
 //=================================================
 // FILE: /scripts/analytics/event-logger.js
