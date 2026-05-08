@@ -1,6 +1,6 @@
 import { CLOUD_BACKUP_DIR } from '../analytics/cloud-contract.js';
 import { EVENT_ARCHIVE_DIR, EVENT_ARCHIVE_INDEX_PATH, normalizeEventArchiveIndex, normalizeEventArchiveSegment, buildEventArchiveIndexItem } from '../analytics/event-archive-contract.js';
-import { YANDEX_DISK_API as API, authHeaders as aH, uploadJson as pJP, ensureResourceDir } from './yandex-disk-transport.js';
+import { YANDEX_DISK_API as API, YANDEX_DISK_PROXY as PROXY, authHeaders as aH, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir } from './yandex-disk-transport.js';
 
 const s = v => String(v == null ? '' : v).trim();
 const safeJson = t => { try { return JSON.parse(t); } catch { return null; } };
@@ -17,14 +17,33 @@ const downloadJsonByPath = async (token, path) => {
 };
 
 export const YandexEventArchiveDisk = {
+  async getEventArchiveIndexViaProxy(token) {
+    if (!token) throw new Error('no_token');
+    const u = new URL(PROXY);
+    u.searchParams.set('mode', 'event_index');
+    const d = await fPJ(u.toString(), token, 2);
+    return normalizeEventArchiveIndex(d?.index || d || { items: [] });
+  },
+
+  async downloadEventArchiveSegmentViaProxy(token, path) {
+    if (!token) throw new Error('no_token');
+    const u = new URL(PROXY);
+    u.searchParams.set('mode', 'event_download');
+    u.searchParams.set('path', s(path));
+    const d = await fPJ(u.toString(), token, 2);
+    return d?.exists && d?.segment ? normalizeEventArchiveSegment(d.segment) : null;
+  },
+
   async getEventArchiveIndex(token) {
     if (!token) throw new Error('no_token');
+    if (this.getEventArchiveIndexViaProxy) return this.getEventArchiveIndexViaProxy(token);
     const raw = await downloadJsonByPath(token, EVENT_ARCHIVE_INDEX_PATH).catch(() => null);
     return normalizeEventArchiveIndex(raw || { items: [] });
   },
 
   async downloadEventArchiveSegment(token, path) {
     if (!token) throw new Error('no_token');
+    if (this.downloadEventArchiveSegmentViaProxy) return this.downloadEventArchiveSegmentViaProxy(token, path);
     const raw = await downloadJsonByPath(token, s(path)).catch(() => null);
     return raw ? normalizeEventArchiveSegment(raw) : null;
   },
