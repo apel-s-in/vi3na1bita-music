@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 14:09:52 UTC
+Сгенерировано: 2026-05-08 14:10:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1517,55 +1517,29 @@ export default { stableStringify, sha256Hex, readBackupOwnerIdentity, readDevice
 
 //=================================================
 // FILE: /scripts/analytics/backup-event-cleanup.js
-// UID.003_(Event log truth)_(единая очистка event log перед backup/restore/rebuild)_(dedupe/filter/trim должны быть одинаковыми во всех местах)
-// UID.099_(Multi-device sync model)_(merge по eventId)_(не раздувать backup дублями событий)
-// UID.096_(Helper-first anti-duplication policy)_(убрать копипасту cleanup из builders/importers/app)
-
+// UID.003_(Event log truth)_(единая очистка event log перед backup/restore/rebuild)_(dedupe/filter/trim должны быть одинаковыми во всех местах) UID.099_(Multi-device sync model)_(merge по eventId)_(не раздувать backup дублями событий) UID.096_(Helper-first anti-duplication policy)_(убрать копипасту cleanup из builders/importers/app)
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 
 export const WARM_EVENT_LIMIT = 10000;
-
 const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 
 export const normalizeEventList = (events = [], { limit = WARM_EVENT_LIMIT, dropNoise = true, sort = true, dedupeAchievementUnlocks = true } = {}) => {
   const seen = new Set(), achSeen = new Set();
-  let out = (Array.isArray(events) ? events : [])
-    .filter(ev => ev?.eventId && !seen.has(ev.eventId) && seen.add(ev.eventId))
-    .filter(ev => !dropNoise || !isBackupSemanticNoiseEvent(ev));
-
-  if (sort) out = out.sort((a, b) => toNum(a?.timestamp) - toNum(b?.timestamp));
-
-  if (dedupeAchievementUnlocks) {
-    out = out.filter(ev => {
-      if (String(ev?.type || '') !== 'ACHIEVEMENT_UNLOCK') return true;
-      const id = String(ev?.data?.id || '').trim();
-      if (!id) return true;
-      if (achSeen.has(id)) return false;
-      achSeen.add(id);
-      return true;
-    });
-  }
-
-  if (limit > 0 && out.length > limit) out = out.slice(-limit);
-  return out;
+  let out = (Array.isArray(events) ? events : []).filter(ev => ev?.eventId && !seen.has(ev.eventId) && seen.add(ev.eventId)).filter(ev => !dropNoise || !isBackupSemanticNoiseEvent(ev));
+  if (sort) out.sort((a, b) => toNum(a?.timestamp) - toNum(b?.timestamp));
+  if (dedupeAchievementUnlocks) out = out.filter(ev => { if (String(ev?.type || '') !== 'ACHIEVEMENT_UNLOCK') return true; const id = String(ev?.data?.id || '').trim(); return id ? !achSeen.has(id) && !!achSeen.add(id) : true; });
+  return limit > 0 && out.length > limit ? out.slice(-limit) : out;
 };
 
 export const cleanupWarmEventsStore = async (metaDB, { limit = WARM_EVENT_LIMIT, migrationLabel = 'EventCleanup' } = {}) => {
   if (!metaDB) return { changed: false, before: 0, after: 0 };
-  const beforeRows = await metaDB.getEvents('events_warm').catch(() => []);
-  const cleaned = normalizeEventList(beforeRows, { limit });
-  if (!Array.isArray(beforeRows) || beforeRows.length === cleaned.length) return { changed: false, before: beforeRows?.length || 0, after: cleaned.length };
-  await metaDB.clearEvents('events_warm');
-  if (cleaned.length) await metaDB.addEvents(cleaned, 'events_warm');
-  console.debug(`[${migrationLabel}] warm events cleaned: ${beforeRows.length} → ${cleaned.length}`);
-  return { changed: true, before: beforeRows.length, after: cleaned.length };
+  const b = await metaDB.getEvents('events_warm').catch(() => []), c = normalizeEventList(b, { limit });
+  if (!Array.isArray(b) || b.length === c.length) return { changed: false, before: b?.length || 0, after: c.length };
+  await metaDB.clearEvents('events_warm'); if (c.length) await metaDB.addEvents(c, 'events_warm');
+  return { changed: true, before: b.length, after: c.length };
 };
 
-export default {
-  WARM_EVENT_LIMIT,
-  normalizeEventList,
-  cleanupWarmEventsStore
-};
+export default { WARM_EVENT_LIMIT, normalizeEventList, cleanupWarmEventsStore };
 
 //=================================================
 // FILE: /scripts/analytics/backup-importers.js
