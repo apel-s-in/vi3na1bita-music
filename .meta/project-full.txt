@@ -457,7 +457,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 18:47:05 UTC
+Сгенерировано: 2026-05-08 19:24:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4964,12 +4964,15 @@ export default YandexDeviceSettingsDisk;
 //=================================================
 // FILE: /scripts/core/yandex-disk-transport.js
 export const YANDEX_DISK_API='https://cloud-api.yandex.net/v1/disk',YANDEX_DISK_PROXY='https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
-const sS=v=>String(v==null?'':v).trim(),ensuredDirs=new Set();
+const sS=v=>String(v==null?'':v).trim(),ensuredDirs=new Set(),DIR_LS_PREFIX='yandex:disk_dir_exists:';
+const dirKey=p=>`${DIR_LS_PREFIX}${encodeURIComponent(sS(p))}`,parentDir=p=>{const x=sS(p),i=x.lastIndexOf('/');return i>0?x.slice(0,i):'';};
+const markDir=p=>{const x=sS(p);if(!x)return;ensuredDirs.add(x);try{localStorage.setItem(dirKey(x),'1');}catch{}};
+const isKnownDir=p=>{const x=sS(p);if(!x)return false;if(ensuredDirs.has(x))return true;try{return localStorage.getItem(dirKey(x))==='1';}catch{return false;}};
 export const authHeaders=t=>({Authorization:`OAuth ${t}`}),safeParseJson=t=>{try{return JSON.parse(t);}catch{return null;}};
 export const mapProxyError=(prefix,e)=>{const status=Number(e?.status||0),payload=e?.payload&&typeof e.payload==='object'?e.payload:null,details=[payload?.error,payload?.stage,payload?.path,payload?.raw,payload?.hint].map(sS).filter(Boolean).join(' | '),err=new Error(details?`${prefix}:${details}`:prefix);err.status=status;err.payload=payload;return err;};
 export async function fetchProxyJson(url,token,retries=2){const qUrl=url.includes('?')?`${url}&token=${token}`:`${url}?token=${token}`,headers={'X-Yandex-Auth':token,Accept:'application/json'};let lastErr=null;for(let i=0;i<=retries;i++){try{const res=await fetch(qUrl,{method:'GET',headers,credentials:'omit',mode:'cors'}),text=await res.text(),data=safeParseJson(text);if(res.ok)return data;if([502,503,504].includes(res.status)&&i<retries){await new Promise(r=>setTimeout(r,800*(i+1)));continue;}const err=new Error(sS(data?.error||`http_${res.status}`));err.status=res.status;err.payload=data||{raw:sS(text).slice(0,400)};if(Number(err.status)&&![502,503,504].includes(Number(err.status)))throw err;lastErr=err;}catch(e){lastErr=e;if(Number(e?.status||0)&&![502,503,504].includes(Number(e?.status||0)))throw e;}}throw lastErr||new Error('proxy_failed');}
-export async function ensureResourceDir(token,path){const p=sS(path);if(!token||!p)return false;if(ensuredDirs.has(p))return true;const res=await fetch(`${YANDEX_DISK_API}/resources?path=${encodeURIComponent(p)}`,{method:'PUT',headers:authHeaders(token)}).catch(()=>null);if(res&&(res.ok||res.status===409)){ensuredDirs.add(p);return true;}return false;}
-export async function uploadJson(token,path,data){const linkRes=await fetch(`${YANDEX_DISK_API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`,{headers:authHeaders(token)});if(!linkRes.ok)throw new Error(`upload_link_failed:${linkRes.status}`);const putRes=await fetch((await linkRes.json()).href,{method:'PUT',body:new Blob([JSON.stringify(data)],{type:'application/json'})});if(!putRes.ok)throw new Error(`upload_failed:${putRes.status}`);return true;}
+export async function ensureResourceDir(token,path){const p=sS(path);if(!token||!p)return false;if(isKnownDir(p))return true;const chk=await fetch(`${YANDEX_DISK_API}/resources?path=${encodeURIComponent(p)}`,{method:'GET',headers:authHeaders(token)}).catch(()=>null);if(chk?.ok){markDir(p);return true;}if(chk&&chk.status!==404)return false;const res=await fetch(`${YANDEX_DISK_API}/resources?path=${encodeURIComponent(p)}`,{method:'PUT',headers:authHeaders(token)}).catch(()=>null);if(res&&(res.ok||res.status===409)){markDir(p);return true;}return false;}
+export async function uploadJson(token,path,data){const p=sS(path),pd=parentDir(p);if(pd&&isKnownDir(pd)===false)await ensureResourceDir(token,pd).catch(()=>null);const linkRes=await fetch(`${YANDEX_DISK_API}/resources/upload?path=${encodeURIComponent(p)}&overwrite=true`,{headers:authHeaders(token)});if(!linkRes.ok)throw new Error(`upload_link_failed:${linkRes.status}`);const putRes=await fetch((await linkRes.json()).href,{method:'PUT',body:new Blob([JSON.stringify(data)],{type:'application/json'})});if(!putRes.ok)throw new Error(`upload_failed:${putRes.status}`);if(pd)markDir(pd);return true;}
 export default{YANDEX_DISK_API,YANDEX_DISK_PROXY,authHeaders,safeParseJson,mapProxyError,fetchProxyJson,ensureResourceDir,uploadJson};
 
 //=================================================
@@ -4982,53 +4985,32 @@ window.YandexDisk=YandexDisk;export default YandexDisk;
 //=================================================
 // FILE: /scripts/core/yandex-event-archive-disk.js
 import { CLOUD_BACKUP_DIR } from '../analytics/cloud-contract.js';
-import { EVENT_ARCHIVE_DIR, EVENT_ARCHIVE_INDEX_PATH, normalizeEventArchiveIndex, normalizeEventArchiveSegment, buildEventArchiveIndexItem } from '../analytics/event-archive-contract.js';
-import { YANDEX_DISK_API as API, YANDEX_DISK_PROXY as PROXY, authHeaders as aH, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir } from './yandex-disk-transport.js';
+import { EVENT_ARCHIVE_DIR, normalizeEventArchiveIndex, normalizeEventArchiveSegment, buildEventArchiveIndexItem } from '../analytics/event-archive-contract.js';
+import { YANDEX_DISK_PROXY as PROXY, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir } from './yandex-disk-transport.js';
 
 const s = v => String(v == null ? '' : v).trim();
-const safeJson = t => { try { return JSON.parse(t); } catch { return null; } };
-
-const downloadJsonByPath = async (token, path) => {
-  if (!token || !path) return null;
-  const link = await fetch(`${API}/resources/download?path=${encodeURIComponent(path)}`, { headers: aH(token) }).catch(() => null);
-  if (!link || link.status === 404) return null;
-  if (!link.ok) throw new Error(`event_archive_link_failed:${link.status}`);
-  const href = (await link.json().catch(() => null))?.href;
-  if (!href) return null;
-  const r = await fetch(href).catch(() => null);
-  return r?.ok ? safeJson(await r.text()) : null;
-};
 
 export const YandexEventArchiveDisk = {
   async getEventArchiveIndexViaProxy(token) {
     if (!token) throw new Error('no_token');
-    const u = new URL(PROXY);
-    u.searchParams.set('mode', 'event_index');
+    const u = new URL(PROXY); u.searchParams.set('mode', 'event_index');
     const d = await fPJ(u.toString(), token, 2);
-    return normalizeEventArchiveIndex(d?.index || d || { items: [] });
+    return normalizeEventArchiveIndex(d?.index || { items: [] });
   },
 
   async downloadEventArchiveSegmentViaProxy(token, path) {
     if (!token) throw new Error('no_token');
-    const u = new URL(PROXY);
-    u.searchParams.set('mode', 'event_download');
-    u.searchParams.set('path', s(path));
+    const u = new URL(PROXY); u.searchParams.set('mode', 'event_download'); u.searchParams.set('path', s(path));
     const d = await fPJ(u.toString(), token, 2);
     return d?.exists && d?.segment ? normalizeEventArchiveSegment(d.segment) : null;
   },
 
   async getEventArchiveIndex(token) {
-    if (!token) throw new Error('no_token');
-    if (this.getEventArchiveIndexViaProxy) return this.getEventArchiveIndexViaProxy(token);
-    const raw = await downloadJsonByPath(token, EVENT_ARCHIVE_INDEX_PATH).catch(() => null);
-    return normalizeEventArchiveIndex(raw || { items: [] });
+    return this.getEventArchiveIndexViaProxy(token);
   },
 
   async downloadEventArchiveSegment(token, path) {
-    if (!token) throw new Error('no_token');
-    if (this.downloadEventArchiveSegmentViaProxy) return this.downloadEventArchiveSegmentViaProxy(token, path);
-    const raw = await downloadJsonByPath(token, s(path)).catch(() => null);
-    return raw ? normalizeEventArchiveSegment(raw) : null;
+    return this.downloadEventArchiveSegmentViaProxy(token, path);
   },
 
   async uploadEventSegment(token, segment) {
@@ -5043,7 +5025,7 @@ export const YandexEventArchiveDisk = {
 
     const old = await this.getEventArchiveIndex(token).catch(() => ({ items: [] }));
     const index = normalizeEventArchiveIndex([...(old?.items || []), item]);
-    await pJP(token, EVENT_ARCHIVE_INDEX_PATH, index);
+    await pJP(token, 'app:/Backup/events/index.json', index);
 
     return { ok: true, item, index };
   }
