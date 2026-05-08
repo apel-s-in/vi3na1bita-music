@@ -456,7 +456,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:38:17 UTC
+Сгенерировано: 2026-05-08 17:38:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3744,7 +3744,7 @@ export default { RESTORE_SKIP_REMINDER_KEY, sessionKeyForCloudSnapshot, isRemind
 
 //=================================================
 // FILE: /scripts/app/profile/restore-diff.js
-import { safeNum } from '../../analytics/backup-summary.js'; import { describeEventForUi } from '../../analytics/event-contract.js'; import { esc, renderCloudSectionCard, fmtDateTime } from './cloud-card-renderers.js';
+import { safeNum } from '../../analytics/backup-summary.js'; import { describeEventForUi } from '../../analytics/event-contract.js'; import { esc, renderCloudSectionCard, fmtDateTime } from './profile-render-kit.js';
 const jp = (r, f = []) => { try{return JSON.parse(r||'');}catch{return f;} }, aF = r => new Set((Array.isArray(r)?r:[]).filter(x=>x?.uid&&!x.inactiveAt&&!x.deletedAt).map(x=>String(x.uid))), aP = r => new Map((Array.isArray(r)?r:[]).filter(x=>x?.id&&!x.deletedAt).map(x=>[String(x.id),x]));
 const lR = () => ({ fav:jp(localStorage.getItem('__favorites_v2__')||'[]',[]), pl:jp(localStorage.getItem('sc3:playlists')||'[]',[]) }), cR = b => ({ fav:jp(b?.data?.localStorage?.['__favorites_v2__']||'[]',[]), pl:jp(b?.data?.localStorage?.['sc3:playlists']||'[]',[]) });
 const row = (n, l, c, h = '') => { const d=safeNum(c)-safeNum(l), s=d>0?`+${d}`:String(d), cls=d>0?'#81c784':(d<0?'#ffb74d':'#9db7dd'); return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="color:#eaf2ff;font-size:12px">${esc(n)}${h?`<div style="color:#667;font-size:10px;margin-top:2px">${esc(h)}</div>`:''}</div><div style="font-size:12px;font-weight:900;color:${cls};white-space:nowrap">${safeNum(l)} → ${safeNum(c)} <span style="opacity:.75">(${esc(s)})</span></div></div>`; };
