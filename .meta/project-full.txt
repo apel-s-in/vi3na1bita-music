@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 14:27:17 UTC
+Сгенерировано: 2026-05-08 14:27:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2074,28 +2074,25 @@ export default { mergePlaylistsStorageSafe };
 
 //=================================================
 // FILE: /scripts/analytics/session-tracker.js
-// UID.003_(Event log truth)_(оставить session-tracker строителем playback-session событий)_(session intelligence должна опираться на эти события, а не обходить их) // UID.018_(Variant and quality stats)_(готовить future variant-aware session accounting)_(audio/minus/stems/clip session semantics должны развиваться здесь) // UID.050_(Session profile)_(дать listener/intel слою корректную основу текущей сессии)_(session tracker остаётся truth-layer для session context, а не UI слой) // UID.060_(Session-aware next-track strategy)_(подготовить основу для context-aware рекомендаций)_(future session recs должны читать session data отсюда, не вмешиваясь в трекинг) // UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой) // UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
+// UID.003_(Event log truth)_(оставить session-tracker строителем playback-session событий)_(session intelligence должна опираться на эти события, а не обходить их) UID.018_(Variant and quality stats)_(готовить future variant-aware session accounting)_(audio/minus/stems/clip session semantics должны развиваться здесь) UID.050_(Session profile)_(дать listener/intel слою корректную основу текущей сессии)_(session tracker остаётся truth-layer для session context, а не UI слой) UID.060_(Session-aware next-track strategy)_(подготовить основу для context-aware рекомендаций)_(future session recs должны читать session data отсюда, не вмешиваясь в трекинг) UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой) UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
 import { eventLogger } from './event-logger.js';
 import { isValidPlaybackDelta } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
 
 export class SessionTracker {
   constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
-
   _bindEvents() {
     window.addEventListener('player:play', e => this._start(e.detail));
     window.addEventListener('player:pause', () => this._pause());
     window.addEventListener('player:tick', e => this._tick(e.detail));
-    ['player:ended', 'player:stop', 'player:trackChanged'].forEach(ev => window.addEventListener(ev, () => { if(ev !== 'player:ended') this._speedRunnerMs = 0; this._end(ev === 'player:ended'); }));
+    ['player:ended', 'player:stop', 'player:trackChanged'].forEach(ev => window.addEventListener(ev, () => { if (ev !== 'player:ended') this._speedRunnerMs = 0; this._end(ev === 'player:ended'); }));
   }
-
   _start({ uid, duration, type = 'audio' }) {
-    if (this.s?.uid === uid && this.s?.variant === type) { this.s.lastUpdate = Date.now(); return; }
+    if (this.s?.uid === uid && this.s?.variant === type) return void (this.s.lastUpdate = Date.now());
     this._end(false);
     this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: Number(window.playerCore?.getPosition?.() || 0), lastUpdate: Date.now() };
     eventLogger.log('LISTEN_START', uid, { variant: type });
   }
-
   _tick({ currentTime, volume, muted }) {
     if (!this.s) return;
     const rt = makePlaybackRuntimeSnapshot({ lastTickAt: this.s.lastUpdate, lastPos: this.s.lastPos, duration: this.s.duration, volume, muted, tick: { currentTime, volume, muted }, playerCore: window.playerCore });
@@ -2105,19 +2102,16 @@ export class SessionTracker {
       if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) { this._speedRunnerAwarded = true; eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' }); }
     } else this._speedRunnerMs = 0;
   }
-
   _pause() {
     if (this.s) { this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false }); this.s.lastUpdate = Date.now(); }
     this._speedRunnerMs = 0;
   }
-
   _end(isE) {
     if (!this.s) return;
     if (!isE) this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
     const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
     if (duration <= 0 && !isE) return;
     const rawSec = Math.floor(accumulatedMs / 1000), sec = isE ? Math.max(rawSec, Math.floor(duration || lastPos || 0)) : rawSec, prg = duration > 0 ? Math.max(lastPos, isE ? duration : 0) / duration : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
-
     if (isV || isF) {
       const n = new Date(), h = n.getHours(), m = n.getMinutes();
       if (isV && h === 11 && m === 11) eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
