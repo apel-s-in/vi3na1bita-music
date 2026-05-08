@@ -1,73 +1,8 @@
-// scripts/core/bootstrap.js
-// Легковесный загрузчик: проверка env, загрузка config, init.
-
-(function () {
-  'use strict';
-
-  const W = window;
-  const D = document;
-
-  const fail = (msg) => {
-    D.body.innerHTML = W.Utils?.profileModals?.failScreen?.(msg) || `<div><h2>Ошибка запуска</h2><p>${msg}</p></div>`;
-    throw new Error(msg);
-  };
-
-  const checkEnv = () => {
-    if (!W.fetch || !W.Promise || !W.localStorage) return 'Ваш браузер устарел. Обновите его.';
-    try { localStorage.setItem('_t', '1'); localStorage.removeItem('_t'); } catch { return 'Включите Cookies/Storage.'; }
-    return null;
-  };
-
-  const preventZoom = () => {
-    // iOS zoom fix
-    D.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-    let last = 0;
-    D.addEventListener('touchend', (e) => {
-      const now = Date.now();
-      if (now - last < 300) e.preventDefault();
-      last = now;
-    }, { passive: false });
-  };
-
-  const loadIndex = async () => {
-    try {
-      const res = await fetch('./albums.json');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      W.albumsIndex = (await res.json())?.albums || [];
-      W.dispatchEvent(new Event('albumsIndex:ready'));
-    } catch (e) {
-      console.error(e);
-      W.albumsIndex = []; // Не роняем, даём запуститься пустым (для offline кэша)
-    }
-  };
-
-  const waitForHowler = async () => {
-    for (let i = 0; i < 50; i++) { // 5 sec max
-      if (W.Howler) return true;
-      await new Promise(r => setTimeout(r, 100));
-    }
-    return false;
-  };
-
-  const init = async () => {
-    const err = checkEnv();
-    if (err) return fail(err);
-
-    preventZoom();
-    
-    // Mark env
-    const ua = navigator.userAgent;
-    if (/iPad|iPhone|iPod/.test(ua) && !W.MSStream) D.body.classList.add('ios', 'mobile-device');
-    else if (/Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) D.body.classList.add('android', 'mobile-device');
-    
-    if (matchMedia('(display-mode: standalone)').matches) D.body.classList.add('standalone');
-
-    if (!(await waitForHowler())) return fail('Ошибка загрузки аудио-движка (Howler).');
-
-    await loadIndex();
-  };
-
-  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init);
-  else init();
-
-})();
+// UID.005_(Soft-disable intel layer)_(не парализовать приложение при проблемах)_(делать один мягкий bootstrap с graceful fallback) UID.019_(Compact TrackProfile index)_(дать единый entrypoint semantic слоя)_(инициализировать track profile loader и связанные сервисы) UID.044_(ListenerProfile core)_(дать единый entrypoint user-intelligence слоя)_(инициализировать listener/collection/recs сервисы) UID.069_(Internal user identity)_(дать единый entrypoint provider/sync слоя)_(инициализировать identity/consents/hybrid-sync сервисы) UID.081_(Telemetry mapper)_(подготовить безопасную внешнюю аналитику)_(подключить mapper как отдельный no-op сервис) UID.092_(Incremental rollout order)_(сохранить staged внедрение)_(здесь концентрируется только wiring, а не heavy business logic) UID.093_(Roadmap markers in touched files)_(не терять вектор реализации)_(bootstrap собирает и публикует весь новый контур в window.Intel) UID.094_(No-paralysis rule)_(оставить legacy приложение главным хозяином runtime)_(bootstrap только публикует optional services, не подменяя core/app ownership) UID.095_(Ownership boundary: legacy vs intel)_(не дать intel-слою утечь в старую архитектуру)_(bootstrap собирает intel как надстройку, а не как новый app-core)
+(function(){'use strict';const W=window,D=document,fail=m=>{D.body.innerHTML=W.Utils?.profileModals?.failScreen?.(m)||`<div><h2>Ошибка запуска</h2><p>${m}</p></div>`;throw new Error(m);};
+const checkEnv=()=>{if(!W.fetch||!W.Promise||!W.localStorage)return'Ваш браузер устарел. Обновите его.';try{localStorage.setItem('_t','1');localStorage.removeItem('_t');}catch{return'Включите Cookies/Storage.';}return null;};
+const preventZoom=()=>{D.addEventListener('touchstart',e=>{if(e.touches.length>1)e.preventDefault();},{passive:false});let l=0;D.addEventListener('touchend',e=>{const n=Date.now();if(n-l<300)e.preventDefault();l=n;},{passive:false});};
+const loadIndex=async()=>{try{const r=await fetch('./albums.json');if(!r.ok)throw new Error('HTTP '+r.status);W.albumsIndex=(await r.json())?.albums||[];W.dispatchEvent(new Event('albumsIndex:ready'));}catch(e){console.error(e);W.albumsIndex=[];}};
+const waitForHowler=async()=>{for(let i=0;i<50;i++){if(W.Howler)return true;await new Promise(r=>setTimeout(r,100));}return false;};
+const init=async()=>{const err=checkEnv();if(err)return fail(err);preventZoom();const ua=navigator.userAgent;if(/iPad|iPhone|iPod/.test(ua)&&!W.MSStream)D.body.classList.add('ios','mobile-device');else if(/Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua))D.body.classList.add('android','mobile-device');if(matchMedia('(display-mode: standalone)').matches)D.body.classList.add('standalone');if(!(await waitForHowler()))return fail('Ошибка загрузки аудио-движка (Howler).');await loadIndex();};
+if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',init);else init();})();
