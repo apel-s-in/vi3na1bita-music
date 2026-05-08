@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 14:27:41 UTC
+Сгенерировано: 2026-05-08 14:29:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2147,125 +2147,36 @@ export class ShareGenerator {
 
 //=================================================
 // FILE: /scripts/analytics/snapshot-contract.js
-export const SHARED_STORAGE_KEYS = [
-  '__favorites_v2__',
-  'sc3:playlists',
-  'sc3:default',
-  'sc3:albumColors'
-];
-
-export const DEVICE_STORAGE_KEYS = [
-  'sourcePref',
-  'favoritesOnlyMode',
-  'qualityMode:v1',
-  'offline:mode:v1',
-  'offline:cacheQuality:v1',
-  'cloud:listenThreshold',
-  'cloud:ttlDays',
-  'playerVolume',
-  'sleepTimerState:v2',
-  'app:first-install-ts',
-  'sc3:activeId',
-  'sc3:ui_v2',
-  'lyricsViewMode',
-  'lyricsAnimationEnabled',
-  'lyricsShowAnimBtn',
-  'logoPulseEnabled',
-  'logoPulsePreset',
-  'logoPulseIntensity',
-  'logoPulseDebug',
-  'profileShowControls',
-  'dl_format_v1',
-  'backup:conflict_policy:v1'
-];
-
-export const TRANSIENT_STORAGE_KEYS = [
-  'yandex:last_backup_check',
-  'yandex:last_backup_meta',
-  'yandex:last_backup_local_ts',
-  'backup:autosync:enabled',
-  'backup:restore_or_skip_done'
-];
-
+export const SHARED_STORAGE_KEYS = ['__favorites_v2__', 'sc3:playlists', 'sc3:default', 'sc3:albumColors'];
+export const DEVICE_STORAGE_KEYS = ['sourcePref', 'favoritesOnlyMode', 'qualityMode:v1', 'offline:mode:v1', 'offline:cacheQuality:v1', 'cloud:listenThreshold', 'cloud:ttlDays', 'playerVolume', 'sleepTimerState:v2', 'app:first-install-ts', 'sc3:activeId', 'sc3:ui_v2', 'lyricsViewMode', 'lyricsAnimationEnabled', 'lyricsShowAnimBtn', 'logoPulseEnabled', 'logoPulsePreset', 'logoPulseIntensity', 'logoPulseDebug', 'profileShowControls', 'dl_format_v1', 'backup:conflict_policy:v1'];
+export const TRANSIENT_STORAGE_KEYS = ['yandex:last_backup_check', 'yandex:last_backup_meta', 'yandex:last_backup_local_ts', 'backup:autosync:enabled', 'backup:restore_or_skip_done'];
 export const ALL_SNAPSHOT_STORAGE_KEYS = [...SHARED_STORAGE_KEYS, ...DEVICE_STORAGE_KEYS];
-
-export const SHARED_STORAGE_KEY_SET = new Set(SHARED_STORAGE_KEYS);
-export const DEVICE_STORAGE_KEY_SET = new Set(DEVICE_STORAGE_KEYS);
-export const TRANSIENT_STORAGE_KEY_SET = new Set(TRANSIENT_STORAGE_KEYS);
-export const ALL_SNAPSHOT_STORAGE_KEY_SET = new Set(ALL_SNAPSHOT_STORAGE_KEYS);
-
-export const PLAYBACK_SENSITIVE_DEVICE_KEYS = new Set([
-  'playerStateV2',
-  'favoritesOnlyMode',
-  'sourcePref',
-  'qualityMode:v1'
-]);
-
+export const SHARED_STORAGE_KEY_SET = new Set(SHARED_STORAGE_KEYS), DEVICE_STORAGE_KEY_SET = new Set(DEVICE_STORAGE_KEYS), TRANSIENT_STORAGE_KEY_SET = new Set(TRANSIENT_STORAGE_KEYS), ALL_SNAPSHOT_STORAGE_KEY_SET = new Set(ALL_SNAPSHOT_STORAGE_KEYS), PLAYBACK_SENSITIVE_DEVICE_KEYS = new Set(['playerStateV2', 'favoritesOnlyMode', 'sourcePref', 'qualityMode:v1']);
 export const shouldStoreInSnapshot = key => ALL_SNAPSHOT_STORAGE_KEY_SET.has(String(key || ''));
 export const isSharedStorageKey = key => SHARED_STORAGE_KEY_SET.has(String(key || ''));
 export const isDeviceStorageKey = key => DEVICE_STORAGE_KEY_SET.has(String(key || ''));
 export const isTransientStorageKey = key => TRANSIENT_STORAGE_KEY_SET.has(String(key || ''));
-
-export const collectSnapshotLocalStorage = (storage = localStorage) => ALL_SNAPSHOT_STORAGE_KEYS.reduce((acc, key) => {
-  try {
-    const v = storage.getItem(key);
-    if (v != null) acc[key] = v;
-  } catch {}
-  return acc;
-}, {});
-
-export const collectSharedSnapshotLocalStorage = (storage = localStorage) => SHARED_STORAGE_KEYS.reduce((acc, key) => {
-  try {
-    const v = storage.getItem(key);
-    if (v != null) acc[key] = v;
-  } catch {}
-  return acc;
-}, {});
-
-export const getSharedSnapshotLocalEntries = raw => Object.fromEntries(
-  Object.entries(raw || {}).filter(([k]) => isSharedStorageKey(k))
-);
-
-export const getDeviceSnapshotLocalEntries = raw => Object.fromEntries(
-  Object.entries(raw || {}).filter(([k]) => isDeviceStorageKey(k))
-);
-
-export default {
-  SHARED_STORAGE_KEYS,
-  DEVICE_STORAGE_KEYS,
-  TRANSIENT_STORAGE_KEYS,
-  ALL_SNAPSHOT_STORAGE_KEYS,
-  SHARED_STORAGE_KEY_SET,
-  DEVICE_STORAGE_KEY_SET,
-  TRANSIENT_STORAGE_KEY_SET,
-  ALL_SNAPSHOT_STORAGE_KEY_SET,
-  PLAYBACK_SENSITIVE_DEVICE_KEYS,
-  shouldStoreInSnapshot,
-  isSharedStorageKey,
-  isDeviceStorageKey,
-  isTransientStorageKey,
-  collectSnapshotLocalStorage,
-  collectSharedSnapshotLocalStorage,
-  getSharedSnapshotLocalEntries,
-  getDeviceSnapshotLocalEntries
-};
+const safeReduce = (keys, storage) => keys.reduce((acc, k) => { try { const v = storage.getItem(k); if (v != null) acc[k] = v; } catch {} return acc; }, {});
+export const collectSnapshotLocalStorage = (storage = localStorage) => safeReduce(ALL_SNAPSHOT_STORAGE_KEYS, storage);
+export const collectSharedSnapshotLocalStorage = (storage = localStorage) => safeReduce(SHARED_STORAGE_KEYS, storage);
+export const getSharedSnapshotLocalEntries = raw => Object.fromEntries(Object.entries(raw || {}).filter(([k]) => isSharedStorageKey(k)));
+export const getDeviceSnapshotLocalEntries = raw => Object.fromEntries(Object.entries(raw || {}).filter(([k]) => isDeviceStorageKey(k)));
+export default { SHARED_STORAGE_KEYS, DEVICE_STORAGE_KEYS, TRANSIENT_STORAGE_KEYS, ALL_SNAPSHOT_STORAGE_KEYS, SHARED_STORAGE_KEY_SET, DEVICE_STORAGE_KEY_SET, TRANSIENT_STORAGE_KEY_SET, ALL_SNAPSHOT_STORAGE_KEY_SET, PLAYBACK_SENSITIVE_DEVICE_KEYS, shouldStoreInSnapshot, isSharedStorageKey, isDeviceStorageKey, isTransientStorageKey, collectSnapshotLocalStorage, collectSharedSnapshotLocalStorage, getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries };
 
 //=================================================
 // FILE: /scripts/analytics/stats-aggregator.js
-// UID.003_(Event log truth)_(сохранить агрегатор единственным строителем stats из событий)_(recs/intel/provider слой не должен писать aggregate truth напрямую) // UID.004_(Stats as cache)_(оставить stats производным кэшем)_(любые новые aggregate fields должны быть пересчитываемыми из event log) // UID.017_(Launch source stats)_(добавить future агрегирование discovery source)_(источники запуска должны считаться здесь, а не в UI state) // UID.018_(Variant and quality stats)_(держать честную аналитику режимов прослушивания)_(variant/quality aggregation должно развиваться именно здесь) // UID.045_(Tag preferences)_(подготовить future user taste aggregates)_(tag/theme/style/use-case preferences лучше собирать из stats/events, а не напрямую из UI) // UID.046_(Axis preferences)_(подготовить осевую аналитику слушателя)_(в будущем агрегатор может копить lightweight preference buckets для listener profile) // UID.062_(Recommendation memory and feedback)_(не смешивать rec feedback и media stats)_(recommendation interactions могут писаться в отдельные stores/events, но не ломать current stats path) // UID.094_(No-paralysis rule)_(агрегатор должен продолжать работать без intel слоя)_(новые intel-поля only additive и optional)
+// UID.003_(Event log truth)_(сохранить агрегатор единственным строителем stats из событий)_(recs/intel/provider слой не должен писать aggregate truth напрямую) UID.004_(Stats as cache)_(оставить stats производным кэшем)_(любые новые aggregate fields должны быть пересчитываемыми из event log) UID.017_(Launch source stats)_(добавить future агрегирование discovery source)_(источники запуска должны считаться здесь, а не в UI state) UID.018_(Variant and quality stats)_(держать честную аналитику режимов прослушивания)_(variant/quality aggregation должно развиваться именно здесь) UID.045_(Tag preferences)_(подготовить future user taste aggregates)_(tag/theme/style/use-case preferences лучше собирать из stats/events, а не напрямую из UI) UID.046_(Axis preferences)_(подготовить осевую аналитику слушателя)_(в будущем агрегатор может копить lightweight preference buckets для listener profile) UID.062_(Recommendation memory and feedback)_(не смешивать rec feedback и media stats)_(recommendation interactions могут писаться в отдельные stores/events, но не ломать current stats path) UID.094_(No-paralysis rule)_(агрегатор должен продолжать работать без intel слоя)_(новые intel-поля only additive и optional)
 import { metaDB } from './meta-db.js';
 
 export class StatsAggregator {
   constructor({ bindEvents = true } = {}) {
     this.lastFullListens = new Map();
     this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
-    this._processing = false;
-    this._rerun = false;
+    this._processing = false; this._rerun = false;
     if (bindEvents) window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
   }
-
   async processHotEvents() {
-    if (this._processing) { this._rerun = true; return; }
+    if (this._processing) return void (this._rerun = true);
     this._processing = true;
     try {
       do {
@@ -2274,71 +2185,58 @@ export class StatsAggregator {
         const n = new Date(), dateStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
         let dailyActive = false;
 
-    for (const ev of events) {
-      if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
-        const { isFullListen: isF, isValidListen: isV, variant: v, trackDuration: tDur } = ev.data;
-        const lSec = Math.max(0, Number(ev.data.listenedSeconds || (isF ? tDur : 0)) || 0);
-        const isRateLimited = isF && (ev.timestamp - (this.lastFullListens.get(ev.uid) || 0)) < (tDur || 0) * 900;
-
-        await metaDB.updateStat(ev.uid, s => {
-          s.globalListenSeconds += (lSec || 0); s.lastPlayedAt = ev.timestamp; s.featuresUsed = s.featuresUsed || {};
-          if (isV) {
-            s.globalValidListenCount++; dailyActive = true;
-            try { const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour ??= Array(24).fill(0))[h]++; (s.byWeekday ??= Array(7).fill(0))[w]++; } catch {}
-          }
-          if (isF && !isRateLimited && v !== 'short') {
-            s.globalFullListenCount++; this.lastFullListens.set(ev.uid, ev.timestamp);
-            const mins = new Date(ev.timestamp).getHours() * 60 + new Date(ev.timestamp).getMinutes();
-            if (mins >= 120 && mins <= 270) s.featuresUsed.nightPlay = (s.featuresUsed.nightPlay || 0) + 1;
-            if (mins >= 300 && mins <= 539) s.featuresUsed.earlyPlay = (s.featuresUsed.earlyPlay || 0) + 1;
-            if (ev.data?.quality === 'hi') s.featuresUsed.hiQuality = (s.featuresUsed.hiQuality || 0) + 1;
-            if (s.globalFullListenCount >= (parseInt(localStorage.getItem('cloud:listenThreshold')) || 5) && !window._isRestoring) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
-
-            if (window.playerCore) {
-              const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1', isShuf = window.playerCore.isShuffle(), isFav = window.playerCore.isFavorite(ev.uid);
-              if (isShuf) s.featuresUsed.shufflePlay = (s.featuresUsed.shufflePlay || 0) + 1;
-              if (isFavOnly && !isShuf && isFav) { if (this.session.favOrderedLastUid !== ev.uid) { this.session.favOrderedRun++; this.session.favOrderedLastUid = ev.uid; } } else { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; }
-              isFavOnly && isShuf && isFav ? this.session.favShuffleEvents.add(ev.uid) : this.session.favShuffleEvents.clear();
-              const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
-              if (timeStr >= '00:00:00' && timeStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
-              this.session.lastFullUid = ev.uid;
-              if ((this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) && !window._isRestoring) {
-                setTimeout(async () => await metaDB.updateStat('global', gs => { gs.featuresUsed = gs.featuresUsed || {}; if (this.session.favOrderedRun >= 5) gs.featuresUsed.fav_ordered_5 = 5; if (this.session.favShuffleEvents.size >= 5) gs.featuresUsed.fav_shuffle_5 = 5; if (this.session.midnightTripleCount >= 3) gs.featuresUsed.midnight_triple = 1; return gs; }), 500);
+        for (const ev of events) {
+          if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
+            const { isFullListen: isF, isValidListen: isV, variant: v, trackDuration: tDur, quality: q } = ev.data, lSec = Math.max(0, Number(ev.data.listenedSeconds || (isF ? tDur : 0)) || 0), isRateLimited = isF && (ev.timestamp - (this.lastFullListens.get(ev.uid) || 0)) < (tDur || 0) * 900;
+            await metaDB.updateStat(ev.uid, s => {
+              s.globalListenSeconds += (lSec || 0); s.lastPlayedAt = ev.timestamp; s.featuresUsed = s.featuresUsed || {};
+              if (isV) {
+                s.globalValidListenCount++; dailyActive = true;
+                try { const d = new Date(ev.timestamp); (s.byHour ??= Array(24).fill(0))[d.getHours()]++; (s.byWeekday ??= Array(7).fill(0))[(d.getDay() + 6) % 7]++; } catch {}
               }
-            }
+              if (isF && !isRateLimited && v !== 'short') {
+                s.globalFullListenCount++; this.lastFullListens.set(ev.uid, ev.timestamp);
+                const mins = new Date(ev.timestamp).getHours() * 60 + new Date(ev.timestamp).getMinutes();
+                if (mins >= 120 && mins <= 270) s.featuresUsed.nightPlay = (s.featuresUsed.nightPlay || 0) + 1;
+                if (mins >= 300 && mins <= 539) s.featuresUsed.earlyPlay = (s.featuresUsed.earlyPlay || 0) + 1;
+                if (q === 'hi') s.featuresUsed.hiQuality = (s.featuresUsed.hiQuality || 0) + 1;
+                if (s.globalFullListenCount >= (parseInt(localStorage.getItem('cloud:listenThreshold')) || 5) && !window._isRestoring) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
+                if (window.playerCore) {
+                  const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1', isShuf = window.playerCore.isShuffle(), isFav = window.playerCore.isFavorite(ev.uid);
+                  if (isShuf) s.featuresUsed.shufflePlay = (s.featuresUsed.shufflePlay || 0) + 1;
+                  if (isFavOnly && !isShuf && isFav) { if (this.session.favOrderedLastUid !== ev.uid) { this.session.favOrderedRun++; this.session.favOrderedLastUid = ev.uid; } } else { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; }
+                  isFavOnly && isShuf && isFav ? this.session.favShuffleEvents.add(ev.uid) : this.session.favShuffleEvents.clear();
+                  const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
+                  if (timeStr >= '00:00:00' && timeStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
+                  this.session.lastFullUid = ev.uid;
+                  if ((this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) && !window._isRestoring) {
+                    setTimeout(async () => await metaDB.updateStat('global', gs => { gs.featuresUsed = gs.featuresUsed || {}; if (this.session.favOrderedRun >= 5) gs.featuresUsed.fav_ordered_5 = 5; if (this.session.favShuffleEvents.size >= 5) gs.featuresUsed.fav_shuffle_5 = 5; if (this.session.midnightTripleCount >= 3) gs.featuresUsed.midnight_triple = 1; return gs; }), 500);
+                  }
+                }
+              }
+              return s;
+            });
+          } else if (ev.type === 'LISTEN_SKIP') Object.assign(this.session, { favOrderedRun: 0, favOrderedLastUid: null, midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null }) && this.session.favShuffleEvents.clear();
+          else if (ev.type === 'BACKUP_CREATED') { if (ev.data?.uploadedShared) await metaDB.updateStat('global', s => { s.featuresUsed = s.featuresUsed || {}; s.featuresUsed.backup = (s.featuresUsed.backup || 0) + 1; return s; }); }
+          else if (ev.type === 'FEATURE_USED') {
+            await metaDB.updateStat(ev.uid || 'global', s => {
+              s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1; s.lastPlayedAt = ev.timestamp;
+              try { const d = new Date(ev.timestamp); (s.byHour ??= Array(24).fill(0))[d.getHours()]++; (s.byWeekday ??= Array(7).fill(0))[(d.getDay() + 6) % 7]++; } catch {}
+              if (f === 'social_visit') { const tgt = String(ev.data.target || 'other').toLowerCase(); s.featuresUsed[`social_visit_${tgt}`] = (s.featuresUsed[`social_visit_${tgt}`] || 0) + 1; if (s.featuresUsed.social_visit_youtube && s.featuresUsed.social_visit_telegram && s.featuresUsed.social_visit_vk && s.featuresUsed.social_visit_tiktok) s.featuresUsed.social_visit_all = 1; }
+              if (['sleep_timer_set', 'sleep_timer_extend', 'sleep_timer_cancel', 'sleep_timer'].includes(f)) { s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + Math.max(0, Number(ev.data.minutes || 0)); if (ev.data.mode) s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] = (s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] || 0) + 1; }
+              return s;
+            });
           }
-          return s;
-        });
-      } else if (ev.type === 'LISTEN_SKIP') { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; this.session.favShuffleEvents.clear(); this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; this.session.lastFullUid = null; }
-      else if (ev.type === 'BACKUP_CREATED') {
-        if (!ev.data?.uploadedShared) continue;
-        await metaDB.updateStat('global', s => {
-          s.featuresUsed = s.featuresUsed || {};
-          s.featuresUsed.backup = (s.featuresUsed.backup || 0) + 1;
-          return s;
-        });
-      }
-      else if (ev.type === 'FEATURE_USED') {
-        await metaDB.updateStat(ev.uid || 'global', s => {
-          s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1;
-          const d = new Date(ev.timestamp), h = d.getHours(), w = (d.getDay() + 6) % 7; (s.byHour ??= Array(24).fill(0))[h]++; (s.byWeekday ??= Array(7).fill(0))[w]++; s.lastPlayedAt = ev.timestamp;
-          if (f === 'social_visit') { const tgt = String(ev.data.target || 'other').toLowerCase(); s.featuresUsed[`social_visit_${tgt}`] = (s.featuresUsed[`social_visit_${tgt}`] || 0) + 1; if ((s.featuresUsed.social_visit_youtube || 0) > 0 && (s.featuresUsed.social_visit_telegram || 0) > 0 && (s.featuresUsed.social_visit_vk || 0) > 0 && (s.featuresUsed.social_visit_tiktok || 0) > 0) s.featuresUsed.social_visit_all = 1; }
-          if (['sleep_timer_set', 'sleep_timer_extend', 'sleep_timer_cancel', 'sleep_timer'].includes(f)) { s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + Math.max(0, Number(ev.data.minutes || 0)); if (ev.data.mode) s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] = (s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] || 0) + 1; }
-          return s;
-        });
-      }
-    }
+        }
 
-    if (dailyActive && !window._isRestoring) {
-      const sObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
-      if (sObj.lastActiveDate !== dateStr) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const yStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`; sObj.current = (sObj.lastActiveDate === yStr) ? sObj.current + 1 : 1; sObj.longest = Math.max(sObj.longest, sObj.current); sObj.lastActiveDate = dateStr; await metaDB.setGlobal('global_streak', sObj); }
-    }
+        if (dailyActive && !window._isRestoring) {
+          const sObj = (await metaDB.getGlobal('global_streak'))?.value || { current: 0, longest: 0, lastActiveDate: '' };
+          if (sObj.lastActiveDate !== dateStr) { const yd = new Date(); yd.setDate(yd.getDate() - 1); const yStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`; sObj.current = (sObj.lastActiveDate === yStr) ? sObj.current + 1 : 1; sObj.longest = Math.max(sObj.longest, sObj.current); sObj.lastActiveDate = dateStr; await metaDB.setGlobal('global_streak', sObj); }
+        }
 
         await metaDB.addEvents(events, 'events_warm'); await metaDB.deleteEvents(events, 'events_hot').catch(() => metaDB.clearEvents('events_hot')); window.dispatchEvent(new CustomEvent('stats:updated'));
       } while (this._rerun);
-    } finally {
-      this._processing = false;
-    }
+    } finally { this._processing = false; }
   }
 }
 
