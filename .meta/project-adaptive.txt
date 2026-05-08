@@ -457,7 +457,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 19:27:26 UTC
+Сгенерировано: 2026-05-08 19:28:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3276,8 +3276,13 @@ window.PlaybackCache = window.PlaybackCache || {}; window.PlaybackCache.getWindo
     return true;
   };
 
+  const badKey = u => `lyrics:bad-url:${String(u || '').trim()}`;
+  const isBadUrl = u => { try { return sessionStorage.getItem(badKey(u)) === '1'; } catch { return false; } };
+  const markBadUrl = u => { try { sessionStorage.setItem(badKey(u), '1'); } catch {} };
+
   const fetchL = async (u) => {
     if (!(u = String(u || '').trim())) return null;
+    if (isBadUrl(u)) return null;
     const k = PRE + u, rec = fc?.get?.(k, 43200000, 'session'); if (rec && typeof rec === 'object') return rec.ok ? rec.data : null;
     if (_pend.has(u)) return _pend.get(u);
     const p = (async () => {
@@ -3288,7 +3293,7 @@ window.PlaybackCache = window.PlaybackCache || {}; window.PlaybackCache.getWindo
         try {
           const j = fc?.getJson ? await fc.getJson({ key: `lyrics:timeline:${url}`, url, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache', headers: { Accept: 'application/json' } } }) : await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' } }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
           if (Array.isArray(j)) { fc?.set?.(k, { ok: 1, data: j }, 'session'); return j; }
-        } catch (e) { if (!String(e?.message || e || '').includes('404') && !(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null; }
+        } catch (e) { if (String(e?.message || e || '').includes('404')) markBadUrl(url); else if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null; }
       }
       fc?.set?.(k, { ok: 0 }, 'session'); return null;
     })();
