@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 15:33:40 UTC
+Сгенерировано: 2026-05-08 15:37:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3214,936 +3214,125 @@ export default { formatCloudDateTime, formatCloudTimeOnly, getCloudCompareViewMo
 
 //=================================================
 // FILE: /scripts/app/profile/fresh-restore-modal.js
-import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
-import { renderCloudStatPair } from './cloud-ui-helpers.js';
-import { renderRestoreDiffHtml } from './restore-diff.js';
-import { compareBackupBranches } from '../../analytics/backup-branch-compare.js';
-import { BackupVault } from '../../analytics/backup-vault.js';
-import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
-import { esc, fmtDateTime } from './profile-ui-kit.js';
-
-const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label';
-const sS = v => String(v == null ? '' : v).trim();
-
-const deviceLabel = d => sS(d?.label || d?.sourceDeviceLabel || d?.class || d?.sourceDeviceClass || 'Устройство');
-const deviceClass = d => sS(d?.class || d?.sourceDeviceClass || d?.platform || d?.sourcePlatform || '');
-const deviceIcon = d => /iphone|ipad|ios/i.test(`${d?.cls || d?.class || d?.platform || ''}`) ? '📱' : (/android/i.test(`${d?.cls || d?.class || d?.platform || ''}`) ? '🤖' : '💻');
-
-const collectRestoreDevices = ({ backup, items = [], meta = null } = {}) => {
-  const map = new Map();
-  const add = d => {
-    const key = sS(d?.deviceStableId || d?.sourceDeviceStableId || '');
-    if (!key || map.has(key)) return;
-    map.set(key, {
-      key,
-      label: deviceLabel(d),
-      cls: deviceClass(d),
-      platform: sS(d?.platform || d?.sourcePlatform || ''),
-      lastSeenAt: Number(d?.lastSeenAt || d?.timestamp || 0)
-    });
-  };
-  (Array.isArray(backup?.devices) ? backup.devices : []).forEach(add);
-  [meta, ...(Array.isArray(items) ? items : [])].filter(Boolean).forEach(add);
-  return [...map.values()].sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
-};
-const resolveDeviceSettingsState = async ({ disk, token, deviceKey } = {}) => {
-  const key = sS(deviceKey);
-  if (!key || key === '__new__') return 'новое устройство — не применяется';
-  if (key === '__shared_only__') return 'только общий прогресс';
-  if (!disk || !token) return 'проверка недоступна';
-  try {
-    const idx = await disk.getDeviceSettingsIndex?.(token).catch(() => null);
-    const item = (idx?.items || []).find(x => sS(x.deviceStableId) === key);
-    if (!item) return 'не найдено в облаке';
-    if (!item.semanticHash) return 'hash недоступен';
-    const localDoc = await BackupVault.buildDeviceSettingsObject().catch(() => null);
-    const localHash = localDoc ? await getDeviceSettingsSemanticHash(localDoc).catch(() => '') : '';
-    if (!localHash) return 'локальный hash недоступен';
-    return localHash === item.semanticHash ? 'совпадают' : 'отличаются';
-  } catch {
-    return 'проверка не удалась';
-  }
-};
-const askNewDeviceName = currentDeviceInfo => new Promise(resolve => {
-  const fallback = sS(currentDeviceInfo?.label || localStorage.getItem(DEVICE_LABEL_KEY) || 'Моё устройство');
-  const prompt = window.Utils?.profileModals?.promptName;
-  if (!prompt) return resolve(fallback);
-  prompt({
-    title: 'Название нового устройства',
-    value: fallback,
-    btnText: 'Продолжить',
-    onSubmit: v => resolve(sS(v) || fallback)
-  });
-});
-
-export const openFreshLoginRestoreModal = ({
-  meta,
-  items = [],
-  backup = null,
-  onRestore,
-  onNewDevice,
-  onLater,
-  currentDeviceInfo = null,
-  disk = null,
-  token = null
-} = {}) => {
-  const safe = Array.isArray(items) && items.length ? items : (meta ? [meta] : []);
-  const localSnap = getLocalBackupUiSnapshot({ name: 'Слушатель' });
-  const cloudSnap = meta || safe[0] || {};
-  const cmp = compareLocalVsCloud(localSnap, cloudSnap);
-  const cL = getBackupCompareLabel(localSnap, cloudSnap);
-  const devices = collectRestoreDevices({ backup, items: safe, meta });
-  const diffHtml = `<div id="fresh-diff-box">${renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices })}</div>`;
-  const defaultDeviceValue = devices.length ? devices[0].key : '__new__';
-
-  const currentDeviceHtml = currentDeviceInfo ? `
-    <div class="fresh-current-device">
-      <div class="fresh-cap">Вы сейчас на</div>
-      <div class="fresh-current-title">${esc(currentDeviceInfo.osIcon)} ${esc(currentDeviceInfo.os)} · ${esc(currentDeviceInfo.browser)}</div>
-      <div class="fresh-muted">Текущее имя: ${esc(currentDeviceInfo.label || 'Моё устройство')}</div>
-    </div>` : '';
-
-  const renderItems = () => safe.map((it, i) => `
-    <label class="fresh-version-card ${i === 0 ? 'is-picked' : ''}">
-      <input type="radio" name="fresh-ver" value="${i}" ${i === 0 ? 'checked' : ''}>
-      <span class="fresh-version-mark">${it.isLatest ? '☁️' : '🕘'}</span>
-      <span class="fresh-version-main">
-        <b>${it.isLatest ? 'Последняя копия' : 'Архивная версия'}</b>
-        <small>${fmtDateTime(it.timestamp)}${it.sizeHuman ? ` · ${esc(it.sizeHuman)}` : ''}${it.appVersion ? ` · v${esc(it.appVersion)}` : ''}</small>
-      </span>
-    </label>`).join('') || '<div class="fav-empty">Облачных версий пока нет</div>';
-
-  const renderDeviceOptions = () => `
-    ${devices.map((d, i) => `
-      <label class="fresh-device-card ${i === 0 ? 'is-picked' : ''}">
-        <input type="radio" name="fresh-dev" value="${esc(d.key)}" ${d.key === defaultDeviceValue ? 'checked' : ''}>
-        <span class="fresh-device-ic">${deviceIcon(d)}</span>
-        <span class="fresh-device-main">
-          <b>${esc(d.label)}</b>
-          <small>${esc([d.cls, d.platform, d.lastSeenAt ? fmtDateTime(d.lastSeenAt) : ''].filter(Boolean).join(' · '))}</small>
-        </span>
-      </label>`).join('')}
-    <label class="fresh-device-card ${!devices.length ? 'is-picked' : ''}">
-      <input type="radio" name="fresh-dev" value="__new__" ${!devices.length ? 'checked' : ''}>
-      <span class="fresh-device-ic">✨</span>
-      <span class="fresh-device-main">
-        <b>Новое устройство</b>
-        <small>Создать новую запись и задать имя</small>
-      </span>
-    </label>
-    <label class="fresh-device-card">
-      <input type="radio" name="fresh-dev" value="__shared_only__">
-      <span class="fresh-device-ic">👤</span>
-      <span class="fresh-device-main">
-        <b>Только общий прогресс</b>
-        <small>Без локальных настроек устройства</small>
-      </span>
-    </label>`;
-
-  const bodyHtml = `
-    <div class="fresh-restore-card">
-      <div class="fresh-hero">
-        <div class="fresh-hero-icon">☁️</div>
-        <div>
-          <div class="fresh-hero-title">Облачная копия найдена</div>
-          <div class="fresh-hero-sub">Выберите версию и устройство. Без подтверждения ничего не восстановится.</div>
-        </div>
-      </div>
-
-      ${currentDeviceHtml}
-      ${renderCloudStatPair({ localSummary: localSnap, cloudSummary: cloudSnap })}
-
-      <div class="fresh-compare ${cmp.state === 'conflict' ? 'is-warn' : ''}">
-        <b>Сравнение</b>
-        <span>${esc(cL)} · ${esc(cmp.state)}</span>
-      </div>
-
-      <details class="fresh-details">
-        <summary>Что будет объединено</summary>
-        ${diffHtml}
-      </details>
-
-      <div class="fresh-section-title">Версия backup</div>
-      <div class="fresh-scroll fresh-version-list" id="fresh-list">${renderItems()}</div>
-
-      <div class="fresh-section-title">Устройство из облака</div>
-      <div class="fresh-scroll fresh-device-list" id="fresh-dev-list">${renderDeviceOptions()}</div>
-
-      <div class="fresh-actions">
-        <button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить</button>
-        <button type="button" class="modal-action-btn" data-fresh-act="later">Напомнить позже</button>
-      </div>
-    </div>`;
-
-  const m = window.Modals?.open?.({ title: '', maxWidth: 390, strictClose: true, bodyHtml });
-  if (!m) return;
-  let branchCache = null, deviceSettingsState = '';
-  const refreshPicked = () => {
-    m.querySelectorAll('.fresh-version-card').forEach(x => x.classList.toggle('is-picked', !!x.querySelector('input')?.checked));
-    m.querySelectorAll('.fresh-device-card').forEach(x => x.classList.toggle('is-picked', !!x.querySelector('input')?.checked));
-  };
-  m.addEventListener('change', () => { refreshPicked(); refreshDeviceSettingsState().catch(() => {}); });
-  refreshPicked();
-
-  const pickPath = () => {
-    const sel = m.querySelector('input[name="fresh-ver"]:checked');
-    const idx = sel ? Number(sel.value) : 0;
-    return sS(safe[idx]?.path || safe[0]?.path || '');
-  };
-  const pickDeviceMode = () => sS(m.querySelector('input[name="fresh-dev"]:checked')?.value || defaultDeviceValue);
-
-  const updateDiffBox = () => {
-    const box = m.querySelector('#fresh-diff-box');
-    if (box) box.innerHTML = renderRestoreDiffHtml({ backup, localSummary: localSnap, cloudSummary: cloudSnap, devices, branch: branchCache, deviceSettingsState });
-  };
-
-  const refreshDeviceSettingsState = async () => {
-    deviceSettingsState = await resolveDeviceSettingsState({ disk, token, deviceKey: pickDeviceMode() });
-    updateDiffBox();
-  };
-
-  if (backup) compareBackupBranches({ backup }).then(branch => { branchCache = branch; updateDiffBox(); }).catch(() => {});
-  refreshDeviceSettingsState().catch(() => {});
-
-  m.addEventListener('click', async e => {
-    const btn = e.target.closest('[data-fresh-act]');
-    if (!btn) return;
-    const act = btn.dataset.freshAct;
-    m.remove();
-
-    try {
-      if (act === 'later') return onLater?.();
-
-      const pickedPath = pickPath();
-      const dev = pickDeviceMode();
-
-      if (dev === '__shared_only__') {
-        return onRestore?.({ pickedPath, inheritDeviceKey: null, skipDeviceSettings: true });
-      }
-
-      if (dev === '__new__') {
-        const label = await askNewDeviceName(currentDeviceInfo);
-        try { localStorage.setItem(DEVICE_LABEL_KEY, label); } catch {}
-        return (onNewDevice || onRestore)?.({ pickedPath, inheritDeviceKey: null, asNewDevice: true, skipDeviceSettings: true });
-      }
-
-      return onRestore?.({ pickedPath, inheritDeviceKey: dev, skipDeviceSettings: false });
-    } catch {}
-  });
-};
-
-export default { openFreshLoginRestoreModal };
+import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js'; import { renderCloudStatPair } from './cloud-ui-helpers.js'; import { renderRestoreDiffHtml } from './restore-diff.js'; import { compareBackupBranches } from '../../analytics/backup-branch-compare.js'; import { BackupVault } from '../../analytics/backup-vault.js'; import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js'; import { esc, fmtDateTime } from './profile-ui-kit.js';
+const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label', sS = v => String(v == null ? '' : v).trim(), dL = d => sS(d?.label || d?.sourceDeviceLabel || d?.class || d?.sourceDeviceClass || 'Устройство'), dC = d => sS(d?.class || d?.sourceDeviceClass || d?.platform || d?.sourcePlatform || ''), dI = d => /iphone|ipad|ios/i.test(`${d?.cls || d?.class || d?.platform || ''}`) ? '📱' : (/android/i.test(`${d?.cls || d?.class || d?.platform || ''}`) ? '🤖' : '💻');
+const colDevs = ({ backup: b, items: i = [], meta: m = null } = {}) => { const map = new Map(), add = d => { const k = sS(d?.deviceStableId || d?.sourceDeviceStableId || ''); if(k && !map.has(k)) map.set(k, { key: k, label: dL(d), cls: dC(d), platform: sS(d?.platform || d?.sourcePlatform || ''), lastSeenAt: Number(d?.lastSeenAt || d?.timestamp || 0) }); }; (Array.isArray(b?.devices)?b.devices:[]).forEach(add); [m,...(Array.isArray(i)?i:[])].filter(Boolean).forEach(add); return [...map.values()].sort((x,y)=>(y.lastSeenAt||0)-(x.lastSeenAt||0)); };
+const resDSS = async ({ disk: d, token: t, deviceKey: k } = {}) => { const sk = sS(k); if(!sk||sk==='__new__') return 'новое устройство — не применяется'; if(sk==='__shared_only__') return 'только общий прогресс'; if(!d||!t) return 'проверка недоступна'; try { const idx=await d.getDeviceSettingsIndex?.(t).catch(()=>null), it=(idx?.items||[]).find(x=>sS(x.deviceStableId)===sk); if(!it) return 'не найдено в облаке'; if(!it.semanticHash) return 'hash недоступен'; const lD=await BackupVault.buildDeviceSettingsObject().catch(()=>null), lH=lD ? await getDeviceSettingsSemanticHash(lD).catch(()=>'') : ''; if(!lH) return 'локальный hash недоступен'; return lH===it.semanticHash?'совпадают':'отличаются'; }catch{return 'проверка не удалась';} };
+const askNm = cD => new Promise(r => { const f=sS(cD?.label||localStorage.getItem(DEVICE_LABEL_KEY)||'Моё устройство'), p=window.Utils?.profileModals?.promptName; if(!p)return r(f); p({title:'Название нового устройства',value:f,btnText:'Продолжить',onSubmit:v=>r(sS(v)||f)}); });
+export const openFreshLoginRestoreModal = ({ meta: m, items: i = [], backup: b = null, onRestore: oR, onNewDevice: oN, onLater: oL, currentDeviceInfo: cD = null, disk: d = null, token: t = null } = {}) => { const sf=Array.isArray(i)&&i.length?i:(m?[m]:[]), lS=getLocalBackupUiSnapshot({name:'Слушатель'}), cS=m||sf[0]||{}, cmp=compareLocalVsCloud(lS,cS), cL=getBackupCompareLabel(lS,cS), dvs=colDevs({backup:b,items:sf,meta:m}), defD=dvs.length?dvs[0].key:'__new__'; const bH = `<div class="fresh-restore-card"><div class="fresh-hero"><div class="fresh-hero-icon">☁️</div><div><div class="fresh-hero-title">Облачная копия найдена</div><div class="fresh-hero-sub">Выберите версию и устройство. Без подтверждения ничего не восстановится.</div></div></div>${cD?`<div class="fresh-current-device"><div class="fresh-cap">Вы сейчас на</div><div class="fresh-current-title">${esc(cD.osIcon)} ${esc(cD.os)} · ${esc(cD.browser)}</div><div class="fresh-muted">Текущее имя: ${esc(cD.label||'Моё устройство')}</div></div>`:''}${renderCloudStatPair({localSummary:lS,cloudSummary:cS})}<div class="fresh-compare ${cmp.state==='conflict'?'is-warn':''}"><b>Сравнение</b><span>${esc(cL)} · ${esc(cmp.state)}</span></div><details class="fresh-details"><summary>Что будет объединено</summary><div id="fresh-diff-box">${renderRestoreDiffHtml({backup:b,localSummary:lS,cloudSummary:cS,devices:dvs})}</div></details><div class="fresh-section-title">Версия backup</div><div class="fresh-scroll fresh-version-list" id="fresh-list">${sf.length?sf.map((it,idx)=>`<label class="fresh-version-card ${idx===0?'is-picked':''}"><input type="radio" name="fresh-ver" value="${idx}" ${idx===0?'checked':''}><span class="fresh-version-mark">${it.isLatest?'☁️':'🕘'}</span><span class="fresh-version-main"><b>${it.isLatest?'Последняя копия':'Архивная версия'}</b><small>${fmtDateTime(it.timestamp)}${it.sizeHuman?` · ${esc(it.sizeHuman)}`:''}${it.appVersion?` · v${esc(it.appVersion)}`:''}</small></span></label>`).join(''):'<div class="fav-empty">Облачных версий пока нет</div>'}</div><div class="fresh-section-title">Устройство из облака</div><div class="fresh-scroll fresh-device-list" id="fresh-dev-list">${dvs.map((dv,idx)=>`<label class="fresh-device-card ${idx===0?'is-picked':''}"><input type="radio" name="fresh-dev" value="${esc(dv.key)}" ${dv.key===defD?'checked':''}><span class="fresh-device-ic">${deviceIcon(dv)}</span><span class="fresh-device-main"><b>${esc(dv.label)}</b><small>${esc([dv.cls,dv.platform,dv.lastSeenAt?fmtDateTime(dv.lastSeenAt):''].filter(Boolean).join(' · '))}</small></span></label>`).join('')}<label class="fresh-device-card ${!dvs.length?'is-picked':''}"><input type="radio" name="fresh-dev" value="__new__" ${!dvs.length?'checked':''}><span class="fresh-device-ic">✨</span><span class="fresh-device-main"><b>Новое устройство</b><small>Создать новую запись и задать имя</small></span></label><label class="fresh-device-card"><input type="radio" name="fresh-dev" value="__shared_only__"><span class="fresh-device-ic">👤</span><span class="fresh-device-main"><b>Только общий прогресс</b><small>Без локальных настроек устройства</small></span></label></div><div class="fresh-actions"><button type="button" class="modal-action-btn online" data-fresh-act="restore">Восстановить</button><button type="button" class="modal-action-btn" data-fresh-act="later">Напомнить позже</button></div></div>`; const md=window.Modals?.open?.({title:'',maxWidth:390,strictClose:true,bodyHtml:bH}); if(!md)return; let bC=null, dSS=''; const rP=()=>{md.querySelectorAll('.fresh-version-card,.fresh-device-card').forEach(x=>x.classList.toggle('is-picked',!!x.querySelector('input')?.checked));}; md.addEventListener('change',()=>{rP();rDSS().catch(()=>{});}); rP(); const pV=()=>{const s=md.querySelector('input[name="fresh-ver"]:checked'),x=s?Number(s.value):0;return sS(sf[x]?.path||sf[0]?.path||'');}, pD=()=>sS(md.querySelector('input[name="fresh-dev"]:checked')?.value||defD), uDB=()=>{const bx=md.querySelector('#fresh-diff-box');if(bx)bx.innerHTML=renderRestoreDiffHtml({backup:b,localSummary:lS,cloudSummary:cS,devices:dvs,branch:bC,deviceSettingsState:dSS});}, rDSS=async()=>{dSS=await resDSS({disk:d,token:t,deviceKey:pD()});uDB();}; if(b)compareBackupBranches({backup:b}).then(br=>{bC=br;uDB()}).catch(()=>{}); rDSS().catch(()=>{}); md.addEventListener('click',async e=>{const btn=e.target.closest('[data-fresh-act]');if(!btn)return;const a=btn.dataset.freshAct;md.remove();try{if(a==='later')return oL?.();const pP=pV(),dv=pD();if(dv==='__shared_only__')return oR?.({pickedPath:pP,inheritDeviceKey:null,skipDeviceSettings:true});if(dv==='__new__'){const l=await askNm(cD);try{localStorage.setItem(DEVICE_LABEL_KEY,l)}catch{}return (oN||oR)?.({pickedPath:pP,inheritDeviceKey:null,asNewDevice:true,skipDeviceSettings:true});}return oR?.({pickedPath:pP,inheritDeviceKey:dv,skipDeviceSettings:false});}catch{}}); }; export default { openFreshLoginRestoreModal };
 
 //=================================================
 // FILE: /scripts/app/profile/live-bindings.js
-import { readStatsViewModel } from '../../analytics/stats-state.js';
-import { renderProfileStats } from './stats-view.js';
-
-export const bindProfileLiveBindings = ({ ctx, getContainer: gC, achView: aV, metaDB } = {}) => {
-  if (ctx._pLB) return; ctx._pLB = true;
-  const isProfile = () => ctx.getCurrentAlbum?.() === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__') && gC?.()?.isConnected;
-  const achTabActive = () => !!gC?.()?.querySelector('#tab-achievements.active');
-  const statsTabActive = () => !!gC?.()?.querySelector('#tab-stats.active');
-
-  const renderAch = () => isProfile() && achTabActive() && aV.render(ctx._achCurrentFilter || 'available');
-  const updateAch = () => isProfile() && achTabActive() && aV.updateLiveNodes();
-
-  const renderStats = async () => {
-    if (!isProfile() || !statsTabActive() || !metaDB) return;
-    const c = gC(), vm = await readStatsViewModel(metaDB), summary = vm.summary;
-    renderProfileStats({ container: c, vm });
-    const totalFull = summary.totalFull, totalSec = summary.totalSec;
-    const streak = (await metaDB.getGlobal('global_streak').catch(() => null))?.value?.current || 0;
-    const set = (id, v) => { const el = c?.querySelector(id); if (el) el.textContent = String(v); };
-    set('#prof-stat-tracks', totalFull);
-    set('#prof-stat-time', window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSec) : `${Math.floor(totalSec / 60)}м`);
-    set('#prof-stat-streak', streak);
-    set('#prof-stat-ach', Object.keys(window.achievementEngine?.unlocked || {}).length);
-  };
-
-  window.addEventListener('analytics:liveTick', updateAch);
-  window.addEventListener('achievements:updated', renderAch);
-  window.addEventListener('stats:updated', () => setTimeout(renderStats, 60));
-  window.addEventListener('stats:rebuilt', () => setTimeout(renderStats, 80));
-  window.addEventListener('backup:restore:applied', () => { setTimeout(renderAch, 120); setTimeout(renderStats, 140); });
-  window.addEventListener('profile:data:refreshed', () => { setTimeout(renderAch, 120); setTimeout(renderStats, 140); });
-  window.addEventListener('profile:main-tab-selected', e => {
-    if (e.detail?.tabId === 'achievements') setTimeout(renderAch, 40);
-    if (e.detail?.tabId === 'stats') setTimeout(renderStats, 40);
-  });
-};
-
+import { readStatsViewModel } from '../../analytics/stats-state.js'; import { renderProfileStats } from './stats-view.js';
+export const bindProfileLiveBindings = ({ ctx, getContainer: gC, achView: aV, metaDB } = {}) => { if(ctx._pLB) return; ctx._pLB=true; const isP=()=>ctx.getCurrentAlbum?.()===(window.APP_CONFIG?.SPECIAL_PROFILE_KEY||'__profile__')&&gC?.()?.isConnected, aA=()=>!!gC?.()?.querySelector('#tab-achievements.active'), sA=()=>!!gC?.()?.querySelector('#tab-stats.active'), rA=()=>isP()&&aA()&&aV.render(ctx._achCurrentFilter||'available'), uA=()=>isP()&&aA()&&aV.updateLiveNodes(), rS=async()=>{if(!isP()||!sA()||!metaDB)return;const c=gC(),vm=await readStatsViewModel(metaDB),s=vm.summary,st=(await metaDB.getGlobal('global_streak').catch(()=>null))?.value?.current||0,set=(id,v)=>{const el=c?.querySelector(id);if(el)el.textContent=String(v)};renderProfileStats({container:c,vm});set('#prof-stat-tracks',s.totalFull);set('#prof-stat-time',window.Utils?.fmt?.durationHuman?window.Utils.fmt.durationHuman(s.totalSec):`${Math.floor(s.totalSec/60)}м`);set('#prof-stat-streak',st);set('#prof-stat-ach',Object.keys(window.achievementEngine?.unlocked||{}).length)}; window.addEventListener('analytics:liveTick',uA); window.addEventListener('achievements:updated',rA); window.addEventListener('stats:updated',()=>setTimeout(rS,60)); window.addEventListener('stats:rebuilt',()=>setTimeout(rS,80)); window.addEventListener('backup:restore:applied',()=>{setTimeout(rA,120);setTimeout(rS,140)}); window.addEventListener('profile:data:refreshed',()=>{setTimeout(rA,120);setTimeout(rS,140)}); window.addEventListener('profile:main-tab-selected',e=>{if(e.detail?.tabId==='achievements')setTimeout(rA,40);if(e.detail?.tabId==='stats')setTimeout(rS,40)}); };
 export default { bindProfileLiveBindings };
 
 //=================================================
 // FILE: /scripts/app/profile/logs-formatters.js
 import { describeEventForUi, getEventDomain } from '../../analytics/event-contract.js';
-
-export const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
-
-export const LOG_FILTERS = [
-  ['all', 'Все'],
-  ['listening', 'Прослушивания'],
-  ['favorites', 'Избранное'],
-  ['playlists', 'Плейлисты'],
-  ['achievement', 'Достижения'],
-  ['profile', 'Профиль'],
-  ['auth', 'Авторизация'],
-  ['cloud', 'Облако']
-];
-
+export const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s||'')) : String(s||'');
+export const LOG_FILTERS = [['all','Все'],['listening','Прослушивания'],['favorites','Избранное'],['playlists','Плейлисты'],['achievement','Достижения'],['profile','Профиль'],['auth','Авторизация'],['cloud','Облако']];
 export const eventDomain = ev => ev?.domain || getEventDomain(ev?.type);
-
-export const formatEventDate = ev =>
-  ev?.timestamp ? new Date(ev.timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-
-export const eventTrackTitle = ev => {
-  const t = ev?.uid ? window.TrackRegistry?.getTrackByUid?.(ev.uid) : null;
-  return t?.title || ev?.uid || '';
-};
-
-export const eventDeviceLabel = ev =>
-  [ev?.deviceLabel, ev?.deviceOs || ev?.deviceClass || ev?.platform, ev?.deviceBrowser, ev?.devicePwa ? 'PWA' : ''].filter(Boolean).join(' · ');
-
-export const renderLogFilters = cur =>
-  `<div class="ach-classic-tabs" id="prof-log-filters">${LOG_FILTERS.map(([k, t]) => `<div class="ach-classic-tab ${cur === k ? 'active' : ''}" data-log-filter="${k}">${esc(t)}</div>`).join('')}</div>`;
-
-export const renderEventRow = ev => {
-  const vm = describeEventForUi(ev);
-  const desc = [eventTrackTitle(ev), vm.desc, eventDeviceLabel(ev)].filter(Boolean).join(' · ');
-  return `<div class="profile-list-item profile-log-row" data-event-domain="${esc(eventDomain(ev))}" data-event-type="${esc(ev?.type || '')}">
-    <div class="log-time profile-log-date">${esc(formatEventDate(ev))}</div>
-    <div class="log-info profile-log-info">
-      <div class="log-title">${esc(vm.icon)} ${esc(vm.title)}</div>
-      <div class="log-desc">${esc(desc)}</div>
-    </div>
-  </div>`;
-};
-
-export const bindHorizontalWheelScroll = tabs => {
-  import('./tab-strip-physics.js').then(m => m.bindTabStripPhysics?.(tabs)).catch(() => {});
-};
-
-export default {
-  LOG_FILTERS,
-  eventDomain,
-  formatEventDate,
-  eventTrackTitle,
-  eventDeviceLabel,
-  renderLogFilters,
-  renderEventRow,
-  bindHorizontalWheelScroll
-};
+export const formatEventDate = ev => ev?.timestamp ? new Date(ev.timestamp).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+export const eventTrackTitle = ev => { const t = ev?.uid ? window.TrackRegistry?.getTrackByUid?.(ev.uid) : null; return t?.title || ev?.uid || ''; };
+export const eventDeviceLabel = ev => [ev?.deviceLabel, ev?.deviceOs || ev?.deviceClass || ev?.platform, ev?.deviceBrowser, ev?.devicePwa ? 'PWA' : ''].filter(Boolean).join(' · ');
+export const renderLogFilters = c => `<div class="ach-classic-tabs" id="prof-log-filters">${LOG_FILTERS.map(([k,t])=>`<div class="ach-classic-tab ${c===k?'active':''}" data-log-filter="${k}">${esc(t)}</div>`).join('')}</div>`;
+export const renderEventRow = ev => { const v = describeEventForUi(ev), d = [eventTrackTitle(ev), v.desc, eventDeviceLabel(ev)].filter(Boolean).join(' · '); return `<div class="profile-list-item profile-log-row" data-event-domain="${esc(eventDomain(ev))}" data-event-type="${esc(ev?.type||'')}"><div class="log-time profile-log-date">${esc(formatEventDate(ev))}</div><div class="log-info profile-log-info"><div class="log-title">${esc(v.icon)} ${esc(v.title)}</div><div class="log-desc">${esc(d)}</div></div></div>`; };
+export const bindHorizontalWheelScroll = t => { import('./tab-strip-physics.js').then(m => m.bindTabStripPhysics?.(t)).catch(()=>{}); };
+export default { LOG_FILTERS, eventDomain, formatEventDate, eventTrackTitle, eventDeviceLabel, renderLogFilters, renderEventRow, bindHorizontalWheelScroll };
 
 //=================================================
 // FILE: /scripts/app/profile/logs-view.js
 import { eventDomain, renderLogFilters, renderEventRow, bindHorizontalWheelScroll } from './logs-formatters.js';
-
-export const renderProfileLogs = async ({ container: c, metaDB: db }) => {
-  const lg = c?.querySelector('#prof-logs-list'); if (!lg) return;
-  const draw = async (filter = lg.dataset.filter || 'all') => {
-    lg.dataset.filter = filter;
-    try {
-      const raw = [...(await db?.getEvents('events_hot').catch(()=>[]) || []), ...(await db?.getEvents('events_warm').catch(()=>[]) || [])]
-        .filter(Boolean)
-        .sort((a,b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
-      const list = raw.filter(ev => filter === 'all' || eventDomain(ev) === filter).slice(0, 100);
-      lg.innerHTML = `${renderLogFilters(filter)}${list.length ? list.map(renderEventRow).join('') : '<div class="fav-empty">По этому фильтру событий нет</div>'}`;
-      bindHorizontalWheelScroll(lg.querySelector('#prof-log-filters'));
-      lg.querySelector('#prof-log-filters')?.addEventListener('click', e => {
-        const f = e.target.closest('[data-log-filter]')?.dataset.logFilter;
-        if (f) draw(f);
-      });
-    } catch {
-      lg.innerHTML = '<div class="fav-empty">Ошибка загрузки журнала</div>';
-    }
-  };
-  await draw();
-};
-
+export const renderProfileLogs = async ({ container: c, metaDB: db }) => { const l = c?.querySelector('#prof-logs-list'); if(!l)return; const d = async (f=l.dataset.filter||'all') => { l.dataset.filter=f; try { const r = [...(await db?.getEvents('events_hot').catch(()=>[])||[]), ...(await db?.getEvents('events_warm').catch(()=>[])||[])].filter(Boolean).sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0)), ls = r.filter(e=>f==='all'||eventDomain(e)===f).slice(0,100); l.innerHTML=`${renderLogFilters(f)}${ls.length?ls.map(renderEventRow).join(''):'<div class="fav-empty">По этому фильтру событий нет</div>'}`; bindHorizontalWheelScroll(l.querySelector('#prof-log-filters')); l.querySelector('#prof-log-filters')?.addEventListener('click',e=>{const x=e.target.closest('[data-log-filter]')?.dataset.logFilter; if(x)d(x)}); } catch { l.innerHTML='<div class="fav-empty">Ошибка загрузки журнала</div>'; } }; await d(); };
 export default { renderProfileLogs };
 
 //=================================================
 // FILE: /scripts/app/profile/model.js
 // UID.044_(ListenerProfile core)_(profile model должен стать местом мягкой сборки user portrait)_(future сюда можно подмешивать listener profile summary без ломки legacy stats model) UID.070_(Linked providers)_(model должен уметь принимать provider identity snapshot)_(но truth linked accounts хранится не здесь, а в intel/providers/provider-identity.js) UID.072_(Provider consents)_(model сможет отдавать consent snapshot для profile UI)_(но хранение consent state вынесено в intel/providers/provider-consents.js) UID.073_(Hybrid sync orchestrator)_(model должен принять sync state как optional extension)_(но orchestration logic не должна появляться в этом файле) UID.094_(No-paralysis rule)_(legacy profile model остаётся валидным fallback)_(если intel слой недоступен, этот model продолжает работать сам)
 import { getStatsSummary } from '../../analytics/stats-state.js';
-
-export const loadProfileModel = async () => {
-  let db = null, all = [], ach = {}, streak = 0, profile = { name: 'Слушатель', avatar: '😎' };
-  try {
-    const dbM = await import('../../analytics/meta-db.js');
-    db = dbM.metaDB;
-    const [s, aD, sD, pD] = await Promise.all([db.getAllStats().catch(()=>[]), db.getGlobal('unlocked_achievements').catch(()=>null), db.getGlobal('global_streak').catch(()=>null), db.getGlobal('user_profile').catch(()=>null)]);
-    all = s || []; ach = aD?.value || {}; streak = sD?.value?.current || 0; profile = pD?.value || profile;
-  } catch (e) { console.error('[Profile] init err:', e); }
-  const sum = getStatsSummary(all);
-  return { metaDB: db, all, ach, streak, profile, totalFull: sum.totalFull, totalSec: sum.totalSec, tokens: {} };
-};
+export const loadProfileModel = async () => { let d=null, al=[], ac={}, s=0, p={name:'Слушатель',avatar:'😎'}; try { const m=await import('../../analytics/meta-db.js'); d=m.metaDB; const [rs,ra,rsd,rpd]=await Promise.all([d.getAllStats().catch(()=>[]), d.getGlobal('unlocked_achievements').catch(()=>null), d.getGlobal('global_streak').catch(()=>null), d.getGlobal('user_profile').catch(()=>null)]); al=rs||[]; ac=ra?.value||{}; s=rsd?.value?.current||0; p=rpd?.value||p; } catch(e){} const sum=getStatsSummary(al); return { metaDB:d, all:al, ach:ac, streak:s, profile:p, totalFull:sum.totalFull, totalSec:sum.totalSec, tokens:{} }; };
 export default { loadProfileModel };
 
 //=================================================
 // FILE: /scripts/app/profile/profile-tab-bindings.js
-import { bindProfileActions } from './actions.js';
-import { bindProfileLiveBindings } from './live-bindings.js';
-import { bindProfileAccount } from './account-bindings.js';
-
-export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, tokens, onProfileChanged, reloadProfile } = {}) => {
-  if (!container) return;
-  bindProfileAccount({ container, profile, metaDB, onProfileChanged });
-  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), achView, metaDB });
-  bindProfileActions({ ctx, container, achView, metaDB, tokens, reloadProfile });
-};
+import { bindProfileActions } from './actions.js'; import { bindProfileLiveBindings } from './live-bindings.js'; import { bindProfileAccount } from './account-bindings.js';
+export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, tokens, onProfileChanged, reloadProfile } = {}) => { if(!container)return; bindProfileAccount({container,profile,metaDB,onProfileChanged}); bindProfileLiveBindings({ctx,getContainer:()=>document.getElementById('track-list'),achView,metaDB}); bindProfileActions({ctx,container,achView,metaDB,tokens,reloadProfile}); };
 export default { bindProfileTabControllers };
 
 //=================================================
 // FILE: /scripts/app/profile/profile-tab-renderers.js
-import { renderProfileStats } from './stats-view.js';
-import { renderProfileRecs } from './recs-view.js';
-import { renderProfileLogs } from './logs-view.js';
-
-export const renderProfileTabsData = async ({ container, all, metaDB } = {}) => {
-  if (!container) return;
-  renderProfileStats({ container, all });
-  renderProfileRecs({ container, all });
-  setTimeout(() => { renderProfileLogs({ container, metaDB }); window.AlbumsManager?.highlightCurrentTrack?.(); }, 120);
-};
+import { renderProfileStats } from './stats-view.js'; import { renderProfileRecs } from './recs-view.js'; import { renderProfileLogs } from './logs-view.js';
+export const renderProfileTabsData = async ({ container, all, metaDB } = {}) => { if(!container)return; renderProfileStats({container,all}); renderProfileRecs({container,all}); setTimeout(()=>{renderProfileLogs({container,metaDB}); window.AlbumsManager?.highlightCurrentTrack?.()},120); };
 export default { renderProfileTabsData };
 
 //=================================================
 // FILE: /scripts/app/profile/profile-ui-kit.js
-// UID.096_(Helper-first anti-duplication policy)_(единый UI-kit для profile cloud/device карточек)_(уменьшить inline HTML в yandex-auth/account-devices/restore)
-// UID.112_(Profile as command center for backup/sync/claim)_(общие карточки и строки профиля)_(не плодить разные стили для cloud/device UI)
-
-export const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
-export const fmtDateTime = ts => Number(ts || 0) > 0 ? new Date(Number(ts)).toLocaleString('ru-RU') : '—';
-export const fmtTime = ts => Number(ts || 0) > 0 ? new Date(Number(ts)).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
-
-export const renderMetaBox = ({ label = '', value = '' } = {}) => `
-  <div class="yandex-auth-metabox">
-    <div class="yandex-auth-metabox-label">${esc(label)}</div>
-    <div class="yandex-auth-metabox-value">${esc(value)}</div>
-  </div>
-`;
-
-export const renderSmallListRow = ({ icon = '', title = '', desc = '', attrs = '', style = '' } = {}) => `
-  <div class="profile-list-item" ${attrs} ${style ? `style="${esc(style)}"` : ''}>
-    ${icon ? `<div style="font-size:22px;width:28px;text-align:center;flex-shrink:0">${esc(icon)}</div>` : ''}
-    <div class="log-info">
-      <div class="log-title">${esc(title)}</div>
-      <div class="log-desc">${esc(desc)}</div>
-    </div>
-  </div>
-`;
-
-export const renderInlineActions = actions => `
-  <div class="modal-choice-actions profile-inline-actions">
-    ${(actions || []).map(a => `<button type="button" class="modal-action-btn ${a.primary ? 'online' : ''}" ${a.attrs || ''}>${esc(a.text || 'OK')}</button>`).join('')}
-  </div>
-`;
-
-export const renderSectionCard = ({ title = '', body = '', style = '' } = {}) => `
-  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;${esc(style)}">
-    ${title ? `<div style="font-size:11px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${esc(title)}</div>` : ''}
-    ${body}
-  </div>
-`;
-
+// UID.096_(Helper-first anti-duplication policy)_(единый UI-kit для profile cloud/device карточек)_(уменьшить inline HTML в yandex-auth/account-devices/restore) UID.112_(Profile as command center for backup/sync/claim)_(общие карточки и строки профиля)_(не плодить разные стили для cloud/device UI)
+export const esc = s => window.Utils?.escapeHtml?.(String(s||'')) || String(s||''), fmtDateTime = ts => Number(ts||0) > 0 ? new Date(Number(ts)).toLocaleString('ru-RU') : '—', fmtTime = ts => Number(ts||0) > 0 ? new Date(Number(ts)).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : '—';
+export const renderMetaBox = ({ label: l='', value: v='' }={}) => `<div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">${esc(l)}</div><div class="yandex-auth-metabox-value">${esc(v)}</div></div>`;
+export const renderSmallListRow = ({ icon: i='', title: t='', desc: d='', attrs: a='', style: s='' }={}) => `<div class="profile-list-item" ${a} ${s?`style="${esc(s)}"`:''}>${i?`<div style="font-size:22px;width:28px;text-align:center;flex-shrink:0">${esc(i)}</div>`:''}<div class="log-info"><div class="log-title">${esc(t)}</div><div class="log-desc">${esc(d)}</div></div></div>`;
+export const renderInlineActions = a => `<div class="modal-choice-actions profile-inline-actions">${(a||[]).map(x=>`<button type="button" class="modal-action-btn ${x.primary?'online':''}" ${x.attrs||''}>${esc(x.text||'OK')}</button>`).join('')}</div>`;
+export const renderSectionCard = ({ title: t='', body: b='', style: s='' }={}) => `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;${esc(s)}">${t?`<div style="font-size:11px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${esc(t)}</div>`:''}${b}</div>`;
 export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderSmallListRow, renderInlineActions, renderSectionCard };
 
 //=================================================
 // FILE: /scripts/app/profile/recs-view.js
-// UID.054_(Recommendation engine core)_(перевести вкладку Для Вас на единый движок)_(этот view должен стать thin renderer поверх intel recommendation engine) UID.056_(Recommendation reasons)_(показывать пользователю объяснение)_(future рендерить reason chips/human explanations рядом с треком) UID.060_(Session-aware next-track strategy)_(развести общие рекомендации и текущий session context)_(profile recs — taste/global слой, а не next-track executor) UID.061_(Community-driven recommendations)_(подмешивать cohort/similar listeners сигналы)_(view должен уметь принять community reasons, но не считать их сам) UID.062_(Recommendation memory and feedback)_(помнить shown/clicked/accepted/dismissed)_(recs-view станет важной точкой user feedback для recommendation_state) UID.063_(Profile recs tab upgrade)_(полностью заменить случайные recs на explainable personalized recs)_(текущая random fallback логика должна остаться только как safe fallback) UID.082_(Local truth vs external telemetry split)_(любые rec interactions наружу только через telemetry mapper)_(не слать raw rec data напрямую из view)
-const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
-export const renderProfileRecs = ({ container: c, all }) => {
-  const rE = c?.querySelector('#prof-recs-list'); if (!rE) return;
-  const pd = new Set((all || []).filter(s => s.globalFullListenCount > 0).map(s => s.uid));
-  const recs = (window.TrackRegistry?.getAllUids?.()||[]).filter(u => !pd.has(u)).sort(()=>Math.random()-.5).slice(0,4);
-  rE.innerHTML = recs.length ? recs.map(u => `<div class="profile-list-item" data-uid="${u}"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
-};
+// UID.054_(Recommendation engine core)_(перевести вкладку Для Вас на единый движок)_(этот view должен стать thin renderer поверх intel recommendation engine) UID.056_(Recommendation reasons)_(показывать пользователю объяснение)_(future рендерить reason chips/human explanations рядом с треком) UID.060_(Session-aware next-track strategy)_(развести общие рекомендации и текущий session context)_(profile recs — taste/global слой, а не next-track executor) UID.061_(Community-driven recommendations)_(подмешивать cohort/similar listeners сигналы)_(view должен уметь принять community reasons, но не считать их сам) UID.062_(Recommendation memory and feedback)_(помнить shown/clicked/accepted/dismissed)_(recs-view станет важной точка user feedback для recommendation_state) UID.063_(Profile recs tab upgrade)_(полностью заменить случайные recs на explainable personalized recs)_(текущая random fallback логика должна остаться только как safe fallback) UID.082_(Local truth vs external telemetry split)_(любые rec interactions наружу только через telemetry mapper)_(не слать raw rec data напрямую из view)
+const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s||'')) : String(s||'');
+export const renderProfileRecs = ({ container: c, all }) => { const r = c?.querySelector('#prof-recs-list'); if(!r)return; const p = new Set((all||[]).filter(s=>s.globalFullListenCount>0).map(s=>s.uid)), recs = (window.TrackRegistry?.getAllUids?.()||[]).filter(u=>!p.has(u)).sort(()=>Math.random()-.5).slice(0,4); r.innerHTML = recs.length ? recs.map(u=>`<div class="profile-list-item" data-uid="${u}"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>'; };
 
 //=================================================
 // FILE: /scripts/app/profile/render-shell.js
 // UID.044_(ListenerProfile core)_(подготовить профиль к встраиванию user-intelligence блоков)_(render-shell остаётся legacy host, принимающим optional intel fragments) UID.056_(Recommendation reasons)_(позже принимать explainable rec fragments без knowledge об их расчёте)_(shell только размещает future blocks, но не считает причины) UID.070_(Linked providers)_(показывать provider shell-поверхность без владения identity truth)_(render-shell рендерит auth/provider area, но данные linked accounts приходят извне) UID.072_(Provider consents)_(shell должен уметь принять consent UI блоки)_(но не хранить и не вычислять consent state самостоятельно) UID.073_(Hybrid sync orchestrator)_(shell станет host для sync-role/status block)_(но orchestration logic останется в intel/providers layer) UID.082_(Local truth vs external telemetry split)_(shell не должен экспортировать profile/raw insights сам)_(это только layout/render host) UID.094_(No-paralysis rule)_(profile shell обязан работать без intel fragments)_(если intelligent blocks отсутствуют, legacy profile UI остаётся полноценным) UID.095_(Ownership boundary: legacy vs intel)_(жёстко закрепить render-shell как legacy-shell, принимающий optional intel fragments)_(layout/profile navigation/stat shell здесь, а listener/recs/providers/community insights приходят как надстройка)
-// scripts/app/profile/render-shell.js
-import { mountProfileCarouselFlat } from './carousel-flat.js';
-import { renderProfileSettings } from './settings-view.js';
-import { getProfileTemplateHtml } from './template.js';
-import { renderYandexAuthBlock } from './yandex-auth-view.js';
-
-// ─── Глобальные слушатели badge — один раз за жизнь страницы ──────────────
-let _badgeListenersBound = false;
-
-function _initBadgeListeners() {
-  if (_badgeListenersBound) return;
-  _badgeListenersBound = true;
-
-  window.addEventListener('yandex:cloud:newer', () => {
-    const btn = document.querySelector('.album-icon[data-album="__profile__"]');
-    if (!btn || btn.querySelector('.cloud-newer-badge')) return;
-
-    if (!document.getElementById('cloud-badge-style')) {
-      const s = document.createElement('style');
-      s.id = 'cloud-badge-style';
-      s.textContent = `@keyframes badgePop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3);opacity:1}100%{transform:scale(1);opacity:1}}`;
-      document.head.appendChild(s);
-    }
-
-    btn.style.position = 'relative';
-    const parent = btn.parentElement;
-    if (parent && getComputedStyle(parent).position === 'static') {
-      parent.style.position = 'relative';
-    }
-
-    const badge = Object.assign(document.createElement('span'), {
-      className: 'cloud-newer-badge',
-      textContent: '!'
-    });
-    badge.title = 'В облаке есть более новые данные';
-    badge.style.cssText = [
-      'position:absolute', 'top:-4px', 'right:-4px',
-      'width:16px', 'height:16px', 'background:#ff9800',
-      'border-radius:50%', 'font-size:10px', 'font-weight:900',
-      'color:#000', 'display:flex', 'align-items:center',
-      'justify-content:center', 'z-index:10', 'pointer-events:none',
-      'animation:badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both'
-    ].join(';');
-    btn.appendChild(badge);
-  });
-
-  window.addEventListener('backup:sync:ready', (e) => {
-    const reasons = ['auto_restore', 'cloud_not_newer', 'user_skipped_restore', 'restore_completed', 'manual_save'];
-    if (reasons.includes(e.detail?.reason)) {
-      document.querySelectorAll('.cloud-newer-badge').forEach(b => b.remove());
-    }
-  });
-
-  // Fresh-login и manual restore теперь обслуживает auth-onboarding-orchestrator.js напрямую из yandex-auth.js.
-  // Слушатель yandex:restore:entry удалён как устаревший — всё управление flow теперь в одном месте.
-}
-
-// Инициализируем сразу при импорте — строго один раз
-_initBadgeListeners();
-
-// ─── Основная функция рендера профиля ────────────────────────────────────────
-export const renderProfileShell = ({
-  container: c,
-  profile: p,
-  tokens: tk,
-  totalFull: tF,
-  totalSec: tS,
-  streak: strk,
-  achCount: aC
-}) => {
-  if (!c) return;
-
-  const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
-  const fmt = window.Utils?.fmt;
-  const timeStr = fmt?.durationHuman ? fmt.durationHuman(tS || 0) : `${Math.floor((tS || 0) / 60)}м`;
-  const since = p?.createdAt
-    ? new Date(p.createdAt).toLocaleDateString('ru-RU')
-    : (localStorage.getItem('app:first-install-ts')
-        ? new Date(Number(localStorage.getItem('app:first-install-ts'))).toLocaleDateString('ru-RU')
-        : '—');
-  const daysWithUs = p?.createdAt
-    ? Math.floor((Date.now() - Number(p.createdAt)) / 86400000)
-    : (localStorage.getItem('app:first-install-ts')
-        ? Math.floor((Date.now() - Number(localStorage.getItem('app:first-install-ts'))) / 86400000)
-        : 0);
-
-  // Рендерим HTML-скелет профиля только один раз.
-  // ВАЖНО: повторный full innerHTML здесь убивает/сбрасывает player host внутри #track-list.
-  if (!c.querySelector('.profile-wrap')) c.innerHTML = getProfileTemplateHtml();
-
-  // Заполняем начальные данные
-  const $ = sel => c.querySelector(sel);
-
-  const avatarBtn = $('#prof-avatar-btn');
-  if (avatarBtn) avatarBtn.textContent = p?.avatar || '😎';
-
-  const nameInp = $('#prof-name-inp');
-  if (nameInp) nameInp.value = p?.name || 'Слушатель';
-
-  const sinceEl = $('#prof-meta-since');
-  if (sinceEl) sinceEl.textContent = `📅 Слушаю с: ${since}`;
-
-  const daysEl = $('#prof-meta-days');
-  if (daysEl) daysEl.textContent = `🎵 Дней с нами: ${daysWithUs}`;
-
-  // Быстрая статистика (мини-карточки в tab-stats)
-  const statTracks = $('#prof-stat-tracks');
-  if (statTracks) statTracks.textContent = String(tF || 0);
-
-  const statTime = $('#prof-stat-time');
-  if (statTime) statTime.textContent = timeStr;
-
-  const statStreak = $('#prof-stat-streak');
-  if (statStreak) statStreak.textContent = String(strk || 0);
-
-  const statAch = $('#prof-stat-ach');
-  if (statAch) statAch.textContent = String(aC || 0);
-
-  // Монтируем 3D-карусель (заменяет заглушку .profile-tabs)
-  try {
-    mountProfileCarouselFlat({ root: c });
-  } catch (e) {
-    console.warn('[renderProfileShell] carousel failed:', e);
-  }
-
-  // Рендерим настройки
-  const settingsTab = $('#tab-settings');
-  if (settingsTab) {
-    try {
-      renderProfileSettings(settingsTab);
-    } catch (e) {
-      console.warn('[renderProfileShell] settings failed:', e);
-    }
-  }
-
-  // Рендерим блок Яндекс-авторизации
-  const authGrid = $('#prof-auth-grid');
-  if (authGrid) {
-    try {
-      renderYandexAuthBlock({ root: authGrid, localProfile: p });
-    } catch (e) {
-      console.warn('[renderProfileShell] yandex auth failed:', e);
-    }
-  }
-};
-
+import { mountProfileCarouselFlat } from './carousel-flat.js'; import { renderProfileSettings } from './settings-view.js'; import { getProfileTemplateHtml } from './template.js'; import { renderYandexAuthBlock } from './yandex-auth-view.js';
+let _bL = false;
+function _iBL() { if(_bL)return; _bL=true; window.addEventListener('yandex:cloud:newer',()=>{const b=document.querySelector('.album-icon[data-album="__profile__"]');if(!b||b.querySelector('.cloud-newer-badge'))return;if(!document.getElementById('cloud-badge-style')){const s=document.createElement('style');s.id='cloud-badge-style';s.textContent='@keyframes badgePop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3);opacity:1}100%{transform:scale(1);opacity:1}}';document.head.appendChild(s)}b.style.position='relative';const p=b.parentElement;if(p&&getComputedStyle(p).position==='static')p.style.position='relative';const bg=Object.assign(document.createElement('span'),{className:'cloud-newer-badge',textContent:'!'});bg.title='В облаке есть более новые данные';bg.style.cssText='position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:#ff9800;border-radius:50%;font-size:10px;font-weight:900;color:#000;display:flex;align-items:center;justify-content:center;z-index:10;pointer-events:none;animation:badgePop 0.3s cubic-bezier(.34,1.56,.64,1) both';b.appendChild(bg)}); window.addEventListener('backup:sync:ready',e=>{if(['auto_restore','cloud_not_newer','user_skipped_restore','restore_completed','manual_save'].includes(e.detail?.reason))document.querySelectorAll('.cloud-newer-badge').forEach(x=>x.remove())}); }
+_iBL();
+export const renderProfileShell = ({ container: c, profile: p, tokens: tk, totalFull: tF, totalSec: tS, streak: strk, achCount: aC }) => { if(!c)return; const f=window.Utils?.fmt, tM=f?.durationHuman?f.durationHuman(tS||0):`${Math.floor((tS||0)/60)}м`, sn=p?.createdAt?new Date(p.createdAt).toLocaleDateString('ru-RU'):(localStorage.getItem('app:first-install-ts')?new Date(Number(localStorage.getItem('app:first-install-ts'))).toLocaleDateString('ru-RU'):'—'), dy=p?.createdAt?Math.floor((Date.now()-Number(p.createdAt))/86400000):(localStorage.getItem('app:first-install-ts')?Math.floor((Date.now()-Number(localStorage.getItem('app:first-install-ts')))/86400000):0); if(!c.querySelector('.profile-wrap'))c.innerHTML=getProfileTemplateHtml(); const $=s=>c.querySelector(s), aB=$('#prof-avatar-btn');if(aB)aB.textContent=p?.avatar||'😎'; const nI=$('#prof-name-inp');if(nI)nI.value=p?.name||'Слушатель'; const sE=$('#prof-meta-since');if(sE)sE.textContent=`📅 Слушаю с: ${sn}`; const dE=$('#prof-meta-days');if(dE)dE.textContent=`🎵 Дней с нами: ${dy}`; const sTr=$('#prof-stat-tracks');if(sTr)sTr.textContent=String(tF||0); const sTi=$('#prof-stat-time');if(sTi)sTi.textContent=tM; const sSt=$('#prof-stat-streak');if(sSt)sSt.textContent=String(strk||0); const sAc=$('#prof-stat-ach');if(sAc)sAc.textContent=String(aC||0); try{mountProfileCarouselFlat({root:c})}catch(e){} const sT=$('#tab-settings');if(sT)try{renderProfileSettings(sT)}catch(e){} const aG=$('#prof-auth-grid');if(aG)try{renderYandexAuthBlock({root:aG,localProfile:p})}catch(e){} };
 export default { renderProfileShell };
 
 //=================================================
 // FILE: /scripts/app/profile/restore-backup-runner.js
-import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
-import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
-import { saveRestoreRecoverySnapshot, restoreRecoverySnapshot } from '../../analytics/backup-recovery.js';
-import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
-
-export const importBackupWithFallback = async ({ BackupVault, backup, mode = 'all' } = {}) => {
-  if (!BackupVault || !backup) throw new Error('restore_runner_invalid_input');
-  if (typeof BackupVault.importBackupObject !== 'function') throw new Error('restore_runner_import_api_missing');
-  await BackupVault.importBackupObject(backup, mode);
-  return true;
-};
-
-export const maybeApplyDeviceSettings = async ({
-  BackupVault,
-  disk,
-  token,
-  backup,
-  inheritDeviceKey = null,
-  asNewDevice = false,
-  skipDeviceSettings = false,
-  allowPlaybackSensitive = false
-} = {}) => {
-  if (skipDeviceSettings) return false;
-  if (!BackupVault || !disk || !token) return false;
-  if (typeof BackupVault.importDeviceSettingsObject !== 'function') return false;
-
-  const deviceKey = pickDeviceSettingsRestoreKey({ backup, inheritDeviceKey, asNewDevice });
-  if (!deviceKey) return false;
-
-  try {
-    const meta = await disk.getDeviceSettingsMeta?.(token, deviceKey).catch(() => null);
-    if (!meta?.deviceStableId) return false;
-
-    if (meta?.semanticHash && typeof BackupVault.buildDeviceSettingsObject === 'function') {
-      const localDoc = await BackupVault.buildDeviceSettingsObject().catch(() => null);
-      const localHash = localDoc ? await getDeviceSettingsSemanticHash(localDoc).catch(() => '') : '';
-      if (localHash && localHash === meta.semanticHash) return false;
-    }
-
-    const doc = await disk.downloadDeviceSettings?.(token, deviceKey).catch(() => null);
-    if (!doc || !doc.deviceStableId) return false;
-
-    await BackupVault.importDeviceSettingsObject(doc, { allowPlaybackSensitive: !!allowPlaybackSensitive });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const persistCloudMetaAfterRestore = async ({ disk, token, restoredBackup } = {}) => {
-  const m = await disk.getMeta(token).catch(() => null);
-  if (m) {
-    localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-    localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
-    localStorage.setItem('backup:last_local_summary:v1', JSON.stringify(m));
-    localStorage.setItem('yandex:last_backup_check_ts', String(Date.now()));
-  }
-  localStorage.setItem('yandex:last_backup_local_ts', String(Number(restoredBackup?.revision?.timestamp || restoredBackup?.createdAt || Date.now())));
-  return true;
-};
-
-export const markRestoreCompleted = async () => {
-  try {
-    const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-    markSyncReady('restore_completed');
-    try { markRestoreOrSkipDone('restore_completed'); } catch {}
-  } catch {}
-  return true;
-};
-
-export const refreshAfterRestore = async ({ reason = 'cloud_restore', keepCurrentAlbum = true } = {}) => {
-  try {
-    const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-    await runPostRestoreRefresh({ reason, keepCurrentAlbum });
-  } catch {}
-  return true;
-};
-
-export const runBackupRestore = async ({
-  BackupVault,
-  disk,
-  token,
-  backup,
-  mode = 'all',
-  inheritDeviceKey = null,
-  asNewDevice = false,
-  skipDeviceSettings = false,
-  allowPlaybackSensitive = false,
-  refreshReason = 'cloud_restore',
-  keepCurrentAlbum = true
-} = {}) => {
-  await saveRestoreRecoverySnapshot({ BackupVault, reason: refreshReason }).catch(() => false);
-  try {
-  await importBackupWithFallback({ BackupVault, backup, mode });
-  await maybeApplyDeviceSettings({
-    BackupVault,
-    disk,
-    token,
-    backup,
-    inheritDeviceKey,
-    asNewDevice,
-    skipDeviceSettings,
-    allowPlaybackSensitive
-  });
-  if (inheritDeviceKey && !asNewDevice) {
-    const picked = (Array.isArray(backup?.devices) ? backup.devices : []).find(d => String(d?.deviceStableId || '').trim() === String(inheritDeviceKey || '').trim()) || null;
-    await bindCurrentInstallToDeviceStableId({
-      deviceStableId: inheritDeviceKey,
-      label: picked?.label || '',
-      deviceClass: picked?.class || '',
-      platform: picked?.platform || '',
-      registry: backup?.devices || []
-    }).catch(() => null);
-  } else if (asNewDevice) {
-    await ensureCurrentDeviceRegistryRow({ registry: backup?.devices || [] }).catch(() => null);
-  }
-  await persistCloudMetaAfterRestore({ disk, token, restoredBackup: backup });
-  await markRestoreCompleted();
-  try { window.eventLogger?.log?.('RESTORE_APPLIED', null, { mode, refreshReason, asNewDevice: !!asNewDevice, skipDeviceSettings: !!skipDeviceSettings }); } catch {}
-  await refreshAfterRestore({ reason: refreshReason, keepCurrentAlbum });
-  return true;
-  } catch (e) {
-    window.Modals?.confirm?.({
-      title: 'Ошибка восстановления',
-      textHtml: `Restore не завершился: ${window.Utils?.escapeHtml?.(String(e?.message || '')) || ''}<br><br>Вернуть локальное состояние, сохранённое перед восстановлением?`,
-      confirmText: 'Откатить',
-      cancelText: 'Оставить как есть',
-      onConfirm: async () => {
-        try {
-          await restoreRecoverySnapshot({ BackupVault });
-          window.NotificationSystem?.success?.('Локальное состояние восстановлено ✅');
-        } catch (err) {
-          window.NotificationSystem?.error?.('Откат не удался: ' + String(err?.message || ''));
-        }
-      }
-    });
-    throw e;
-  }
-};
-
-export default {
-  importBackupWithFallback,
-  maybeApplyDeviceSettings,
-  persistCloudMetaAfterRestore,
-  markRestoreCompleted,
-  refreshAfterRestore,
-  runBackupRestore
-};
+import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js'; import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js'; import { saveRestoreRecoverySnapshot, restoreRecoverySnapshot } from '../../analytics/backup-recovery.js'; import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
+export const importBackupWithFallback = async ({ BackupVault: bV, backup: b, mode: m = 'all' } = {}) => { if(!bV||!b)throw new Error('restore_runner_invalid_input'); if(typeof bV.importBackupObject!=='function')throw new Error('restore_runner_import_api_missing'); await bV.importBackupObject(b, m); return true; };
+export const maybeApplyDeviceSettings = async ({ BackupVault: bV, disk: d, token: t, backup: b, inheritDeviceKey: iK = null, asNewDevice: aN = false, skipDeviceSettings: sDS = false, allowPlaybackSensitive: aPS = false } = {}) => { if(sDS||!bV||!d||!t||typeof bV.importDeviceSettingsObject!=='function')return false; const k=pickDeviceSettingsRestoreKey({backup:b,inheritDeviceKey:iK,asNewDevice:aN}); if(!k)return false; try{const m=await d.getDeviceSettingsMeta?.(t,k).catch(()=>null); if(!m?.deviceStableId)return false; if(m?.semanticHash&&typeof bV.buildDeviceSettingsObject==='function'){const lD=await bV.buildDeviceSettingsObject().catch(()=>null),lH=lD?await getDeviceSettingsSemanticHash(lD).catch(()=>''):''; if(lH&&lH===m.semanticHash)return false;} const doc=await d.downloadDeviceSettings?.(t,k).catch(()=>null); if(!doc||!doc.deviceStableId)return false; await bV.importDeviceSettingsObject(doc,{allowPlaybackSensitive:!!aPS}); return true;}catch{return false;} };
+export const persistCloudMetaAfterRestore = async ({ disk: d, token: t, restoredBackup: rB } = {}) => { const m=await d.getMeta(t).catch(()=>null); if(m){const j=JSON.stringify(m); localStorage.setItem('yandex:last_backup_check',j); localStorage.setItem('yandex:last_backup_meta',j); localStorage.setItem('backup:last_local_summary:v1',j); localStorage.setItem('yandex:last_backup_check_ts',String(Date.now()));} localStorage.setItem('yandex:last_backup_local_ts',String(Number(rB?.revision?.timestamp||rB?.createdAt||Date.now()))); return true; };
+export const markRestoreCompleted = async () => { try{const {markSyncReady,markRestoreOrSkipDone}=await import('../../analytics/backup-sync-engine.js'); markSyncReady('restore_completed'); try{markRestoreOrSkipDone('restore_completed')}catch{}}catch{} return true; };
+export const refreshAfterRestore = async ({ reason: r = 'cloud_restore', keepCurrentAlbum: kCA = true } = {}) => { try{const {runPostRestoreRefresh}=await import('./yandex-runtime-refresh.js'); await runPostRestoreRefresh({reason:r,keepCurrentAlbum:kCA});}catch{} return true; };
+export const runBackupRestore = async ({ BackupVault: bV, disk: d, token: t, backup: b, mode: m = 'all', inheritDeviceKey: iK = null, asNewDevice: aN = false, skipDeviceSettings: sDS = false, allowPlaybackSensitive: aPS = false, refreshReason: rR = 'cloud_restore', keepCurrentAlbum: kCA = true } = {}) => { await saveRestoreRecoverySnapshot({BackupVault:bV,reason:rR}).catch(()=>false); try{await importBackupWithFallback({BackupVault:bV,backup:b,mode:m}); await maybeApplyDeviceSettings({BackupVault:bV,disk:d,token:t,backup:b,inheritDeviceKey:iK,asNewDevice:aN,skipDeviceSettings:sDS,allowPlaybackSensitive:aPS}); if(iK&&!aN){const p=(Array.isArray(b?.devices)?b.devices:[]).find(x=>String(x?.deviceStableId||'').trim()===String(iK||'').trim())||null; await bindCurrentInstallToDeviceStableId({deviceStableId:iK,label:p?.label||'',deviceClass:p?.class||'',platform:p?.platform||'',registry:b?.devices||[]}).catch(()=>null);}else if(aN) await ensureCurrentDeviceRegistryRow({registry:b?.devices||[]}).catch(()=>null); await persistCloudMetaAfterRestore({disk:d,token:t,restoredBackup:b}); await markRestoreCompleted(); try{window.eventLogger?.log?.('RESTORE_APPLIED',null,{mode:m,refreshReason:rR,asNewDevice:!!aN,skipDeviceSettings:!!sDS});}catch{} await refreshAfterRestore({reason:rR,keepCurrentAlbum:kCA}); return true; }catch(e){window.Modals?.confirm?.({title:'Ошибка восстановления',textHtml:`Restore не завершился: ${window.Utils?.escapeHtml?.(String(e?.message||''))||''}<br><br>Вернуть локальное состояние, сохранённое перед восстановлением?`,confirmText:'Откатить',cancelText:'Оставить как есть',onConfirm:async()=>{try{await restoreRecoverySnapshot({BackupVault:bV}); window.NotificationSystem?.success?.('Локальное состояние восстановлено ✅');}catch(err){window.NotificationSystem?.error?.('Откат не удался: '+String(err?.message||''));}}}); throw e;} };
+export default { importBackupWithFallback, maybeApplyDeviceSettings, persistCloudMetaAfterRestore, markRestoreCompleted, refreshAfterRestore, runBackupRestore };
 
 //=================================================
 // FILE: /scripts/app/profile/restore-decision.js
 import { safeNum } from '../../analytics/backup-summary.js';
-
 export const RESTORE_SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
-
 const sS = v => String(v == null ? '' : v).trim();
-
 export const sessionKeyForCloudSnapshot = ts => `yandex:onboarding:shown:${Number(ts || 0)}`;
-
-export const isReminderSuppressedForSnapshot = cloudTs => {
-  try {
-    const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
-    const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
-    const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
-    return restoreDone && sameSnapshot;
-  } catch {
-    return false;
-  }
-};
-
-export const isSnoozedUntilNow = () => {
-  try {
-    const until = safeNum(localStorage.getItem(RESTORE_SKIP_REMINDER_KEY));
-    return until > 0 && Date.now() < until;
-  } catch {
-    return false;
-  }
-};
-
-export const snoozeReminder = (hours = 24) => {
-  try {
-    localStorage.setItem(RESTORE_SKIP_REMINDER_KEY, String(Date.now() + Math.max(1, safeNum(hours) || 24) * 3600000));
-  } catch {}
-};
-
-export const shouldTryDeviceSettingsRestore = ({ backup, inheritDeviceKey = null, asNewDevice = false } = {}) => {
-  if (asNewDevice) return false;
-  const explicitKey = sS(inheritDeviceKey);
-  const backupKey = sS(backup?.revision?.sourceDeviceStableId);
-  const hasDevices = Array.isArray(backup?.devices) && backup.devices.length > 0;
-  if (explicitKey) return true;
-  return !!(backupKey && hasDevices);
-};
-
-export const pickDeviceSettingsRestoreKey = ({ backup, inheritDeviceKey = null, asNewDevice = false } = {}) =>
-  shouldTryDeviceSettingsRestore({ backup, inheritDeviceKey, asNewDevice })
-    ? sS(inheritDeviceKey || backup?.revision?.sourceDeviceStableId || '')
-    : '';
-
-export default {
-  RESTORE_SKIP_REMINDER_KEY,
-  sessionKeyForCloudSnapshot,
-  isReminderSuppressedForSnapshot,
-  isSnoozedUntilNow,
-  snoozeReminder,
-  shouldTryDeviceSettingsRestore,
-  pickDeviceSettingsRestoreKey
-};
+export const isReminderSuppressedForSnapshot = cT => { try{return localStorage.getItem('backup:restore_or_skip_done')==='1' && cT>0 && safeNum(localStorage.getItem('yandex:last_backup_local_ts'))>0 && Math.abs(cT-safeNum(localStorage.getItem('yandex:last_backup_local_ts')))<5000;}catch{return false;} };
+export const isSnoozedUntilNow = () => { try{const u=safeNum(localStorage.getItem(RESTORE_SKIP_REMINDER_KEY)); return u>0 && Date.now()<u;}catch{return false;} };
+export const snoozeReminder = (h = 24) => { try{localStorage.setItem(RESTORE_SKIP_REMINDER_KEY, String(Date.now()+Math.max(1,safeNum(h)||24)*3600000));}catch{} };
+export const shouldTryDeviceSettingsRestore = ({ backup: b, inheritDeviceKey: iK = null, asNewDevice: aN = false } = {}) => { if(aN)return false; return !!sS(iK) || !!(sS(b?.revision?.sourceDeviceStableId) && Array.isArray(b?.devices) && b.devices.length>0); };
+export const pickDeviceSettingsRestoreKey = ({ backup: b, inheritDeviceKey: iK = null, asNewDevice: aN = false } = {}) => shouldTryDeviceSettingsRestore({backup:b,inheritDeviceKey:iK,asNewDevice:aN}) ? sS(iK||b?.revision?.sourceDeviceStableId||'') : '';
+export default { RESTORE_SKIP_REMINDER_KEY, sessionKeyForCloudSnapshot, isReminderSuppressedForSnapshot, isSnoozedUntilNow, snoozeReminder, shouldTryDeviceSettingsRestore, pickDeviceSettingsRestoreKey };
 
 //=================================================
 // FILE: /scripts/app/profile/restore-diff.js
-import { safeNum } from '../../analytics/backup-summary.js';
-import { describeEventForUi } from '../../analytics/event-contract.js';
-import { esc, renderCloudSectionCard, fmtDateTime } from './cloud-card-renderers.js';
-
-const jp = (r, f = []) => { try { return JSON.parse(r || ''); } catch { return f; } };
-const activeFav = rows => new Set((Array.isArray(rows) ? rows : []).filter(x => x?.uid && !x.inactiveAt && !x.deletedAt).map(x => String(x.uid)));
-const activePl = rows => new Map((Array.isArray(rows) ? rows : []).filter(x => x?.id && !x.deletedAt).map(x => [String(x.id), x]));
-const localRaw = () => ({ fav: jp(localStorage.getItem('__favorites_v2__') || '[]', []), pl: jp(localStorage.getItem('sc3:playlists') || '[]', []) });
-const cloudRaw = backup => { const ls = backup?.data?.localStorage || {}; return { fav: jp(ls['__favorites_v2__'] || '[]', []), pl: jp(ls['sc3:playlists'] || '[]', []) }; };
-
-const row = (name, l, c, hint = '') => {
-  const d = safeNum(c) - safeNum(l), sign = d > 0 ? `+${d}` : String(d), cls = d > 0 ? '#81c784' : (d < 0 ? '#ffb74d' : '#9db7dd');
-  return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="color:#eaf2ff;font-size:12px">${esc(name)}${hint ? `<div style="color:#667;font-size:10px;margin-top:2px">${esc(hint)}</div>` : ''}</div><div style="font-size:12px;font-weight:900;color:${cls};white-space:nowrap">${safeNum(l)} → ${safeNum(c)} <span style="opacity:.75">(${esc(sign)})</span></div></div>`;
-};
-
-const exactDiff = backup => {
-  const l = localRaw(), c = cloudRaw(backup), lf = activeFav(l.fav), cf = activeFav(c.fav), lp = activePl(l.pl), cp = activePl(c.pl);
-  return {
-    lf, cf, lp, cp,
-    favCloudOnly: [...cf].filter(x => !lf.has(x)).length,
-    favLocalOnly: [...lf].filter(x => !cf.has(x)).length,
-    plCloudOnly: [...cp.keys()].filter(x => !lp.has(x)).length,
-    plLocalOnly: [...lp.keys()].filter(x => !cp.has(x)).length,
-    deletedCloud: (Array.isArray(c.pl) ? c.pl : []).filter(x => x?.deletedAt).length
-  };
-};
-
-const renderEventExample = ev => {
-  const vm = describeEventForUi(ev), title = [vm.title, ev?.uid || ''].filter(Boolean).join(' · ');
-  return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
-    <div style="font-size:11px;color:#eaf2ff">${esc(vm.icon)} ${esc(title)}</div>
-    <div style="font-size:10px;color:#7f93b5;margin-top:1px">${esc(fmtDateTime(ev?.timestamp))}${vm.desc ? ` · ${esc(vm.desc)}` : ''}</div>
-  </div>`;
-};
-
-const renderBranchExamples = branch => {
-  if (!branch) return '';
-  const loc = (branch.localOnlyEvents || []).slice(-3).reverse();
-  const cld = (branch.cloudOnlyEvents || []).slice(-3).reverse();
-  return `<div style="margin-top:10px;display:grid;grid-template-columns:1fr;gap:8px">
-    <div style="font-size:11px;color:#9db7dd;line-height:1.45">Ветки событий: <b>${esc(branch.state)}</b><br>Только локально: <b>${branch.localOnlyCount}</b> · только в облаке: <b>${branch.cloudOnlyCount}</b> · пересечение: <b>${branch.overlapCount}</b></div>
-    ${loc.length ? `<div><div style="font-size:10px;font-weight:900;color:#ffb74d;text-transform:uppercase;letter-spacing:.7px">Последние локальные</div>${loc.map(renderEventExample).join('')}</div>` : ''}
-    ${cld.length ? `<div><div style="font-size:10px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.7px">Последние из облака</div>${cld.map(renderEventExample).join('')}</div>` : ''}
-  </div>`;
-};
-
-export const renderRestoreDiffHtml = ({ backup, localSummary, cloudSummary, devices = [], branch = null, deviceSettingsState = '' } = {}) => {
-  const ex = backup ? exactDiff(backup) : null;
-  const cloudEventCount = safeNum(cloudSummary?.eventCount || backup?.data?.eventLog?.warm?.length || 0);
-  const cloudDeviceCount = safeNum(cloudSummary?.devicesCount || devices.length || 0);
-  const preciseHtml = ex ? `<div style="margin-top:9px;color:#9db7dd;font-size:11px;line-height:1.45">Точный diff: ⭐ из облака +${ex.favCloudOnly}, локальных ⭐ +${ex.favLocalOnly}; плейлистов из облака +${ex.plCloudOnly}, локальных плейлистов +${ex.plLocalOnly}.${deviceSettingsState ? `<br>Device settings: <b>${esc(deviceSettingsState)}</b>` : ''}</div>` : '';
-  return renderCloudSectionCard({ title: 'Что будет объединено', style: 'margin:12px 0', body: `
-    ${row('Уровень', localSummary?.level || 1, cloudSummary?.level || 1, 'не понижается')}
-    ${row('XP', localSummary?.xp || 0, cloudSummary?.xp || 0, 'берётся максимум')}
-    ${row('Достижения', localSummary?.achievementsCount || 0, cloudSummary?.achievementsCount || 0, 'unlock-time сохраняется')}
-    ${row('Избранное', ex ? ex.lf.size : localSummary?.favoritesCount || 0, ex ? ex.cf.size : cloudSummary?.favoritesCount || 0, 'active ⭐ имеет приоритет')}
-    ${row('Плейлисты', ex ? ex.lp.size : localSummary?.playlistsCount || 0, ex ? ex.cp.size : cloudSummary?.playlistsCount || 0, 'удаления идут через корзину')}
-    ${row('События журнала', localSummary?.eventCount || 0, cloudEventCount, 'merge по eventId')}
-    ${row('Устройства', localSummary?.devicesCount || 0, cloudDeviceCount, 'выбор device settings вручную')}
-    ${preciseHtml}
-    ${renderBranchExamples(branch)}
-    ${ex?.deletedCloud ? `<div style="margin-top:8px;color:#ffb74d;font-size:11px">В облаке есть удалённые плейлисты в корзине: <b>${ex.deletedCloud}</b>.</div>` : ''}
-  `});
-};
-
+import { safeNum } from '../../analytics/backup-summary.js'; import { describeEventForUi } from '../../analytics/event-contract.js'; import { esc, renderCloudSectionCard, fmtDateTime } from './cloud-card-renderers.js';
+const jp = (r, f = []) => { try{return JSON.parse(r||'');}catch{return f;} }, aF = r => new Set((Array.isArray(r)?r:[]).filter(x=>x?.uid&&!x.inactiveAt&&!x.deletedAt).map(x=>String(x.uid))), aP = r => new Map((Array.isArray(r)?r:[]).filter(x=>x?.id&&!x.deletedAt).map(x=>[String(x.id),x]));
+const lR = () => ({ fav:jp(localStorage.getItem('__favorites_v2__')||'[]',[]), pl:jp(localStorage.getItem('sc3:playlists')||'[]',[]) }), cR = b => ({ fav:jp(b?.data?.localStorage?.['__favorites_v2__']||'[]',[]), pl:jp(b?.data?.localStorage?.['sc3:playlists']||'[]',[]) });
+const row = (n, l, c, h = '') => { const d=safeNum(c)-safeNum(l), s=d>0?`+${d}`:String(d), cls=d>0?'#81c784':(d<0?'#ffb74d':'#9db7dd'); return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="color:#eaf2ff;font-size:12px">${esc(n)}${h?`<div style="color:#667;font-size:10px;margin-top:2px">${esc(h)}</div>`:''}</div><div style="font-size:12px;font-weight:900;color:${cls};white-space:nowrap">${safeNum(l)} → ${safeNum(c)} <span style="opacity:.75">(${esc(s)})</span></div></div>`; };
+const exactDiff = b => { const l=lR(), c=cR(b), lf=aF(l.fav), cf=aF(c.fav), lp=aP(l.pl), cp=aP(c.pl); return { lf,cf,lp,cp, favCloudOnly:[...cf].filter(x=>!lf.has(x)).length, favLocalOnly:[...lf].filter(x=>!cf.has(x)).length, plCloudOnly:[...cp.keys()].filter(x=>!lp.has(x)).length, plLocalOnly:[...lp.keys()].filter(x=>!cp.has(x)).length, deletedCloud:(Array.isArray(c.pl)?c.pl:[]).filter(x=>x?.deletedAt).length }; };
+const renderEventExample = ev => { const v=describeEventForUi(ev), t=[v.title,ev?.uid||''].filter(Boolean).join(' · '); return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-size:11px;color:#eaf2ff">${esc(v.icon)} ${esc(t)}</div><div style="font-size:10px;color:#7f93b5;margin-top:1px">${esc(fmtDateTime(ev?.timestamp))}${v.desc?` · ${esc(v.desc)}`:''}</div></div>`; };
+const renderBranchExamples = br => { if(!br)return ''; const loc=(br.localOnlyEvents||[]).slice(-3).reverse(), cld=(br.cloudOnlyEvents||[]).slice(-3).reverse(); return `<div style="margin-top:10px;display:grid;grid-template-columns:1fr;gap:8px"><div style="font-size:11px;color:#9db7dd;line-height:1.45">Ветки событий: <b>${esc(br.state)}</b><br>Только локально: <b>${br.localOnlyCount}</b> · только в облаке: <b>${br.cloudOnlyCount}</b> · пересечение: <b>${br.overlapCount}</b></div>${loc.length?`<div><div style="font-size:10px;font-weight:900;color:#ffb74d;text-transform:uppercase;letter-spacing:.7px">Последние локальные</div>${loc.map(renderEventExample).join('')}</div>`:''}${cld.length?`<div><div style="font-size:10px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.7px">Последние из облака</div>${cld.map(renderEventExample).join('')}</div>`:''}</div>`; };
+export const renderRestoreDiffHtml = ({ backup: b, localSummary: lS, cloudSummary: cS, devices: dv = [], branch: br = null, deviceSettingsState: dSS = '' } = {}) => { const e=b?exactDiff(b):null, cEC=safeNum(cS?.eventCount||b?.data?.eventLog?.warm?.length||0), cDC=safeNum(cS?.devicesCount||dv.length||0); const pH=e?`<div style="margin-top:9px;color:#9db7dd;font-size:11px;line-height:1.45">Точный diff: ⭐ из облака +${e.favCloudOnly}, локальных ⭐ +${e.favLocalOnly}; плейлистов из облака +${e.plCloudOnly}, локальных плейлистов +${e.plLocalOnly}.${dSS?`<br>Device settings: <b>${esc(dSS)}</b>`:''}</div>`:''; return renderCloudSectionCard({ title:'Что будет объединено', style:'margin:12px 0', body:`${row('Уровень',lS?.level||1,cS?.level||1,'не понижается')}${row('XP',lS?.xp||0,cS?.xp||0,'берётся максимум')}${row('Достижения',lS?.achievementsCount||0,cS?.achievementsCount||0,'unlock-time сохраняется')}${row('Избранное',e?e.lf.size:lS?.favoritesCount||0,e?e.cf.size:cS?.favoritesCount||0,'active ⭐ имеет приоритет')}${row('Плейлисты',e?e.lp.size:lS?.playlistsCount||0,e?e.cp.size:cS?.playlistsCount||0,'удаления идут через корзину')}${row('События журнала',lS?.eventCount||0,cEC,'merge по eventId')}${row('Устройства',lS?.devicesCount||0,cDC,'выбор device settings вручную')}${pH}${renderBranchExamples(br)}${e?.deletedCloud?`<div style="margin-top:8px;color:#ffb74d;font-size:11px">В облаке есть удалённые плейлисты в корзине: <b>${e.deletedCloud}</b>.</div>`:''}`}); };
 export default { renderRestoreDiffHtml };
 
 //=================================================
 // FILE: /scripts/app/profile/restore-preview-modal.js
-import { BackupVault } from '../../analytics/backup-vault.js';
-import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
-import { renderCloudStatPair } from './cloud-ui-helpers.js';
-import { esc, fmtDateTime, renderInlineActions } from './profile-ui-kit.js';
-
-export const openRestorePreviewModal = (d, oC) => {
-  const s = BackupVault.summarizeBackupObject(d), lI = getLocalBackupUiSnapshot({ name: 'Слушатель' }), c = compareLocalVsCloud(lI, s || {}), cL = getBackupCompareLabel(lI, s || {});
-  const tH = renderCloudStatPair({ localSummary: lI, cloudSummary: s });
-  const m = window.Modals?.open?.({
-    title: 'Предпросмотр восстановления',
-    maxWidth: 400,
-    bodyHtml: `<div class="modal-confirm-text" style="font-size:13px"><b>Дата backup:</b> ${fmtDateTime(s.timestamp)}<br><b>Версия приложения:</b> ${esc(s.appVersion)}<br>${tH}<span style="color:#9db7dd">Сравнение: ${esc(cL)} (${esc(c.state)}). При восстановлении применяется безопасное слияние: высокие результаты (XP, уровни, достижения) не будут понижены, а добавятся к текущим.</span><br><br><b>Выберите режим:</b></div>${renderInlineActions([{ text: 'Восстановить всё', primary: true, attrs: 'data-restore-mode="all"' }, { text: 'Профиль, избранное, плейлисты', attrs: 'data-restore-mode="profile"' }, { text: 'Статистику и достижения', attrs: 'data-restore-mode="stats"' }])}`
-  });
-  m?.addEventListener('click', e => {
-    const b = e.target.closest('[data-restore-mode]');
-    if (b) {
-      m.remove();
-      oC?.(b.dataset.restoreMode || 'all');
-    }
-  });
-};
-
-export const openRestoreVersionPickerModal = (i, oP) => {
-  const l = (Array.isArray(i) ? i : []).slice(0, 5);
-  const bH = l.length ? `<div class="restore-version-picker">
-    <div class="fresh-hero" style="margin-bottom:10px">
-      <div class="fresh-hero-icon">☁️</div>
-      <div><div class="fresh-hero-title">Версии backup</div><div class="fresh-hero-sub">Выберите копию для предпросмотра восстановления.</div></div>
-    </div>
-    <div class="fresh-scroll fresh-version-list">${l.map((it, idx) => {
-      const dev = [it?.sourceDeviceLabel, it?.sourceDeviceClass].filter(Boolean).join(' · ');
-      return `<button type="button" class="fresh-version-card ${idx === 0 ? 'is-picked' : ''}" data-restore-path="${esc(it.path || '')}">
-        <span class="fresh-version-mark">${it.isLatest ? '☁️' : '🕘'}</span>
-        <span class="fresh-version-main">
-          <b>${it.isLatest ? 'Последняя копия' : 'Архивная версия'}</b>
-          <small>${fmtDateTime(it.timestamp)} · ${esc(it.sizeHuman || 'unknown')}${it.appVersion ? ` · v${esc(String(it.appVersion))}` : ''}${dev ? ` · ${esc(dev)}` : ''}${it.checksum ? ' · ✓' : ''}</small>
-        </span>
-      </button>`;
-    }).join('')}</div>
-  </div>` : `<div class="modal-confirm-text" style="text-align:center;color:#9db7dd"><div style="font-size:32px;margin-bottom:12px">☁️</div><div>Список версий backup не получен.</div><div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div></div>`;
-  const m = window.Modals?.open?.({ title: '', maxWidth: 390, bodyHtml: bH });
-  m?.addEventListener('click', e => {
-    const b = e.target.closest('[data-restore-path]');
-    if (b) {
-      m.remove();
-      oP?.(String(b.dataset.restorePath || '').trim() || null);
-    }
-  });
-};
-
+import { BackupVault } from '../../analytics/backup-vault.js'; import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js'; import { renderCloudStatPair } from './cloud-ui-helpers.js'; import { esc, fmtDateTime, renderInlineActions } from './profile-ui-kit.js';
+export const openRestorePreviewModal = (d, oC) => { const s=BackupVault.summarizeBackupObject(d), lI=getLocalBackupUiSnapshot({name:'Слушатель'}), c=compareLocalVsCloud(lI,s||{}), cL=getBackupCompareLabel(lI,s||{}), tH=renderCloudStatPair({localSummary:lI,cloudSummary:s}); const m=window.Modals?.open?.({title:'Предпросмотр восстановления',maxWidth:400,bodyHtml:`<div class="modal-confirm-text" style="font-size:13px"><b>Дата backup:</b> ${fmtDateTime(s.timestamp)}<br><b>Версия приложения:</b> ${esc(s.appVersion)}<br>${tH}<span style="color:#9db7dd">Сравнение: ${esc(cL)} (${esc(c.state)}). При восстановлении применяется безопасное слияние: высокие результаты (XP, уровни, достижения) не будут понижены, а добавятся к текущим.</span><br><br><b>Выберите режим:</b></div>${renderInlineActions([{text:'Восстановить всё',primary:true,attrs:'data-restore-mode="all"'},{text:'Профиль, избранное, плейлисты',attrs:'data-restore-mode="profile"'},{text:'Статистику и достижения',attrs:'data-restore-mode="stats"'}])}`}); m?.addEventListener('click',e=>{const b=e.target.closest('[data-restore-mode]');if(b){m.remove();oC?.(b.dataset.restoreMode||'all');}}); };
+export const openRestoreVersionPickerModal = (i, oP) => { const l=(Array.isArray(i)?i:[]).slice(0,5), bH=l.length?`<div class="restore-version-picker"><div class="fresh-hero" style="margin-bottom:10px"><div class="fresh-hero-icon">☁️</div><div><div class="fresh-hero-title">Версии backup</div><div class="fresh-hero-sub">Выберите копию для предпросмотра восстановления.</div></div></div><div class="fresh-scroll fresh-version-list">${l.map((it,idx)=>{const d=[it?.sourceDeviceLabel,it?.sourceDeviceClass].filter(Boolean).join(' · ');return `<button type="button" class="fresh-version-card ${idx===0?'is-picked':''}" data-restore-path="${esc(it.path||'')}"><span class="fresh-version-mark">${it.isLatest?'☁️':'🕘'}</span><span class="fresh-version-main"><b>${it.isLatest?'Последняя копия':'Архивная версия'}</b><small>${fmtDateTime(it.timestamp)} · ${esc(it.sizeHuman||'unknown')}${it.appVersion?` · v${esc(String(it.appVersion))}`:''}${d?` · ${esc(d)}`:''}${it.checksum?' · ✓':''}</small></span></button>`}).join('')}</div></div>`:`<div class="modal-confirm-text" style="text-align:center;color:#9db7dd"><div style="font-size:32px;margin-bottom:12px">☁️</div><div>Список версий backup не получен.</div><div style="margin-top:8px;font-size:12px;opacity:.7">Проверьте подключение и попробуйте сохранить backup заново.</div></div>`; const m=window.Modals?.open?.({title:'',maxWidth:390,bodyHtml:bH}); m?.addEventListener('click',e=>{const b=e.target.closest('[data-restore-path]');if(b){m.remove();oP?.(String(b.dataset.restorePath||'').trim()||null);}}); };
 export default { openRestorePreviewModal, openRestoreVersionPickerModal };
 
 //=================================================
