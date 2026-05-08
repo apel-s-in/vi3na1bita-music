@@ -454,7 +454,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:09:35 UTC
+Сгенерировано: 2026-05-08 17:11:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1473,6 +1473,7 @@ import { collectSharedSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
 import { buildAchievementBackupState, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
+import { readLedgerCheckpoint } from './event-integrity.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -1495,9 +1496,9 @@ const dedupIntel = arr => Array.isArray(arr) && arr.length ? [...new Map(arr.fil
 
 export const buildBackupDataSnapshot = async () => {
   try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 80)); } catch {}
-  const [st, h, w, a, aM, str, uP, uR, lP, pI, hS, rS, cS, iR] = await Promise.all([metaDB.getAllStats(), metaDB.getEvents('events_hot').catch(()=>[]), metaDB.getEvents('events_warm'), metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('achievement_unlock_meta'), metaDB.getGlobal('global_streak'), metaDB.getGlobal('user_profile'), metaDB.getGlobal('user_profile_rpg'), metaDB.getStoreAll('listener_profile').catch(()=>[]), metaDB.getStoreAll('provider_identity').catch(()=>[]), metaDB.getStoreAll('hybrid_sync').catch(()=>[]), metaDB.getStoreAll('recommendation_state').catch(()=>[]), metaDB.getStoreAll('collection_state').catch(()=>[]), metaDB.getStoreAll('intel_runtime').catch(()=>[])]);
+  const [st, h, w, a, aM, str, uP, uR, lP, pI, hS, rS, cS, iR, ledger] = await Promise.all([metaDB.getAllStats(), metaDB.getEvents('events_hot').catch(()=>[]), metaDB.getEvents('events_warm'), metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('achievement_unlock_meta'), metaDB.getGlobal('global_streak'), metaDB.getGlobal('user_profile'), metaDB.getGlobal('user_profile_rpg'), metaDB.getStoreAll('listener_profile').catch(()=>[]), metaDB.getStoreAll('provider_identity').catch(()=>[]), metaDB.getStoreAll('hybrid_sync').catch(()=>[]), metaDB.getStoreAll('recommendation_state').catch(()=>[]), metaDB.getStoreAll('collection_state').catch(()=>[]), metaDB.getStoreAll('intel_runtime').catch(()=>[]), readLedgerCheckpoint(metaDB).catch(()=>null)]);
   const warmTrimmed = normalizeEventList([...(Array.isArray(w)?w:[]), ...(Array.isArray(h)?h:[])], { limit: 10000 });
-  return { stats: st, eventLog: { warm: warmTrimmed }, achievements: a?.value || {}, streaks: str?.value || {}, userProfile: uP?.value || { name: 'Слушатель', avatar: '😎' }, userProfileRpg: uR?.value || { xp: 0, level: 1 }, achievementState: buildAchievementBackupState({ unlocked: a?.value || {}, unlockMeta: { ...deriveAchievementUnlockMetaFromEvents(warmTrimmed), ...(aM?.value || {}) }, profileRpg: uR?.value || { xp: 0, level: 1 }, streaks: str?.value || {}, events: warmTrimmed }), localStorage: collectSharedSnapshotLocalStorage(localStorage), intel: { listenerProfile: dedupIntel(lP), providerIdentity: dedupIntel(pI), hybridSync: dedupIntel(hS), recommendationState: dedupIntel(rS), collectionState: dedupIntel(cS), intelRuntime: dedupIntel(iR) } };
+  return { stats: st, eventLog: { warm: warmTrimmed }, ledger: ledger || {}, achievements: a?.value || {}, streaks: str?.value || {}, userProfile: uP?.value || { name: 'Слушатель', avatar: '😎' }, userProfileRpg: uR?.value || { xp: 0, level: 1 }, achievementState: buildAchievementBackupState({ unlocked: a?.value || {}, unlockMeta: { ...deriveAchievementUnlockMetaFromEvents(warmTrimmed), ...(aM?.value || {}) }, profileRpg: uR?.value || { xp: 0, level: 1 }, streaks: str?.value || {}, events: warmTrimmed }), localStorage: collectSharedSnapshotLocalStorage(localStorage), intel: { listenerProfile: dedupIntel(lP), providerIdentity: dedupIntel(pI), hybridSync: dedupIntel(hS), recommendationState: dedupIntel(rS), collectionState: dedupIntel(cS), intelRuntime: dedupIntel(iR) } };
 };
 
 export const buildBackupRevision = ({ identity: i, devices: dv, data: d, currentDevice: c } = {}) => normalizeCloudBackupMeta({ timestamp: Date.now(), appVersion: window.APP_CONFIG?.APP_VERSION || null, version: '6.0', eventCount: Array.isArray(d?.eventLog?.warm) ? d.eventLog.warm.length : 0, statsCount: Array.isArray(d?.stats) ? d.stats.length : 0, devicesCount: Array.isArray(dv) ? dv.length : 0, profileName: String(d?.userProfile?.name || 'Слушатель'), sourceDeviceStableId: String(c?.deviceStableId || ''), sourceDeviceLabel: String(c?.label || ''), sourceDeviceClass: String(c?.class || ''), sourcePlatform: String(c?.platform || ''), ownerYandexId: String(i?.ownerYandexId || ''), achievementsCount: Object.keys(d?.achievements || {}).length, level: Math.max(1, Number(d?.userProfileRpg?.level || 1)), xp: Number(d?.userProfileRpg?.xp || 0), deviceStableCount: DeviceRegistry.countDeviceStableIds(dv || []) });
@@ -1510,8 +1511,10 @@ export const buildDeviceSettingsObject = async ({ identity: id, currentDevice: c
 
 export const buildFullBackupObject = async () => {
   const [identity, devices, data] = await Promise.all([readBackupOwnerIdentity(), readDeviceRegistryForBackup(), buildBackupDataSnapshot()]), curIdentity = DeviceRegistry.getCurrentDeviceIdentity(), currentDevice = Array.isArray(devices) ? devices.find(x => (curIdentity?.deviceStableId && x.deviceStableId === curIdentity.deviceStableId) || (curIdentity?.deviceHash && x.deviceHash === curIdentity.deviceHash)) || devices[0] || null;
-  const revision = buildBackupRevision({ identity, devices, data, currentDevice }), payloadHash = await sha256Hex(stableStringify({ identity, devices, revision, data }));
-  return { version: '6.0', createdAt: Date.now(), identity, devices, revision, integrity: { algorithm: 'SHA-256', payloadHash, ownerBinding: await sha256Hex(`${identity.ownerYandexId||'anon'}::${identity.internalUserId||'local'}::${payloadHash}`), createdByAppVersion: window.APP_CONFIG?.APP_VERSION || 'unknown', schemaVersion: '6.0', minReaderVersion: '8.3.0', sourceDeviceStableId: String(currentDevice?.deviceStableId || ''), eventLogHash: await sha256Hex(stableStringify(data?.eventLog?.warm || [])), sharedStorageHash: await sha256Hex(stableStringify(data?.localStorage || {})) }, data };
+  const eventLogHash = await sha256Hex(stableStringify(data?.eventLog?.warm || [])), sharedStorageHash = await sha256Hex(stableStringify(data?.localStorage || {})), ledger = data?.ledger || {};
+  const revision = { ...buildBackupRevision({ identity, devices, data, currentDevice }), eventLedgerHead: String(ledger.headHash || ''), eventLedgerSeq: Number(ledger.deviceSeq || 0), eventLedgerDeviceStableId: String(ledger.deviceStableId || currentDevice?.deviceStableId || ''), eventLogHash, sharedStorageHash };
+  const payloadHash = await sha256Hex(stableStringify({ identity, devices, revision, data }));
+  return { version: '6.0', createdAt: Date.now(), identity, devices, revision, integrity: { algorithm: 'SHA-256', payloadHash, ownerBinding: await sha256Hex(`${identity.ownerYandexId||'anon'}::${identity.internalUserId||'local'}::${payloadHash}`), createdByAppVersion: window.APP_CONFIG?.APP_VERSION || 'unknown', schemaVersion: '6.0', minReaderVersion: '8.3.0', sourceDeviceStableId: String(currentDevice?.deviceStableId || ''), eventLedgerHead: revision.eventLedgerHead, eventLedgerSeq: revision.eventLedgerSeq, eventLedgerDeviceStableId: revision.eventLedgerDeviceStableId, eventLogHash, sharedStorageHash }, data };
 };
 
 export default { stableStringify, sha256Hex, readBackupOwnerIdentity, readDeviceRegistryForBackup, buildBackupDataSnapshot, buildBackupRevision, buildDeviceSettingsObject, buildFullBackupObject };
