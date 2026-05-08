@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 15:17:47 UTC
+Сгенерировано: 2026-05-08 15:20:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2756,156 +2756,116 @@ window.PlaybackCache = window.PlaybackCache || {}; window.PlaybackCache.getWindo
 //=================================================
 // FILE: /scripts/app/player/favorites-only-actions.js
 import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
-
 const W = window, esc = s => W.Utils?.escapeHtml?.(String(s || '')) || String(s || ''), isFavOnlyOn = () => localStorage.getItem('favoritesOnlyMode') === '1';
 
-export function openFavoritesOnlyConflictModal({ track, onDisable, onAddFavorite, hidden = false } = {}) {
-  if (!W.Modals?.choice || !track) return null;
-  return W.Modals.choice({
-    title: 'Режим только избранные',
-    textHtml: `Плеер работает в режиме <b>только избранные</b>.<br><br><b>${esc(track.title || 'Трек')}</b>${hidden ? ' скрыт.' : ' не отмечен ⭐.'}<br><br>Выберите действие:`,
-    actions: [{ key: 'disable', text: 'Отключить F и воспроизвести', primary: true, onClick: () => onDisable?.() }, ...(!hidden ? [{ key: 'add', text: 'Добавить ⭐ и играть в F', onClick: () => onAddFavorite?.() }] : []), { key: 'cancel', text: 'Отмена', onClick: () => {} }]
-  });
-}
+export const openFavoritesOnlyConflictModal = ({ track, onDisable, onAddFavorite, hidden = false } = {}) => W.Modals?.choice ? W.Modals.choice({
+  title: 'Режим только избранные', textHtml: `Плеер работает в режиме <b>только избранные</b>.<br><br><b>${esc(track?.title || 'Трек')}</b>${hidden ? ' скрыт.' : ' не отмечен ⭐.'}<br><br>Выберите действие:`,
+  actions: [{ key: 'disable', text: 'Отключить F и воспроизвести', primary: true, onClick: () => onDisable?.() }, ...(!hidden ? [{ key: 'add', text: 'Добавить ⭐ и играть в F', onClick: () => onAddFavorite?.() }] : []), { key: 'cancel', text: 'Отмена', onClick: () => {} }]
+}) : null;
 
-export function makeFavoritesOnlyAfterPlay({ highlight, ensureBlock } = {}) {
-  return ({ index = -1, uid = '', albumKey = '' } = {}) => { highlight?.(index, { uid, albumKey }); ensureBlock?.(index, { userInitiated: true }); W.PlayerUI?.updatePlaylistFiltering?.(); };
-}
+export const makeFavoritesOnlyAfterPlay = ({ highlight, ensureBlock } = {}) => ({ index = -1, uid = '', albumKey = '' } = {}) => { highlight?.(index, { uid, albumKey }); ensureBlock?.(index, { userInitiated: true }); W.PlayerUI?.updatePlaylistFiltering?.(); };
 
-export function playWithFavoritesOnlyResolution({ list = [], uid, albumKey = '', track = null, hidden = false, play, addFavorite, disableMode, afterPlay } = {}) {
+export const playWithFavoritesOnlyResolution = ({ list = [], uid, albumKey = '', track = null, hidden = false, play, addFavorite, disableMode, afterPlay } = {}) => {
   const pc = W.playerCore, gate = W.FavoritesOnlyResolver?.canLaunchTrackInFavoritesOnlyContext?.({ uid, albumKey }) || { ok: true }, runPlay = () => { const ok = play?.(list, uid); if (ok !== false) { pc?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); afterPlay?.(); } return ok; };
   if (!isFavOnlyOn() || gate.ok) return runPlay();
   return openFavoritesOnlyConflictModal({ track, hidden: hidden || gate.reason === 'hidden', onDisable: () => { disableMode?.(); runPlay(); }, onAddFavorite: (hidden || gate.reason === 'hidden') ? null : () => { addFavorite?.(uid); runPlay(); } });
-}
+};
 
-export function syncFavoritesOnlyUiFrame({ applyDomFilter = () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.() } = {}) { applyDomFilter?.(); requestAnimationFrame(() => applyDomFilter?.()); }
+export const syncFavoritesOnlyUiFrame = ({ applyDomFilter = () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.() } = {}) => { applyDomFilter?.(); requestAnimationFrame(() => applyDomFilter?.()); };
 
-export function syncFavoritesOnlyPlayback({ player = W.playerCore, autoPlayIfNeeded = true, forceReload = false, syncUi } = {}) {
+export const syncFavoritesOnlyPlayback = ({ player = W.playerCore, autoPlayIfNeeded = true, forceReload = false, syncUi } = {}) => {
   if (!player) return { ok: false, reason: 'no_player' };
   const applied = player.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded, forceReload }); syncUi?.();
   return applied === false ? { ok: false, reason: 'empty' } : { ok: true };
-}
+};
 
-export function toggleFavoritesOnlyMode({ player = W.playerCore, storage = localStorage, syncUi } = {}) {
+export const toggleFavoritesOnlyMode = ({ player = W.playerCore, storage = localStorage, syncUi } = {}) => {
   if (!player) return { ok: false, enabled: isFavOnlyOn(), reason: 'no_player' };
   const next = !isFavOnlyOn(); storage.setItem('favoritesOnlyMode', next ? '1' : '0'); markDeviceSettingsDirty();
   const res = syncFavoritesOnlyPlayback({ player, autoPlayIfNeeded: true, forceReload: false, syncUi });
   if (next && !res.ok) { storage.setItem('favoritesOnlyMode', '0'); markDeviceSettingsDirty(); syncUi?.(); return { ok: false, enabled: false, reason: 'empty' }; }
   return { ok: true, enabled: next };
-}
+};
 
-const api = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyUiFrame, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
-W.FavoritesOnlyActions = api;
-export default api;
+W.FavoritesOnlyActions = { openFavoritesOnlyConflictModal, makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution, syncFavoritesOnlyUiFrame, syncFavoritesOnlyPlayback, toggleFavoritesOnlyMode };
+export default W.FavoritesOnlyActions;
 
 //=================================================
 // FILE: /scripts/app/player/favorites-only-resolver.js
 const W = window, sUid = v => String(v || '').trim() || null, isFavView = key => String(key || '') === (W.SPECIAL_FAVORITES_KEY || '__favorites__'), isShowcase = key => String(key || '').startsWith(W.SPECIAL_SHOWCASE_KEY || '__showcase__'), normalizeTrack = t => t && sUid(t.uid) ? t : null;
 
-const getShowcaseHiddenSet = (albumKey) => {
-  try { if (!isShowcase(albumKey) || !W.ShowcaseManager?._ctxHiddenSet) return new Set(); const raw = String(albumKey || ''), id = raw.includes(':') ? raw.slice(raw.indexOf(':') + 1) : '__default__'; return new Set(W.ShowcaseManager._ctxHiddenSet(id)); } catch { return new Set(); }
+const getShowcaseHiddenSet = albumKey => { try { if (!isShowcase(albumKey) || !W.ShowcaseManager?._ctxHiddenSet) return new Set(); const raw = String(albumKey || ''), id = raw.includes(':') ? raw.slice(raw.indexOf(':') + 1) : '__default__'; return new Set(W.ShowcaseManager._ctxHiddenSet(id)); } catch { return new Set(); } };
+
+export const resolveFavoritesOnlyState = ({ sourcePlaylist = [], playingAlbum = '', favoritesOnly = false, currentUid = null, isFavorite = () => false, favoritesState = { active: [], inactive: [] } } = {}) => {
+  const src = sourcePlaylist.map(normalizeTrack).filter(Boolean), hiddenSet = getShowcaseHiddenSet(playingAlbum), activeFavSet = new Set((favoritesState.active || []).map(i => sUid(i.uid)).filter(Boolean));
+  const basePlayable = src.filter(t => { const uid = sUid(t.uid); return uid && !hiddenSet.has(uid) && !(isFavView(playingAlbum) && !activeFavSet.has(uid)); }), favPlayable = basePlayable.filter(t => isFavorite(sUid(t.uid))), resolved = favoritesOnly ? favPlayable : basePlayable, currentAllowed = !!resolved.find(t => sUid(t.uid) === sUid(currentUid)), currentIndex = resolved.findIndex(t => sUid(t.uid) === sUid(currentUid));
+  return { sourcePlaylist: src, playingAlbum, hiddenSet, basePlayable, favoritesPlayable: favPlayable, resolvedPlaylist: resolved, currentAllowed, currentIndex, firstPlayableUid: sUid(resolved[0]?.uid), isEmptyForFavoritesMode: favPlayable.length === 0 };
 };
 
-export function resolveFavoritesOnlyState({ sourcePlaylist = [], playingAlbum = '', favoritesOnly = false, currentUid = null, isFavorite = () => false, favoritesState = { active: [], inactive: [] } } = {}) {
-  const src = sourcePlaylist.map(normalizeTrack).filter(Boolean), hiddenSet = getShowcaseHiddenSet(playingAlbum), activeFavSet = new Set((favoritesState.active || []).map(i => sUid(i.uid)).filter(Boolean));
-  const basePlayable = src.filter(t => { const uid = sUid(t.uid); return uid && !hiddenSet.has(uid) && !(isFavView(playingAlbum) && !activeFavSet.has(uid)); });
-  const favPlayable = basePlayable.filter(t => isFavorite(sUid(t.uid))), resolved = favoritesOnly ? favPlayable : basePlayable, currentAllowed = !!resolved.find(t => sUid(t.uid) === sUid(currentUid)), currentIndex = resolved.findIndex(t => sUid(t.uid) === sUid(currentUid));
-  return { sourcePlaylist: src, playingAlbum, hiddenSet, basePlayable, favoritesPlayable: favPlayable, resolvedPlaylist: resolved, currentAllowed, currentIndex, firstPlayableUid: sUid(resolved[0]?.uid), isEmptyForFavoritesMode: favPlayable.length === 0 };
-}
+export const getFavoritesOnlyVisibleUidSetForContext = ({ contextType = 'album', albumKey = '', sourcePlaylist = [], isFavorite = () => false, favoritesState = { active: [], inactive: [] } } = {}) => contextType === 'favorites' ? new Set([...new Set((favoritesState.active || []).map(i => sUid(i.uid)).filter(Boolean))].filter(uid => isFavorite(uid))) : new Set((resolveFavoritesOnlyState({ sourcePlaylist, playingAlbum: albumKey, favoritesOnly: true, currentUid: null, isFavorite, favoritesState }).resolvedPlaylist || []).map(t => sUid(t.uid)).filter(Boolean));
 
-export function getFavoritesOnlyVisibleUidSetForContext({ contextType = 'album', albumKey = '', sourcePlaylist = [], isFavorite = () => false, favoritesState = { active: [], inactive: [] } } = {}) {
-  if (contextType === 'favorites') { const active = new Set((favoritesState.active || []).map(i => sUid(i.uid)).filter(Boolean)); return new Set([...active].filter(uid => isFavorite(uid))); }
-  return new Set((resolveFavoritesOnlyState({ sourcePlaylist, playingAlbum: albumKey, favoritesOnly: true, currentUid: null, isFavorite, favoritesState }).resolvedPlaylist || []).map(t => sUid(t.uid)).filter(Boolean));
-}
+export const getFavoritesOnlyVisibleUidSet = (opts = {}) => getFavoritesOnlyVisibleUidSetForContext({ ...opts, contextType: isFavView(opts.playingAlbum) ? 'favorites' : (isShowcase(opts.playingAlbum) ? 'showcase' : 'album'), albumKey: opts.playingAlbum });
 
-export function getFavoritesOnlyVisibleUidSet(opts = {}) {
-  return getFavoritesOnlyVisibleUidSetForContext({ ...opts, contextType: isFavView(opts.playingAlbum) ? 'favorites' : (isShowcase(opts.playingAlbum) ? 'showcase' : 'album'), albumKey: opts.playingAlbum });
-}
-
-export function canLaunchTrackInFavoritesOnlyContext({ uid, albumKey } = {}) {
+export const canLaunchTrackInFavoritesOnlyContext = ({ uid, albumKey } = {}) => {
   const safeUid = sUid(uid); if (!safeUid) return { ok: false, reason: 'bad_uid' };
   if (!W.playerCore || String(localStorage.getItem('favoritesOnlyMode') || '0') !== '1') return { ok: true };
   if (getShowcaseHiddenSet(albumKey).has(safeUid)) return { ok: false, reason: 'hidden' };
   if (!W.playerCore.isFavorite(safeUid)) return { ok: false, reason: 'not_favorite' };
   return { ok: true };
-}
+};
 
-const api = { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, getFavoritesOnlyVisibleUidSetForContext, canLaunchTrackInFavoritesOnlyContext };
-W.FavoritesOnlyResolver = api;
-export default api;
+W.FavoritesOnlyResolver = { resolveFavoritesOnlyState, getFavoritesOnlyVisibleUidSet, getFavoritesOnlyVisibleUidSetForContext, canLaunchTrackInFavoritesOnlyContext };
+export default W.FavoritesOnlyResolver;
 
 //=================================================
 // FILE: /scripts/app/player/playback-clock.js
 const W = window;
 let _init = false, _state = { uid: null, currentTime: 0, duration: 0, isPlaying: false, visibility: document.visibilityState || 'visible', uiBackgroundSuspend: document.visibilityState === 'hidden', ts: Date.now() };
 
-const emit = () => { _state.ts = Date.now(); W.dispatchEvent(new CustomEvent('playback:clock', { detail: { ..._state } })); };
 const pull = () => {
   const pc = W.playerCore, vis = document.visibilityState || 'visible';
   _state = { ..._state, uid: String(pc?.getCurrentTrackUid?.() || '') || null, currentTime: Number(pc?.getPosition?.() || 0), duration: Number(pc?.getDuration?.() || 0), isPlaying: !!pc?.isPlaying?.(), visibility: vis, uiBackgroundSuspend: vis === 'hidden', ts: Date.now() };
-  emit();
+  W.dispatchEvent(new CustomEvent('playback:clock', { detail: { ..._state } }));
 };
 
-export function initPlaybackClock() {
+export const initPlaybackClock = () => {
   if (_init) return; _init = true;
   ['player:play', 'player:pause', 'player:stop', 'player:ended', 'player:trackChanged', 'player:tick'].forEach(n => W.addEventListener(n, pull));
   document.addEventListener('visibilitychange', pull); pull();
-}
-export function getPlaybackClock() { return { ..._state }; }
+};
 
+export const getPlaybackClock = () => ({ ..._state });
 W.PlaybackClock = { initPlaybackClock, getPlaybackClock };
 export default W.PlaybackClock;
 
 //=================================================
 // FILE: /scripts/app/player/playback-context-source.js
 const W = window, FAV = W.SPECIAL_FAVORITES_KEY || '__favorites__', SHOW = W.SPECIAL_SHOWCASE_KEY || '__showcase__', LOGO = 'img/logo.png', s = v => String(v || '').trim();
+const mapAlbumTrack = (albumKey, albumData, cover, t) => ({ src: t.src, sources: t.sources, title: t.title, artist: albumData.artist, album: albumData.title, cover: cover || LOGO, uid: t.uid, lyrics: t.lyrics, fulltext: t.fulltext, hasLyrics: t.hasLyrics, sourceAlbum: albumKey });
 
-function mapAlbumTrack(albumKey, albumData, cover, t) { return { src: t.src, sources: t.sources, title: t.title, artist: albumData.artist, album: albumData.title, cover: cover || LOGO, uid: t.uid, lyrics: t.lyrics, fulltext: t.fulltext, hasLyrics: t.hasLyrics, sourceAlbum: albumKey }; }
+export const getFavoritesSourcePlaylist = () => (W.playerCore?.getFavoritesState?.()?.active || []).map(i => {
+  const tr = W.TrackRegistry?.getTrackByUid?.(i.uid) || {}, sAlb = i.sourceAlbum || tr.sourceAlbum || null;
+  return { ...tr, uid: i.uid, sourceAlbum: sAlb, album: 'Избранное', cover: W.AlbumsManager?.covers?.get?.(sAlb) || LOGO };
+}).filter(t => t?.uid);
 
-export function getFavoritesSourcePlaylist() {
-  return (W.playerCore?.getFavoritesState?.()?.active || []).map(i => {
-    const tr = W.TrackRegistry?.getTrackByUid?.(i.uid) || {}, sAlb = i.sourceAlbum || tr.sourceAlbum || null;
-    return { ...tr, uid: i.uid, sourceAlbum: sAlb, album: 'Избранное', cover: W.AlbumsManager?.covers?.get?.(sAlb) || 'img/logo.png' };
-  }).filter(t => t?.uid);
-}
-
-export function getAlbumSourcePlaylist(albumKey) {
+export const getAlbumSourcePlaylist = albumKey => {
   const key = s(albumKey); if (!key) return [];
   if (key === FAV) return getFavoritesSourcePlaylist();
   if (String(key).startsWith(SHOW)) return W.ShowcaseManager?.getContextSourcePlaylist?.(key) || [];
   const am = W.AlbumsManager, d = am?.cache?.get?.(key); if (!d) return [];
   if (!d._pTracks) d._pTracks = (d.tracks || []).filter(t => t.src).map(t => mapAlbumTrack(key, d, am?.covers?.get?.(key) || LOGO, t));
   return d._pTracks || [];
-}
+};
 
-export function getSourcePlaylistForContext(albumKey) { return getAlbumSourcePlaylist(albumKey); }
+export const getSourcePlaylistForContext = albumKey => getAlbumSourcePlaylist(albumKey);
 
-const api = { getFavoritesSourcePlaylist, getAlbumSourcePlaylist, getSourcePlaylistForContext };
-W.PlaybackContextSource = api;
-export default api;
+W.PlaybackContextSource = { getFavoritesSourcePlaylist, getAlbumSourcePlaylist, getSourcePlaylistForContext };
+export default W.PlaybackContextSource;
 
 //=================================================
 // FILE: /scripts/app/profile/account-benefits-view.js
 import { esc } from './profile-ui-kit.js';
-
-export const renderAccountBenefitsBlock = () => `<div class="yandex-auth-note account-benefits-block">
-  <div style="font-size:12px;font-weight:900;color:#4daaff;margin-bottom:8px">☁️ Зачем авторизоваться?</div>
-  <div style="font-size:11px;color:#9db7dd;line-height:1.45;margin-bottom:12px">Яндекс нужен только для сохранения и восстановления вашего прогресса в личной папке приложения. Пароль нам не передаётся.</div>
-  <div style="display:flex;flex-direction:column;gap:10px">
-    ${[
-      ['💾','Прогресс не потеряется','Достижения, XP, стрики, избранное и плейлисты сохраняются в backup'],
-      ['📱','Синхронизация устройств','Войдите на телефоне, планшете или ПК — данные можно объединить вручную'],
-      ['☁️','Безопасное восстановление','Перед restore показывается предпросмотр, ничего не затирается без подтверждения'],
-      ['🏆','Призовые акции','В будущем верифицированные пользователи смогут участвовать в розыгрышах'],
-      ['🎮','Игры и лидерборд','Будущие режимы и таблицы лидеров будут привязаны к verified-профилю'],
-      ['🔒','Приватность','OAuth Яндекса даёт нам только ваш ID/имя и доступ к папке приложения на Диске']
-    ].map(([ic, t, d]) => `<div style="display:flex;gap:10px;align-items:flex-start">
-      <span style="font-size:20px;flex-shrink:0">${esc(ic)}</span>
-      <div><div style="font-size:13px;font-weight:800;color:#fff">${esc(t)}</div><div style="font-size:11px;color:#888;margin-top:2px;line-height:1.35">${esc(d)}</div></div>
-    </div>`).join('')}
-  </div>
-</div>`;
-
+export const renderAccountBenefitsBlock = () => `<div class="yandex-auth-note account-benefits-block"><div style="font-size:12px;font-weight:900;color:#4daaff;margin-bottom:8px">☁️ Зачем авторизоваться?</div><div style="font-size:11px;color:#9db7dd;line-height:1.45;margin-bottom:12px">Яндекс нужен только для сохранения и восстановления вашего прогресса в личной папке приложения. Пароль нам не передаётся.</div><div style="display:flex;flex-direction:column;gap:10px">${[['💾','Прогресс не потеряется','Достижения, XP, стрики, избранное и плейлисты сохраняются в backup'],['📱','Синхронизация устройств','Войдите на телефоне, планшете или ПК — данные можно объединить вручную'],['☁️','Безопасное восстановление','Перед restore показывается предпросмотр, ничего не затирается без подтверждения'],['🏆','Призовые акции','В будущем верифицированные пользователи смогут участвовать в розыгрышах'],['🎮','Игры и лидерборд','Будущие режимы и таблицы лидеров будут привязаны к verified-профилю'],['🔒','Приватность','OAuth Яндекса даёт нам только ваш ID/имя и доступ к папке приложения на Диске']].map(([ic, t, d]) => `<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0">${esc(ic)}</span><div><div style="font-size:13px;font-weight:800;color:#fff">${esc(t)}</div><div style="font-size:11px;color:#888;margin-top:2px;line-height:1.35">${esc(d)}</div></div></div>`).join('')}</div></div>`;
 export default { renderAccountBenefitsBlock };
 
 //=================================================
