@@ -456,7 +456,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:36:11 UTC
+Сгенерировано: 2026-05-08 17:36:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3899,7 +3899,7 @@ export default { loadProfileView };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-actions.js
-import { BackupVault } from '../../analytics/backup-vault.js'; import { uploadBackupBundle } from '../../analytics/backup-upload-runner.js'; import { YandexDisk } from '../../core/yandex-disk.js'; import { openBackupInfoModal, openBackupFoundModal } from './yandex-modals.js'; import { renderSyncLogRow, renderCloudSectionCard, fmtDateTime, esc } from './cloud-card-renderers.js';
+import { BackupVault } from '../../analytics/backup-vault.js'; import { uploadBackupBundle } from '../../analytics/backup-upload-runner.js'; import { YandexDisk } from '../../core/yandex-disk.js'; import { openBackupInfoModal, openBackupFoundModal } from './yandex-modals.js'; import { renderSyncLogRow, renderCloudSectionCard, fmtDateTime, esc } from './profile-render-kit.js';
 const pickBackupFile = () => new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.vi3bak,application/json'; i.onchange = () => res(i.files?.[0]||null); i.click(); });
 const readMetaProfile = async () => { try { const { metaDB } = await import('../../analytics/meta-db.js'); return (await metaDB.getGlobal('user_profile').catch(()=>null))?.value || {name:'Слушатель'}; } catch { return {name:'Слушатель'}; } };
 const openSyncLogModal = async () => { const { readSyncRevisions } = await import('../../analytics/sync-revisions.js'); const r = readSyncRevisions(); window.Modals?.open?.({ title:'Журнал синхронизации', maxWidth:420, bodyHtml:r.length?`<div class="sync-log-list">${r.map(renderSyncLogRow).join('')}</div>`:'<div class="fav-empty">Журнал синхронизации пока пуст</div>' }); };
