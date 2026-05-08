@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 15:52:44 UTC
+Сгенерировано: 2026-05-08 16:04:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3898,118 +3898,46 @@ export default { createShowcaseStore };
 //=================================================
 // FILE: /scripts/app/track-registry.js
 // UID.002_(UID-first core)_(держать трек главным объектом системы)_(registry остаётся центральной точкой доступа по uid) UID.016_(Feature flags on track)_(подготовить richer track model)_(registry должен быть естественной точкой future feature/profile binding) UID.019_(Compact TrackProfile index)_(дать bridge от контентного слоя к semantic слою)_(добавить безопасные passthrough методы preview/full profile) UID.020_(Full TrackProfile per uid)_(не раздувать registry heavy data)_(registry только делегирует в window.Intel.trackProfiles если слой доступен) UID.094_(No-paralysis rule)_(не ломать текущий контентный bootstrap)_(если intel-слой отсутствует, registry работает как раньше)
-const _tr = new Map(), _alb = new Map(), _cfg = new Map(), _albTr = new Map(), _pHlth = new Map();
-const toUrl = (b, r) => { try { const cB = String(b).replace(/\/+$/, '') + '/'; return /^https?:\/\//i.test(cB) && r ? new URL(String(r).replace(/^(\.\/|\/)+/, ''), cB).toString() : null; } catch { return null; } };
-const getSrcOrd = () => ((localStorage.getItem('sourcePref') || (window.location?.hostname.includes('yandexcloud.net') ? 'yandex' : 'github')) === 'github' ? ['github', 'yandex'] : ['yandex', 'github']);
-const isHlthy = s => !_pHlth.has(s) || (Date.now() - _pHlth.get(s).at > (_pHlth.get(s).ok ? 3600000 : 30000)) || _pHlth.get(s).ok;
-const mark = (s, ok) => _pHlth.set(s, { ok, at: Date.now() });
-
-async function fetchFall(bs, p, t = 6000) {
-  for (const s of getSrcOrd()) {
-    if (!isHlthy(s) || !bs[s]) continue;
-    try {
-      const c = new AbortController(), id = setTimeout(() => c.abort(), t);
-      const r = await ((window.NetPolicy?.guardedFetch?.(bs[s].replace(/\/+$/, '') + '/' + p.replace(/^\/+/, ''), { cache: 'force-cache', signal: c.signal })) || fetch(bs[s].replace(/\/+$/, '') + '/' + p.replace(/^\/+/, ''), { cache: 'force-cache', signal: c.signal }));
-      clearTimeout(id); if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      mark(s, true); return { json: await r.json(), src: s, base: bs[s] };
-    } catch { mark(s, false); }
-  }
-  return null;
-}
-
-export const getSmartUrlInfo = async (uid, prop = 'audio', q = 'hi') => {
-  const t = _tr.get(String(uid || '').trim()), c = _cfg.get(t?.sourceAlbum); if (!c?.bases) return null;
-  const pPath = prop === 'audio' ? (String(q).toLowerCase() === 'lo' ? (t.rel_audio_low || t.rel_audio) : t.rel_audio) : (prop === 'lyrics' ? t.rel_lyrics : t.rel_fulltext);
-  if (!pPath) return null;
-  for (const s of [...getSrcOrd(), ...getSrcOrd()]) if ((isHlthy(s) || _pHlth.has(s)) && c.bases[s] && toUrl(c.bases[s], pPath)) return { url: toUrl(c.bases[s], pPath), provider: s };
-  return null;
-};
-
-export const registerTrack = (t, aM) => {
-  const u = String(t?.uid || '').trim(); if (!u) return;
-  _tr.set(u, { uid: u, title: t.title || 'Трек', audio: t.audio || null, audio_low: t.audio_low || null, src: t.audio || null, size: t.size || 0, size_low: t.size_low || 0, lyrics: t.lyrics || null, fulltext: t.fulltext || null, sourceAlbum: t.sourceAlbum || null, album: aM?.title || null, rel_audio: t.rel_audio || null, rel_audio_low: t.rel_audio_low || null, rel_lyrics: t.rel_lyrics || null, rel_fulltext: t.rel_fulltext || null });
-  if (t.sourceAlbum && aM?.title) _alb.set(t.sourceAlbum, aM.title);
-};
-
-export const getTrackByUid = u => _tr.get(String(u || '').trim()) || null;
-export const getAllUids = () => [..._tr.keys()];
-export const getAlbumTitle = k => _alb.get(k) || null;
-export const getAlbumConfig = k => _cfg.get(k) || null;
-export const getTracksForAlbum = k => _albTr.get(k) || [];
-export const getTrackProfilePreview = uid => window.Intel?.trackProfiles?.getPreview?.(uid) || null;
-export const hasTrackProfile = uid => !!getTrackProfilePreview(uid);
-export const getTrackProfile = async uid => await window.Intel?.trackProfiles?.getProfile?.(uid) || null;
-
-export const ensurePopulated = async () => window.Utils.func.memoAsyncOnce('app:track-registry:populate', async () => {
-  if (!window.albumsIndex?.length) try { await window.Utils?.onceEvent?.(window, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {}
-  await Promise.allSettled((window.albumsIndex || []).filter(a => !a.key.startsWith('__')).map(async a => {
-    try {
-      const bs = { yandex: a.yandex_base ? `${a.yandex_base.replace(/\/$/, '')}/` : '', github: a.github_base ? `${a.github_base.replace(/\/$/, '')}/` : '' };
-      const cK = `tr:cfg:${a.key}`, c = window.Utils?.fetchCache?.get?.(cK, 43200000, 'session');
-      const r = c ? c : await fetchFall(bs, 'config.json', 6000); if (!r) return;
-      if (!c) window.Utils?.fetchCache?.set?.(cK, { json: r.json, src: r.src, base: r.base }, 'session');
-      const tit = r.json.albumName || a.title; _alb.set(a.key, tit);
-      _cfg.set(a.key, { title: tit, bases: bs, activeSrc: r.src, artist: r.json.artist || 'Витрина Разбита', links: (r.json.social_links || r.json.socials || []).map(s => ({ label: s.title || s.label, url: s.url })) });
-      _albTr.set(a.key, (r.json.tracks || []).map((t, i) => {
-        const hi = toUrl(r.base, t.audio), lo = toUrl(r.base, t.audio_low), u = String(t.uid || '').trim() || null;
-        if (u) registerTrack({ uid: u, title: t.title, audio: hi, audio_low: lo, size: t.size, size_low: t.size_low, lyrics: toUrl(r.base, t.lyrics), fulltext: toUrl(r.base, t.fulltext), sourceAlbum: a.key, rel_audio: t.audio, rel_audio_low: t.audio_low, rel_lyrics: t.lyrics, rel_fulltext: t.fulltext }, { title: tit });
-        return { num: i + 1, title: t.title || `Трек ${i + 1}`, uid: u, src: hi, sources: hi || lo ? { audio: { hi, lo } } : null, lyrics: toUrl(r.base, t.lyrics), fulltext: toUrl(r.base, t.fulltext), hasLyrics: t.hasLyrics ?? !!t.lyrics };
-      }));
-    } catch {}
-  }));
-});
-
-export const resetSourceCache = () => { _pHlth.clear(); _tr.clear(); _alb.clear(); _cfg.clear(); _albTr.clear(); try { Object.keys(sessionStorage).filter(k => k.startsWith('tr:cfg:')).forEach(k => sessionStorage.removeItem(k)); } catch {} };
-window.TrackRegistry = { registerTrack, getTrackByUid, getAllUids, getAlbumTitle, ensurePopulated, getAlbumConfig, getTracksForAlbum, getSmartUrlInfo, resetSourceCache, hasTrackProfile, getTrackProfilePreview, getTrackProfile };
+const _tr=new Map(),_alb=new Map(),_cfg=new Map(),_albTr=new Map(),_pHlth=new Map();
+const toUrl=(b,r)=>{try{const cB=String(b).replace(/\/+$/,'')+'/';return/^https?:\/\//i.test(cB)&&r?new URL(String(r).replace(/^(\.\/|\/)+/,''),cB).toString():null;}catch{return null;}};
+const getSrcOrd=()=>((localStorage.getItem('sourcePref')||(window.location?.hostname.includes('yandexcloud.net')?'yandex':'github'))==='github'?['github','yandex']:['yandex','github']);
+const isHlthy=s=>!_pHlth.has(s)||(Date.now()-_pHlth.get(s).at>(_pHlth.get(s).ok?36e5:3e4))||_pHlth.get(s).ok;
+const mark=(s,ok)=>_pHlth.set(s,{ok,at:Date.now()});
+async function fetchFall(bs,p,t=6e3){for(const s of getSrcOrd()){if(!isHlthy(s)||!bs[s])continue;try{const c=new AbortController(),id=setTimeout(()=>c.abort(),t),r=await(window.NetPolicy?.guardedFetch?.(bs[s].replace(/\/+$/,'')+'/'+p.replace(/^\/+/,''),{cache:'force-cache',signal:c.signal})||fetch(bs[s].replace(/\/+$/,'')+'/'+p.replace(/^\/+/,''),{cache:'force-cache',signal:c.signal}));clearTimeout(id);if(!r.ok)throw new Error(`HTTP ${r.status}`);mark(s,true);return{json:await r.json(),src:s,base:bs[s]};}catch{mark(s,false);}}return null;}
+export const getSmartUrlInfo=async(uid,prop='audio',q='hi')=>{const t=_tr.get(String(uid||'').trim()),c=_cfg.get(t?.sourceAlbum);if(!c?.bases)return null;const pPath=prop==='audio'?(String(q).toLowerCase()==='lo'?(t.rel_audio_low||t.rel_audio):t.rel_audio):(prop==='lyrics'?t.rel_lyrics:t.rel_fulltext);if(!pPath)return null;for(const s of[...getSrcOrd(),...getSrcOrd()])if((isHlthy(s)||_pHlth.has(s))&&c.bases[s]&&toUrl(c.bases[s],pPath))return{url:toUrl(c.bases[s],pPath),provider:s};return null;};
+export const registerTrack=(t,aM)=>{const u=String(t?.uid||'').trim();if(!u)return;_tr.set(u,{uid:u,title:t.title||'Трек',audio:t.audio||null,audio_low:t.audio_low||null,src:t.audio||null,size:t.size||0,size_low:t.size_low||0,lyrics:t.lyrics||null,fulltext:t.fulltext||null,sourceAlbum:t.sourceAlbum||null,album:aM?.title||null,rel_audio:t.rel_audio||null,rel_audio_low:t.rel_audio_low||null,rel_lyrics:t.rel_lyrics||null,rel_fulltext:t.rel_fulltext||null});if(t.sourceAlbum&&aM?.title)_alb.set(t.sourceAlbum,aM.title);};
+export const getTrackByUid=u=>_tr.get(String(u||'').trim())||null;
+export const getAllUids=()=>[..._tr.keys()];
+export const getAlbumTitle=k=>_alb.get(k)||null;
+export const getAlbumConfig=k=>_cfg.get(k)||null;
+export const getTracksForAlbum=k=>_albTr.get(k)||[];
+export const getTrackProfilePreview=uid=>window.Intel?.trackProfiles?.getPreview?.(uid)||null;
+export const hasTrackProfile=uid=>!!getTrackProfilePreview(uid);
+export const getTrackProfile=async uid=>await window.Intel?.trackProfiles?.getProfile?.(uid)||null;
+export const ensurePopulated=async()=>window.Utils.func.memoAsyncOnce('app:track-registry:populate',async()=>{if(!window.albumsIndex?.length)try{await window.Utils?.onceEvent?.(window,'albumsIndex:ready',{timeoutMs:5e3});}catch{}await Promise.allSettled((window.albumsIndex||[]).filter(a=>!a.key.startsWith('__')).map(async a=>{try{const bs={yandex:a.yandex_base?`${a.yandex_base.replace(/\/$/,'')}/`:'',github:a.github_base?`${a.github_base.replace(/\/$/,'')}/`:''},cK=`tr:cfg:${a.key}`,c=window.Utils?.fetchCache?.get?.(cK,432e6,'session'),r=c?c:await fetchFall(bs,'config.json',6e3);if(!r)return;if(!c)window.Utils?.fetchCache?.set?.(cK,{json:r.json,src:r.src,base:r.base},'session');const tit=r.json.albumName||a.title;_alb.set(a.key,tit);_cfg.set(a.key,{title:tit,bases:bs,activeSrc:r.src,artist:r.json.artist||'Витрина Разбита',links:(r.json.social_links||r.json.socials||[]).map(s=>({label:s.title||s.label,url:s.url}))});_albTr.set(a.key,(r.json.tracks||[]).map((t,i)=>{const hi=toUrl(r.base,t.audio),lo=toUrl(r.base,t.audio_low),u=String(t.uid||'').trim()||null;if(u)registerTrack({uid:u,title:t.title,audio:hi,audio_low:lo,size:t.size,size_low:t.size_low,lyrics:toUrl(r.base,t.lyrics),fulltext:toUrl(r.base,t.fulltext),sourceAlbum:a.key,rel_audio:t.audio,rel_audio_low:t.audio_low,rel_lyrics:t.lyrics,rel_fulltext:t.fulltext},{title:tit});return{num:i+1,title:t.title||`Трек ${i+1}`,uid:u,src:hi,sources:hi||lo?{audio:{hi,lo}}:null,lyrics:toUrl(r.base,t.lyrics),fulltext:toUrl(r.base,t.fulltext),hasLyrics:t.hasLyrics??!!t.lyrics};}));}catch{}}));});
+export const resetSourceCache=()=>{_pHlth.clear();_tr.clear();_alb.clear();_cfg.clear();_albTr.clear();try{Object.keys(sessionStorage).filter(k=>k.startsWith('tr:cfg:')).forEach(k=>sessionStorage.removeItem(k));}catch{}};
+window.TrackRegistry={registerTrack,getTrackByUid,getAllUids,getAlbumTitle,ensurePopulated,getAlbumConfig,getTracksForAlbum,getSmartUrlInfo,resetSourceCache,hasTrackProfile,getTrackProfilePreview,getTrackProfile};
 export default window.TrackRegistry;
 
 //=================================================
 // FILE: /scripts/ci/generate-lyrics-index.mjs
 #!/usr/bin/env node
-import fs from 'node:fs'; import path from 'node:path';
-const R = process.cwd(), AF = path.resolve(R, 'albums.json'), OF = path.resolve(R, 'data/lyrics-index-v1.json');
-const nS = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^\p{L}\p{N}\s]+/gu, ' ').replace(/\s+/g, ' ').trim(), tok = s => nS(s).split(' ').filter(w => w.length > 1);
-
-async function main() {
-  if (!fs.existsSync(AF)) process.exit(2);
-  const albs = JSON.parse(fs.readFileSync(AF, 'utf8'))?.albums || [], meta = {}, idx = {}, errs = [];
-  let tT = 0, tTx = 0;
-
-  for (const a of albs) {
-    const aK = String(a?.key || '').trim(), aT = String(a?.title || '').trim(), b = String(a?.yandex_base || a?.github_base || a?.base || '').trim();
-    if (!aK || !b) continue;
-    try {
-      const bU = b.endsWith('/') ? b : `${b}/`, cfg = await (await fetch(`${bU}config.json`)).json(), trks = cfg?.tracks || [];
-      tT += trks.length;
-      for (let i = 0; i < trks.length; i++) {
-        const u = String(trks[i].uid || '').trim(); if (!u) continue;
-        meta[u] = { t: trks[i].title || `Трек ${i + 1}`, a: aT || String(cfg?.albumName || ''), k: aK, n: i + 1 };
-        if (!trks[i].fulltext) continue;
-        const txt = await (await fetch(new URL(trks[i].fulltext, bU).toString())).text(); tTx++;
-        [...tok(txt), ...tok(meta[u].t), ...tok(meta[u].a)].forEach(k => (idx[k] = idx[k] || new Set()).add(u));
-      }
-    } catch (e) { errs.push(`${aK}: ${e.message}`); }
-  }
-
-  const iO = Object.fromEntries(Object.entries(idx).map(([k, v]) => [k, [...v].sort()]));
-  fs.mkdirSync(path.dirname(OF), { recursive: true });
-  fs.writeFileSync(OF, JSON.stringify({ v: 1, buildTs: Date.now(), meta, idx: iO }), 'utf8');
-  if (errs.length) console.warn('Warnings:', errs.slice(0, 50));
-}
-main().catch(() => process.exit(2));
+import fs from 'node:fs';import path from 'node:path';
+const R=process.cwd(),AF=path.resolve(R,'albums.json'),OF=path.resolve(R,'data/lyrics-index-v1.json');
+const nS=s=>String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}\s]+/gu,' ').replace(/\s+/g,' ').trim(),tok=s=>nS(s).split(' ').filter(w=>w.length>1);
+async function main(){if(!fs.existsSync(AF))process.exit(2);const albs=JSON.parse(fs.readFileSync(AF,'utf8'))?.albums||[],meta={},idx={},errs=[];let tT=0,tTx=0;for(const a of albs){const aK=String(a?.key||'').trim(),aT=String(a?.title||'').trim(),b=String(a?.yandex_base||a?.github_base||a?.base||'').trim();if(!aK||!b)continue;try{const bU=b.endsWith('/')?b:`${b}/`,cfg=await(await fetch(`${bU}config.json`)).json(),trks=cfg?.tracks||[];tT+=trks.length;for(let i=0;i<trks.length;i++){const u=String(trks[i].uid||'').trim();if(!u)continue;meta[u]={t:trks[i].title||`Трек ${i+1}`,a:aT||String(cfg?.albumName||''),k:aK,n:i+1};if(!trks[i].fulltext)continue;const txt=await(await fetch(new URL(trks[i].fulltext,bU).toString())).text();tTx++;[...tok(txt),...tok(meta[u].t),...tok(meta[u].a)].forEach(k=>(idx[k]=idx[k]||new Set()).add(u));}}catch(e){errs.push(`${aK}: ${e.message}`);}}const iO=Object.fromEntries(Object.entries(idx).map(([k,v])=>[k,[...v].sort()]));fs.mkdirSync(path.dirname(OF),{recursive:true});fs.writeFileSync(OF,JSON.stringify({v:1,buildTs:Date.now(),meta,idx:iO}),'utf8');if(errs.length)console.warn('Warnings:',errs.slice(0,50));}
+main().catch(()=>process.exit(2));
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs
 #!/usr/bin/env node
-import fs from 'node:fs'; import path from 'node:path';
-const f = path.resolve('service-worker.js'); if (!fs.existsSync(f)) process.exit(1);
-const s = fs.readFileSync(f, 'utf8'), errs = [], wrns = [];
-if (!/const\s+SW_VERSION\s*=\s*['"`]\d+\.\d+\.\d+['"`]/.test(s)) errs.push('SW_VERSION fmt err');
-['install','activate','fetch'].forEach(e => { const n = (s.match(new RegExp(`addEventListener\\(['"]${e}['"]`, 'g')) || []).length; if (!n) errs.push(`No ${e}`); else if (n > 1) wrns.push(`Mult ${e}`); });
-['CORE_CACHE','RUNTIME_CACHE','MEDIA_CACHE','OFFLINE_CACHE','META_CACHE'].forEach(c => { const n = (s.match(new RegExp(`\\bconst\\s+${c}\\b`, 'g')) || []).length; if (!n) errs.push(`No ${c}`); });
-const cfg = s.match(/const\s+DEFAULT_SW_CONFIG\s*=\s*\{([\s\S]*?)\};/);
-if (cfg) { const v = k => Number((cfg[1].match(new RegExp(`${k}\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)`)) || [])[1]); if (!Number.isInteger(v('revalidateDays')) || v('revalidateDays') <= 0) errs.push('revalidateDays err'); ['mediaMaxCacheMB','nonRangeMaxStoreMB','nonRangeMaxStoreMBSlow'].forEach(k => { if (!(v(k) > 0)) errs.push(`${k} err`); }); }
-if (errs.length) { console.error('Errors:', errs); process.exit(2); }
+import fs from 'node:fs';import path from 'node:path';
+const f=path.resolve('service-worker.js');if(!fs.existsSync(f))process.exit(1);const s=fs.readFileSync(f,'utf8'),errs=[],wrns=[];
+if(!/const\s+SW_VERSION\s*=\s*['"`]\d+\.\d+\.\d+['"`]/.test(s))errs.push('SW_VERSION fmt err');
+['install','activate','fetch'].forEach(e=>{const n=(s.match(new RegExp(`addEventListener\\(['"]${e}['"`],'g'))||[]).length;if(!n)errs.push(`No ${e}`);else if(n>1)wrns.push(`Mult ${e}`);});
+['CORE_CACHE','RUNTIME_CACHE','MEDIA_CACHE','OFFLINE_CACHE','META_CACHE'].forEach(c=>{if(!(s.match(new RegExp(`\\bconst\\s+${c}\\b`,'g'))||[]).length)errs.push(`No ${c}`);});
+const cfg=s.match(/const\s+DEFAULT_SW_CONFIG\s*=\s*\{([\s\S]*?)\};/);if(cfg){const v=k=>Number((cfg[1].match(new RegExp(`${k}\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)`))||[])[1]);if(!Number.isInteger(v('revalidateDays'))||v('revalidateDays')<=0)errs.push('revalidateDays err');['mediaMaxCacheMB','nonRangeMaxStoreMB','nonRangeMaxStoreMBSlow'].forEach(k=>{if(!(v(k)>0))errs.push(`${k} err`);});}
+if(errs.length){console.error('Errors:',errs);process.exit(2);}
 
 //=================================================
 // FILE: /scripts/ci/validate-content.mjs
