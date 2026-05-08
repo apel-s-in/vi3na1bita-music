@@ -1,7 +1,7 @@
 import DeviceRegistry from '../../analytics/device-registry.js';
 import { markDevicesDirty } from '../../analytics/sync-dirty-events.js';
 import { ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
-import { esc, fmtDateTime as fmt, renderMetaBox, renderSmallListRow, renderInlineActions } from './profile-ui-kit.js';
+import { esc, fmtDateTime as fmt, renderMetaBox, renderSmallListRow, renderInlineActions } from './profile-render-kit.js';
 
 const sS = v => String(v == null ? '' : v).trim(), icon = d => d?.platform === 'ios' ? '📱' : d?.platform === 'android' ? '🤖' : '💻', curId = () => localStorage.getItem('deviceStableId') || '';
 const rows = () => DeviceRegistry.normalizeDeviceRegistry(DeviceRegistry.getDeviceRegistry()).sort((a,b)=>(b.lastSeenAt||0)-(a.lastSeenAt||0));
