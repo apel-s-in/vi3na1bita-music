@@ -1,40 +1,7 @@
 export const createTrashActionHandlers = ({ reloadProfile: rP } = {}) => [
-  { sel: '[data-pl-restore]', run: async ({ el }) => {
-    try {
-      const id = String(el.dataset.plRestore || '').trim(), rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [], i = rows.findIndex(p => p?.id === id);
-      if (i < 0) return;
-      rows[i] = { ...rows[i], deletedAt: 0, updatedAt: Date.now() };
-      localStorage.setItem('sc3:playlists', JSON.stringify(rows));
-      window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } }));
-      window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: rows[i]?.name || '' });
-      window.NotificationSystem?.success?.('Плейлист восстановлен ✅'); rP?.();
-    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
-  }},
-  { sel: '[data-pl-purge]', run: async ({ el }) => {
-    try {
-      const id = String(el.dataset.plPurge || '').trim(), rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [], p = rows.find(x => x?.id === id);
-      localStorage.setItem('sc3:playlists', JSON.stringify(rows.filter(x => x?.id !== id)));
-      window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } }));
-      window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' });
-      window.NotificationSystem?.success?.('Плейлист удалён окончательно'); rP?.();
-    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
-  }},
-  { sel: '[data-fav-restore]', run: async ({ el }) => {
-    try {
-      const uid = String(el.dataset.favRestore || '').trim(); if (!uid) return;
-      window.playerCore?.restoreInactive?.(uid);
-      window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: true, source: 'favorites_trash_restore' });
-      window.NotificationSystem?.success?.('Трек возвращён в избранное ✅'); rP?.();
-    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
-  }},
-  { sel: '[data-fav-purge]', run: async ({ el }) => {
-    try {
-      const uid = String(el.dataset.favPurge || '').trim(); if (!uid) return;
-      window.FavoritesManager?.purge?.(uid);
-      window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: false, source: 'favorites_trash_purge', purged: true });
-      window.NotificationSystem?.success?.('След избранного удалён окончательно'); rP?.();
-    } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); }
-  }}
+  { sel: '[data-pl-restore]', run: async ({ el }) => { try { const id = String(el.dataset.plRestore || '').trim(), rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [], i = rows.findIndex(p => p?.id === id); if (i < 0) return; rows[i] = { ...rows[i], deletedAt: 0, updatedAt: Date.now() }; localStorage.setItem('sc3:playlists', JSON.stringify(rows)); window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } })); window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'restore', playlistId: id, name: rows[i]?.name || '' }); window.NotificationSystem?.success?.('Плейлист восстановлен ✅'); rP?.(); } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); } } },
+  { sel: '[data-pl-purge]', run: async ({ el }) => { try { const id = String(el.dataset.plPurge || '').trim(), rows = JSON.parse(localStorage.getItem('sc3:playlists') || '[]') || [], p = rows.find(x => x?.id === id); localStorage.setItem('sc3:playlists', JSON.stringify(rows.filter(x => x?.id !== id))); window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'playlists' } })); window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'purge', playlistId: id, name: p?.name || '' }); window.NotificationSystem?.success?.('Плейлист удалён окончательно'); rP?.(); } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); } } },
+  { sel: '[data-fav-restore]', run: async ({ el }) => { try { const uid = String(el.dataset.favRestore || '').trim(); if (!uid) return; window.playerCore?.restoreInactive?.(uid); window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: true, source: 'favorites_trash_restore' }); window.NotificationSystem?.success?.('Трек возвращён в избранное ✅'); rP?.(); } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); } } },
+  { sel: '[data-fav-purge]', run: async ({ el }) => { try { const uid = String(el.dataset.favPurge || '').trim(); if (!uid) return; window.FavoritesManager?.purge?.(uid); window.eventLogger?.log?.('FAVORITE_CHANGED', uid, { liked: false, source: 'favorites_trash_purge', purged: true }); window.NotificationSystem?.success?.('След избранного удалён окончательно'); rP?.(); } catch (e) { window.NotificationSystem?.error?.('Ошибка: ' + String(e?.message || '')); } } }
 ];
-
 export default { createTrashActionHandlers };
