@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 15:50:46 UTC
+Сгенерировано: 2026-05-08 15:52:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3434,353 +3434,39 @@ export default { renderYandexAuthBlock };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-auto-sync.js
-import { YandexDisk } from '../../core/yandex-disk.js';
-import { safeNum, safeString, compareLocalVsCloud, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
-
-const getLocalProfileSummary = async () => {
-  let name = 'Слушатель';
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    name = (await metaDB.getGlobal('user_profile').catch(() => null))?.value?.name || name;
-  } catch {}
-  return getLocalBackupUiSnapshot({ name });
-};
-
-const enrichLocalSummaryWithDb = async s => { try { const { metaDB } = await import('../../analytics/meta-db.js'), [st, wm] = await Promise.all([metaDB.getAllStats().catch(() => []), metaDB.getEvents('events_warm').catch(() => [])]); return { ...s, statsCount: Array.isArray(st) ? st.filter(x => x?.uid && x.uid !== 'global').length : safeNum(s?.statsCount), eventCount: Array.isArray(wm) ? wm.length : safeNum(s?.eventCount) }; } catch { return s; } };
-
-const _markReady = async r => { try { const { markSyncReady } = await import('../../analytics/backup-sync-engine.js'); markSyncReady(r); } catch {} };
-
-// legacy helper intentionally kept removed:
-// fresh-login restore now belongs to auth-onboarding-orchestrator.js only
-
-const _checkCloudMetaOnly = async ({ isFreshLogin = false } = {}) => {
-  const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return;
-  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return _markReady('offline_skip');
-  try {
-    const m = await YandexDisk.getMeta(ya.getToken()).catch((e) => { console.warn('[AutoSync] getMeta failed:', e?.message); return null; });
-    const lS = await enrichLocalSummaryWithDb(await getLocalProfileSummary());
-
-    if (!m) {
-      try { localStorage.removeItem('yandex:last_backup_meta'); localStorage.removeItem('yandex:last_backup_check'); } catch {}
-      return _markReady('no_cloud_backup');
-    }
-
-    try { localStorage.setItem('yandex:last_backup_check', JSON.stringify(m)); localStorage.setItem('yandex:last_backup_check_ts', String(Date.now())); } catch {}
-    window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
-    const c = compareLocalVsCloud(lS, m);
-    const localIsPoor = safeNum(lS?.level) <= 1 && safeNum(lS?.xp) < 500 && safeNum(lS?.achievementsCount) < 3 && safeNum(lS?.favoritesCount) < 3 && safeNum(lS?.playlistsCount) < 1;
-
-    if (!isFreshLogin && ['local_richer', 'local_probably_richer', 'equivalent'].includes(c.state)) {
-      return _markReady(c.state === 'equivalent' ? 'diff_too_small' : 'cloud_not_newer');
-    }
-    if (c.state === 'no_cloud') return _markReady('no_cloud_backup');
-
-    // Защита от бесконечного цикла "cloud_richer" для той же облачной копии после успешного restore.
-    try {
-      const { isRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-      const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
-      const cloudTs = safeNum(m?.timestamp);
-      const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
-      if (isRestoreOrSkipDone() && (sameSnapshot || !isFreshLogin)) {
-        console.debug('[AutoSync] cloud_newer suppressed — restore already done for same snapshot');
-        return _markReady('cloud_not_newer');
-      }
-    } catch {}
-
-    _markReady('cloud_newer_user_choice');
-    const detail = { cloudTs: c.cloudTs, localTs: c.localTs, diffMin: Math.round((safeNum(c.cloudTs) - safeNum(c.localTs)) / 60000), isNewDevice: c.state === 'cloud_richer_new_device' || localIsPoor, meta: m, items: null, compareState: c.state, localSummary: lS, localScore: c.localScore, cloudScore: c.cloudScore, isFreshLogin };
-
-    // Для fresh-login весь flow идёт через auth-onboarding-orchestrator (вызывается из yandex-auth.js после имени).
-    // Здесь эмитим только badge-событие для случая, когда пользователь уже залогинен и в облаке появились новые данные.
-    if (!isFreshLogin) {
-      window.dispatchEvent(new CustomEvent('yandex:cloud:newer', { detail }));
-    }
-  } catch (e) { console.debug('[AutoSync] meta check failed:', e?.message); _markReady('meta_check_failed'); }
-};
-
-export const initYandexAutoSync = async () => { const ya = window.YandexAuth; if (!ya || ya.getSessionStatus() !== 'active' || !ya.isTokenAlive()) return _markReady('no_auth_local_only'); await _checkCloudMetaOnly({ isFreshLogin: false }); window.addEventListener('yandex:auth:changed', async e => { if (e.detail?.status === 'active') { const delay = e.detail?.phase === 'name_saved' ? 350 : (!!e.detail?.isFreshLogin ? 700 : 0); setTimeout(() => _checkCloudMetaOnly({ isFreshLogin: !!e.detail?.isFreshLogin }).catch(() => {}), delay); } else if (e.detail?.status === 'logged_out') _markReady('logged_out_local_only'); }); };
-
+import { YandexDisk } from '../../core/yandex-disk.js'; import { safeNum, compareLocalVsCloud, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
+const getLocalProfileSummary = async () => { let n='Слушатель'; try { const {metaDB} = await import('../../analytics/meta-db.js'); n=(await metaDB.getGlobal('user_profile').catch(()=>null))?.value?.name||n; } catch{} return getLocalBackupUiSnapshot({name:n}); };
+const enrichLocalSummaryWithDb = async s => { try { const {metaDB} = await import('../../analytics/meta-db.js'), [st,wm] = await Promise.all([metaDB.getAllStats().catch(()=>[]),metaDB.getEvents('events_warm').catch(()=>[])]); return {...s,statsCount:Array.isArray(st)?st.filter(x=>x?.uid&&x.uid!=='global').length:safeNum(s?.statsCount),eventCount:Array.isArray(wm)?wm.length:safeNum(s?.eventCount)}; } catch {return s;} };
+const _markReady = async r => { try { const {markSyncReady} = await import('../../analytics/backup-sync-engine.js'); markSyncReady(r); } catch{} };
+const _checkCloudMetaOnly = async ({isFreshLogin=false}={}) => { const ya = window.YandexAuth; if(!ya||ya.getSessionStatus()!=='active'||!ya.isTokenAlive())return; if(!(window.NetPolicy?.isNetworkAllowed?.()??navigator.onLine))return _markReady('offline_skip'); try { const m = await YandexDisk.getMeta(ya.getToken()).catch(()=>null), lS = await enrichLocalSummaryWithDb(await getLocalProfileSummary()); if(!m) { try{localStorage.removeItem('yandex:last_backup_meta');localStorage.removeItem('yandex:last_backup_check');}catch{} return _markReady('no_cloud_backup'); } try{localStorage.setItem('yandex:last_backup_check',JSON.stringify(m));localStorage.setItem('yandex:last_backup_check_ts',String(Date.now()));}catch{} window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated')); const c = compareLocalVsCloud(lS,m), localIsPoor = safeNum(lS?.level)<=1&&safeNum(lS?.xp)<500&&safeNum(lS?.achievementsCount)<3&&safeNum(lS?.favoritesCount)<3&&safeNum(lS?.playlistsCount)<1; if(!isFreshLogin&&['local_richer','local_probably_richer','equivalent'].includes(c.state)) return _markReady(c.state==='equivalent'?'diff_too_small':'cloud_not_newer'); if(c.state==='no_cloud')return _markReady('no_cloud_backup'); try{const{isRestoreOrSkipDone}=await import('../../analytics/backup-sync-engine.js'),lT=safeNum(localStorage.getItem('yandex:last_backup_local_ts')),cT=safeNum(m?.timestamp);if(isRestoreOrSkipDone()&&cT>0&&lT>0&&Math.abs(cT-lT)<5000||(!isFreshLogin&&isRestoreOrSkipDone()&&cT>0&&lT>0&&Math.abs(cT-lT)<5000))return _markReady('cloud_not_newer');}catch{} _markReady('cloud_newer_user_choice'); if(!isFreshLogin) window.dispatchEvent(new CustomEvent('yandex:cloud:newer',{detail:{cloudTs:c.cloudTs,localTs:c.localTs,diffMin:Math.round((safeNum(c.cloudTs)-safeNum(c.localTs))/60000),isNewDevice:c.state==='cloud_richer_new_device'||localIsPoor,meta:m,items:null,compareState:c.state,localSummary:lS,localScore:c.localScore,cloudScore:c.cloudScore,isFreshLogin}})); } catch { _markReady('meta_check_failed'); } };
+export const initYandexAutoSync = async () => { const ya = window.YandexAuth; if(!ya||ya.getSessionStatus()!=='active'||!ya.isTokenAlive())return _markReady('no_auth_local_only'); await _checkCloudMetaOnly({isFreshLogin:false}); window.addEventListener('yandex:auth:changed',async e=>{if(e.detail?.status==='active')setTimeout(()=>_checkCloudMetaOnly({isFreshLogin:!!e.detail?.isFreshLogin}).catch(()=>{}),e.detail?.phase==='name_saved'?350:(!!e.detail?.isFreshLogin?700:0));else if(e.detail?.status==='logged_out')_markReady('logged_out_local_only');}); };
 export default { initYandexAutoSync };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-modals.js
-import { openBackupInfoModal, openBackupFoundModal } from './backup-info-modal.js';
-import { openRestorePreviewModal, openRestoreVersionPickerModal } from './restore-preview-modal.js';
-import { openFreshLoginRestoreModal } from './fresh-restore-modal.js';
-
-export {
-  openBackupInfoModal,
-  openBackupFoundModal,
-  openRestorePreviewModal,
-  openRestoreVersionPickerModal,
-  openFreshLoginRestoreModal
-};
-
-export default {
-  openBackupInfoModal,
-  openBackupFoundModal,
-  openRestorePreviewModal,
-  openRestoreVersionPickerModal,
-  openFreshLoginRestoreModal
-};
+import { openBackupInfoModal, openBackupFoundModal } from './backup-info-modal.js'; import { openRestorePreviewModal, openRestoreVersionPickerModal } from './restore-preview-modal.js'; import { openFreshLoginRestoreModal } from './fresh-restore-modal.js';
+export { openBackupInfoModal, openBackupFoundModal, openRestorePreviewModal, openRestoreVersionPickerModal, openFreshLoginRestoreModal };
+export default { openBackupInfoModal, openBackupFoundModal, openRestorePreviewModal, openRestoreVersionPickerModal, openFreshLoginRestoreModal };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-preload-cache.js
 import { safeNum } from '../../analytics/backup-summary.js';
-
-export const PRELOAD_TIMEOUT_MS = 12000;
-export const PRELOAD_RETRY_COUNT = 3;
-export const PERSISTENT_CACHE_TTL_MS = 10 * 60 * 1000;
-export const PERSISTENT_CACHE_KEY = 'yandex:onboarding:preload_cache:v1';
-
-export const withTimeout = (promise, ms, label = 'op') => Promise.race([
-  promise,
-  new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms))
-]);
-
-export async function savePreloadToCache(result) {
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, {
-      result,
-      savedAt: Date.now(),
-      ownerYandexId: String(result?.meta?.ownerYandexId || '').trim()
-    });
-  } catch {}
-}
-
-export async function loadPreloadFromCache(currentYandexId) {
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    const rec = await metaDB.getGlobal(PERSISTENT_CACHE_KEY);
-    const entry = rec?.value;
-    if (!entry) return null;
-    const age = Date.now() - safeNum(entry.savedAt);
-    if (age > PERSISTENT_CACHE_TTL_MS) return null;
-    const cachedOwner = String(entry.ownerYandexId || '').trim();
-    const currentOwner = String(currentYandexId || '').trim();
-    if (cachedOwner && currentOwner && cachedOwner !== currentOwner) return null;
-    console.debug('[YandexPreloadCache] using persistent cache (age:', Math.round(age / 1000), 's)');
-    return entry.result;
-  } catch {
-    return null;
-  }
-}
-
-export async function invalidatePreloadCache() {
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, null);
-  } catch {}
-}
-
-export async function preloadBackupData({ token, disk }) {
-  if (!token || !disk) return { meta: null, items: [], backup: null };
-
-  for (let attempt = 0; attempt < PRELOAD_RETRY_COUNT; attempt++) {
-    try {
-      console.debug(`[YandexPreloadCache] preload attempt ${attempt + 1}/${PRELOAD_RETRY_COUNT}`);
-
-      const meta = await withTimeout(
-        disk.getMeta(token).catch(() => null),
-        PRELOAD_TIMEOUT_MS,
-        'meta'
-      ).catch(e => {
-        console.warn(`[YandexPreloadCache] meta timeout (attempt ${attempt + 1}):`, e?.message);
-        return null;
-      });
-
-      if (!meta) {
-        if (attempt < PRELOAD_RETRY_COUNT - 1) {
-          const delay = 1000 * Math.pow(2, attempt);
-          console.debug(`[YandexPreloadCache] no meta, waiting ${delay}ms before retry`);
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        }
-        console.debug('[YandexPreloadCache] all retries exhausted, giving up');
-        return { meta: null, items: [], backup: null };
-      }
-
-      const [items, backupData] = await Promise.all([
-        withTimeout(
-          disk.listBackups(token).catch(() => []),
-          PRELOAD_TIMEOUT_MS,
-          'list'
-        ).catch(() => []),
-        meta.path
-          ? withTimeout(
-              disk.download(token, meta.path).catch(() => null),
-              PRELOAD_TIMEOUT_MS * 2,
-              'download'
-            ).catch(e => {
-              console.warn('[YandexPreloadCache] download timeout:', e?.message);
-              return null;
-            })
-          : Promise.resolve(null)
-      ]);
-
-      const safeItems = Array.isArray(items) && items.length ? items : [meta];
-      console.debug(`[YandexPreloadCache] preload success (attempt ${attempt + 1}): meta=yes, backup=${!!backupData}, items=${safeItems.length}`);
-      return { meta, items: safeItems, backup: backupData };
-    } catch (e) {
-      console.warn(`[YandexPreloadCache] preload attempt ${attempt + 1} error:`, e?.message);
-      if (attempt >= PRELOAD_RETRY_COUNT - 1) return { meta: null, items: [], backup: null };
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
-    }
-  }
-
-  return { meta: null, items: [], backup: null };
-}
-
-export default {
-  PRELOAD_TIMEOUT_MS,
-  PRELOAD_RETRY_COUNT,
-  PERSISTENT_CACHE_TTL_MS,
-  PERSISTENT_CACHE_KEY,
-  withTimeout,
-  savePreloadToCache,
-  loadPreloadFromCache,
-  invalidatePreloadCache,
-  preloadBackupData
-};
+export const PRELOAD_TIMEOUT_MS=12000, PRELOAD_RETRY_COUNT=3, PERSISTENT_CACHE_TTL_MS=600000, PERSISTENT_CACHE_KEY='yandex:onboarding:preload_cache:v1';
+export const withTimeout=(p,m,l='op')=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error(`${l}_timeout_${m}ms`)),m))]);
+export async function savePreloadToCache(r){try{const{metaDB}=await import('../../analytics/meta-db.js');await metaDB.setGlobal(PERSISTENT_CACHE_KEY,{result:r,savedAt:Date.now(),ownerYandexId:String(r?.meta?.ownerYandexId||'').trim()});}catch{}}
+export async function loadPreloadFromCache(id){try{const{metaDB}=await import('../../analytics/meta-db.js'),r=await metaDB.getGlobal(PERSISTENT_CACHE_KEY),e=r?.value;if(!e||Date.now()-safeNum(e.savedAt)>PERSISTENT_CACHE_TTL_MS)return null;const cO=String(e.ownerYandexId||'').trim(),cI=String(id||'').trim();if(cO&&cI&&cO!==cI)return null;return e.result;}catch{return null;}}
+export async function invalidatePreloadCache(){try{const{metaDB}=await import('../../analytics/meta-db.js');await metaDB.setGlobal(PERSISTENT_CACHE_KEY,null);}catch{}}
+export async function preloadBackupData({token,disk}){if(!token||!disk)return{meta:null,items:[],backup:null};for(let a=0;a<PRELOAD_RETRY_COUNT;a++){try{const m=await withTimeout(disk.getMeta(token).catch(()=>null),PRELOAD_TIMEOUT_MS,'meta').catch(()=>null);if(!m){if(a<PRELOAD_RETRY_COUNT-1){await new Promise(r=>setTimeout(r,1000*Math.pow(2,a)));continue;}return{meta:null,items:[],backup:null};}const[i,b]=await Promise.all([withTimeout(disk.listBackups(token).catch(()=>[]),PRELOAD_TIMEOUT_MS,'list').catch(()=>[]),m.path?withTimeout(disk.download(token,m.path).catch(()=>null),PRELOAD_TIMEOUT_MS*2,'download').catch(()=>null):Promise.resolve(null)]);return{meta:m,items:Array.isArray(i)&&i.length?i:[m],backup:b};}catch(e){if(a>=PRELOAD_RETRY_COUNT-1)return{meta:null,items:[],backup:null};await new Promise(r=>setTimeout(r,1000*Math.pow(2,a)));}}return{meta:null,items:[],backup:null};}
+export default{PRELOAD_TIMEOUT_MS,PRELOAD_RETRY_COUNT,PERSISTENT_CACHE_TTL_MS,PERSISTENT_CACHE_KEY,withTimeout,savePreloadToCache,loadPreloadFromCache,invalidatePreloadCache,preloadBackupData};
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-runtime-refresh.js
-export const runPostRestoreRefresh = async ({ reason = 'restore', keepCurrentAlbum = true } = {}) => {
-  const W = window;
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    const [u, r, p] = await Promise.all([
-      metaDB.getGlobal('unlocked_achievements').catch(() => null),
-      metaDB.getGlobal('user_profile_rpg').catch(() => null),
-      metaDB.getGlobal('user_profile').catch(() => null)
-    ]);
-
-    if (W.achievementEngine) {
-      try {
-        const { refreshAchievementEngineFromDb } = await import('../../analytics/achievement-state.js');
-        await refreshAchievementEngineFromDb({ metaDB, reason, forceCheck: true, silent: true });
-      } catch (e) {
-        console.warn('[PostRestoreRefresh] achievement state refresh failed:', e?.message);
-        W.achievementEngine.unlocked = u?.value || {};
-        W.achievementEngine.profile = r?.value || { xp: 0, level: 1 };
-        W.achievementEngine.achievements = W.achievementEngine._buildUIArray?.() || W.achievementEngine.achievements || [];
-      }
-    }
-
-    // user_profile теперь хранится в MetaDB и summary backup:last_local_summary:v1.
-    // profile:last_snapshot больше не используется.
-
-    // Перезагрузить FavoritesManager из обновлённого localStorage после restore
-    // ВАЖНО: не триггерим onFavoritesChanged callbacks если плеер играет, чтобы не вызвать applyFavoritesOnlyFilter → unload звука
-    try {
-      if (W.FavoritesManager?._m) {
-        const isPlaying = !!W.playerCore?.isPlaying?.();
-        W.FavoritesManager._m.clear();
-        const raw = JSON.parse(localStorage.getItem('__favorites_v2__') || '[]');
-        raw.forEach(i => i?.uid && W.FavoritesManager._m.set(String(i.uid).trim(), i));
-        if (!isPlaying) {
-          W.FavoritesManager._s?.forEach?.(cb => { try { cb({ uid: null, liked: null, restored: true }); } catch {} });
-        }
-      }
-    } catch {}
-
-    ['stats:updated', 'analytics:logUpdated', 'favorites:changed'].forEach(e => W.dispatchEvent(new CustomEvent(e)));
-    W.dispatchEvent(new CustomEvent('achievements:updated', {
-      detail: {
-        total: W.achievementEngine?.achievements?.length || 0,
-        unlocked: Object.keys(W.achievementEngine?.unlocked || {}).length,
-        items: W.achievementEngine?.unlocked || {},
-        unlockMeta: W.achievementEngine?.unlockMeta || {},
-        streak: 0,
-        profile: W.achievementEngine?.profile || { xp: 0, level: 1 },
-        reason
-      }
-    }));
-  } catch (e) {
-    console.warn('[PostRestoreRefresh] failed:', e?.message);
-  }
-
-  try {
-    const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || Date.now());
-    const m = JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null');
-    localStorage.setItem('yandex:last_backup_check', JSON.stringify((m && typeof m === 'object') ? m : { timestamp: ts }));
-    try {
-      Object.keys(sessionStorage).filter(k => k.startsWith('yandex:cloud:newer:prompt:')).forEach(k => sessionStorage.removeItem(k));
-    } catch {}
-    W.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
-  } catch {}
-
-  try {
-    ['intel:listener-profile:rebuild-request', 'intel:recommendations:refresh-request', 'intel:collection:refresh-request', 'intel:runtime:refresh-request']
-      .forEach(n => W.dispatchEvent(new CustomEvent(n, { detail: { reason, at: Date.now() } })));
-  } catch {}
-
-  try {
-    const { listenerProfile } = await import('../../intel/listener/listener-profile.js');
-    await listenerProfile?.build?.().catch(() => null);
-  } catch {}
-
-  try {
-    const cA = keepCurrentAlbum ? (W.AlbumsManager?.getCurrentAlbum?.() || null) : null;
-    const isPlaying = !!W.playerCore?.isPlaying?.();
-    const currentPlayingAlbum = W.AlbumsManager?.getPlayingAlbum?.();
-
-    if (cA === (W.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) {
-      const mod = await import('./view.js');
-      const softOk = await mod.refreshProfileViewSoft?.(W.AlbumsManager).catch(() => false);
-      if (!softOk && !isPlaying) await mod.loadProfileView?.(W.AlbumsManager);
-      else {
-        W.PlayerUI?.updatePlaylistFiltering?.();
-        W.PlayerUI?.updateMiniHeader?.();
-      }
-    } else if (cA && !isPlaying) {
-      // Перезагружаем альбом ТОЛЬКО если плеер не играет — иначе сломается звук
-      await W.AlbumsManager?.loadAlbum?.(cA);
-    } else if (cA && isPlaying && cA !== currentPlayingAlbum) {
-      // Плеер играет, а пользователь смотрит другой альбом — безопасно перерендерить
-      await W.AlbumsManager?.loadAlbum?.(cA);
-    } else {
-      // Плеер играет и смотрит на играющий альбом — только обновим UI без перезагрузки
-      W.PlayerUI?.updatePlaylistFiltering?.();
-      W.PlayerUI?.updateMiniHeader?.();
-    }
-  } catch {
-    W.PlayerUI?.updatePlaylistFiltering?.();
-    W.PlayerUI?.updateMiniHeader?.();
-  }
-
-  try {
-    ['backup:restore:applied', 'profile:data:refreshed'].forEach(e =>
-      W.dispatchEvent(new CustomEvent(e, { detail: { reason, at: Date.now() } }))
-    );
-  } catch {}
-
-  return true;
-};
-
+export const runPostRestoreRefresh = async ({ reason='restore', keepCurrentAlbum=true }={}) => { const W = window; try { const {metaDB}=await import('../../analytics/meta-db.js'); const [u,r]=await Promise.all([metaDB.getGlobal('unlocked_achievements').catch(()=>null),metaDB.getGlobal('user_profile_rpg').catch(()=>null)]); if(W.achievementEngine){try{const{refreshAchievementEngineFromDb}=await import('../../analytics/achievement-state.js');await refreshAchievementEngineFromDb({metaDB,reason,forceCheck:true,silent:true});}catch{W.achievementEngine.unlocked=u?.value||{};W.achievementEngine.profile=r?.value||{xp:0,level:1};W.achievementEngine.achievements=W.achievementEngine._buildUIArray?.()||[];}} try{if(W.FavoritesManager?._m){const P=!!W.playerCore?.isPlaying?.();W.FavoritesManager._m.clear();JSON.parse(localStorage.getItem('__favorites_v2__')||'[]').forEach(i=>i?.uid&&W.FavoritesManager._m.set(String(i.uid).trim(),i));if(!P)W.FavoritesManager._s?.forEach?.(cb=>{try{cb({uid:null,liked:null,restored:true});}catch{}});}}catch{} ['stats:updated','analytics:logUpdated','favorites:changed'].forEach(e=>W.dispatchEvent(new CustomEvent(e))); W.dispatchEvent(new CustomEvent('achievements:updated',{detail:{total:W.achievementEngine?.achievements?.length||0,unlocked:Object.keys(W.achievementEngine?.unlocked||{}).length,items:W.achievementEngine?.unlocked||{},unlockMeta:W.achievementEngine?.unlockMeta||{},streak:0,profile:W.achievementEngine?.profile||{xp:0,level:1},reason}})); }catch{} try{const t=Number(localStorage.getItem('yandex:last_backup_local_ts')||Date.now()),m=JSON.parse(localStorage.getItem('yandex:last_backup_meta')||'null');localStorage.setItem('yandex:last_backup_check',JSON.stringify(m&&typeof m==='object'?m:{timestamp:t}));try{Object.keys(sessionStorage).filter(k=>k.startsWith('yandex:cloud:newer:prompt:')).forEach(k=>sessionStorage.removeItem(k));}catch{}W.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));}catch{} try{['intel:listener-profile:rebuild-request','intel:recommendations:refresh-request','intel:collection:refresh-request','intel:runtime:refresh-request'].forEach(n=>W.dispatchEvent(new CustomEvent(n,{detail:{reason,at:Date.now()}})));}catch{} try{const{listenerProfile}=await import('../../intel/listener/listener-profile.js');await listenerProfile?.build?.().catch(()=>null);}catch{} try{const cA=keepCurrentAlbum?(W.AlbumsManager?.getCurrentAlbum?.()||null):null,P=!!W.playerCore?.isPlaying?.(),cA_p=W.AlbumsManager?.getPlayingAlbum?.();if(cA===(W.APP_CONFIG?.SPECIAL_PROFILE_KEY||'__profile__')){const m=await import('./view.js'),ok=await m.refreshProfileViewSoft?.(W.AlbumsManager).catch(()=>false);if(!ok&&!P)await m.loadProfileView?.(W.AlbumsManager);else{W.PlayerUI?.updatePlaylistFiltering?.();W.PlayerUI?.updateMiniHeader?.();}}else if(cA&&!P)await W.AlbumsManager?.loadAlbum?.(cA);else if(cA&&P&&cA!==cA_p)await W.AlbumsManager?.loadAlbum?.(cA);else{W.PlayerUI?.updatePlaylistFiltering?.();W.PlayerUI?.updateMiniHeader?.();}}catch{W.PlayerUI?.updatePlaylistFiltering?.();W.PlayerUI?.updateMiniHeader?.();} try{['backup:restore:applied','profile:data:refreshed'].forEach(e=>W.dispatchEvent(new CustomEvent(e,{detail:{reason,at:Date.now()}})));}catch{} return true; };
 export default { runPostRestoreRefresh };
 
 //=================================================
 // FILE: /scripts/app/promocode.js
-(function(W, D) {
-  'use strict';
-  const $ = id => D.getElementById(id), LS = localStorage, K = 'promocode', isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !W.MSStream;
-  const unlock = () => { $('promocode-block')?.classList.add('hidden'); $('main-block')?.classList.remove('hidden'); const init = () => W.app?.initialize?.(); if (!init()) { let a = 0, t = setInterval(() => (init() || ++a > 50) && clearInterval(t), 50); } };
-  
-  W.addEventListener('load', () => {
-    if (isIOS) D.body.classList.add('ios');
-    const c = String(W.APP_CONFIG?.PROMOCODE || '').trim(), i = $('promo-inp');
-    if (!c || LS.getItem(K) === c) return unlock();
-    const chk = () => {
-      if (i?.value.trim() === c) { LS.setItem(K, c); unlock(); i.blur(); }
-      else if (i) { const e = $('promo-error'); if (e) e.textContent = '❌ Неверный промокод'; i.classList.add('error'); setTimeout(() => { if (e) e.textContent = ''; i.classList.remove('error'); }, 2000); }
-    };
-    $('promo-btn')?.addEventListener('click', chk);
-    i?.addEventListener('keydown', e => (e.key === 'Enter' || e.keyCode === 13) && (e.preventDefault(), chk()));
-    setTimeout(() => i && !i.disabled && i.focus(), 100);
-  });
-})(window, document);
+(function(W,D){'use strict';const $=id=>D.getElementById(id),LS=localStorage,K='promocode',isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)&&!W.MSStream;const unlock=()=>{document.getElementById('promocode-block')?.classList.add('hidden');document.getElementById('main-block')?.classList.remove('hidden');const init=()=>W.app?.initialize?.();if(!init()){let a=0,t=setInterval(()=>(init()||++a>50)&&clearInterval(t),50);}};W.addEventListener('load',()=>{if(isIOS)D.body.classList.add('ios');const c=String(W.APP_CONFIG?.PROMOCODE||'').trim(),i=$('promo-inp');if(!c||LS.getItem(K)===c)return unlock();const chk=()=>{if(i?.value.trim()===c){LS.setItem(K,c);unlock();i.blur();}else if(i){const e=$('promo-error');if(e)e.textContent='❌ Неверный промокод';i.classList.add('error');setTimeout(()=>{if(e)e.textContent='';i.classList.remove('error');},2000);}};document.getElementById('promo-btn')?.addEventListener('click',chk);i?.addEventListener('keydown',e=>(e.key==='Enter'||e.keyCode===13)&&(e.preventDefault(),chk()));setTimeout(()=>i&&!i.disabled&&i.focus(),100);});})(window,document);
 
 //=================================================
 // FILE: /scripts/app/showcase/actions.js
