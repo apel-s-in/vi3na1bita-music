@@ -457,7 +457,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 19:24:41 UTC
+Сгенерировано: 2026-05-08 19:25:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4294,13 +4294,56 @@ export default { openBackupInfoModal, openBackupFoundModal, openRestorePreviewMo
 //=================================================
 // FILE: /scripts/app/profile/yandex-preload-cache.js
 import { safeNum } from '../../analytics/backup-summary.js';
-export const PRELOAD_TIMEOUT_MS=12000, PRELOAD_RETRY_COUNT=3, PERSISTENT_CACHE_TTL_MS=600000, PERSISTENT_CACHE_KEY='yandex:onboarding:preload_cache:v1';
-export const withTimeout=(p,m,l='op')=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error(`${l}_timeout_${m}ms`)),m))]);
-export async function savePreloadToCache(r){try{const{metaDB}=await import('../../analytics/meta-db.js');await metaDB.setGlobal(PERSISTENT_CACHE_KEY,{result:r,savedAt:Date.now(),ownerYandexId:String(r?.meta?.ownerYandexId||'').trim()});}catch{}}
-export async function loadPreloadFromCache(id){try{const{metaDB}=await import('../../analytics/meta-db.js'),r=await metaDB.getGlobal(PERSISTENT_CACHE_KEY),e=r?.value;if(!e||Date.now()-safeNum(e.savedAt)>PERSISTENT_CACHE_TTL_MS)return null;const cO=String(e.ownerYandexId||'').trim(),cI=String(id||'').trim();if(cO&&cI&&cO!==cI)return null;return e.result;}catch{return null;}}
-export async function invalidatePreloadCache(){try{const{metaDB}=await import('../../analytics/meta-db.js');await metaDB.setGlobal(PERSISTENT_CACHE_KEY,null);}catch{}}
-export async function preloadBackupData({token,disk}){if(!token||!disk)return{meta:null,items:[],backup:null};for(let a=0;a<PRELOAD_RETRY_COUNT;a++){try{const m=await withTimeout(disk.getMeta(token).catch(()=>null),PRELOAD_TIMEOUT_MS,'meta').catch(()=>null);if(!m){if(a<PRELOAD_RETRY_COUNT-1){await new Promise(r=>setTimeout(r,1000*Math.pow(2,a)));continue;}return{meta:null,items:[],backup:null};}const[i,b]=await Promise.all([withTimeout(disk.listBackups(token).catch(()=>[]),PRELOAD_TIMEOUT_MS,'list').catch(()=>[]),m.path?withTimeout(disk.download(token,m.path).catch(()=>null),PRELOAD_TIMEOUT_MS*2,'download').catch(()=>null):Promise.resolve(null)]);return{meta:m,items:Array.isArray(i)&&i.length?i:[m],backup:b};}catch(e){if(a>=PRELOAD_RETRY_COUNT-1)return{meta:null,items:[],backup:null};await new Promise(r=>setTimeout(r,1000*Math.pow(2,a)));}}return{meta:null,items:[],backup:null};}
-export default{PRELOAD_TIMEOUT_MS,PRELOAD_RETRY_COUNT,PERSISTENT_CACHE_TTL_MS,PERSISTENT_CACHE_KEY,withTimeout,savePreloadToCache,loadPreloadFromCache,invalidatePreloadCache,preloadBackupData};
+
+export const PRELOAD_TIMEOUT_MS = 12000, PRELOAD_RETRY_COUNT = 3, PERSISTENT_CACHE_TTL_MS = 600000, PERSISTENT_CACHE_KEY = 'yandex:onboarding:preload_cache:v1';
+export const withTimeout = (p, m, l = 'op') => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error(`${l}_timeout_${m}ms`)), m))]);
+
+export async function savePreloadToCache(r) {
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, { result: { ...(r || {}), backup: null }, savedAt: Date.now(), ownerYandexId: String(r?.meta?.ownerYandexId || '').trim() });
+  } catch {}
+}
+
+export async function loadPreloadFromCache(id) {
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js'), r = await metaDB.getGlobal(PERSISTENT_CACHE_KEY), e = r?.value;
+    if (!e || Date.now() - safeNum(e.savedAt) > PERSISTENT_CACHE_TTL_MS) return null;
+    const cO = String(e.ownerYandexId || '').trim(), cI = String(id || '').trim();
+    if (cO && cI && cO !== cI) return null;
+    return { ...(e.result || {}), backup: null };
+  } catch { return null; }
+}
+
+export async function invalidatePreloadCache() {
+  try {
+    const { metaDB } = await import('../../analytics/meta-db.js');
+    await metaDB.setGlobal(PERSISTENT_CACHE_KEY, null);
+  } catch {}
+}
+
+export async function preloadBackupData({ token, disk, includeList = true, includeBackup = false, path = null } = {}) {
+  if (!token || !disk) return { meta: null, items: [], backup: null };
+  for (let a = 0; a < PRELOAD_RETRY_COUNT; a++) {
+    try {
+      const meta = await withTimeout(disk.getMeta(token).catch(() => null), PRELOAD_TIMEOUT_MS, 'meta').catch(() => null);
+      if (!meta) {
+        if (a < PRELOAD_RETRY_COUNT - 1) { await new Promise(r => setTimeout(r, 1000 * Math.pow(2, a))); continue; }
+        return { meta: null, items: [], backup: null };
+      }
+      const items = includeList ? await withTimeout(disk.listBackups(token).catch(() => []), PRELOAD_TIMEOUT_MS, 'list').catch(() => []) : [];
+      const pickedPath = path || meta.path || null;
+      const backup = includeBackup && pickedPath ? await withTimeout(disk.download(token, pickedPath).catch(() => null), PRELOAD_TIMEOUT_MS * 2, 'download').catch(() => null) : null;
+      return { meta, items: Array.isArray(items) && items.length ? items : [meta], backup };
+    } catch {
+      if (a >= PRELOAD_RETRY_COUNT - 1) return { meta: null, items: [], backup: null };
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, a)));
+    }
+  }
+  return { meta: null, items: [], backup: null };
+}
+
+export default { PRELOAD_TIMEOUT_MS, PRELOAD_RETRY_COUNT, PERSISTENT_CACHE_TTL_MS, PERSISTENT_CACHE_KEY, withTimeout, savePreloadToCache, loadPreloadFromCache, invalidatePreloadCache, preloadBackupData };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-runtime-refresh.js
