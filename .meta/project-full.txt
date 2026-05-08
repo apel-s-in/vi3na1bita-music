@@ -456,7 +456,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:36:44 UTC
+Сгенерировано: 2026-05-08 17:37:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3559,7 +3559,7 @@ export default { formatCloudDateTime, formatCloudTimeOnly, getCloudCompareViewMo
 
 //=================================================
 // FILE: /scripts/app/profile/fresh-restore-modal.js
-import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js'; import { renderCloudStatPair } from './cloud-ui-helpers.js'; import { renderRestoreDiffHtml } from './restore-diff.js'; import { compareBackupBranches } from '../../analytics/backup-branch-compare.js'; import { BackupVault } from '../../analytics/backup-vault.js'; import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js'; import { esc, fmtDateTime } from './profile-ui-kit.js';
+import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js'; import { renderCloudStatPair, esc, fmtDateTime } from './profile-render-kit.js'; import { renderRestoreDiffHtml } from './restore-diff.js'; import { compareBackupBranches } from '../../analytics/backup-branch-compare.js'; import { BackupVault } from '../../analytics/backup-vault.js'; import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
 const DEVICE_LABEL_KEY = 'yandex:onboarding:device_label', sS = v => String(v == null ? '' : v).trim(), dL = d => sS(d?.label || d?.sourceDeviceLabel || d?.class || d?.sourceDeviceClass || 'Устройство'), dC = d => sS(d?.class || d?.sourceDeviceClass || d?.platform || d?.sourcePlatform || ''), dI = d => /iphone|ipad|ios/i.test(`${d?.cls || d?.class || d?.platform || ''}`) ? '📱' : (/android/i.test(`${d?.cls || d?.class || d?.platform || ''}`) ? '🤖' : '💻');
 const colDevs = ({ backup: b, items: i = [], meta: m = null } = {}) => { const map = new Map(), add = d => { const k = sS(d?.deviceStableId || d?.sourceDeviceStableId || ''); if(k && !map.has(k)) map.set(k, { key: k, label: dL(d), cls: dC(d), platform: sS(d?.platform || d?.sourcePlatform || ''), lastSeenAt: Number(d?.lastSeenAt || d?.timestamp || 0) }); }; (Array.isArray(b?.devices)?b.devices:[]).forEach(add); [m,...(Array.isArray(i)?i:[])].filter(Boolean).forEach(add); return [...map.values()].sort((x,y)=>(y.lastSeenAt||0)-(x.lastSeenAt||0)); };
 const resDSS = async ({ disk: d, token: t, deviceKey: k } = {}) => { const sk = sS(k); if(!sk||sk==='__new__') return 'новое устройство — не применяется'; if(sk==='__shared_only__') return 'только общий прогресс'; if(!d||!t) return 'проверка недоступна'; try { const idx=await d.getDeviceSettingsIndex?.(t).catch(()=>null), it=(idx?.items||[]).find(x=>sS(x.deviceStableId)===sk); if(!it) return 'не найдено в облаке'; if(!it.semanticHash) return 'hash недоступен'; const lD=await BackupVault.buildDeviceSettingsObject().catch(()=>null), lH=lD ? await getDeviceSettingsSemanticHash(lD).catch(()=>'') : ''; if(!lH) return 'локальный hash недоступен'; return lH===it.semanticHash?'совпадают':'отличаются'; }catch{return 'проверка не удалась';} };
