@@ -312,7 +312,6 @@ vi3na1bita-music/
 │   │   │   ├── profile-render-kit.js
 │   │   │   ├── profile-tab-bindings.js
 │   │   │   ├── profile-tab-renderers.js
-│   │   │   ├── profile-ui-kit.js
 │   │   │   ├── recs-view.js
 │   │   │   ├── render-shell.js
 │   │   │   ├── restore-backup-runner.js
@@ -456,7 +455,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:41:50 UTC
+Сгенерировано: 2026-05-08 17:56:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3783,12 +3782,6 @@ export default { bindProfileTabControllers };
 import { renderProfileStats } from './stats-view.js'; import { renderProfileRecs } from './recs-view.js'; import { renderProfileLogs } from './logs-view.js';
 export const renderProfileTabsData = async ({ container, all, metaDB } = {}) => { if(!container)return; renderProfileStats({container,all}); renderProfileRecs({container,all}); setTimeout(()=>{renderProfileLogs({container,metaDB}); window.AlbumsManager?.highlightCurrentTrack?.()},120); };
 export default { renderProfileTabsData };
-
-//=================================================
-// FILE: /scripts/app/profile/profile-ui-kit.js
-// Compatibility facade. Use /scripts/app/profile/profile-render-kit.js in new code.
-export * from './profile-render-kit.js';
-export { default } from './profile-render-kit.js';
 
 //=================================================
 // FILE: /scripts/app/profile/recs-view.js
