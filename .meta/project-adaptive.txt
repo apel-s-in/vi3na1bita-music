@@ -248,7 +248,6 @@ vi3na1bita-music/
 │   │   ├── backup-builders.js
 │   │   ├── backup-event-cleanup.js
 │   │   ├── backup-importers.js
-│   │   ├── backup-merge.js
 │   │   ├── backup-recovery.js
 │   │   ├── backup-summary.js
 │   │   ├── backup-sync-engine.js
@@ -458,7 +457,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 18:43:18 UTC
+Сгенерировано: 2026-05-08 18:44:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1758,12 +1757,6 @@ export const applyDeviceSettingsObject = async (deviceDoc, { allowPlaybackSensit
 export default { rebuildStatsFromWarmEvents, applyBackupImportObject, applyDeviceSettingsObject };
 
 //=================================================
-// FILE: /scripts/analytics/backup-merge.js
-// Compatibility facade. Use /scripts/analytics/storage-merge.js in new code.
-export * from './storage-merge.js';
-export { default } from './storage-merge.js';
-
-//=================================================
 // FILE: /scripts/analytics/backup-recovery.js
 // UID.100_(Backup snapshot as life capsule)_(перед restore сохранять recovery snapshot)_(можно откатиться при ошибке) UID.094_(No-paralysis rule)_(recovery не трогает playback напрямую)_(только backup import + post refresh)
 import { metaDB } from './meta-db.js';
@@ -1900,7 +1893,7 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
 
   if (!uploadedShared && meta) persistMeta({ meta });
   if (uploadedShared) try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared, uploadedDevice, checksum: b?.integrity?.payloadHash || '' }); } catch {}
-  recordSyncRevision({ hash: sharedHash, domains: changedDomains, uploadedShared, uploadedDevice, reason, ok: true });
+  recordSyncRevision({ hash: sharedHash, domains: changedDomains, uploadedShared, uploadedDevice, uploadedEventArchive, reason, ok: true });
   return { ok: true, reason, backup: b, meta, uploadedShared, uploadedDevice, uploadedEventArchive, eventArchive, sharedHash, deviceHash, deviceDoc };
 };
 
