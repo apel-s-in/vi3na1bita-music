@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 15:09:10 UTC
+Сгенерировано: 2026-05-08 15:10:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2511,133 +2511,39 @@ export async function loadProfileAlbum(ctx) { return loadProfileView(ctx); }
 
 //=================================================
 // FILE: /scripts/app/gallery.js
-const W = window, D = document, $ = id => D.getElementById(id), BASE = './albums/gallery/', LOGO = 'img/logo.png', C404 = 'gallery_404_cache:v2';
-const MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04' };
-const ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
-
+const W = window, D = document, $ = id => D.getElementById(id), BASE = './albums/gallery/', LOGO = 'img/logo.png', C404 = 'gallery_404_cache:v2', MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04' }, ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
 class GalleryManager {
   it = []; idx = 0; tm = null; pre = new Set(); flip = 0; meta = new Map();
-  
-  initialize() {
-    const go = d => this.it.length > 1 && (this.show((this.idx + d + this.it.length) % this.it.length), this.play());
-    $('cover-gallery-arrow-left')?.addEventListener('click', () => go(-1)); $('cover-gallery-arrow-right')?.addEventListener('click', () => go(1));
-    const w = $('cover-wrap');
-    if (w) { let x = null; w.addEventListener('touchstart', e => x = e.touches[0].clientX, { passive: true }); w.addEventListener('touchend', e => { if (x !== null && Math.abs(e.changedTouches[0].clientX - x) > 50) go(e.changedTouches[0].clientX < x ? 1 : -1); x = null; }, { passive: true }); }
-    D.addEventListener('visibilitychange', () => D.hidden ? this.stop() : this.play());
-  }
-  
-  _norm(i, dir) {
-    if (!i || i.type === 'html' || (typeof i === 'string' && /\.html/i.test(i))) return null;
-    const p = (typeof i === 'string') ? i : (i.formats?.webp || i.formats?.full || i.src);
-    return p ? (/^(https?:)?\/\//.test(p) ? p : (/^(albums|img|icons)\//.test(p) ? './'+p : dir + p)) : null;
-  }
-  
-  async loadGallery(key) {
-    this.stop(); this.it = []; this.idx = 0;
-    const id = MAP[key], slot = $('cover-slot'), dir = `${BASE}${id}/`, setL = () => { if(slot) slot.innerHTML = `<img src="${LOGO}" alt="Cover" draggable="false" style="width:100%;height:100%;object-fit:contain">`; this._nav(); };
-    if (!id || ss(C404)[id]) return setL();
-    try {
-      let items = this.meta.get(id);
-      if (!items) {
-        const fc = W.Utils?.fetchCache, d = fc?.getJson ? await fc.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${dir}index.json`, { cache: 'force-cache' }) || fetch(`${dir}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`));
-        this.meta.set(id, items = Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []));
-      }
-      this.it = items.map(i => this._norm(i, dir)).filter(Boolean); this.it.length ? (this.show(0), this.play()) : setL();
-    } catch (e) { if (String(e?.message || '').includes('404')) ss(C404, { ...ss(C404), [id]: 1 }); setL(); }
-    this._nav();
-  }
-
-  show(i) {
-    if (!this.it.length) return;
-    this.idx = i; const src = this.it[i], slot = $('cover-slot'); if (!slot) return;
-    if (slot.children.length < 2 || slot.querySelector('iframe')) { slot.innerHTML = `<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .3s ease-out;opacity:0" alt="Cover" draggable="false">`.repeat(2); this.flip = 0; }
-    const imgs = slot.querySelectorAll('img'), nxt = imgs[this.flip === 0 ? 1 : 0], cur = imgs[this.flip], img = new Image();
-    img.onload = () => { nxt.src = src; nxt.style.opacity = '1'; cur.style.opacity = '0'; this.flip = this.flip === 0 ? 1 : 0; this._pre(); }; img.onerror = () => this._pre(); img.src = src;
-  }
-
+  initialize() { const g = d => this.it.length > 1 && (this.show((this.idx + d + this.it.length) % this.it.length), this.play()); $('cover-gallery-arrow-left')?.addEventListener('click', () => g(-1)); $('cover-gallery-arrow-right')?.addEventListener('click', () => g(1)); const w = $('cover-wrap'); if (w) { let x = null; w.addEventListener('touchstart', e => x = e.touches[0].clientX, { passive: true }); w.addEventListener('touchend', e => { if (x !== null && Math.abs(e.changedTouches[0].clientX - x) > 50) g(e.changedTouches[0].clientX < x ? 1 : -1); x = null; }, { passive: true }); } D.addEventListener('visibilitychange', () => D.hidden ? this.stop() : this.play()); }
+  _norm(i, d) { if (!i || i.type === 'html' || (typeof i === 'string' && /\.html/i.test(i))) return null; const p = typeof i === 'string' ? i : (i.formats?.webp || i.formats?.full || i.src); return p ? (/^(https?:)?\/\//.test(p) ? p : (/^(albums|img|icons)\//.test(p) ? './' + p : d + p)) : null; }
+  async loadGallery(k) { this.stop(); this.it = []; this.idx = 0; const id = MAP[k], s = $('cover-slot'), dir = `${BASE}${id}/`, setL = () => { if (s) s.innerHTML = `<img src="${LOGO}" alt="Cover" draggable="false" style="width:100%;height:100%;object-fit:contain">`; this._nav(); }; if (!id || ss(C404)[id]) return setL(); try { let i = this.meta.get(id); if (!i) { const fc = W.Utils?.fetchCache, d = fc?.getJson ? await fc.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${dir}index.json`, { cache: 'force-cache' }) || fetch(`${dir}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`)); this.meta.set(id, i = Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : [])); } this.it = i.map(x => this._norm(x, dir)).filter(Boolean); this.it.length ? (this.show(0), this.play()) : setL(); } catch (e) { if (String(e?.message || '').includes('404')) ss(C404, { ...ss(C404), [id]: 1 }); setL(); } this._nav(); }
+  show(i) { if (!this.it.length) return; this.idx = i; const src = this.it[i], s = $('cover-slot'); if (!s) return; if (s.children.length < 2 || s.querySelector('iframe')) { s.innerHTML = `<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .3s ease-out;opacity:0" alt="Cover" draggable="false">`.repeat(2); this.flip = 0; } const imgs = s.querySelectorAll('img'), nxt = imgs[this.flip === 0 ? 1 : 0], cur = imgs[this.flip], img = new Image(); img.onload = () => { nxt.src = src; nxt.style.opacity = '1'; cur.style.opacity = '0'; this.flip = this.flip === 0 ? 1 : 0; this._pre(); }; img.onerror = () => this._pre(); img.src = src; }
   _pre() { const n = this.it[(this.idx + 1) % this.it.length]; if (n && !this.pre.has(n)) { if (this.pre.size > 20) this.pre.clear(); (new Image()).src = n; this.pre.add(n); } }
   _nav() { $('cover-wrap')?.classList.toggle('gallery-nav-ready', this.it.length > 1); }
   play() { this.stop(); if (this.it.length > 1) this.tm = setInterval(() => this.show((this.idx + 1) % this.it.length), 5000); }
   stop() { if (this.tm) clearInterval(this.tm); this.tm = null; }
   clear() { this.stop(); this.it = []; this.pre.clear(); if ($('cover-slot')) $('cover-slot').innerHTML = ''; this._nav(); }
   getItemsCount() { return this.it.length; } getCurrentIndex() { return this.idx; }
-  
-  async getFirstCoverUrl(key) {
-    const id = MAP[key]; if (!id) return LOGO;
-    try {
-      let items = this.meta.get(id);
-      if (!items) {
-        const dir = `${BASE}${id}/`, d = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: `gallery:index:${id}`, url: `${dir}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${dir}index.json`, { cache: 'force-cache' }) || fetch(`${dir}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : null);
-        this.meta.set(id, items = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []));
-      }
-      return this._norm((items || [])[0], `${BASE}${id}/`) || LOGO;
-    } catch { return LOGO; }
-  }
+  async getFirstCoverUrl(k) { const id = MAP[k]; if (!id) return LOGO; try { let i = this.meta.get(id); if (!i) { const d = `${BASE}${id}/`, j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: `gallery:index:${id}`, url: `${d}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(`${d}index.json`, { cache: 'force-cache' }) || fetch(`${d}index.json`, { cache: 'force-cache' })).then(r => r.ok ? r.json() : null); this.meta.set(id, i = Array.isArray(j?.items) ? j.items : (Array.isArray(j) ? j : [])); } return this._norm((i || [])[0], `${BASE}${id}/`) || LOGO; } catch { return LOGO; } }
 }
 W.GalleryManager = new GalleryManager(); export default W.GalleryManager;
 
 //=================================================
 // FILE: /scripts/app/offline-ui-bootstrap.js
-export async function initOfflineUI() {
-  if (!window.Utils?.func?.initOnce?.('app:offline-ui-bootstrap:init', () => {})) return;
-  const sync = () => navigator.serviceWorker?.controller?.postMessage({ type: 'SYNC_AIRPLANE_MODE', payload: window.NetPolicy ? window.NetPolicy.getNetPolicyState().airplaneMode : !navigator.onLine });
-  ['netPolicy:changed', 'online', 'offline'].forEach(e => window.addEventListener(e, sync)); sync();
-  try { (await import('../ui/offline-indicators.js'))?.initOfflineIndicators?.(); (await import('../ui/offline-modal.js'))?.initOfflineModal?.(); (await import('../ui/cache-progress-overlay.js'))?.initCacheProgressOverlay?.(); } catch (e) { console.error('Offline UI init failed:', e); }
-}
+export async function initOfflineUI() { if (!window.Utils?.func?.initOnce?.('app:offline-ui-bootstrap:init', () => {})) return; const s = () => navigator.serviceWorker?.controller?.postMessage({ type: 'SYNC_AIRPLANE_MODE', payload: window.NetPolicy ? window.NetPolicy.getNetPolicyState().airplaneMode : !navigator.onLine }); ['netPolicy:changed', 'online', 'offline'].forEach(e => window.addEventListener(e, s)); s(); try { (await import('../ui/offline-indicators.js'))?.initOfflineIndicators?.(); (await import('../ui/offline-modal.js'))?.initOfflineModal?.(); (await import('../ui/cache-progress-overlay.js'))?.initCacheProgressOverlay?.(); } catch (e) { console.error(e); } }
 export default { initOfflineUI };
 
 //=================================================
 // FILE: /scripts/app/playback-cache-bootstrap.js
-import { getOfflineManager } from '../offline/offline-manager.js';
-import { deleteTrackCache, getTrackMeta } from '../offline/cache-db.js';
-
+import { getOfflineManager } from '../offline/offline-manager.js'; import { deleteTrackCache, getTrackMeta } from '../offline/cache-db.js';
 let _init = false, _protected = false, _win = { prev: null, cur: null, next: null }, _pendingGC = new Set();
 const uidOf = t => String(t?.uid || '').trim() || null;
-
-function getWin(pl, idx) {
-  const len = pl.length, cur = (len > 0 && idx >= 0) ? uidOf(pl[idx]) : null;
-  if (!cur) return { prev: null, cur: null, next: null };
-  if (len === 1) return { prev: cur, cur, next: cur };
-  const wrap = i => (i % len + len) % len;
-  return { prev: uidOf(pl[wrap(idx - 1)]) || cur, cur, next: uidOf(pl[wrap(idx + 1)]) || cur };
-}
-
-async function rebuild(dir = 1) {
-  const mgr = getOfflineManager(), pc = window.playerCore;
-  if (!['R1', 'R2'].includes(mgr.getMode())) { Object.values(_win).filter(Boolean).forEach(u => _pendingGC.add(u)); _win = { prev: null, cur: null, next: null }; if (pc && !pc.isPlaying?.()) flushGC().catch(()=>{}); return; }
-  const pl = pc?.getPlaylistSnapshot?.() || [], idx = pc?.getIndex?.() ?? -1;
-  if (idx < 0 || !pl.length) return;
-  const nW = getWin(pl, idx); if (!nW.cur) return;
-  const keep = new Set(Object.values(nW).filter(Boolean));
-  Object.values(_win).filter(u => u && !keep.has(u)).forEach(u => _pendingGC.add(u)); _win = nW;
-  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) || !(await mgr.hasSpace())) return;
-  let curIsStreaming = false; try { if (nW.cur) curIsStreaming = (await window.TrackResolver?.resolve?.(nW.cur, mgr.getEffectiveQuality?.()))?.source === 'stream'; } catch {}
-  [...new Set(dir >= 0 ? [nW.cur, nW.next, nW.prev] : [nW.cur, nW.prev, nW.next])].filter(Boolean).forEach((u, i) => {
-    if (i > 0 && curIsStreaming) return;
-    mgr.enqueueAudioDownload(u, { priority: [100, 90, 80][i] || 50, kind: 'playbackCache' });
-  });
-}
-
-async function flushGC() {
-  if (_protected || !_pendingGC.size) return;
-  const keep = new Set(Object.values(_win).filter(Boolean)), toDel = [..._pendingGC].filter(u => u && !keep.has(u)); _pendingGC.clear();
-  for (const u of toDel) try { const m = await getTrackMeta(u); if (m && ['pinned', 'cloud', 'dynamic'].includes(m.type)) continue; await deleteTrackCache(u); } catch {}
-}
-
-export function initPlaybackCache() {
-  if (_init) return; _init = true;
-  const r = e => rebuild(Number(e?.detail?.dir) || 1).catch(()=>{}), toggleNet = () => { const b = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed()); b ? protectWindow() : unprotectWindow(); if (!b) r(); };
-  window.addEventListener('player:trackChanged', r);
-  ['online', 'offline', 'netPolicy:changed'].forEach(e => window.addEventListener(e, toggleNet));
-  window.playerCore?.on?.({ onPlay: () => flushGC().catch(()=>{}) }); toggleNet();
-}
-
-export const protectWindow = () => { _protected = true; };
-export const unprotectWindow = () => { _protected = false; flushGC().catch(()=>{}); };
-export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC: [..._pendingGC] });
-
-window.PlaybackCache = window.PlaybackCache || {};
-window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.protectWindow = protectWindow; window.PlaybackCache.unprotectWindow = unprotectWindow;
+function getWin(pl, idx) { const len = pl.length, cur = (len > 0 && idx >= 0) ? uidOf(pl[idx]) : null; if (!cur) return { prev: null, cur: null, next: null }; if (len === 1) return { prev: cur, cur, next: cur }; const wrap = i => (i % len + len) % len; return { prev: uidOf(pl[wrap(idx - 1)]) || cur, cur, next: uidOf(pl[wrap(idx + 1)]) || cur }; }
+async function rebuild(dir = 1) { const mgr = getOfflineManager(), pc = window.playerCore; if (!['R1', 'R2'].includes(mgr.getMode())) { Object.values(_win).filter(Boolean).forEach(u => _pendingGC.add(u)); _win = { prev: null, cur: null, next: null }; if (pc && !pc.isPlaying?.()) flushGC().catch(() => {}); return; } const pl = pc?.getPlaylistSnapshot?.() || [], idx = pc?.getIndex?.() ?? -1; if (idx < 0 || !pl.length) return; const nW = getWin(pl, idx); if (!nW.cur) return; const keep = new Set(Object.values(nW).filter(Boolean)); Object.values(_win).filter(u => u && !keep.has(u)).forEach(u => _pendingGC.add(u)); _win = nW; if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) || !(await mgr.hasSpace())) return; let cS = false; try { if (nW.cur) cS = (await window.TrackResolver?.resolve?.(nW.cur, mgr.getEffectiveQuality?.()))?.source === 'stream'; } catch {} [...new Set(dir >= 0 ? [nW.cur, nW.next, nW.prev] : [nW.cur, nW.prev, nW.next])].filter(Boolean).forEach((u, i) => { if (i > 0 && cS) return; mgr.enqueueAudioDownload(u, { priority: [100, 90, 80][i] || 50, kind: 'playbackCache' }); }); }
+async function flushGC() { if (_protected || !_pendingGC.size) return; const keep = new Set(Object.values(_win).filter(Boolean)), toDel = [..._pendingGC].filter(u => u && !keep.has(u)); _pendingGC.clear(); for (const u of toDel) try { const m = await getTrackMeta(u); if (m && ['pinned', 'cloud', 'dynamic'].includes(m.type)) continue; await deleteTrackCache(u); } catch {} }
+export function initPlaybackCache() { if (_init) return; _init = true; const r = e => rebuild(Number(e?.detail?.dir) || 1).catch(() => {}), tN = () => { const b = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed()); b ? protectWindow() : unprotectWindow(); if (!b) r(); }; window.addEventListener('player:trackChanged', r); ['online', 'offline', 'netPolicy:changed'].forEach(e => window.addEventListener(e, tN)); window.playerCore?.on?.({ onPlay: () => flushGC().catch(() => {}) }); tN(); }
+export const protectWindow = () => { _protected = true; }; export const unprotectWindow = () => { _protected = false; flushGC().catch(() => {}); }; export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC: [..._pendingGC] });
+window.PlaybackCache = window.PlaybackCache || {}; window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.protectWindow = protectWindow; window.PlaybackCache.unprotectWindow = unprotectWindow;
 
 //=================================================
 // FILE: /scripts/app/player-ui.js
