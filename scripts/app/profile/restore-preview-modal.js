@@ -1,9 +1,8 @@
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
 import { compareBackupBranches } from '../../analytics/backup-branch-compare.js';
-import { renderCloudStatPair } from './cloud-ui-helpers.js';
+import { renderCloudStatPair, esc, fmtDateTime, renderInlineActions } from './profile-render-kit.js';
 import { renderRestoreDiffHtml } from './restore-diff.js';
-import { esc, fmtDateTime, renderInlineActions } from './profile-ui-kit.js';
 
 export const openRestorePreviewModal = (d, oC) => {
   const s = BackupVault.summarizeBackupObject(d), lI = getLocalBackupUiSnapshot({ name: 'Слушатель' }), c = compareLocalVsCloud(lI, s || {}), cL = getBackupCompareLabel(lI, s || {}), tH = renderCloudStatPair({ localSummary: lI, cloudSummary: s });
