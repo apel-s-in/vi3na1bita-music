@@ -456,7 +456,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:37:47 UTC
+Сгенерировано: 2026-05-08 17:38:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3759,9 +3759,8 @@ export default { renderRestoreDiffHtml };
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
 import { compareBackupBranches } from '../../analytics/backup-branch-compare.js';
-import { renderCloudStatPair } from './cloud-ui-helpers.js';
+import { renderCloudStatPair, esc, fmtDateTime, renderInlineActions } from './profile-render-kit.js';
 import { renderRestoreDiffHtml } from './restore-diff.js';
-import { esc, fmtDateTime, renderInlineActions } from './profile-ui-kit.js';
 
 export const openRestorePreviewModal = (d, oC) => {
   const s = BackupVault.summarizeBackupObject(d), lI = getLocalBackupUiSnapshot({ name: 'Слушатель' }), c = compareLocalVsCloud(lI, s || {}), cL = getBackupCompareLabel(lI, s || {}), tH = renderCloudStatPair({ localSummary: lI, cloudSummary: s });
