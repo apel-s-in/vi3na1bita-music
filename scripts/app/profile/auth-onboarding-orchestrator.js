@@ -17,7 +17,7 @@ const getSystemInstallDate = () => getSystemInstallDateLabel();
 export async function runOnboardingFlow({ token, profile, isFirstLogin = true } = {}) {
   if (_onboardingActive) return; _onboardingActive = true;
   try {
-    if (!_preloadPromise) _preloadPromise = preloadBackupData({ token, disk: YandexDisk });
+    if (!_preloadPromise) _preloadPromise = preloadBackupData({ token, disk: YandexDisk, includeList: true, includeBackup: false });
     const result = await _preloadPromise; _preloadResult = result;
     const meta = result?.meta || null, items = result?.items || [], backup = result?.backup || null;
 
@@ -92,7 +92,7 @@ export function startPreload(token) {
   if (!token) return _preloadPromise = Promise.resolve({ meta: null, items: [], backup: null });
   return _preloadPromise = (async () => {
     try { const profile = window.YandexAuth?.getProfile?.(), cached = await loadPreloadFromCache(profile?.yandexId); if (cached?.meta) return cached; } catch {}
-    const result = await preloadBackupData({ token, disk: YandexDisk }); if (result?.meta) savePreloadToCache(result).catch(() => {}); return result;
+    const result = await preloadBackupData({ token, disk: YandexDisk, includeList: true, includeBackup: false }); if (result?.meta) savePreloadToCache(result).catch(() => {}); return result;
   })();
 }
 
@@ -101,7 +101,7 @@ export function clearPreloadCache() { _preloadPromise = null; _preloadResult = n
 export async function openManualRestoreFlow({ token, profile } = {}) {
   if (!token) return;
   try {
-    _preloadPromise = preloadBackupData({ token, disk: YandexDisk }); const result = await _preloadPromise; _preloadResult = result;
+    _preloadPromise = preloadBackupData({ token, disk: YandexDisk, includeList: true, includeBackup: true }); const result = await _preloadPromise; _preloadResult = result;
     const meta = result?.meta || null; if (!meta) return window.NotificationSystem?.warning?.('Облачная копия не найдена');
     showRestoreChoiceModal({ token, meta, items: result?.items || [], profile: profile || { name: 'Слушатель' }, preloadedBackup: result?.backup || null });
   } catch (e) { window.NotificationSystem?.error?.('Не удалось открыть восстановление: ' + String(e?.message || '')); }
