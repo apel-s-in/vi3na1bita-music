@@ -3,6 +3,7 @@ import { stableStringify, sha256Hex } from './backup-builders.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 import { recordSyncRevision } from './sync-revisions.js';
+import { uploadLocalEventArchiveDelta } from './event-archive-sync.js';
 
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', HISTORY_MIN_INTERVAL_MS = 21600000;
 const sS = v => String(v == null ? '' : v).trim(), sN = v => Number.isFinite(Number(v)) ? Number(v) : 0, jP = (raw, fb = null) => { try { return JSON.parse(raw); } catch { return fb; } };
@@ -32,6 +33,13 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
     if (writeHistory) try { localStorage.setItem(LS_LAST_HISTORY_AT, String(Date.now())); } catch {}
   }
 
+  let uploadedEventArchive = false, eventArchive = null;
+  if (uploadedShared && typeof disk.uploadEventSegment === 'function') {
+    eventArchive = await uploadLocalEventArchiveDelta({ disk, token }).catch(e => ({ ok: false, uploaded: false, reason: e?.message || 'event_archive_failed' }));
+    uploadedEventArchive = !!eventArchive?.uploaded;
+    if (uploadedEventArchive) changedDomains = [...new Set([...(changedDomains || []), 'eventArchive'])];
+  }
+
   let uploadedDevice = false, deviceDoc = null, deviceHash = '';
   if (uploadDevice && typeof BackupVault.buildDeviceSettingsObject === 'function' && typeof disk.uploadDeviceSettings === 'function') {
     try {
@@ -47,7 +55,7 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
   if (!uploadedShared && meta) persistMeta({ meta });
   if (uploadedShared) try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared, uploadedDevice, checksum: b?.integrity?.payloadHash || '' }); } catch {}
   recordSyncRevision({ hash: sharedHash, domains: changedDomains, uploadedShared, uploadedDevice, reason, ok: true });
-  return { ok: true, reason, backup: b, meta, uploadedShared, uploadedDevice, sharedHash, deviceHash, deviceDoc };
+  return { ok: true, reason, backup: b, meta, uploadedShared, uploadedDevice, uploadedEventArchive, eventArchive, sharedHash, deviceHash, deviceDoc };
 };
 
 export default { buildSharedSemanticPayload, getSharedSemanticHash, getDeviceSettingsSemanticHash, uploadBackupBundle };
