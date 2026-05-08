@@ -456,7 +456,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:32:27 UTC
+Сгенерировано: 2026-05-08 17:33:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3544,13 +3544,18 @@ export { default } from './profile-render-kit.js';
 //=================================================
 // FILE: /scripts/app/profile/cloud-ui-helpers.js
 import { safeNum, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
-import { renderCloudMetaBox, renderCloudStatPair as renderCloudStatPairBase } from './cloud-card-renderers.js';
-export const formatCloudDateTime = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleString('ru-RU') : '—', formatCloudTimeOnly = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
-export const getCloudCompareViewModel = (l, c) => { if(!c) return { state:'unknown', uiState:'unknown', label:'Нет данных о копии', compare:null }; const cm=compareLocalVsCloud(l||{},c||{}), uiS={no_cloud:'local_newer',cloud_richer_new_device:'cloud_newer',cloud_richer:'cloud_newer',cloud_probably_richer:'cloud_probable',local_richer:'local_newer',local_probably_richer:'local_probable',equivalent:'equal',conflict:'mixed'}; return { state:cm.state, uiState:uiS[cm.state]||'mixed', label:getBackupCompareLabel(l||{},c||{}), compare:cm }; };
-export { renderCloudMetaBox };
-export const renderCloudCompareNotice = ({ compareVm: c, restoreDone: r = false } = {}) => (r || !c || !['cloud_newer', 'cloud_probable'].includes(c.uiState)) ? '' : `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3);border-radius:10px;margin-bottom:10px"><span style="font-size:18px">⚠️</span><div style="flex:1;font-size:12px;color:#ffb74d;line-height:1.4">В облаке есть более богатая или более новая копия.<br>При желании можно восстановить её вручную.</div><button class="modal-action-btn" data-ya-action="restore-backup" style="font-size:11px;padding:6px 10px;flex-shrink:0">📥 Загрузить</button></div>`;
-export const renderCloudStatPair = renderCloudStatPairBase;
-export default { formatCloudDateTime, formatCloudTimeOnly, getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice, renderCloudStatPair };
+
+export const formatCloudDateTime = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleString('ru-RU') : '—';
+export const formatCloudTimeOnly = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+
+export const getCloudCompareViewModel = (l, c) => {
+  if (!c) return { state: 'unknown', uiState: 'unknown', label: 'Нет данных о копии', compare: null };
+  const cm = compareLocalVsCloud(l || {}, c || {});
+  const uiS = { no_cloud: 'local_newer', cloud_richer_new_device: 'cloud_newer', cloud_richer: 'cloud_newer', cloud_probably_richer: 'cloud_probable', local_richer: 'local_newer', local_probably_richer: 'local_probable', equivalent: 'equal', conflict: 'mixed' };
+  return { state: cm.state, uiState: uiS[cm.state] || 'mixed', label: getBackupCompareLabel(l || {}, c || {}), compare: cm };
+};
+
+export default { formatCloudDateTime, formatCloudTimeOnly, getCloudCompareViewModel };
 
 //=================================================
 // FILE: /scripts/app/profile/fresh-restore-modal.js
