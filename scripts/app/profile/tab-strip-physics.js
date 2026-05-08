@@ -1,6 +1,46 @@
-// UID.096_(Helper-first anti-duplication policy)_(единая круговая физика горизонтальных вкладок)_(без длинного scrollTo в начало/конец) UID.112_(Profile command center)_(tab strip как плоская круговая карусель)_(после последней идёт первая, активная центрируется)
-const qsa = (r,s) => [...(r?.querySelectorAll?.(s)||[])], itemsOf = (s,sel) => qsa(s,sel).filter(x=>x.offsetParent!==null), centerItem = (s,i,b='smooth') => { if(s&&i) s.scrollTo({left:Math.max(0,i.offsetLeft-(s.clientWidth-i.offsetWidth)/2),behavior:b}); };
-const actIdx = (s,sel) => { const i=itemsOf(s,sel), a=s.querySelector(`${sel}.active`), x=i.indexOf(a); if(x>=0) return x; const m=s.scrollLeft+s.clientWidth/2; return Math.max(0,i.reduce((b,e,j)=>Math.abs((e.offsetLeft+e.offsetWidth/2)-m)<Math.abs((i[b].offsetLeft+i[b].offsetWidth/2)-m)?j:b,0)); };
-const actCirc = (s,d,sel) => { const i=itemsOf(s,sel); if(!i.length)return; const it=i[(actIdx(s,sel)+d+i.length)%i.length]; if(it){ it.click(); requestAnimationFrame(()=>centerItem(s,it)); } };
-export const bindTabStripPhysics = (r=document,{selector:'.ach-classic-tabs',itemSelector:'.ach-classic-tab'}={}) => { (r?.matches?.(selector)?[r]:qsa(r,selector)).forEach(s=>{ if(!s||s._tabPhysicsBound)return; s._tabPhysicsBound=true; s.classList.add('physics-tabs'); s.addEventListener('click',e=>{const i=e.target.closest(itemSelector);if(i)setTimeout(()=>centerItem(s,i),20)}); s.addEventListener('wheel',e=>{const i=itemsOf(s,itemSelector);if(i.length<2)return;e.preventDefault();const n=Date.now();if(s._tabWheelLock&&n-s._tabWheelLock<170)return;s._tabWheelLock=n; actCirc(s,Math.abs(e.deltaX)>Math.abs(e.deltaY)?(e.deltaX>0?1:-1):(e.deltaY>0?1:-1),itemSelector);},{passive:false}); let sx=0,sy=0; s.addEventListener('touchstart',e=>{sx=e.touches?.[0]?.clientX||0; sy=e.touches?.[0]?.clientY||0;},{passive:true}); s.addEventListener('touchend',e=>{const dx=(e.changedTouches?.[0]?.clientX||0)-sx,dy=(e.changedTouches?.[0]?.clientY||0)-sy; if(Math.abs(dx)<34||Math.abs(dx)<Math.abs(dy)+10)return; actCirc(s,dx<0?1:-1,itemSelector);},{passive:true}); requestAnimationFrame(()=>centerItem(s,s.querySelector(`${itemSelector}.active`)||s.querySelector(itemSelector),'auto')); }); };
+// UID.096_(Helper-first anti-duplication policy)_(единая круговая физика горизонтальных вкладок)_(без длинного scrollTo в начало/конец)
+// UID.112_(Profile command center)_(tab strip как плоская круговая карусель)_(после последней идёт первая, активная центрируется)
+
+const qsa = (r, s) => [...(r?.querySelectorAll?.(s) || [])];
+const itemsOf = (s, sel) => qsa(s, sel).filter(x => x.offsetParent !== null);
+const centerItem = (s, i, b = 'smooth') => { if (s && i) s.scrollTo({ left: Math.max(0, i.offsetLeft - (s.clientWidth - i.offsetWidth) / 2), behavior: b }); };
+
+const actIdx = (s, sel) => {
+  const it = itemsOf(s, sel), a = s.querySelector(`${sel}.active`), x = it.indexOf(a);
+  if (x >= 0) return x;
+  const m = s.scrollLeft + s.clientWidth / 2;
+  return Math.max(0, it.reduce((best, el, idx) => Math.abs((el.offsetLeft + el.offsetWidth / 2) - m) < Math.abs((it[best].offsetLeft + it[best].offsetWidth / 2) - m) ? idx : best, 0));
+};
+
+const actCirc = (s, d, sel) => {
+  const it = itemsOf(s, sel);
+  if (!it.length) return;
+  const el = it[(actIdx(s, sel) + d + it.length) % it.length];
+  if (el) { el.click(); requestAnimationFrame(() => centerItem(s, el)); }
+};
+
+export const bindTabStripPhysics = (r = document, { selector = '.ach-classic-tabs', itemSelector = '.ach-classic-tab' } = {}) => {
+  (r?.matches?.(selector) ? [r] : qsa(r, selector)).forEach(s => {
+    if (!s || s._tabPhysicsBound) return;
+    s._tabPhysicsBound = true; s.classList.add('physics-tabs');
+    s.addEventListener('click', e => { const i = e.target.closest(itemSelector); if (i) setTimeout(() => centerItem(s, i), 20); });
+    s.addEventListener('wheel', e => {
+      const it = itemsOf(s, itemSelector); if (it.length < 2) return;
+      e.preventDefault();
+      const n = Date.now(); if (s._tabWheelLock && n - s._tabWheelLock < 170) return;
+      s._tabWheelLock = n;
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      actCirc(s, dx > 0 ? 1 : -1, itemSelector);
+    }, { passive: false });
+    let sx = 0, sy = 0;
+    s.addEventListener('touchstart', e => { sx = e.touches?.[0]?.clientX || 0; sy = e.touches?.[0]?.clientY || 0; }, { passive: true });
+    s.addEventListener('touchend', e => {
+      const dx = (e.changedTouches?.[0]?.clientX || 0) - sx, dy = (e.changedTouches?.[0]?.clientY || 0) - sy;
+      if (Math.abs(dx) < 34 || Math.abs(dx) < Math.abs(dy) + 10) return;
+      actCirc(s, dx < 0 ? 1 : -1, itemSelector);
+    }, { passive: true });
+    requestAnimationFrame(() => centerItem(s, s.querySelector(`${itemSelector}.active`) || s.querySelector(itemSelector), 'auto'));
+  });
+};
+
 export default { bindTabStripPhysics };
