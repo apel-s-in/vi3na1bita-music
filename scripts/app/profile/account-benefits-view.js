@@ -1,21 +1,3 @@
 import { esc } from './profile-ui-kit.js';
-
-export const renderAccountBenefitsBlock = () => `<div class="yandex-auth-note account-benefits-block">
-  <div style="font-size:12px;font-weight:900;color:#4daaff;margin-bottom:8px">☁️ Зачем авторизоваться?</div>
-  <div style="font-size:11px;color:#9db7dd;line-height:1.45;margin-bottom:12px">Яндекс нужен только для сохранения и восстановления вашего прогресса в личной папке приложения. Пароль нам не передаётся.</div>
-  <div style="display:flex;flex-direction:column;gap:10px">
-    ${[
-      ['💾','Прогресс не потеряется','Достижения, XP, стрики, избранное и плейлисты сохраняются в backup'],
-      ['📱','Синхронизация устройств','Войдите на телефоне, планшете или ПК — данные можно объединить вручную'],
-      ['☁️','Безопасное восстановление','Перед restore показывается предпросмотр, ничего не затирается без подтверждения'],
-      ['🏆','Призовые акции','В будущем верифицированные пользователи смогут участвовать в розыгрышах'],
-      ['🎮','Игры и лидерборд','Будущие режимы и таблицы лидеров будут привязаны к verified-профилю'],
-      ['🔒','Приватность','OAuth Яндекса даёт нам только ваш ID/имя и доступ к папке приложения на Диске']
-    ].map(([ic, t, d]) => `<div style="display:flex;gap:10px;align-items:flex-start">
-      <span style="font-size:20px;flex-shrink:0">${esc(ic)}</span>
-      <div><div style="font-size:13px;font-weight:800;color:#fff">${esc(t)}</div><div style="font-size:11px;color:#888;margin-top:2px;line-height:1.35">${esc(d)}</div></div>
-    </div>`).join('')}
-  </div>
-</div>`;
-
+export const renderAccountBenefitsBlock = () => `<div class="yandex-auth-note account-benefits-block"><div style="font-size:12px;font-weight:900;color:#4daaff;margin-bottom:8px">☁️ Зачем авторизоваться?</div><div style="font-size:11px;color:#9db7dd;line-height:1.45;margin-bottom:12px">Яндекс нужен только для сохранения и восстановления вашего прогресса в личной папке приложения. Пароль нам не передаётся.</div><div style="display:flex;flex-direction:column;gap:10px">${[['💾','Прогресс не потеряется','Достижения, XP, стрики, избранное и плейлисты сохраняются в backup'],['📱','Синхронизация устройств','Войдите на телефоне, планшете или ПК — данные можно объединить вручную'],['☁️','Безопасное восстановление','Перед restore показывается предпросмотр, ничего не затирается без подтверждения'],['🏆','Призовые акции','В будущем верифицированные пользователи смогут участвовать в розыгрышах'],['🎮','Игры и лидерборд','Будущие режимы и таблицы лидеров будут привязаны к verified-профилю'],['🔒','Приватность','OAuth Яндекса даёт нам только ваш ID/имя и доступ к папке приложения на Диске']].map(([ic, t, d]) => `<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0">${esc(ic)}</span><div><div style="font-size:13px;font-weight:800;color:#fff">${esc(t)}</div><div style="font-size:11px;color:#888;margin-top:2px;line-height:1.35">${esc(d)}</div></div></div>`).join('')}</div></div>`;
 export default { renderAccountBenefitsBlock };
