@@ -54,7 +54,7 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
 
   if (!uploadedShared && meta) persistMeta({ meta });
   if (uploadedShared) try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared, uploadedDevice, checksum: b?.integrity?.payloadHash || '' }); } catch {}
-  recordSyncRevision({ hash: sharedHash, domains: changedDomains, uploadedShared, uploadedDevice, reason, ok: true });
+  recordSyncRevision({ hash: sharedHash, domains: changedDomains, uploadedShared, uploadedDevice, uploadedEventArchive, reason, ok: true });
   return { ok: true, reason, backup: b, meta, uploadedShared, uploadedDevice, uploadedEventArchive, eventArchive, sharedHash, deviceHash, deviceDoc };
 };
 
