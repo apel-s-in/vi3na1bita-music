@@ -456,7 +456,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 17:35:31 UTC
+Сгенерировано: 2026-05-08 17:36:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3571,9 +3571,9 @@ export const openFreshLoginRestoreModal = ({ meta: m, items: i = [], backup: b =
 // UID.104_(Trust and eligibility state)_(публичная диагностика ledger health)_(hot/warm/head/seq/branch/warnings)
 // UID.112_(Profile command center)_(личный кабинет показывает состояние доказательного журнала)_(без влияния на playback)
 
-import { getLedgerHealth } from '../../analytics/event-integrity.js';
+import { getLedgerHealth, rebuildLedgerCheckpointFromEvents } from '../../analytics/event-integrity.js';
 import { metaDB } from '../../analytics/meta-db.js';
-import { esc, renderCloudSectionCard, fmtDateTime } from './cloud-card-renderers.js';
+import { esc, renderCloudSectionCard, fmtDateTime, renderInlineActions } from './profile-render-kit.js';
 
 const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="color:#8ea8cc;font-size:12px">${esc(k)}</span><b style="color:#eaf2ff;font-size:12px;text-align:right;word-break:break-all">${esc(v)}</b></div>`;
 
