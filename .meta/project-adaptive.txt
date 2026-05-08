@@ -453,7 +453,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-08 15:48:28 UTC
+Сгенерировано: 2026-05-08 15:50:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3385,557 +3385,51 @@ export default { renderProfileSettings };
 //=================================================
 // FILE: /scripts/app/profile/stats-view.js
 import { buildStatsViewModel } from '../../analytics/stats-state.js';
-
-const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
-const fmtDur = s => window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(s || 0) : `${Math.floor((s || 0) / 60)}м`;
-const trackTitle = uid => esc(window.TrackRegistry?.getTrackByUid(uid)?.title || uid);
-
-const renderList = (arr, fmt) => arr.length
-  ? `<ul class="stat-list">${arr.map(s => `<li data-uid="${esc(s.uid)}"><span>${trackTitle(s.uid)}</span><span>${esc(fmt(s))}</span></li>`).join('')}</ul>`
-  : '<div class="stat-sub">Недостаточно данных</div>';
-
-const renderChart = (id, title, data, lsKey, labels = null) => {
-  const max = Math.max(1, ...data);
-  return `<div class="chart-block" id="${id}"><div class="chart-title chart-title--click" data-tg="${id}-bars" data-ls="${lsKey}">${esc(title)}</div><div class="chart-bars ${localStorage.getItem(lsKey) === '0' ? 'chart-bars--hidden' : ''}" id="${id}-bars">${data.map((v, i) => `<div class="chart-row"><div class="label">${esc(labels ? labels[i] : String(i).padStart(2, '0'))}</div><div class="bar"><div class="fill" style="width:${Math.round((v / max) * 100)}%"></div></div><div class="val">${esc(v)}</div></div>`).join('')}</div></div>`;
-};
-
-export const renderProfileStats = ({ container: c, all, vm = null }) => {
-  const el = c?.querySelector('#prof-top-tracks'); if (!el) return;
-  const m = vm || buildStatsViewModel(all || []), s = m.summary, f = m.globalFeatures;
-  el.innerHTML = `<div class="stats-grid-compact"><div class="stat-box"><b>${s.uniqueTracks}</b><span>Уникальных</span></div><div class="stat-box"><b>${s.totalFull}</b><span>Полных</span></div><div class="stat-box"><b>${s.totalValid}</b><span>Валидных</span></div><div class="stat-box"><b>${fmtDur(s.totalSec)}</b><span>Время</span></div></div><div class="stats-grid-compact"><div class="stat-box"><b>${String(m.peakHour).padStart(2, '0')}:00</b><span>Пик часа</span></div><div class="stat-box"><b>${esc(m.peakDaypart)}</b><span>Время суток</span></div><div class="stat-box"><b>${f.sleep_timer || 0}</b><span>Таймер сна</span></div><div class="stat-box"><b>${f.social_visit_all ? 'Да' : 'Нет'}</b><span>Все соцсети</span></div></div>${renderChart('chart-hours', 'По часам суток', m.byHour, 'myStatsHoursOpen')}${renderChart('chart-week', 'По дням недели', m.byWeekday, 'myStatsWeekOpen', ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'])}${renderChart('chart-dayparts', 'По времени суток', m.dayparts.map(x => x.value), 'myStatsDayPartsOpen', m.dayparts.map(x => x.label))}<div class="stat-card stat-card--mb10"><div class="stat-title">Топ‑5 по полным прослушиваниям</div>${renderList(m.topFull, x => x.globalFullListenCount || 0)}</div><div class="stat-card stat-card--mb10"><div class="stat-title">Топ‑5 по валидным прослушиваниям</div>${renderList(m.topValid, x => x.globalValidListenCount || 0)}</div><div class="stat-card stat-card--mb15"><div class="stat-title">Топ‑5 по времени</div>${renderList(m.topTime, x => fmtDur(x.globalListenSeconds || 0))}</div><div class="prof-reset-wrap"><button class="backup-btn backup-btn--dark" id="stats-reset-open-btn" type="button">ОЧИСТИТЬ СТАТИСТИКУ</button></div>`;
-};
-
+const esc = s => window.Utils?.escapeHtml?.(String(s||'')) || String(s||''), dur = s => window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(s||0) : `${Math.floor((s||0)/60)}м`, tT = u => esc(window.TrackRegistry?.getTrackByUid(u)?.title || u);
+const rL = (a,f) => a.length ? `<ul class="stat-list">${a.map(s=>`<li data-uid="${esc(s.uid)}"><span>${tT(s.uid)}</span><span>${esc(f(s))}</span></li>`).join('')}</ul>` : '<div class="stat-sub">Недостаточно данных</div>';
+const rC = (id,t,d,lsK,lbls=null) => { const m=Math.max(1,...d); return `<div class="chart-block" id="${id}"><div class="chart-title chart-title--click" data-tg="${id}-bars" data-ls="${lsK}">${esc(t)}</div><div class="chart-bars ${localStorage.getItem(lsK)==='0'?'chart-bars--hidden':''}" id="${id}-bars">${d.map((v,i)=>`<div class="chart-row"><div class="label">${esc(lbls?lbls[i]:String(i).padStart(2,'0'))}</div><div class="bar"><div class="fill" style="width:${Math.round((v/m)*100)}%"></div></div><div class="val">${esc(v)}</div></div>`).join('')}</div></div>`; };
+export const renderProfileStats = ({ container: c, all, vm = null }) => { const el = c?.querySelector('#prof-top-tracks'); if(!el)return; const m=vm||buildStatsViewModel(all||[]), s=m.summary, f=m.globalFeatures; el.innerHTML=`<div class="stats-grid-compact"><div class="stat-box"><b>${s.uniqueTracks}</b><span>Уникальных</span></div><div class="stat-box"><b>${s.totalFull}</b><span>Полных</span></div><div class="stat-box"><b>${s.totalValid}</b><span>Валидных</span></div><div class="stat-box"><b>${dur(s.totalSec)}</b><span>Время</span></div></div><div class="stats-grid-compact"><div class="stat-box"><b>${String(m.peakHour).padStart(2,'0')}:00</b><span>Пик часа</span></div><div class="stat-box"><b>${esc(m.peakDaypart)}</b><span>Время суток</span></div><div class="stat-box"><b>${f.sleep_timer||0}</b><span>Таймер сна</span></div><div class="stat-box"><b>${f.social_visit_all?'Да':'Нет'}</b><span>Все соцсети</span></div></div>${rC('chart-hours','По часам суток',m.byHour,'myStatsHoursOpen')}${rC('chart-week','По дням недели',m.byWeekday,'myStatsWeekOpen',['Пн','Вт','Ср','Чт','Пт','Сб','Вс'])}${rC('chart-dayparts','По времени суток',m.dayparts.map(x=>x.value),'myStatsDayPartsOpen',m.dayparts.map(x=>x.label))}<div class="stat-card stat-card--mb10"><div class="stat-title">Топ‑5 по полным прослушиваниям</div>${rL(m.topFull, x=>x.globalFullListenCount||0)}</div><div class="stat-card stat-card--mb10"><div class="stat-title">Топ‑5 по валидным прослушиваниям</div>${rL(m.topValid, x=>x.globalValidListenCount||0)}</div><div class="stat-card stat-card--mb15"><div class="stat-title">Топ‑5 по времени</div>${rL(m.topTime, x=>dur(x.globalListenSeconds||0))}</div><div class="prof-reset-wrap"><button class="backup-btn backup-btn--dark" id="stats-reset-open-btn" type="button">ОЧИСТИТЬ СТАТИСТИКУ</button></div>`; };
 export default { renderProfileStats };
 
 //=================================================
 // FILE: /scripts/app/profile/tab-strip-physics.js
-// UID.096_(Helper-first anti-duplication policy)_(единая круговая физика горизонтальных вкладок)_(без длинного scrollTo в начало/конец)
-// UID.112_(Profile command center)_(tab strip как плоская круговая карусель)_(после последней идёт первая, активная центрируется)
-
-const qsa = (root, sel) => [...(root?.querySelectorAll?.(sel) || [])];
-
-const itemsOf = (strip, itemSelector) => qsa(strip, itemSelector).filter(x => x.offsetParent !== null);
-
-const centerItem = (strip, item, behavior = 'smooth') => {
-  if (!strip || !item) return;
-  const left = item.offsetLeft - (strip.clientWidth - item.offsetWidth) / 2;
-  strip.scrollTo({ left: Math.max(0, left), behavior });
-};
-
-const activeIndex = (strip, itemSelector) => {
-  const items = itemsOf(strip, itemSelector);
-  const active = strip.querySelector(`${itemSelector}.active`);
-  const i = items.indexOf(active);
-  if (i >= 0) return i;
-  const mid = strip.scrollLeft + strip.clientWidth / 2;
-  return Math.max(0, items.reduce((best, el, idx) => Math.abs((el.offsetLeft + el.offsetWidth / 2) - mid) < Math.abs((items[best].offsetLeft + items[best].offsetWidth / 2) - mid) ? idx : best, 0));
-};
-
-const activateCircular = (strip, dir, itemSelector) => {
-  const items = itemsOf(strip, itemSelector);
-  if (!items.length) return;
-  const cur = activeIndex(strip, itemSelector);
-  const next = (cur + dir + items.length) % items.length;
-  const item = items[next];
-  if (!item) return;
-  item.click();
-  requestAnimationFrame(() => centerItem(strip, item));
-};
-
-export const bindTabStripPhysics = (root = document, { selector = '.ach-classic-tabs', itemSelector = '.ach-classic-tab' } = {}) => {
-  const strips = root?.matches?.(selector) ? [root] : qsa(root, selector);
-  strips.forEach(strip => {
-    if (!strip || strip._tabPhysicsBound) return;
-    strip._tabPhysicsBound = true;
-    strip.classList.add('physics-tabs');
-
-    strip.addEventListener('click', e => {
-      const item = e.target.closest(itemSelector);
-      if (item) setTimeout(() => centerItem(strip, item), 20);
-    });
-
-    strip.addEventListener('wheel', e => {
-      const items = itemsOf(strip, itemSelector);
-      if (items.length < 2) return;
-      e.preventDefault();
-      const now = Date.now();
-      if (strip._tabWheelLock && now - strip._tabWheelLock < 170) return;
-      strip._tabWheelLock = now;
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      activateCircular(strip, delta > 0 ? 1 : -1, itemSelector);
-    }, { passive: false });
-
-    let sx = 0, sy = 0;
-    strip.addEventListener('touchstart', e => {
-      sx = e.touches?.[0]?.clientX || 0;
-      sy = e.touches?.[0]?.clientY || 0;
-    }, { passive: true });
-
-    strip.addEventListener('touchend', e => {
-      const x = e.changedTouches?.[0]?.clientX || 0, y = e.changedTouches?.[0]?.clientY || 0;
-      const dx = x - sx, dy = y - sy;
-      if (Math.abs(dx) < 34 || Math.abs(dx) < Math.abs(dy) + 10) return;
-      activateCircular(strip, dx < 0 ? 1 : -1, itemSelector);
-    }, { passive: true });
-
-    requestAnimationFrame(() => centerItem(strip, strip.querySelector(`${itemSelector}.active`) || strip.querySelector(itemSelector), 'auto'));
-  });
-};
-
+// UID.096_(Helper-first anti-duplication policy)_(единая круговая физика горизонтальных вкладок)_(без длинного scrollTo в начало/конец) UID.112_(Profile command center)_(tab strip как плоская круговая карусель)_(после последней идёт первая, активная центрируется)
+const qsa = (r,s) => [...(r?.querySelectorAll?.(s)||[])], itemsOf = (s,sel) => qsa(s,sel).filter(x=>x.offsetParent!==null), centerItem = (s,i,b='smooth') => { if(s&&i) s.scrollTo({left:Math.max(0,i.offsetLeft-(s.clientWidth-i.offsetWidth)/2),behavior:b}); };
+const actIdx = (s,sel) => { const i=itemsOf(s,sel), a=s.querySelector(`${sel}.active`), x=i.indexOf(a); if(x>=0) return x; const m=s.scrollLeft+s.clientWidth/2; return Math.max(0,i.reduce((b,e,j)=>Math.abs((e.offsetLeft+e.offsetWidth/2)-m)<Math.abs((i[b].offsetLeft+i[b].offsetWidth/2)-m)?j:b,0)); };
+const actCirc = (s,d,sel) => { const i=itemsOf(s,sel); if(!i.length)return; const it=i[(actIdx(s,sel)+d+i.length)%i.length]; if(it){ it.click(); requestAnimationFrame(()=>centerItem(s,it)); } };
+export const bindTabStripPhysics = (r=document,{selector:'.ach-classic-tabs',itemSelector:'.ach-classic-tab'}={}) => { (r?.matches?.(selector)?[r]:qsa(r,selector)).forEach(s=>{ if(!s||s._tabPhysicsBound)return; s._tabPhysicsBound=true; s.classList.add('physics-tabs'); s.addEventListener('click',e=>{const i=e.target.closest(itemSelector);if(i)setTimeout(()=>centerItem(s,i),20)}); s.addEventListener('wheel',e=>{const i=itemsOf(s,itemSelector);if(i.length<2)return;e.preventDefault();const n=Date.now();if(s._tabWheelLock&&n-s._tabWheelLock<170)return;s._tabWheelLock=n; actCirc(s,Math.abs(e.deltaX)>Math.abs(e.deltaY)?(e.deltaX>0?1:-1):(e.deltaY>0?1:-1),itemSelector);},{passive:false}); let sx=0,sy=0; s.addEventListener('touchstart',e=>{sx=e.touches?.[0]?.clientX||0; sy=e.touches?.[0]?.clientY||0;},{passive:true}); s.addEventListener('touchend',e=>{const dx=(e.changedTouches?.[0]?.clientX||0)-sx,dy=(e.changedTouches?.[0]?.clientY||0)-sy; if(Math.abs(dx)<34||Math.abs(dx)<Math.abs(dy)+10)return; actCirc(s,dx<0?1:-1,itemSelector);},{passive:true}); requestAnimationFrame(()=>centerItem(s,s.querySelector(`${itemSelector}.active`)||s.querySelector(itemSelector),'auto')); }); };
 export default { bindTabStripPhysics };
 
 //=================================================
 // FILE: /scripts/app/profile/template.js
-export const getProfileTemplateHtml = () => `
-<div class="profile-wrap">
-  <div class="profile-tabs" id="prof-tabs" style="display:none"></div>
-  <div class="profile-tab-content active" id="tab-stats"><div class="stats-grid-compact"><div class="stat-box"><b id="prof-stat-tracks">0</b><span>Треков</span></div><div class="stat-box"><b id="prof-stat-time">0м</b><span>В пути</span></div><div class="stat-box"><b id="prof-stat-streak">0</b><span>Стрик (дней)</span></div><div class="stat-box"><b id="prof-stat-ach">0</b><span>Ачивок</span></div></div><div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div><div id="prof-top-tracks"></div></div>
-  <div class="profile-tab-content" id="tab-achievements"><div class="ach-rpg-header"><div class="rpg-level-badge"><span class="lvl-lbl">УР</span><span class="lvl-val" id="user-level-badge">1</span></div><div class="ach-progress-bars"><div class="ach-progress-header"><span class="ach-progress-title">ПРОГРЕСС ДОСТИЖЕНИЙ</span></div><div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill"></div></div><div class="ach-stat-row"><div class="ach-done-label" id="achievementsCount">ВЫПОЛНЕНО: 0 / 0</div><div class="ach-xp-label" id="xp-text">0 / 100 XP</div></div><div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill"></div></div></div></div><div class="ach-classic-tabs" id="ach-inner-tabs"><div class="ach-classic-tab active" data-filter="available">Доступные</div><div class="ach-classic-tab" data-filter="done">Выполненные</div><div class="ach-classic-tab" data-filter="secret">Секретные</div></div><div id="prof-ach-list"></div></div>
-  <div class="profile-tab-content" id="tab-recs"><div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div><div id="prof-recs-list"></div></div>
-  <div class="profile-tab-content" id="tab-logs"><div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div><div id="prof-logs-list">Загрузка...</div></div>
-  <div class="profile-tab-content" id="tab-settings"></div>
-  <div class="profile-tab-content" id="tab-account"><div class="prof-account-card"><button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button><div class="prof-account-info"><div class="prof-name-row"><input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly><button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button></div><div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div><div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div><div class="prof-meta-row" id="prof-meta-level">⭐ Уровень: —</div></div></div><div class="profile-auth-grid profile-auth-grid--full" id="prof-auth-grid"></div></div>
-</div>`;
+export const getProfileTemplateHtml = () => `<div class="profile-wrap"><div class="profile-tabs" id="prof-tabs" style="display:none"></div><div class="profile-tab-content active" id="tab-stats"><div class="stats-grid-compact"><div class="stat-box"><b id="prof-stat-tracks">0</b><span>Треков</span></div><div class="stat-box"><b id="prof-stat-time">0м</b><span>В пути</span></div><div class="stat-box"><b id="prof-stat-streak">0</b><span>Стрик (дней)</span></div><div class="stat-box"><b id="prof-stat-ach">0</b><span>Ачивок</span></div></div><div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div><div id="prof-top-tracks"></div></div><div class="profile-tab-content" id="tab-achievements"><div class="ach-rpg-header"><div class="rpg-level-badge"><span class="lvl-lbl">УР</span><span class="lvl-val" id="user-level-badge">1</span></div><div class="ach-progress-bars"><div class="ach-progress-header"><span class="ach-progress-title">ПРОГРЕСС ДОСТИЖЕНИЙ</span></div><div class="ach-bar ach-bar-single"><div class="ach-bar-fill" id="achievementsFill"></div></div><div class="ach-stat-row"><div class="ach-done-label" id="achievementsCount">ВЫПОЛНЕНО: 0 / 0</div><div class="ach-xp-label" id="xp-text">0 / 100 XP</div></div><div class="ach-bar ach-bar-xp"><div class="ach-bar-fill xp-fill" id="xp-progress-fill"></div></div></div></div><div class="ach-classic-tabs" id="ach-inner-tabs"><div class="ach-classic-tab active" data-filter="available">Доступные</div><div class="ach-classic-tab" data-filter="done">Выполненные</div><div class="ach-classic-tab" data-filter="secret">Секретные</div></div><div id="prof-ach-list"></div></div><div class="profile-tab-content" id="tab-recs"><div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div><div id="prof-recs-list"></div></div><div class="profile-tab-content" id="tab-logs"><div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div><div id="prof-logs-list">Загрузка...</div></div><div class="profile-tab-content" id="tab-settings"></div><div class="profile-tab-content" id="tab-account"><div class="prof-account-card"><button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button><div class="prof-account-info"><div class="prof-name-row"><input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly><button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button></div><div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div><div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div><div class="prof-meta-row" id="prof-meta-level">⭐ Уровень: —</div></div></div><div class="profile-auth-grid profile-auth-grid--full" id="prof-auth-grid"></div></div></div>`;
 export default { getProfileTemplateHtml };
 
 //=================================================
 // FILE: /scripts/app/profile/view.js
 // UID.044_(ListenerProfile core)_(развить Личный кабинет до профиля вкуса пользователя)_(future интеграция через scripts/intel/listener/listener-profile.js) UID.047_(Feature affinity)_(показывать продуктовые привычки пользователя)_(future profile insights рендерить отдельным intel-ui слоем) UID.048_(Time profile)_(добавить temporal portrait пользователя)_(future profile view сможет показывать morning/night/weekend patterns через intel insights) UID.049_(Behavior archetype)_(дать human-readable портрет слушателя)_(profile shell должен уметь принять explorer/repeater/lyrics-focused archetype без собственной логики расчёта) UID.056_(Recommendation reasons)_(объяснять рекомендации прямо в профиле)_(recs tab и insights blocks должны уметь показывать why-this-track/why-this-user-fit) UID.063_(Profile recs tab upgrade)_(сделать вкладку Для Вас умной)_(future recs брать из scripts/intel/recs/recommendation-engine.js) UID.070_(Linked providers)_(показывать связанные Яндекс/Google/VK аккаунты как части одного профиля)_(future identity UI связать с scripts/intel/providers/provider-identity.js) UID.072_(Provider consents)_(показывать и управлять разрешениями пользователя)_(profile станет главным UI для consent toggles, а не местом их хранения) UID.073_(Hybrid sync orchestrator)_(сделать профиль центром управления sync roles)_(primary/mirror/social roles должны быть видимы отсюда) UID.082_(Local truth vs external telemetry split)_(profile insights/recs не должны сами экспортировать raw user profile)_(наружу только mapper/consent-safe layer)
-import { createProfileAchievementsView } from './achievements-view.js';
-import { loadProfileModel } from './model.js';
-import { renderProfileShell } from './render-shell.js';
-import { renderProfileTabsData } from './profile-tab-renderers.js';
-import { bindProfileTabControllers } from './profile-tab-bindings.js';
-import { renderProfileStats } from './stats-view.js';
-import { initYandexActions } from './yandex-actions.js';
-
-export const refreshProfileViewSoft = async (ctx) => {
-  const c = document.getElementById('track-list'); if (!c) return false;
-  if (ctx.getCurrentAlbum?.() !== (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) return false;
-  try {
-    const { metaDB, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
-    const authRoot = c.querySelector('#prof-auth-grid');
-    if (authRoot) {
-      const { renderYandexAuthBlock } = await import('./yandex-auth-view.js');
-      renderYandexAuthBlock({ root: authRoot, localProfile: profile });
-    }
-    const statTracks = c.querySelector('#prof-stat-tracks'); if (statTracks) statTracks.textContent = String(totalFull || 0);
-    const statTime = c.querySelector('#prof-stat-time'); if (statTime) statTime.textContent = window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(totalSec || 0) : `${Math.floor((totalSec || 0) / 60)}м`;
-    const statStreak = c.querySelector('#prof-stat-streak'); if (statStreak) statStreak.textContent = String(streak || 0);
-    const statAch = c.querySelector('#prof-stat-ach'); if (statAch) statAch.textContent = String(Object.keys(ach || {}).length);
-    try { renderProfileStats({ container: c, all }); } catch {}
-    const profName = c.querySelector('#prof-name-inp'); if (profName) profName.value = profile?.name || 'Слушатель';
-    const profAvatar = c.querySelector('#prof-avatar-btn'); if (profAvatar) profAvatar.textContent = profile?.avatar || '😎';
-    const sinceEl = c.querySelector('#prof-meta-since'); if (sinceEl) sinceEl.textContent = `📅 Слушаю с: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('ru-RU') : (localStorage.getItem('app:first-install-ts') ? new Date(Number(localStorage.getItem('app:first-install-ts'))).toLocaleDateString('ru-RU') : '—')}`;
-    const daysEl = c.querySelector('#prof-meta-days'); if (daysEl) {
-      const baseTs = Number(profile?.createdAt || localStorage.getItem('app:first-install-ts') || 0);
-      daysEl.textContent = `🎵 Дней с нами: ${baseTs > 0 ? Math.max(0, Math.floor((Date.now() - baseTs) / 86400000)) : 0}`;
-    }
-    const lvlEl = c.querySelector('#prof-meta-level'); if (lvlEl) lvlEl.textContent = `⭐ Уровень: ${window.achievementEngine?.profile?.level || 1}`;
-    return true;
-  } catch (e) {
-    console.warn('[Profile] soft refresh failed:', e);
-    return false;
-  }
-};
-
-export const loadProfileView = async (ctx) => {
-  ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤', 'profile');
-  initYandexActions();
-  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
-  const c = document.getElementById('track-list'); if (!c) return;
-
-  const { metaDB, all, ach, streak, profile, totalFull, totalSec, tokens } = await loadProfileModel();
-  try {
-    renderProfileShell({ container: c, profile, tokens, totalFull, totalSec, streak, achCount: Object.keys(ach).length });
-  } catch (e) {
-    console.error('[Profile] render shell failed:', e);
-    c.innerHTML = `<div class="fav-empty">Ошибка загрузки личного кабинета</div>`;
-    return;
-  }
-
-  const syncCarouselAccountCard = () => {
-    const card = c.querySelector('.sc-3d-card[data-id="account"]'), tit = card?.querySelector('.sc-3d-tit'), ic = card?.querySelector('.sc-3d-ic');
-    if (tit) tit.textContent = profile.name && profile.name !== 'Слушатель' ? profile.name : 'Аккаунт';
-    if (ic) ic.textContent = profile.avatar && profile.avatar !== '😎' ? profile.avatar : '👤';
-  };
-  syncCarouselAccountCard();
-
-  const achView = createProfileAchievementsView({ ctx, container: c.querySelector('#prof-ach-list'), engine: window.achievementEngine });
-  achView.render('available');
-
-  await renderProfileTabsData({ container: c, all, metaDB });
-
-  bindProfileTabControllers({ ctx, container: c, achView, profile, metaDB, tokens, onProfileChanged: syncCarouselAccountCard, reloadProfile: async () => { try { await refreshProfileViewSoft(ctx); } catch {} } });
-
-  if (sessionStorage.getItem('jumpToAch')) {
-    sessionStorage.removeItem('jumpToAch');
-    setTimeout(() => { if (window.Intel_CarouselFlat) { window.Intel_CarouselFlat.jumpTo(['account','stats','achievements','recs','logs','settings'].indexOf('achievements') >= 0 ? 2 : 2); window.Intel_CarouselFlat.selectCurrent(); setTimeout(() => c.querySelector('.ach-classic-tab[data-filter="available"]')?.click(), 50); } }, 150);
-  }
-};
+import { createProfileAchievementsView } from './achievements-view.js'; import { loadProfileModel } from './model.js'; import { renderProfileShell } from './render-shell.js'; import { renderProfileTabsData } from './profile-tab-renderers.js'; import { bindProfileTabControllers } from './profile-tab-bindings.js'; import { renderProfileStats } from './stats-view.js'; import { initYandexActions } from './yandex-actions.js';
+export const refreshProfileViewSoft = async ctx => { const c = document.getElementById('track-list'); if(!c||ctx.getCurrentAlbum?.()!==(window.APP_CONFIG?.SPECIAL_PROFILE_KEY||'__profile__'))return false; try { const {metaDB,all,ach,streak,profile,totalFull,totalSec,tokens} = await loadProfileModel(), authRoot = c.querySelector('#prof-auth-grid'); if(authRoot) { const { renderYandexAuthBlock } = await import('./yandex-auth-view.js'); renderYandexAuthBlock({root:authRoot,localProfile:profile}); } const q=s=>c.querySelector(s), sT=q('#prof-stat-tracks'), sM=q('#prof-stat-time'), sS=q('#prof-stat-streak'), sA=q('#prof-stat-ach'), pN=q('#prof-name-inp'), pAv=q('#prof-avatar-btn'), snE=q('#prof-meta-since'), dE=q('#prof-meta-days'), lE=q('#prof-meta-level'); if(sT)sT.textContent=String(totalFull||0); if(sM)sM.textContent=window.Utils?.fmt?.durationHuman?window.Utils.fmt.durationHuman(totalSec||0):`${Math.floor((totalSec||0)/60)}м`; if(sS)sS.textContent=String(streak||0); if(sA)sA.textContent=String(Object.keys(ach||{}).length); try{renderProfileStats({container:c,all});}catch{} if(pN)pN.value=profile?.name||'Слушатель'; if(pAv)pAv.textContent=profile?.avatar||'😎'; if(snE)snE.textContent=`📅 Слушаю с: ${profile?.createdAt?new Date(profile.createdAt).toLocaleDateString('ru-RU'):(localStorage.getItem('app:first-install-ts')?new Date(Number(localStorage.getItem('app:first-install-ts'))).toLocaleDateString('ru-RU'):'—')}`; if(dE) { const bTs=Number(profile?.createdAt||localStorage.getItem('app:first-install-ts')||0); dE.textContent=`🎵 Дней с нами: ${bTs>0?Math.max(0,Math.floor((Date.now()-bTs)/86400000)):0}`; } if(lE)lE.textContent=`⭐ Уровень: ${window.achievementEngine?.profile?.level||1}`; return true; } catch(e){return false;} };
+export const loadProfileView = async ctx => { ctx.renderAlbumTitle('👤 ЛИЧНЫЙ КАБИНЕТ 👤','profile'); initYandexActions(); const cw=document.getElementById('cover-wrap'); if(cw)cw.style.display='none'; const c=document.getElementById('track-list'); if(!c)return; const {metaDB,all,ach,streak,profile,totalFull,totalSec,tokens} = await loadProfileModel(); try{renderProfileShell({container:c,profile,tokens,totalFull,totalSec,streak,achCount:Object.keys(ach).length});}catch{c.innerHTML='<div class="fav-empty">Ошибка загрузки личного кабинета</div>';return;} const sC = () => { const card = c.querySelector('.sc-3d-card[data-id="account"]'), tit = card?.querySelector('.sc-3d-tit'), ic = card?.querySelector('.sc-3d-ic'); if(tit)tit.textContent=profile.name&&profile.name!=='Слушатель'?profile.name:'Аккаунт'; if(ic)ic.textContent=profile.avatar&&profile.avatar!=='😎'?profile.avatar:'👤'; }; sC(); const aV = createProfileAchievementsView({ctx,container:c.querySelector('#prof-ach-list'),engine:window.achievementEngine}); aV.render('available'); await renderProfileTabsData({container:c,all,metaDB}); bindProfileTabControllers({ctx,container:c,achView:aV,profile,metaDB,tokens,onProfileChanged:sC,reloadProfile:async()=>refreshProfileViewSoft(ctx).catch(()=>{})}); if(sessionStorage.getItem('jumpToAch')){sessionStorage.removeItem('jumpToAch'); setTimeout(()=>{if(window.Intel_CarouselFlat){window.Intel_CarouselFlat.jumpTo(2);window.Intel_CarouselFlat.selectCurrent();setTimeout(()=>c.querySelector('.ach-classic-tab[data-filter="available"]')?.click(),50);}},150);} };
 export default { loadProfileView };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-actions.js
-import { BackupVault } from '../../analytics/backup-vault.js';
-import { uploadBackupBundle } from '../../analytics/backup-upload-runner.js';
-import { YandexDisk } from '../../core/yandex-disk.js';
-import { openBackupInfoModal, openBackupFoundModal } from './yandex-modals.js';
-import { renderSyncLogRow, renderCloudSectionCard, fmtDateTime, esc } from './cloud-card-renderers.js';
-
-const pickBackupFile = () => new Promise(res => {
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = '.vi3bak,application/json';
-  inp.onchange = () => res(inp.files?.[0] || null);
-  inp.click();
-});
-
-const readMetaProfile = async () => {
-  try {
-    const { metaDB } = await import('../../analytics/meta-db.js');
-    return (await metaDB.getGlobal('user_profile').catch(() => null))?.value || { name: 'Слушатель' };
-  } catch {
-    return { name: 'Слушатель' };
-  }
-};
-
-const openSyncLogModal = async () => {
-  const { readSyncRevisions } = await import('../../analytics/sync-revisions.js');
-  const rows = readSyncRevisions();
-  window.Modals?.open?.({
-    title: 'Журнал синхронизации',
-    maxWidth: 420,
-    bodyHtml: rows.length ? `<div class="sync-log-list">${rows.map(renderSyncLogRow).join('')}</div>` : '<div class="fav-empty">Журнал синхронизации пока пуст</div>'
-  });
-};
-
-const openRecoverySnapshotModal = async () => {
-  const { getRestoreRecoverySnapshotInfo, restoreRecoverySnapshot } = await import('../../analytics/backup-recovery.js');
-  const info = await getRestoreRecoverySnapshotInfo();
-  if (!info) return window.Modals?.open?.({ title: 'Recovery snapshot', maxWidth: 390, bodyHtml: '<div class="fav-empty">Локальный recovery snapshot пока не создан</div>' });
-
-  window.Modals?.confirm?.({
-    title: 'Последний локальный recovery snapshot',
-    maxWidth: 430,
-    textHtml: `${renderCloudSectionCard({ title: 'Сохранён перед restore', body: `<div class="modal-confirm-text" style="margin:0"><b>Дата:</b> ${fmtDateTime(info.savedAt)}<br><b>Причина:</b> ${esc(info.reason || 'before_restore')}</div>` })}<div style="font-size:12px;color:#9db7dd;line-height:1.45;margin-top:10px">Можно откатить локальное состояние к этому снимку. Воспроизведение напрямую не трогаем.</div>`,
-    confirmText: 'Откатить',
-    cancelText: 'Отмена',
-    onConfirm: async () => {
-      try {
-        await restoreRecoverySnapshot({ BackupVault });
-        window.NotificationSystem?.success?.('Recovery snapshot восстановлен ✅');
-      } catch (e) {
-        window.NotificationSystem?.error?.('Откат не удался: ' + String(e?.message || ''));
-      }
-    }
-  });
-};
-
-export function initYandexActions() {
-  window._handleYaAction = async (action, container, rerender) => {
-    const ya = window.YandexAuth, disk = YandexDisk, nSys = window.NotificationSystem, mods = window.Modals;
-    if (!ya) return;
-
-    const acts = {
-      login: () => ya.login(),
-      logout: () => mods?.confirm?.({
-        title: 'Выйти из аккаунта?',
-        textHtml: 'Локальный прогресс сохранится. Только облачная синхронизация отключится.',
-        confirmText: 'Выйти',
-        cancelText: 'Отмена',
-        onConfirm: () => { ya.logout(); rerender?.(); nSys?.info('Следующий вход запросит подтверждение Яндекса заново'); }
-      }),
-      rename: () => {
-        const p = ya.getProfile(); if (!p) return;
-        window.Utils?.profileModals?.promptName?.({
-          title: 'Изменить имя',
-          value: p.displayName || '',
-          btnText: 'Сохранить',
-          onSubmit: n => { ya.updateDisplayName(n); rerender?.(); nSys?.success('Имя обновлено'); }
-        });
-      },
-      'backup-info': () => openBackupInfoModal(),
-      'sync-log': () => openSyncLogModal(),
-      'recovery-snapshot': () => openRecoverySnapshotModal(),
-      'reconnect-rights': () => mods?.confirm?.({
-        title: 'Переподключить права Яндекса?',
-        textHtml: 'Приложение выполнит локальный выход и при следующем входе попросит заново подтвердить доступ к Яндекс Диску.',
-        confirmText: 'Переподключить',
-        cancelText: 'Отмена',
-        onConfirm: () => {
-          try { window.eventLogger?.log?.('AUTH_EVENT', null, { action: 'reconnect_rights_requested', status: 'confirm' }); } catch {}
-          ya.logout(); rerender?.(); setTimeout(() => ya.login({ forceConfirm: true }), 250);
-        }
-      }),
-      'delete-old-backups': () => {
-        const t = ya.getToken();
-        if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
-        mods?.confirm?.({
-          title: 'Удалить старые backup-версии?',
-          textHtml: 'Будут удалены архивные backup-файлы, кроме последних 5 версий и актуального файла latest.',
-          confirmText: 'Удалить',
-          cancelText: 'Отмена',
-          onConfirm: async () => {
-            try {
-              await disk.deleteOldBackups(t, { keep: 5 });
-              nSys?.success('Старые копии удалены ✅');
-              const m = await disk.getMeta(t).catch(() => null);
-              if (m) {
-                localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-                localStorage.setItem('yandex:last_backup_meta', JSON.stringify(m));
-                window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
-              }
-              rerender?.();
-            } catch (e) { nSys?.error('Ошибка: ' + (e?.message || '')); }
-          }
-        });
-      },
-      'backup-export-manual': async () => {
-        try { await BackupVault.exportData(); nSys?.success('Backup-файл сохранён на устройство ✅'); }
-        catch (e) { nSys?.error('Ошибка сохранения файла: ' + (e?.message || '')); }
-      },
-      'backup-import-manual': async () => {
-        const t = ya.getToken();
-        if (!t || !ya.isTokenAlive()) return nSys?.warning('Для восстановления нужен вход в Яндекс.');
-        try {
-          const f = await pickBackupFile();
-          if (!f) return;
-          await BackupVault.importBackupFile(f, 'all');
-          try {
-            const { markSyncReady, markRestoreOrSkipDone } = await import('../../analytics/backup-sync-engine.js');
-            markSyncReady('restore_completed');
-            markRestoreOrSkipDone('restore_completed');
-          } catch {}
-          try {
-            const { runPostRestoreRefresh } = await import('./yandex-runtime-refresh.js');
-            await runPostRestoreRefresh({ reason: 'manual_file_restore' });
-          } catch {}
-          nSys?.success('Backup восстановлен ✅');
-        } catch (e) {
-          const m = e?.message || '';
-          if (m.includes('restore_owner_mismatch')) nSys?.error('Этот backup принадлежит другому Яндекс-аккаунту.');
-          else if (m.includes('restore_requires_yandex_login')) nSys?.warning('Сначала войдите в Яндекс.');
-          else if (m.includes('backup_integrity_failed')) nSys?.error('Файл backup повреждён или изменён.');
-          else nSys?.error('Ошибка импорта backup: ' + m);
-        }
-      },
-      'check-backup': async () => {
-        const t = ya.getToken();
-        if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
-        nSys?.info('Проверяем облачную копию...');
-        try {
-          const [ex, m] = await Promise.all([disk.checkExists(t), disk.getMeta(t).catch(() => null)]);
-          if (!ex) {
-            try { localStorage.removeItem('yandex:last_backup_check'); localStorage.removeItem('yandex:last_backup_check_ts'); } catch {}
-            nSys?.warning('Облачная резервная копия не найдена.');
-            return rerender?.();
-          }
-          try {
-            if (m) {
-              localStorage.setItem('yandex:last_backup_check', JSON.stringify(m));
-              localStorage.setItem('yandex:last_backup_check_ts', String(Date.now()));
-            }
-          } catch {}
-          rerender?.(); openBackupFoundModal(m);
-        } catch (e) { nSys?.error('Не удалось проверить резервную копию: ' + (e?.message || '')); }
-      },
-      'save-backup': async () => {
-        const t = ya.getToken();
-        if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
-        if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return nSys?.error('Нет подключения к сети.');
-        try {
-          const { isSyncReady } = await import('../../analytics/backup-sync-engine.js');
-          if (!isSyncReady()) return nSys?.warning('Облачное состояние ещё не подтверждено. Сначала проверьте/восстановите backup, затем сохраняйте.');
-        } catch {}
-        nSys?.info('Сохраняем единый backup на Яндекс Диск...');
-        try {
-          await uploadBackupBundle({ disk, token: t, BackupVault, force: true, uploadDevice: true, reason: 'manual_save' });
-          try {
-            const orch = await import('./auth-onboarding-orchestrator.js');
-            orch.clearPreloadCache?.();
-          } catch {}
-          try {
-            const se = await import('../../analytics/backup-sync-engine.js');
-            se.markSyncReady?.('manual_save');
-            se.markRestoreOrSkipDone?.('manual_save');
-          } catch {}
-          nSys?.success('Прогресс сохранён на Яндекс Диск ✅');
-          rerender?.();
-        } catch (e) {
-          const msg = String(e?.message || '');
-          if (msg.includes('401')) nSys?.error('Сессия истекла. Войдите снова.');
-          else if (msg.includes('offline')) nSys?.error('Нет сети.');
-          else nSys?.error('Ошибка сохранения: ' + msg);
-        }
-      },
-      'restore-backup': async () => {
-        const t = ya.getToken();
-        if (!t || !ya.isTokenAlive()) return nSys?.warning('Сессия истекла. Войдите снова.');
-        try {
-          const { openManualRestoreFlow } = await import('./auth-onboarding-orchestrator.js');
-          await openManualRestoreFlow({ token: t, profile: await readMetaProfile() });
-        } catch (e) {
-          const msg = String(e?.message || '');
-          if (msg.includes('backup_not_found')) nSys?.warning('Облачная копия не найдена. Сначала сохраните backup кнопкой «Сохранить».');
-          else nSys?.error('Не удалось подготовить восстановление: ' + msg);
-        }
-      }
-    };
-    acts[action]?.();
-  };
-}
+import { BackupVault } from '../../analytics/backup-vault.js'; import { uploadBackupBundle } from '../../analytics/backup-upload-runner.js'; import { YandexDisk } from '../../core/yandex-disk.js'; import { openBackupInfoModal, openBackupFoundModal } from './yandex-modals.js'; import { renderSyncLogRow, renderCloudSectionCard, fmtDateTime, esc } from './cloud-card-renderers.js';
+const pickBackupFile = () => new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.vi3bak,application/json'; i.onchange = () => res(i.files?.[0]||null); i.click(); });
+const readMetaProfile = async () => { try { const { metaDB } = await import('../../analytics/meta-db.js'); return (await metaDB.getGlobal('user_profile').catch(()=>null))?.value || {name:'Слушатель'}; } catch { return {name:'Слушатель'}; } };
+const openSyncLogModal = async () => { const { readSyncRevisions } = await import('../../analytics/sync-revisions.js'); const r = readSyncRevisions(); window.Modals?.open?.({ title:'Журнал синхронизации', maxWidth:420, bodyHtml:r.length?`<div class="sync-log-list">${r.map(renderSyncLogRow).join('')}</div>`:'<div class="fav-empty">Журнал синхронизации пока пуст</div>' }); };
+const openRecoverySnapshotModal = async () => { const { getRestoreRecoverySnapshotInfo, restoreRecoverySnapshot } = await import('../../analytics/backup-recovery.js'); const info = await getRestoreRecoverySnapshotInfo(); if(!info)return window.Modals?.open?.({title:'Recovery snapshot',maxWidth:390,bodyHtml:'<div class="fav-empty">Локальный recovery snapshot пока не создан</div>'}); window.Modals?.confirm?.({ title:'Последний локальный recovery snapshot', maxWidth:430, textHtml:`${renderCloudSectionCard({title:'Сохранён перед restore',body:`<div class="modal-confirm-text" style="margin:0"><b>Дата:</b> ${fmtDateTime(info.savedAt)}<br><b>Причина:</b> ${esc(info.reason||'before_restore')}</div>`})}<div style="font-size:12px;color:#9db7dd;line-height:1.45;margin-top:10px">Можно откатить локальное состояние к этому снимку. Воспроизведение напрямую не трогаем.</div>`, confirmText:'Откатить', cancelText:'Отмена', onConfirm:async()=>{try{await restoreRecoverySnapshot({BackupVault});window.NotificationSystem?.success?.('Recovery snapshot восстановлен ✅');}catch(e){window.NotificationSystem?.error?.('Откат не удался: '+String(e?.message||''));}} }); };
+export function initYandexActions() { window._handleYaAction = async (a,c,r) => { const ya = window.YandexAuth, disk = YandexDisk, n = window.NotificationSystem, m = window.Modals; if(!ya)return; const acts = { login:()=>ya.login(), logout:()=>m?.confirm?.({title:'Выйти из аккаунта?',textHtml:'Локальный прогресс сохранится. Только облачная синхронизация отключится.',confirmText:'Выйти',cancelText:'Отмена',onConfirm:()=>{ya.logout();r?.();n?.info('Следующий вход запросит подтверждение Яндекса заново');}}), rename:()=>{const p=ya.getProfile();if(!p)return;window.Utils?.profileModals?.promptName?.({title:'Изменить имя',value:p.displayName||'',btnText:'Сохранить',onSubmit:v=>{ya.updateDisplayName(v);r?.();n?.success('Имя обновлено');}});}, 'backup-info':openBackupInfoModal, 'sync-log':openSyncLogModal, 'recovery-snapshot':openRecoverySnapshotModal, 'reconnect-rights':()=>m?.confirm?.({title:'Переподключить права Яндекса?',textHtml:'Приложение выполнит локальный выход и при следующем входе попросит заново подтвердить доступ к Яндекс Диску.',confirmText:'Переподключить',cancelText:'Отмена',onConfirm:()=>{try{window.eventLogger?.log?.('AUTH_EVENT',null,{action:'reconnect_rights_requested',status:'confirm'});}catch{}ya.logout();r?.();setTimeout(()=>ya.login({forceConfirm:true}),250);}}), 'delete-old-backups':()=>{const t=ya.getToken();if(!t||!ya.isTokenAlive())return n?.warning('Сессия истекла. Войдите снова.');m?.confirm?.({title:'Удалить старые backup-версии?',textHtml:'Будут удалены архивные backup-файлы, кроме последних 5 версий и актуального файла latest.',confirmText:'Удалить',cancelText:'Отмена',onConfirm:async()=>{try{await disk.deleteOldBackups(t,{keep:5});n?.success('Старые копии удалены ✅');const tm=await disk.getMeta(t).catch(()=>null);if(tm){localStorage.setItem('yandex:last_backup_check',JSON.stringify(tm));localStorage.setItem('yandex:last_backup_meta',JSON.stringify(tm));window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));}r?.();}catch(e){n?.error('Ошибка: '+(e?.message||''));}}});}, 'backup-export-manual':async()=>{try{await BackupVault.exportData();n?.success('Backup-файл сохранён на устройство ✅');}catch(e){n?.error('Ошибка сохранения файла: '+(e?.message||''));}}, 'backup-import-manual':async()=>{const t=ya.getToken();if(!t||!ya.isTokenAlive())return n?.warning('Для восстановления нужен вход в Яндекс.');try{const f=await pickBackupFile();if(!f)return;await BackupVault.importBackupFile(f,'all');try{const{markSyncReady,markRestoreOrSkipDone}=await import('../../analytics/backup-sync-engine.js');markSyncReady('restore_completed');markRestoreOrSkipDone('restore_completed');}catch{}try{const{runPostRestoreRefresh}=await import('./yandex-runtime-refresh.js');await runPostRestoreRefresh({reason:'manual_file_restore'});}catch{}n?.success('Backup восстановлен ✅');}catch(e){const msg=e?.message||'';if(msg.includes('restore_owner_mismatch'))n?.error('Этот backup принадлежит другому Яндекс-аккаунту.');else if(msg.includes('restore_requires_yandex_login'))n?.warning('Сначала войдите в Яндекс.');else if(msg.includes('backup_integrity_failed'))n?.error('Файл backup повреждён или изменён.');else n?.error('Ошибка импорта backup: '+msg);}}, 'check-backup':async()=>{const t=ya.getToken();if(!t||!ya.isTokenAlive())return n?.warning('Сессия истекла. Войдите снова.');n?.info('Проверяем облачную копию...');try{const[ex,tm]=await Promise.all([disk.checkExists(t),disk.getMeta(t).catch(()=>null)]);if(!ex){try{localStorage.removeItem('yandex:last_backup_check');localStorage.removeItem('yandex:last_backup_check_ts');}catch{}n?.warning('Облачная резервная копия не найдена.');return r?.();}try{if(tm){localStorage.setItem('yandex:last_backup_check',JSON.stringify(tm));localStorage.setItem('yandex:last_backup_check_ts',String(Date.now()));}}catch{}r?.();openBackupFoundModal(tm);}catch(e){n?.error('Не удалось проверить резервную копию: '+(e?.message||''));}}, 'save-backup':async()=>{const t=ya.getToken();if(!t||!ya.isTokenAlive())return n?.warning('Сессия истекла. Войдите снова.');if(!(window.NetPolicy?.isNetworkAllowed?.()??navigator.onLine))return n?.error('Нет подключения к сети.');try{const{isSyncReady}=await import('../../analytics/backup-sync-engine.js');if(!isSyncReady())return n?.warning('Облачное состояние ещё не подтверждено. Сначала проверьте/восстановите backup, затем сохраняйте.');}catch{}n?.info('Сохраняем единый backup на Яндекс Диск...');try{await uploadBackupBundle({disk,token:t,BackupVault,force:true,uploadDevice:true,reason:'manual_save'});try{const orch=await import('./auth-onboarding-orchestrator.js');orch.clearPreloadCache?.();}catch{}try{const se=await import('../../analytics/backup-sync-engine.js');se.markSyncReady?.('manual_save');se.markRestoreOrSkipDone?.('manual_save');}catch{}n?.success('Прогресс сохранён на Яндекс Диск ✅');r?.();}catch(e){const msg=String(e?.message||'');if(msg.includes('401'))n?.error('Сессия истекла. Войдите снова.');else if(msg.includes('offline'))n?.error('Нет сети.');else n?.error('Ошибка сохранения: '+msg);}}, 'restore-backup':async()=>{const t=ya.getToken();if(!t||!ya.isTokenAlive())return n?.warning('Сессия истекла. Войдите снова.');try{const{openManualRestoreFlow}=await import('./auth-onboarding-orchestrator.js');await openManualRestoreFlow({token:t,profile:await readMetaProfile()});}catch(e){const msg=String(e?.message||'');if(msg.includes('backup_not_found'))n?.warning('Облачная копия не найдена. Сначала сохраните backup кнопкой «Сохранить».');else n?.error('Не удалось подготовить восстановление: '+msg);}} }; acts[a]?.(); }; }
 export default { initYandexActions };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-auth-view.js
-import { safeNum, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
-import { getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice, formatCloudDateTime, formatCloudTimeOnly } from './cloud-ui-helpers.js';
-import { renderAccountDevicesBlock, bindAccountDevicesBlock } from './account-devices-view.js';
-import { renderAccountBenefitsBlock } from './account-benefits-view.js';
-import { esc } from './profile-ui-kit.js';
-import { getSyncStatusLine } from '../../analytics/sync-revisions.js';
-
-const bindYandexActions = (root, rerender) => {
-  root.querySelectorAll('[data-ya-action]').forEach(btn => btn.onclick = async () => {
-    const act = btn.dataset.yaAction, prog = root.querySelector('#ya-restore-progress'), bar = root.querySelector('#ya-restore-bar'), status = root.querySelector('#ya-restore-status');
-    if (act === 'restore-backup' && prog) {
-      prog.style.display = 'block'; btn.disabled = true; let pct = 0;
-      const t = setInterval(() => { pct = Math.min(pct + 3, 85); if (bar) bar.style.width = `${pct}%`; if (status) status.textContent = pct < 30 ? 'Подключение к Яндекс Диску...' : (pct < 60 ? 'Загрузка backup...' : 'Обработка данных...'); }, 200);
-      try { await window._handleYaAction?.(act, root, rerender); } finally { clearInterval(t); if (bar) bar.style.width = '100%'; setTimeout(() => { if (prog) prog.style.display = 'none'; if (bar) bar.style.width = '0%'; btn.disabled = false; }, 500); }
-    } else await window._handleYaAction?.(act, root, rerender);
-  });
-  const ya = window.YandexAuth, autoChk = root.querySelector('#ya-auto-relogin'), autosaveToggle = root.querySelector('#ya-autosave-toggle');
-  if (ya && autoChk) autoChk.onchange = e => ya.setAutoRelogin(e.target.checked);
-  if (autosaveToggle) autosaveToggle.onchange = async e => { try { const { setSyncEnabled } = await import('../../analytics/backup-sync-engine.js'); setSyncEnabled(e.target.checked); window.NotificationSystem?.info(e.target.checked ? 'Автосохранение включено' : 'Автосохранение выключено'); } catch {} };
-};
-
-const updateSyncDot = async root => {
-  const syncDot = root?.querySelector('#ya-sync-dot'); if (!syncDot) return;
-  try {
-    const { isSyncReady, isSyncEnabled } = await import('../../analytics/backup-sync-engine.js');
-    Object.assign(syncDot.style, { background: !isSyncEnabled() ? '#888' : (!isSyncReady() ? '#ff9800' : '#4caf50'), animation: '' });
-    syncDot.title = !isSyncEnabled() ? 'Автосохранение выключено' : (!isSyncReady() ? 'Ожидание подтверждения данных...' : 'Автосохранение активно');
-  } catch { Object.assign(syncDot.style, { background: '#888', animation: '' }); syncDot.title = 'Статус синхронизации недоступен'; }
-};
-
-const bindReactiveEvents = (root, rerender) => {
-  if (root._yaReactiveBound) return; root._yaReactiveBound = true;
-  const s = async () => {
-    if (!root.isConnected) return;
-    try {
-      const isProfileOpen = window.AlbumsManager?.getCurrentAlbum?.() === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__');
-      if (isProfileOpen) {
-        const mod = await import('./view.js');
-        const ok = await mod.refreshProfileViewSoft?.(window.AlbumsManager).catch(() => false);
-        if (ok) return;
-      }
-    } catch {}
-    rerender();
-  }, d = () => root.isConnected && updateSyncDot(root);
-  root._yaReactiveHandlers = {
-    onAuthChanged: s,
-    onBackupMetaUpdated: s,
-    onSyncReady: () => { s(); d(); },
-    onSyncSettingsChanged: d,
-    onCloudNewer: e => {
-      if (!root.isConnected) return;
-      s();
-      const dt = e.detail || {}, meta = dt.meta || null;
-      if (!meta) return;
-
-      // Fresh-login обрабатывается оркестратором в auth-onboarding-orchestrator.js → здесь только badge "!" на иконке профиля (обслуживается в render-shell.js).
-      if (dt.isFreshLogin) return;
-
-      // Для не-fresh (пользователь уже залогинен, появилась новая версия в облаке) — тоже НЕ показываем confirm-диалог.
-      // Достаточно badge "!" на иконке, пользователь сам нажмёт «Из облака» в профиле когда захочет.
-      // Это убирает дубликат flow и предотвращает случайные двойные модалки.
-      try {
-        const localTs = safeNum(localStorage.getItem('yandex:last_backup_local_ts'));
-        const cloudTs = safeNum(meta?.timestamp);
-        const sameSnapshot = cloudTs > 0 && localTs > 0 && Math.abs(cloudTs - localTs) < 5000;
-        const restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1';
-        if (restoreDone && sameSnapshot) return;
-      } catch {}
-      // Просто обновляем UI (бейдж "!" появится сам через render-shell badge-listener)
-    },
-    onSyncRevision: () => {
-      const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = getSyncStatusLine();
-    },
-    onSyncState: e => {
-      const dot = root.querySelector('#ya-sync-dot'); if (!dot) return;
-      const st = e.detail?.state, map = { syncing: { title: 'Синхронизируется...', color: '#ff9800', anim: true }, ok: { title: 'Синхронизировано ✓', color: '#4caf50', anim: false }, idle: { title: 'Авто-сохранение активно', color: '#4caf50', anim: false } }, cfg = map[st] || map.idle;
-      Object.assign(dot.style, { background: cfg.color, animation: cfg.anim ? 'syncPulse 1s infinite' : '' }); dot.title = cfg.title;
-      if (st === 'ok') { const lbl = root.querySelector('#ya-last-sync-label'); if (lbl) lbl.textContent = getSyncStatusLine(); }
-    }
-  };
-  window.addEventListener('yandex:auth:changed', root._yaReactiveHandlers.onAuthChanged);
-  window.addEventListener('yandex:backup:meta-updated', root._yaReactiveHandlers.onBackupMetaUpdated);
-  window.addEventListener('backup:sync:ready', root._yaReactiveHandlers.onSyncReady);
-  window.addEventListener('backup:sync:settings:changed', root._yaReactiveHandlers.onSyncSettingsChanged);
-  window.addEventListener('yandex:cloud:newer', root._yaReactiveHandlers.onCloudNewer);
-  window.addEventListener('backup:sync:state', root._yaReactiveHandlers.onSyncState);
-  window.addEventListener('backup:sync:revision', root._yaReactiveHandlers.onSyncRevision);
-};
-
-export function renderYandexAuthBlock({ root, localProfile }) {
-  if (!root || !window.YandexAuth) return;
-  const ya = window.YandexAuth, rr = () => renderYandexAuthBlock({ root, localProfile });
-  const st = ya.getSessionStatus(), pr = ya.getProfile(), aL = ya.isAutoRelogin();
-  const hDA = !!ya.hasDiskAccess?.(), gS = ya.getGrantedScopes?.() || [];
-  const bM = (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null'); } catch { return null; } })();
-  const lI = getLocalBackupUiSnapshot(localProfile);
-  const cI = bM || (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } })();
-  const cmp = getCloudCompareViewModel(lI, cI);
-  const sL = { active: 'Подключено', expired: 'Сессия истекла', logged_out: 'Не подключено' }[st] || 'Не подключено';
-  const sC = { active: '#4caf50', expired: '#ff9800', logged_out: '#888' }[st] || '#888';
-
-  const lastSyncLabel = (() => {
-    const ts = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0);
-    return getSyncStatusLine() || (ts > 0 ? `последнее: ${formatCloudTimeOnly(ts)}` : 'ещё не сохранялось');
-  })();
-
-  const autosaveChecked = (() => { try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; } })();
-
-  if (st === 'active' && pr) {
-    const avatarHtml = pr.avatar
-      ? `<img class="yandex-auth-avatar" src="${esc(pr.avatar)}" alt="avatar" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'yandex-auth-avatar--fallback',textContent:'Я'}))">`
-      : `<div class="yandex-auth-avatar--fallback">Я</div>`;
-
-    let restoreDone = false;
-    try { restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1'; } catch {}
-
-    const cloudNewerHtml = renderCloudCompareNotice({ compareVm: cmp, restoreDone });
-
-    root.innerHTML = `<div class="yandex-auth-block">
-      <div class="yandex-auth-statusline"><div class="yandex-auth-statusdot" style="background:${sC}"></div><div class="yandex-auth-statustext">${esc(sL)}</div></div>
-      <div class="yandex-auth-profile">${avatarHtml}<div class="yandex-auth-profileinfo"><div class="yandex-auth-profilename">${esc(pr.displayName || pr.login || 'Пользователь')}</div><div class="yandex-auth-profilemeta">${esc(pr.login || '')}${hDA ? ' · Диск ✓' : ''}</div></div></div>
-      <div class="yandex-auth-meta">${renderCloudMetaBox({ label: 'Облако', value: cI ? (cI.timestamp ? formatCloudDateTime(cI.timestamp) : 'есть копия') : 'копии ещё нет' })}${renderCloudMetaBox({ label: 'Сравнение', value: cmp.label })}</div>
-      ${cloudNewerHtml}
-      <div class="yandex-auth-actions"><button class="modal-action-btn" data-ya-action="rename">✏️ Имя</button><button class="modal-action-btn" data-ya-action="save-backup">☁️ Сохранить</button><button class="modal-action-btn" data-ya-action="check-backup">🔎 Сравнить</button><button class="modal-action-btn" data-ya-action="restore-backup">📥 Из облака</button><button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button><button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button></div>
-      <div id="ya-restore-progress" style="display:none;margin-top:8px"><div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div id="ya-restore-bar" style="height:100%;width:0%;background:var(--grad-blue);transition:width .3s ease;border-radius:2px"></div></div><div id="ya-restore-status" style="font-size:11px;color:#9db7dd;margin-top:4px;text-align:center">Загрузка...</div></div>
-      <div class="yandex-auth-autologin"><span class="yandex-auth-autologin-text">Автовход при истечении сессии</span><label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${aL ? 'checked' : ''}><span class="set-slider"></span></label></div>
-      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0;flex-wrap:wrap"><style>.syncPulse{animation:syncPulse 1s infinite}@keyframes syncPulse{0%,to{opacity:1}50%{opacity:.3}}</style><span id="ya-sync-dot" title="Авто-сохранение" style="width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0;transition:background .3s"></span><span style="flex:1">Авто-сохранение · <span id="ya-last-sync-label">${lastSyncLabel}</span></span><label class="set-switch" style="flex-shrink:0" title="Вкл/выкл автосохранение"><input type="checkbox" id="ya-autosave-toggle" ${autosaveChecked}><span class="set-slider"></span></label></div>
-      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px"><span style="flex:1;color:#888">Автосохранение срабатывает пакетно по значимым изменениям профиля</span><span style="color:#888;font-size:11px">Умный режим</span></div>
-      ${renderAccountDevicesBlock()}
-      <div class="yandex-auth-note">Облачная копия хранит общий прогресс аккаунта: события, достижения, избранное, плейлисты, профиль и реестр устройств. Локальные настройки каждого устройства хранятся отдельно в device-settings. Восстановление всегда выполняется вручную через предпросмотр.</div>
-      <div class="yandex-auth-bottomactions"><button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button><button class="om-btn om-btn--ghost" data-ya-action="sync-log">Журнал синхронизации</button><button class="om-btn om-btn--ghost" data-ya-action="recovery-snapshot">Recovery snapshot</button><button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button><button class="om-btn om-btn--ghost" data-ya-action="reconnect-rights">Переподключить права</button><button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button></div>
-      ${renderAccountBenefitsBlock()}
-    </div>`;
-  } else {
-    root.innerHTML = `<div class="yandex-auth-block">
-      <div class="yandex-auth-statusline"><div class="yandex-auth-statusdot" style="background:${sC}"></div><div class="yandex-auth-statustext">${esc(sL)}</div></div>
-      <button class="yandex-auth-mainbtn" data-ya-action="login"><span style="font-size:22px;line-height:1">Я</span><span>Войти через Яндекс</span></button>
-      ${renderAccountBenefitsBlock()}
-    </div>`;
-  }
-
-  bindYandexActions(root, rr);
-  bindAccountDevicesBlock(root, rr);
-  bindReactiveEvents(root, rr);
-  updateSyncDot(root);
-}
-
+import { safeNum, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js'; import { getCloudCompareViewModel, renderCloudMetaBox, renderCloudCompareNotice, formatCloudDateTime, formatCloudTimeOnly } from './cloud-ui-helpers.js'; import { renderAccountDevicesBlock, bindAccountDevicesBlock } from './account-devices-view.js'; import { renderAccountBenefitsBlock } from './account-benefits-view.js'; import { esc } from './profile-ui-kit.js'; import { getSyncStatusLine } from '../../analytics/sync-revisions.js';
+const bindYandexActions = (rt, r) => { rt.querySelectorAll('[data-ya-action]').forEach(b => b.onclick = async () => { const a = b.dataset.yaAction, p = rt.querySelector('#ya-restore-progress'), br = rt.querySelector('#ya-restore-bar'), s = rt.querySelector('#ya-restore-status'); if(a==='restore-backup'&&p){p.style.display='block';b.disabled=true;let c=0;const t=setInterval(()=>{c=Math.min(c+3,85);if(br)br.style.width=`${c}%`;if(s)s.textContent=c<30?'Подключение к Яндекс Диску...':(c<60?'Загрузка backup...':'Обработка данных...');},200);try{await window._handleYaAction?.(a,rt,r);}finally{clearInterval(t);if(br)br.style.width='100%';setTimeout(()=>{if(p)p.style.display='none';if(br)br.style.width='0%';b.disabled=false;},500);}}else await window._handleYaAction?.(a,rt,r); }); const ya = window.YandexAuth, aC = rt.querySelector('#ya-auto-relogin'), aT = rt.querySelector('#ya-autosave-toggle'); if(ya&&aC)aC.onchange=e=>ya.setAutoRelogin(e.target.checked); if(aT)aT.onchange=async e=>{try{const{setSyncEnabled}=await import('../../analytics/backup-sync-engine.js');setSyncEnabled(e.target.checked);window.NotificationSystem?.info(e.target.checked?'Автосохранение включено':'Автосохранение выключено');}catch{}}; };
+const updateSyncDot = async rt => { const s = rt?.querySelector('#ya-sync-dot'); if(!s)return; try{const{isSyncReady,isSyncEnabled}=await import('../../analytics/backup-sync-engine.js');Object.assign(s.style,{background:!isSyncEnabled()?'#888':(!isSyncReady()?'#ff9800':'#4caf50'),animation:''});s.title=!isSyncEnabled()?'Автосохранение выключено':(!isSyncReady()?'Ожидание подтверждения данных...':'Автосохранение активно');}catch{Object.assign(s.style,{background:'#888',animation:''});s.title='Статус синхронизации недоступен';} };
+const bindReactiveEvents = (rt, r) => { if(rt._yaReactiveBound)return; rt._yaReactiveBound=true; const s=async()=>{if(!rt.isConnected)return;try{if(window.AlbumsManager?.getCurrentAlbum?.()===(window.APP_CONFIG?.SPECIAL_PROFILE_KEY||'__profile__')){const m=await import('./view.js'),ok=await m.refreshProfileViewSoft?.(window.AlbumsManager).catch(()=>false);if(ok)return;}}catch{}r();}, d=()=>rt.isConnected&&updateSyncDot(rt); rt._yaReactiveHandlers={onAuthChanged:s,onBackupMetaUpdated:s,onSyncReady:()=>{s();d();},onSyncSettingsChanged:d,onCloudNewer:e=>{if(!rt.isConnected)return;s();const dt=e.detail||{},m=dt.meta||null;if(!m||dt.isFreshLogin)return;try{const l=safeNum(localStorage.getItem('yandex:last_backup_local_ts')),c=safeNum(m?.timestamp);if(localStorage.getItem('backup:restore_or_skip_done')==='1'&&c>0&&l>0&&Math.abs(c-l)<5000)return;}catch{}},onSyncRevision:()=>{const l=rt.querySelector('#ya-last-sync-label');if(l)l.textContent=getSyncStatusLine();},onSyncState:e=>{const d=rt.querySelector('#ya-sync-dot');if(!d)return;const st=e.detail?.state,m={syncing:{title:'Синхронизируется...',color:'#ff9800',anim:true},ok:{title:'Синхронизировано ✓',color:'#4caf50',anim:false},idle:{title:'Авто-сохранение активно',color:'#4caf50',anim:false}},c=m[st]||m.idle;Object.assign(d.style,{background:c.color,animation:c.anim?'syncPulse 1s infinite':''});d.title=c.title;if(st==='ok'){const l=rt.querySelector('#ya-last-sync-label');if(l)l.textContent=getSyncStatusLine();}}}; window.addEventListener('yandex:auth:changed',rt._yaReactiveHandlers.onAuthChanged); window.addEventListener('yandex:backup:meta-updated',rt._yaReactiveHandlers.onBackupMetaUpdated); window.addEventListener('backup:sync:ready',rt._yaReactiveHandlers.onSyncReady); window.addEventListener('backup:sync:settings:changed',rt._yaReactiveHandlers.onSyncSettingsChanged); window.addEventListener('yandex:cloud:newer',rt._yaReactiveHandlers.onCloudNewer); window.addEventListener('backup:sync:state',rt._yaReactiveHandlers.onSyncState); window.addEventListener('backup:sync:revision',rt._yaReactiveHandlers.onSyncRevision); };
+export function renderYandexAuthBlock({root,localProfile}) { if(!root||!window.YandexAuth)return; const ya=window.YandexAuth, rr=()=>renderYandexAuthBlock({root,localProfile}), st=ya.getSessionStatus(), pr=ya.getProfile(), aL=ya.isAutoRelogin(), hDA=!!ya.hasDiskAccess?.(), bM=(()=>{try{return JSON.parse(localStorage.getItem('yandex:last_backup_meta')||'null')}catch{return null}})(), lI=getLocalBackupUiSnapshot(localProfile), cI=bM||(()=>{try{return JSON.parse(localStorage.getItem('yandex:last_backup_check')||'null')}catch{return null}})(), cmp=getCloudCompareViewModel(lI,cI), sL={active:'Подключено',expired:'Сессия истекла',logged_out:'Не подключено'}[st]||'Не подключено', sC={active:'#4caf50',expired:'#ff9800',logged_out:'#888'}[st]||'#888', lSL=(()=>{const t=Number(localStorage.getItem('yandex:last_backup_local_ts')||0);return getSyncStatusLine()||(t>0?`последнее: ${formatCloudTimeOnly(t)}`:'ещё не сохранялось');})(), aCh=(()=>{try{return localStorage.getItem('backup:autosync:enabled')!=='0'?'checked':''}catch{return 'checked'}})(); if(st==='active'&&pr) { const aH=pr.avatar?`<img class="yandex-auth-avatar" src="${esc(pr.avatar)}" alt="avatar" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'yandex-auth-avatar--fallback',textContent:'Я'}))">`:`<div class="yandex-auth-avatar--fallback">Я</div>`; let rD=false;try{rD=localStorage.getItem('backup:restore_or_skip_done')==='1'}catch{} const cNH=renderCloudCompareNotice({compareVm:cmp,restoreDone:rD}); root.innerHTML=`<div class="yandex-auth-block"><div class="yandex-auth-statusline"><div class="yandex-auth-statusdot" style="background:${sC}"></div><div class="yandex-auth-statustext">${esc(sL)}</div></div><div class="yandex-auth-profile">${aH}<div class="yandex-auth-profileinfo"><div class="yandex-auth-profilename">${esc(pr.displayName||pr.login||'Пользователь')}</div><div class="yandex-auth-profilemeta">${esc(pr.login||'')}${hDA?' · Диск ✓':''}</div></div></div><div class="yandex-auth-meta">${renderCloudMetaBox({label:'Облако',value:cI?(cI.timestamp?formatCloudDateTime(cI.timestamp):'есть копия'):'копии ещё нет'})}${renderCloudMetaBox({label:'Сравнение',value:cmp.label})}</div>${cNH}<div class="yandex-auth-actions"><button class="modal-action-btn" data-ya-action="rename">✏️ Имя</button><button class="modal-action-btn" data-ya-action="save-backup">☁️ Сохранить</button><button class="modal-action-btn" data-ya-action="check-backup">🔎 Сравнить</button><button class="modal-action-btn" data-ya-action="restore-backup">📥 Из облака</button><button class="modal-action-btn" data-ya-action="backup-export-manual">💾 В файл</button><button class="modal-action-btn" data-ya-action="backup-import-manual">📂 Из файла</button></div><div id="ya-restore-progress" style="display:none;margin-top:8px"><div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div id="ya-restore-bar" style="height:100%;width:0%;background:var(--grad-blue);transition:width .3s ease;border-radius:2px"></div></div><div id="ya-restore-status" style="font-size:11px;color:#9db7dd;margin-top:4px;text-align:center">Загрузка...</div></div><div class="yandex-auth-autologin"><span class="yandex-auth-autologin-text">Автовход при истечении сессии</span><label class="set-switch"><input type="checkbox" id="ya-auto-relogin" ${aL?'checked':''}><span class="set-slider"></span></label></div><div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:6px 0;flex-wrap:wrap"><style>.syncPulse{animation:syncPulse 1s infinite}@keyframes syncPulse{0%,to{opacity:1}50%{opacity:.3}}</style><span id="ya-sync-dot" title="Авто-сохранение" style="width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0;transition:background .3s"></span><span style="flex:1">Авто-сохранение · <span id="ya-last-sync-label">${lSL}</span></span><label class="set-switch" style="flex-shrink:0" title="Вкл/выкл автосохранение"><input type="checkbox" id="ya-autosave-toggle" ${aCh}><span class="set-slider"></span></label></div><div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7f93b5;padding:2px 0;margin-bottom:4px"><span style="flex:1;color:#888">Автосохранение срабатывает пакетно по значимым изменениям профиля</span><span style="color:#888;font-size:11px">Умный режим</span></div>${renderAccountDevicesBlock()}<div class="yandex-auth-note">Облачная копия хранит общий прогресс аккаунта: события, достижения, избранное, плейлисты, профиль и реестр устройств. Локальные настройки каждого устройства хранятся отдельно в device-settings. Восстановление всегда выполняется вручную через предпросмотр.</div><div class="yandex-auth-bottomactions"><button class="om-btn om-btn--ghost" data-ya-action="backup-info">Что сохраняется?</button><button class="om-btn om-btn--ghost" data-ya-action="sync-log">Журнал синхронизации</button><button class="om-btn om-btn--ghost" data-ya-action="recovery-snapshot">Recovery snapshot</button><button class="om-btn om-btn--ghost" data-ya-action="delete-old-backups">Удалить старые backup</button><button class="om-btn om-btn--ghost" data-ya-action="reconnect-rights">Переподключить права</button><button class="om-btn om-btn--outline" data-ya-action="logout">Выйти из Яндекса</button></div>${renderAccountBenefitsBlock()}</div>`; } else { root.innerHTML=`<div class="yandex-auth-block"><div class="yandex-auth-statusline"><div class="yandex-auth-statusdot" style="background:${sC}"></div><div class="yandex-auth-statustext">${esc(sL)}</div></div><button class="yandex-auth-mainbtn" data-ya-action="login"><span style="font-size:22px;line-height:1">Я</span><span>Войти через Яндекс</span></button>${renderAccountBenefitsBlock()}</div>`; } bindYandexActions(root,rr); bindAccountDevicesBlock(root,rr); bindReactiveEvents(root,rr); updateSyncDot(root); }
 export default { renderYandexAuthBlock };
 
 //=================================================
