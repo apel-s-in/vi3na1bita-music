@@ -6,6 +6,7 @@ import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDe
 import { normalizeEventList } from './backup-event-cleanup.js';
 import { buildAchievementBackupState, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
 import { readLedgerCheckpoint } from './event-integrity.js';
+import { isBackupSemanticNoiseEvent } from './event-contract.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -47,6 +48,11 @@ export const readDeviceRegistryForBackup = async () => {
 };
 
 const dedupIntel = arr => Array.isArray(arr) && arr.length ? [...new Map(arr.filter(r => r?.key).map(r => [String(r.key), r])).values()] : [];
+const pickArchivableLedgerHead = events => {
+  const rows = (Array.isArray(events) ? events : []).filter(e => e?.eventHash && e?.chainId && e?.deviceSeq && !isBackupSemanticNoiseEvent(e)).sort((a,b)=>(Number(a.timestamp||0)-Number(b.timestamp||0)) || (Number(a.deviceSeq||0)-Number(b.deviceSeq||0)));
+  const x = rows[rows.length - 1] || null;
+  return { archivableLedgerHead:String(x?.eventHash || ''), archivableLedgerSeq:Number(x?.deviceSeq || 0), archivableLedgerDeviceStableId:String(x?.deviceStableId || ''), archivableLedgerChainId:String(x?.chainId || ''), archivableEventCount:rows.length };
+};
 
 export const buildBackupDataSnapshot = async () => {
   try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 80)); } catch {}
@@ -152,12 +158,17 @@ export const buildFullBackupObject = async () => {
 
   const eventLogHash = await sha256Hex(stableStringify(data?.eventLog?.warm || []));
   const sharedStorageHash = await sha256Hex(stableStringify(data?.localStorage || {}));
-  const ledger = data?.ledger || {};
+  const ledger = data?.ledger || {}, arch = pickArchivableLedgerHead(data?.eventLog?.warm || []);
   const revision = {
     ...buildBackupRevision({ identity, devices, data, currentDevice }),
     eventLedgerHead: String(ledger.headHash || ''),
     eventLedgerSeq: Number(ledger.deviceSeq || 0),
     eventLedgerDeviceStableId: String(ledger.deviceStableId || currentDevice?.deviceStableId || ''),
+    archivableLedgerHead: arch.archivableLedgerHead,
+    archivableLedgerSeq: arch.archivableLedgerSeq,
+    archivableLedgerDeviceStableId: arch.archivableLedgerDeviceStableId,
+    archivableLedgerChainId: arch.archivableLedgerChainId,
+    archivableEventCount: arch.archivableEventCount,
     eventLogHash,
     sharedStorageHash
   };
@@ -180,6 +191,11 @@ export const buildFullBackupObject = async () => {
       eventLedgerHead: revision.eventLedgerHead,
       eventLedgerSeq: revision.eventLedgerSeq,
       eventLedgerDeviceStableId: revision.eventLedgerDeviceStableId,
+      archivableLedgerHead: revision.archivableLedgerHead,
+      archivableLedgerSeq: revision.archivableLedgerSeq,
+      archivableLedgerDeviceStableId: revision.archivableLedgerDeviceStableId,
+      archivableLedgerChainId: revision.archivableLedgerChainId,
+      archivableEventCount: revision.archivableEventCount,
       eventLogHash,
       sharedStorageHash
     },
