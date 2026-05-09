@@ -465,7 +465,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-09 13:16:49 UTC
+Сгенерировано: 2026-05-09 14:04:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5748,6 +5748,14 @@ import { EVENT_ARCHIVE_DIR, normalizeEventArchiveIndex, normalizeEventArchiveSeg
 import { YANDEX_DISK_PROXY as PROXY, fetchProxyJson as fPJ, uploadJson as pJP, ensureResourceDir } from './yandex-disk-transport.js';
 
 const s = v => String(v == null ? '' : v).trim();
+const jp = t => { try { return JSON.parse(t); } catch { return null; } };
+const postProxyJson = async (mode, token, body = {}) => {
+  const u = new URL(PROXY); u.searchParams.set('mode', mode); u.searchParams.set('token', token);
+  const r = await fetch(u.toString(), { method:'POST', headers:{ 'X-Yandex-Auth':token, 'Content-Type':'application/json', Accept:'application/json' }, credentials:'omit', mode:'cors', body:JSON.stringify(body || {}) });
+  const txt = await r.text(), j = jp(txt) || {};
+  if (!r.ok || j.ok === false) { const e = new Error(s(j.error || `proxy_${mode}_${r.status}`)); e.status = r.status; e.payload = j; throw e; }
+  return j;
+};
 
 export const YandexEventArchiveDisk = {
   async getEventArchiveIndexViaProxy(token) {
@@ -5777,6 +5785,18 @@ export const YandexEventArchiveDisk = {
     await ensureResourceDir(token, EVENT_ARCHIVE_DIR).catch(() => null);
     await pJP(token, 'app:/Backup/events/index.json', normalizeEventArchiveIndex(index || { items: [] }));
     return true;
+  },
+
+  async listEventArchiveFiles(token) {
+    if (!token) throw new Error('no_token');
+    const u = new URL(PROXY); u.searchParams.set('mode', 'archive_list_files');
+    const d = await fPJ(u.toString(), token, 2);
+    return d?.archive || { items: [], totals: {} };
+  },
+
+  async deleteEventArchiveSegments(token, paths = []) {
+    if (!token) throw new Error('no_token');
+    return await postProxyJson('archive_delete_segments', token, { paths: (Array.isArray(paths) ? paths : []).map(s).filter(Boolean) });
   },
 
   async getEventArchiveIndex(token) {
