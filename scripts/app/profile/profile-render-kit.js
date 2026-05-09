@@ -26,6 +26,25 @@ export const renderScoreBar = ({ score = 0, status = 'ok', color = '' } = {}) =>
   return `<div style="height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin-top:8px"><div style="height:100%;width:${Math.max(0, Math.min(100, safeNum(score)))}%;background:${esc(c)}"></div></div>`;
 };
 
+export const renderStatusPill = ({ text = '', tone = 'info', attrs = '' } = {}) => {
+  const c = { ok:'#81c784', warn:'#ffb74d', bad:'#ff6b6b', info:'#8ab8fd', muted:'#7f93b5' }[tone] || '#8ab8fd';
+  return `<span ${attrs} style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;border:1px solid ${esc(c)}55;background:${esc(c)}18;color:${esc(c)};font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.6px">${esc(text)}</span>`;
+};
+
+export const renderDeviceTitle = d => {
+  const p = String(d?.platform || d?.sourcePlatform || '').toLowerCase(), cls = String(d?.class || d?.sourceDeviceClass || '').toLowerCase();
+  const ic = /ios|iphone|ipad/.test(`${p} ${cls}`) ? '📱' : (/android/.test(`${p} ${cls}`) ? '🤖' : '💻');
+  return `${ic} ${esc(d?.label || d?.sourceDeviceLabel || d?.class || d?.sourceDeviceClass || 'Устройство')}`;
+};
+
+export const renderModalNote = (text = '', { tone = 'info', style = '' } = {}) => {
+  const c = { info:'#9db7dd', warn:'#ffb74d', ok:'#81c784', bad:'#ff6b6b', muted:'#7f93b5' }[tone] || '#9db7dd';
+  return `<div style="font-size:12px;color:${esc(c)};line-height:1.45;margin-top:10px;${esc(style)}">${text}</div>`;
+};
+
+export const renderActionGrid = actions =>
+  `<div class="yandex-auth-actions">${(actions || []).map(a => `<button type="button" class="modal-action-btn ${a.primary ? 'online' : ''}" ${a.attrs || ''}>${esc(a.text || 'OK')}</button>`).join('')}</div>`;
+
 export const renderSmallListRow = ({ icon = '', title = '', desc = '', attrs = '', style = '' } = {}) =>
   `<div class="profile-list-item" ${attrs} ${style ? `style="${esc(style)}"` : ''}>${icon ? `<div style="font-size:22px;width:28px;text-align:center;flex-shrink:0">${esc(icon)}</div>` : ''}<div class="log-info"><div class="log-title">${esc(title)}</div><div class="log-desc">${esc(desc)}</div></div></div>`;
 
@@ -41,4 +60,4 @@ export const renderSyncLogRow = r =>
 export const renderCloudCompareNotice = ({ compareVm: c, restoreDone: r = false } = {}) =>
   (r || !c || !['cloud_newer', 'cloud_probable'].includes(c.uiState)) ? '' : `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3);border-radius:10px;margin-bottom:10px"><span style="font-size:18px">⚠️</span><div style="flex:1;font-size:12px;color:#ffb74d;line-height:1.4">В облаке есть более богатая или более новая копия.<br>При желании можно восстановить её вручную.</div><button class="modal-action-btn" data-ya-action="restore-backup" style="font-size:11px;padding:6px 10px;flex-shrink:0">📥 Загрузить</button></div>`;
 
-export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderCloudMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderSmallListRow, renderInlineActions, renderCloudStatPair, renderSyncLogRow, renderCloudCompareNotice };
+export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderCloudMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderStatusPill, renderDeviceTitle, renderModalNote, renderActionGrid, renderSmallListRow, renderInlineActions, renderCloudStatPair, renderSyncLogRow, renderCloudCompareNotice };
