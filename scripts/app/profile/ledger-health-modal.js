@@ -14,6 +14,7 @@ const renderServerVerify = v => !v ? '' : `${renderCloudSectionCard({ title:'Ser
   ${renderKeyValueRow({ label:'Payload hash', value:v.payload?.reason || '—' })}
   ${renderKeyValueRow({ label:'Event hashes', value:`checked: ${v.eventHashes?.checked || 0} · broken: ${v.eventHashes?.broken || 0}` })}
   ${renderKeyValueRow({ label:'Chains', value:`${v.eventChain?.chains || 0} · links: ${v.eventChain?.checkedLinks || 0} · broken: ${v.eventChain?.brokenLinks || 0}` })}
+  ${renderKeyValueRow({ label:'Archivable head', value:v.archivableLedgerHead ? `${String(v.archivableLedgerHead).slice(0,16)} · reachable: ${v.archivableReachable ? 'yes' : 'no'}` : '—', valueColor:v.archivableReachable === false ? '#ffb74d' : '#9db7dd' })}
 ` })}${renderArchiveSummaryCard({ totals:{ segments:v.archive?.segmentsCount || 0, events:v.archive?.eventCount || 0 }, downloadedSegments:v.archive?.downloadedSegments || 0, restoredEventCount:v.archive?.eventCount || 0 }, { title:'Server archive coverage', style:'margin-top:10px' })}`;
 
 const renderHealthHtml = ({ h, trust, server = null }) => {
