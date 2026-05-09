@@ -1,10 +1,11 @@
 import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
 import { esc, fmtDateTime, renderCloudSectionCard, renderModalNote, renderStatusPill } from './profile-render-kit.js';
+import { renderYandexActionGrid } from './cloud-action-render-kit.js';
 
 export const openBackupInfoModal = () => window.Modals?.open?.({
   title: 'Что сохраняется в backup',
   maxWidth: 400,
-  bodyHtml: `${renderModalNote('Backup хранит общий прогресс аккаунта и данные синхронизации.', { style: 'margin:0 0 14px' })}${renderCloudSectionCard({ title: 'Shared backup', body: `<ul style="margin:0 0 0 18px;color:#eaf2ff;line-height:1.5"><li>статистика и event log</li><li>достижения, XP, стрики</li><li>профиль</li><li>избранное и плейлисты</li><li>реестр устройств</li><li>внутренние intel/store данные</li></ul>` })}${renderCloudSectionCard({ title: 'Device settings', style: 'margin-top:10px', body: renderModalNote('Локальные настройки устройства сохраняются отдельно в <b>device-settings/&lt;deviceStableId&gt;.json</b>: громкость, качество, offline/UI/player prefs. Восстановление всегда выполняется вручную через предпросмотр и выбор устройства.', { style: 'margin:0' }) })}`
+  bodyHtml: `${renderModalNote('Backup хранит общий прогресс аккаунта и данные синхронизации.', { style: 'margin:0 0 14px' })}${renderCloudSectionCard({ title: 'Shared backup', body: `<ul style="margin:0 0 0 18px;color:#eaf2ff;line-height:1.5"><li>статистика и event log</li><li>достижения, XP, стрики</li><li>профиль</li><li>избранное и плейлисты</li><li>реестр устройств</li><li>внутренние intel/store данные</li></ul>` })}${renderCloudSectionCard({ title: 'Device settings', style: 'margin-top:10px', body: renderModalNote('Локальные настройки устройства сохраняются отдельно в <b>device-settings/&lt;deviceStableId&gt;.json</b>: громкость, качество, offline/UI/player prefs. Восстановление всегда выполняется вручную через предпросмотр и выбор устройства.', { style: 'margin:0' }) })}${renderCloudSectionCard({ title:'Быстрые действия', style:'margin-top:10px', body:renderYandexActionGrid([['save-backup','☁️ Сохранить'],['restore-backup','📥 Из облака'],['archive-maintenance','🪄 Archive']]) })}`
 });
 
 export const openBackupFoundModal = m => {
