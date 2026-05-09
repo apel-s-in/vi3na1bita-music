@@ -26,7 +26,7 @@
       if (u && !urls.includes(u)) urls.push(u);
       for (const url of urls) {
         try {
-          const j = fc?.getJson ? await fc.getJson({ key: `lyrics:timeline:${url}`, url, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache', headers: { Accept: 'application/json' } } }) : await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' } }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
+          const r = await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' } }); if (!r.ok) throw new Error(`HTTP ${r.status}`); const j = await r.json();
           if (Array.isArray(j)) { fc?.set?.(k, { ok: 1, data: j }, 'session'); return j; }
         } catch (e) { if (String(e?.message || e || '').includes('404')) markBadUrl(url); else if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null; }
       }
