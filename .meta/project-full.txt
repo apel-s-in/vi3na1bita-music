@@ -467,7 +467,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-09 16:04:02 UTC
+Сгенерировано: 2026-05-09 16:05:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1836,6 +1836,7 @@ import { getCurrentEventArchiveBranch, getLocalEventArchiveWatermark, getLocalDe
 import { readEventArchiveSummary, downloadEventArchiveEvents } from './event-archive-restore.js';
 import { normalizeEventArchiveIndex } from './event-archive-contract.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
+import { buildArchiveMagicPlan, runArchiveMagicRepair } from './archive-maintenance.js';
 
 const TAIL = 1500;
 const s = v => String(v == null ? '' : v).trim();
@@ -1928,7 +1929,10 @@ export const deleteArchiveSegments = async (token = window.YandexAuth?.getToken?
   return { ok:!!res?.ok, deleteResult:res, rebuilt };
 };
 
-export const BackupDebug = { inspectLocal, inspectCloud, inspectArchive, estimateCompactBackup, buildArchiveMaintenancePlan, createCompactArchiveIndex, rebuildArchiveIndexFromFiles, deleteArchiveSegments };
+export const magicArchiveRepair = async (token = window.YandexAuth?.getToken?.(), opts = {}) => await runArchiveMagicRepair({ token, ...opts });
+export const inspectArchiveMagicPlan = async (token = window.YandexAuth?.getToken?.(), opts = {}) => await buildArchiveMagicPlan({ token, ...opts });
+
+export const BackupDebug = { inspectLocal, inspectCloud, inspectArchive, estimateCompactBackup, buildArchiveMaintenancePlan, createCompactArchiveIndex, rebuildArchiveIndexFromFiles, deleteArchiveSegments, inspectArchiveMagicPlan, magicArchiveRepair };
 if (typeof window !== 'undefined') window.BackupDebug = BackupDebug;
 export default BackupDebug;
 
