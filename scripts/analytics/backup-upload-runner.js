@@ -3,7 +3,7 @@ import { stableStringify, sha256Hex } from './backup-builders.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 import { recordSyncRevision } from './sync-revisions.js';
-import { getLocalEventArchiveWatermark, uploadLocalEventArchiveUntilCaughtUp } from './event-archive-sync.js';
+import { getCurrentEventArchiveBranch, getLocalEventArchiveWatermark, uploadLocalEventArchiveUntilCaughtUp } from './event-archive-sync.js';
 
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', HISTORY_MIN_INTERVAL_MS = 86400000, CLOUD_EVENT_TAIL_LIMIT = 1500, HISTORY_MATERIAL_DOMAINS = new Set(['achievements','favorites','playlists','profile','devices','stats']);
 const sS = v => String(v == null ? '' : v).trim(), sN = v => Number.isFinite(Number(v)) ? Number(v) : 0, jP = (raw, fb = null) => { try { return JSON.parse(raw); } catch { return fb; } };
@@ -24,14 +24,14 @@ const rehashBackupObject = async b => {
 };
 
 const compactBackupForCloud = async b => {
-  const events = Array.isArray(b?.data?.eventLog?.warm) ? b.data.eventLog.warm : [], sid = sS(localStorage.getItem('deviceStableId') || '');
-  if (!sid || events.length <= CLOUD_EVENT_TAIL_LIMIT) return b;
-  const wm = getLocalEventArchiveWatermark(sid), cutSeq = Math.max(0, sN(wm.lastSeq) - CLOUD_EVENT_TAIL_LIMIT);
+  const events = Array.isArray(b?.data?.eventLog?.warm) ? b.data.eventLog.warm : [], br = await getCurrentEventArchiveBranch().catch(() => ({}));
+  if (!br?.branchId || events.length <= CLOUD_EVENT_TAIL_LIMIT) return b;
+  const wm = getLocalEventArchiveWatermark(br.branchId), cutSeq = Math.max(0, sN(wm.lastSeq) - CLOUD_EVENT_TAIL_LIMIT);
   if (!sN(wm.lastSeq) || cutSeq <= 0) return b;
-  const kept = events.filter(e => sS(e?.deviceStableId) !== sid || !sN(e?.deviceSeq) || sN(e.deviceSeq) > cutSeq || !sS(e?.eventHash));
+  const kept = events.filter(e => sS(e?.deviceStableId) !== sS(br.deviceStableId) || sS(e?.chainId || '') !== sS(br.chainId || '') || !sN(e?.deviceSeq) || sN(e.deviceSeq) > cutSeq || !sS(e?.eventHash));
   if (kept.length >= events.length) return b;
-  const out = { ...b, data: { ...(b.data || {}), eventLog: { ...(b.data?.eventLog || {}), warm: kept }, eventArchive: { ...(b.data?.eventArchive || {}), latestCompacted: true, compactedAt: Date.now(), compactTailLimit: CLOUD_EVENT_TAIL_LIMIT, eventCountFull: events.length, eventCountInSnapshot: kept.length, archivedDeviceStableId: sid, archivedCurrentSeq: sN(wm.lastSeq), archivedCurrentHash: sS(wm.lastHash || '') } }, revision: { ...(b.revision || {}), eventCount: events.length } };
-  console.info('[BackupCompact]', { beforeEvents: events.length, afterEvents: kept.length, archivedSeq: wm.lastSeq, tailLimit: CLOUD_EVENT_TAIL_LIMIT });
+  const out = { ...b, data: { ...(b.data || {}), eventLog: { ...(b.data?.eventLog || {}), warm: kept }, eventArchive: { ...(b.data?.eventArchive || {}), latestCompacted: true, compactedAt: Date.now(), compactTailLimit: CLOUD_EVENT_TAIL_LIMIT, eventCountFull: events.length, eventCountInSnapshot: kept.length, archivedDeviceStableId: sS(br.deviceStableId), archivedBranchId: sS(br.branchId), archivedCurrentSeq: sN(wm.lastSeq), archivedCurrentHash: sS(wm.lastHash || '') } }, revision: { ...(b.revision || {}), eventCount: events.length } };
+  console.info('[BackupCompact]', { beforeEvents: events.length, afterEvents: kept.length, branchId: br.branchId, archivedSeq: wm.lastSeq, tailLimit: CLOUD_EVENT_TAIL_LIMIT });
   return await rehashBackupObject(out);
 };
 
@@ -41,9 +41,9 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
   let meta = jP(localStorage.getItem('yandex:last_backup_meta') || localStorage.getItem('yandex:last_backup_check') || 'null', null), uploadedShared = false, changedDomains = [], uploadedEventArchive = false, eventArchive = null;
 
   if (shouldUploadShared) {
+    changedDomains = Array.isArray(jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', [])) ? jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []).map(sS).filter(Boolean) : [];
     const materialHistory = changedDomains.some(d => HISTORY_MATERIAL_DOMAINS.has(sS(d)));
     const writeHistory = reason === 'manual_save' || (!!force && reason !== 'autosync') || (materialHistory && Date.now() - sN(localStorage.getItem(LS_LAST_HISTORY_AT) || 0) > HISTORY_MIN_INTERVAL_MS);
-    changedDomains = Array.isArray(jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', [])) ? jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []).map(sS).filter(Boolean) : [];
 
     if (typeof disk.uploadEventSegment === 'function') {
       eventArchive = await uploadLocalEventArchiveUntilCaughtUp({ disk, token, maxSegments: 20 }).catch(e => ({ ok: false, uploaded: false, reason: e?.message || 'event_archive_failed' }));
