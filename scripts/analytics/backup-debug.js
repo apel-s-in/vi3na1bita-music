@@ -12,6 +12,7 @@ import { readEventArchiveSummary, downloadEventArchiveEvents } from './event-arc
 import { normalizeEventArchiveIndex } from './event-archive-contract.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { buildArchiveMagicPlan, runArchiveMagicRepair } from './archive-maintenance.js';
+import { listArchiveBranches, validateArchiveBranch } from './archive-branch-validation.js';
 
 const TAIL = 1500;
 const s = v => String(v == null ? '' : v).trim();
@@ -107,6 +108,9 @@ export const deleteArchiveSegments = async (token = window.YandexAuth?.getToken?
 export const magicArchiveRepair = async (token = window.YandexAuth?.getToken?.(), opts = {}) => await runArchiveMagicRepair({ token, ...opts });
 export const inspectArchiveMagicPlan = async (token = window.YandexAuth?.getToken?.(), opts = {}) => await buildArchiveMagicPlan({ token, ...opts });
 
-export const BackupDebug = { inspectLocal, inspectCloud, inspectArchive, estimateCompactBackup, buildArchiveMaintenancePlan, createCompactArchiveIndex, rebuildArchiveIndexFromFiles, deleteArchiveSegments, inspectArchiveMagicPlan, magicArchiveRepair };
+export const validateArchiveBranchDebug = async (branchId, token = window.YandexAuth?.getToken?.()) => await validateArchiveBranch({ token, branchId });
+export const listArchiveBranchesDebug = async (token = window.YandexAuth?.getToken?.()) => await listArchiveBranches({ token });
+
+export const BackupDebug = { inspectLocal, inspectCloud, inspectArchive, estimateCompactBackup, buildArchiveMaintenancePlan, createCompactArchiveIndex, rebuildArchiveIndexFromFiles, deleteArchiveSegments, inspectArchiveMagicPlan, magicArchiveRepair, listArchiveBranches: listArchiveBranchesDebug, validateArchiveBranch: validateArchiveBranchDebug };
 if (typeof window !== 'undefined') window.BackupDebug = BackupDebug;
 export default BackupDebug;
