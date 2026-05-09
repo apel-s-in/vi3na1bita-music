@@ -84,6 +84,25 @@ export const createCompactArchiveIndex = async (token = window.YandexAuth?.getTo
   return { ok: true, plan };
 };
 
-export const BackupDebug = { inspectLocal, inspectCloud, inspectArchive, estimateCompactBackup, buildArchiveMaintenancePlan, createCompactArchiveIndex };
+export const rebuildArchiveIndexFromFiles = async (token = window.YandexAuth?.getToken?.()) => {
+  const disk = window.YandexDisk; if (!disk?.listEventArchiveFiles || !disk?.uploadEventArchiveIndex) throw new Error('archive_file_rebuild_api_missing');
+  const scan = await disk.listEventArchiveFiles(token);
+  const index = normalizeEventArchiveIndex({ version:'1.3-rebuilt-from-files', updatedAt:Date.now(), items:scan?.items || [] });
+  await disk.uploadEventArchiveIndex(token, index);
+  console.info('[BackupDebug] archive index rebuilt from files', { files: scan?.items?.length || 0, indexItems: index.items.length });
+  return { ok:true, scan, index };
+};
+
+export const deleteArchiveSegments = async (token = window.YandexAuth?.getToken?.(), paths = []) => {
+  const disk = window.YandexDisk; if (!disk?.deleteEventArchiveSegments) throw new Error('archive_delete_api_missing');
+  const clean = [...new Set((Array.isArray(paths) ? paths : []).map(s).filter(Boolean))];
+  if (!clean.length) return { ok:false, reason:'no_paths', deleted:0 };
+  const res = await disk.deleteEventArchiveSegments(token, clean);
+  const rebuilt = await rebuildArchiveIndexFromFiles(token).catch(e => ({ ok:false, error:e?.message || 'rebuild_failed' }));
+  console.info('[BackupDebug] archive segments deleted', { requested: clean.length, deleted: res?.deleted || 0, rebuilt: !!rebuilt?.ok });
+  return { ok:!!res?.ok, deleteResult:res, rebuilt };
+};
+
+export const BackupDebug = { inspectLocal, inspectCloud, inspectArchive, estimateCompactBackup, buildArchiveMaintenancePlan, createCompactArchiveIndex, rebuildArchiveIndexFromFiles, deleteArchiveSegments };
 if (typeof window !== 'undefined') window.BackupDebug = BackupDebug;
 export default BackupDebug;
