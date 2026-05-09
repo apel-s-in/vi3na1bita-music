@@ -303,6 +303,7 @@ vi3na1bita-music/
 │   │   │   ├── actions-reset.js
 │   │   │   ├── actions-trash.js
 │   │   │   ├── actions.js
+│   │   │   ├── archive-maintenance-modal.js
 │   │   │   ├── auth-onboarding-orchestrator.js
 │   │   │   ├── backup-info-modal.js
 │   │   │   ├── carousel-flat.js
@@ -464,7 +465,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-09 13:05:15 UTC
+Сгенерировано: 2026-05-09 13:07:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1944,7 +1945,7 @@ import { stableStringify, sha256Hex } from './backup-builders.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 import { recordSyncRevision } from './sync-revisions.js';
-import { getLocalEventArchiveWatermark, uploadLocalEventArchiveUntilCaughtUp } from './event-archive-sync.js';
+import { getCurrentEventArchiveBranch, getLocalEventArchiveWatermark, uploadLocalEventArchiveUntilCaughtUp } from './event-archive-sync.js';
 
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', HISTORY_MIN_INTERVAL_MS = 86400000, CLOUD_EVENT_TAIL_LIMIT = 1500, HISTORY_MATERIAL_DOMAINS = new Set(['achievements','favorites','playlists','profile','devices','stats']);
 const sS = v => String(v == null ? '' : v).trim(), sN = v => Number.isFinite(Number(v)) ? Number(v) : 0, jP = (raw, fb = null) => { try { return JSON.parse(raw); } catch { return fb; } };
@@ -1965,14 +1966,14 @@ const rehashBackupObject = async b => {
 };
 
 const compactBackupForCloud = async b => {
-  const events = Array.isArray(b?.data?.eventLog?.warm) ? b.data.eventLog.warm : [], sid = sS(localStorage.getItem('deviceStableId') || '');
-  if (!sid || events.length <= CLOUD_EVENT_TAIL_LIMIT) return b;
-  const wm = getLocalEventArchiveWatermark(sid), cutSeq = Math.max(0, sN(wm.lastSeq) - CLOUD_EVENT_TAIL_LIMIT);
+  const events = Array.isArray(b?.data?.eventLog?.warm) ? b.data.eventLog.warm : [], br = await getCurrentEventArchiveBranch().catch(() => ({}));
+  if (!br?.branchId || events.length <= CLOUD_EVENT_TAIL_LIMIT) return b;
+  const wm = getLocalEventArchiveWatermark(br.branchId), cutSeq = Math.max(0, sN(wm.lastSeq) - CLOUD_EVENT_TAIL_LIMIT);
   if (!sN(wm.lastSeq) || cutSeq <= 0) return b;
-  const kept = events.filter(e => sS(e?.deviceStableId) !== sid || !sN(e?.deviceSeq) || sN(e.deviceSeq) > cutSeq || !sS(e?.eventHash));
+  const kept = events.filter(e => sS(e?.deviceStableId) !== sS(br.deviceStableId) || sS(e?.chainId || '') !== sS(br.chainId || '') || !sN(e?.deviceSeq) || sN(e.deviceSeq) > cutSeq || !sS(e?.eventHash));
   if (kept.length >= events.length) return b;
-  const out = { ...b, data: { ...(b.data || {}), eventLog: { ...(b.data?.eventLog || {}), warm: kept }, eventArchive: { ...(b.data?.eventArchive || {}), latestCompacted: true, compactedAt: Date.now(), compactTailLimit: CLOUD_EVENT_TAIL_LIMIT, eventCountFull: events.length, eventCountInSnapshot: kept.length, archivedDeviceStableId: sid, archivedCurrentSeq: sN(wm.lastSeq), archivedCurrentHash: sS(wm.lastHash || '') } }, revision: { ...(b.revision || {}), eventCount: events.length } };
-  console.info('[BackupCompact]', { beforeEvents: events.length, afterEvents: kept.length, archivedSeq: wm.lastSeq, tailLimit: CLOUD_EVENT_TAIL_LIMIT });
+  const out = { ...b, data: { ...(b.data || {}), eventLog: { ...(b.data?.eventLog || {}), warm: kept }, eventArchive: { ...(b.data?.eventArchive || {}), latestCompacted: true, compactedAt: Date.now(), compactTailLimit: CLOUD_EVENT_TAIL_LIMIT, eventCountFull: events.length, eventCountInSnapshot: kept.length, archivedDeviceStableId: sS(br.deviceStableId), archivedBranchId: sS(br.branchId), archivedCurrentSeq: sN(wm.lastSeq), archivedCurrentHash: sS(wm.lastHash || '') } }, revision: { ...(b.revision || {}), eventCount: events.length } };
+  console.info('[BackupCompact]', { beforeEvents: events.length, afterEvents: kept.length, branchId: br.branchId, archivedSeq: wm.lastSeq, tailLimit: CLOUD_EVENT_TAIL_LIMIT });
   return await rehashBackupObject(out);
 };
 
@@ -1982,9 +1983,9 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
   let meta = jP(localStorage.getItem('yandex:last_backup_meta') || localStorage.getItem('yandex:last_backup_check') || 'null', null), uploadedShared = false, changedDomains = [], uploadedEventArchive = false, eventArchive = null;
 
   if (shouldUploadShared) {
+    changedDomains = Array.isArray(jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', [])) ? jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []).map(sS).filter(Boolean) : [];
     const materialHistory = changedDomains.some(d => HISTORY_MATERIAL_DOMAINS.has(sS(d)));
     const writeHistory = reason === 'manual_save' || (!!force && reason !== 'autosync') || (materialHistory && Date.now() - sN(localStorage.getItem(LS_LAST_HISTORY_AT) || 0) > HISTORY_MIN_INTERVAL_MS);
-    changedDomains = Array.isArray(jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', [])) ? jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []).map(sS).filter(Boolean) : [];
 
     if (typeof disk.uploadEventSegment === 'function') {
       eventArchive = await uploadLocalEventArchiveUntilCaughtUp({ disk, token, maxSegments: 20 }).catch(e => ({ ok: false, uploaded: false, reason: e?.message || 'event_archive_failed' }));
@@ -4023,6 +4024,60 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
 };
 
 export default { bindProfileActions };
+
+//=================================================
+// FILE: /scripts/app/profile/archive-maintenance-modal.js
+// UID.100_(Backup snapshot as life capsule)_(Archive maintenance UI)_(preview -> compact index -> no autodelete)
+// UID.112_(Profile command center)_(Профиль управляет archive health)_(branches/segments/noise/duplicates)
+// UID.094_(No-paralysis rule)_(archive maintenance не влияет на playback)_(только чтение/запись index)
+
+import { inspectArchive, createCompactArchiveIndex } from '../../analytics/backup-debug.js';
+import { esc, renderCloudSectionCard, renderInlineActions, renderKeyValueRow, renderWarnList } from './profile-render-kit.js';
+
+let lastPlan = null;
+const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+const rowBranch = b => `<div class="profile-list-item"><div style="font-size:20px">🌿</div><div class="log-info"><div class="log-title">${esc(b.branchId || 'legacy')}</div><div class="log-desc">chain: ${esc(b.chainId || '—')} · seg: ${n(b.segments)} · seq: ${n(b.fromSeq)}–${n(b.toSeq)}</div><div class="log-desc">events: ${n(b.events)} · size: ${esc(b.sizeHuman || '—')} · legacy: ${n(b.legacySegments)}</div></div></div>`;
+
+const render = p => {
+  const branches = p?.branches || [], cand = p?.candidateRemovePaths || [];
+  return `${renderCloudSectionCard({ title:'Archive summary', body: `
+    ${renderKeyValueRow({ label:'Branches', value:p?.totals?.branches || p?.summary?.branchesCount || branches.length, wordBreak:false })}
+    ${renderKeyValueRow({ label:'Segments', value:p?.totals?.segments || p?.beforeItems || 0, wordBreak:false })}
+    ${renderKeyValueRow({ label:'Events in index', value:p?.totals?.events || p?.summary?.eventCount || 0, wordBreak:false })}
+    ${renderKeyValueRow({ label:'Downloaded / restored', value:`${p?.downloadedSegments || 0} seg · ${p?.restoredEventCount || 0} events`, wordBreak:false })}
+    ${renderKeyValueRow({ label:'Noise / legacy / duplicates', value:`${p?.noiseEvents || 0} / ${p?.legacyEvents || 0} / ${p?.duplicateEvents || 0}`, wordBreak:false })}
+    ${renderKeyValueRow({ label:'Compact index', value:`${p?.beforeItems || 0} → ${p?.afterItems || 0}`, valueColor:(p?.afterItems || 0) < (p?.beforeItems || 0) ? '#81c784' : '#9db7dd', wordBreak:false })}
+  ` })}${renderCloudSectionCard({ title:'Branches', style:'margin-top:10px', body: branches.length ? branches.map(rowBranch).join('') : '<div class="fav-empty">Branches не найдены</div>' })}${renderCloudSectionCard({ title:'Кандидаты на исключение из index', style:'margin-top:10px', body: cand.length ? renderWarnList({ items:cand.map(x => `${x.reason}: ${x.path} · useful ${x.usefulEvents}/${x.events} · ${x.sizeHuman || ''}`), empty:'Кандидатов нет' }) : '<div style="font-size:12px;color:#81c784">Явных duplicate/noise сегментов не найдено</div>' })}${renderInlineActions([{ text:'Обновить preview', attrs:'data-arch-act="refresh"' }, { text:'Создать compact index', primary:true, attrs:'data-arch-act="compact"' }, { text:'Скопировать candidates', attrs:'data-arch-act="copy"' }])}<div style="margin-top:10px;color:#7f93b5;font-size:11px;line-height:1.45">Compact index не удаляет файлы. Он только убирает duplicate/noise paths из events/index.json. Физическое удаление сегментов пока не выполняется автоматически.</div>`;
+};
+
+export const openArchiveMaintenanceModal = async () => {
+  const load = async () => {
+    const t = window.YandexAuth?.getToken?.();
+    if (!t) throw new Error('no_token');
+    lastPlan = await inspectArchive(t, { limitSegments: 120 });
+    return lastPlan;
+  };
+  const m = window.Modals?.open?.({ title:'Обслуживание archive', maxWidth:440, bodyHtml:'<div class="fav-empty">Сканируем archive...</div>' });
+  try { if (m?.isConnected) m.querySelector('.modal-body').innerHTML = render(await load()); } catch (e) { if (m?.isConnected) m.querySelector('.modal-body').innerHTML = `<div class="fav-empty">Ошибка archive inspect: ${esc(e?.message || '')}</div>`; }
+  m?.addEventListener('click', async e => {
+    const act = e.target.closest('[data-arch-act]')?.dataset.archAct; if (!act) return;
+    try {
+      if (act === 'refresh') { m.querySelector('.modal-body').innerHTML = render(await load()); window.NotificationSystem?.success?.('Archive preview обновлён ✅'); }
+      if (act === 'copy') { await navigator.clipboard?.writeText?.((lastPlan?.candidateRemovePaths || []).map(x => x.path).join('\n')); window.NotificationSystem?.success?.('Candidates скопированы ✅'); }
+      if (act === 'compact') {
+        window.Modals?.confirm?.({
+          title:'Создать compact index?',
+          textHtml:'Будет перезаписан только <b>events/index.json</b>. Сами <b>seg_*.json</b> останутся на Диске. Это безопасно и обратимо по файлам.',
+          confirmText:'Создать',
+          cancelText:'Отмена',
+          onConfirm:async()=>{ const t=window.YandexAuth?.getToken?.(); const r=await createCompactArchiveIndex(t,{limitSegments:120}); lastPlan=r.plan; if(m.isConnected)m.querySelector('.modal-body').innerHTML=render(lastPlan); window.NotificationSystem?.success?.('Compact index создан ✅'); }
+        });
+      }
+    } catch (err) { window.NotificationSystem?.error?.('Archive action failed: ' + String(err?.message || '')); }
+  });
+};
+
+export default { openArchiveMaintenanceModal };
 
 //=================================================
 // FILE: /scripts/app/profile/auth-onboarding-orchestrator.js
