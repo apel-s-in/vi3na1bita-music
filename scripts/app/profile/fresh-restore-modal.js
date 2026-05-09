@@ -2,7 +2,7 @@ import { getLocalBackupUiSnapshot, compareLocalVsCloud, getBackupCompareLabel } 
 import { renderCloudStatPair, esc, renderStatusPill } from './profile-render-kit.js';
 import { renderRestoreDiffHtml } from './restore-diff.js';
 import { compareBackupBranches } from '../../analytics/backup-branch-compare.js';
-import { readEventArchiveSummary } from '../../analytics/event-archive-restore.js';
+import { downloadEventArchiveEvents } from '../../analytics/event-archive-restore.js';
 import { BackupVault } from '../../analytics/backup-vault.js';
 import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
 import { renderFreshHero, renderBackupVersionCard, renderDeviceChoiceCard, renderSpecialDeviceChoices, renderRestoreActions } from './restore-card-render-kit.js';
@@ -24,7 +24,7 @@ export const openFreshLoginRestoreModal = ({ meta: m, items: i = [], backup: b =
   const rDSS=async()=>{dSS=await resDSS({disk:d,token:t,deviceKey:pD()});uDB();};
   md.addEventListener('change',()=>{rP();rDSS().catch(()=>{});}); rP();
   if(b)compareBackupBranches({backup:b}).then(br=>{bC=br;uDB();}).catch(()=>{});
-  readEventArchiveSummary({disk:d,token:t}).then(x=>{aI=x;uDB();}).catch(()=>{});
+  downloadEventArchiveEvents({disk:d,token:t,limitSegments:80,limitEvents:12000}).then(x=>{aI=x;uDB();}).catch(()=>{});
   rDSS().catch(()=>{});
   md.addEventListener('click', async e => {
     const btn=e.target.closest('[data-fresh-act]'); if(!btn)return;
