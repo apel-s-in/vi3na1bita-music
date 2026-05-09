@@ -460,7 +460,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-09 09:45:44 UTC
+Сгенерировано: 2026-05-09 09:46:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -760,7 +760,7 @@ jobs:
 <script src="./scripts/app/player/playback-context-source.js" type="module"></script><script src="./scripts/app/player/favorites-only-actions.js" type="module"></script>
 <script src="./scripts/app/player-ui.js" defer></script><script src="./scripts/app/gallery.js" type="module"></script>
 <script src="./scripts/app/albums.js" type="module"></script><script src="./scripts/analytics/device-registry.js" type="module"></script>
-<script src="./scripts/app.js" type="module"></script>
+<script src="./scripts/analytics/backup-debug.js" type="module"></script><script src="./scripts/app.js" type="module"></script>
 </head><body>
 <div id="promocode-block"><div class="promo-inner">
   <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
