@@ -2,6 +2,7 @@ import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } fr
 import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
 import { saveRestoreRecoverySnapshot, restoreRecoverySnapshot } from '../../analytics/backup-recovery.js';
 import { enrichBackupWithEventArchive } from '../../analytics/event-archive-restore.js';
+import { adoptLedgerCheckpointFromEvents } from '../../analytics/event-integrity.js';
 import { pickDeviceSettingsRestoreKey } from './restore-decision.js';
 
 export const importBackupWithFallback = async ({ BackupVault: bV, backup: b, mode: m = 'all' } = {}) => {
@@ -74,6 +75,7 @@ export const runBackupRestore = async ({ BackupVault: bV, disk: d, token: t, bac
       await ensureCurrentDeviceRegistryRow({ registry: eff?.devices || [] }).catch(() => null);
     }
 
+    await adoptLedgerCheckpointFromEvents({ deviceStableId: localStorage.getItem('deviceStableId') || '', reason: 'after_restore_adopt_branch' }).catch(() => null);
     await persistCloudMetaAfterRestore({ disk: d, token: t, restoredBackup: eff });
     await markRestoreCompleted();
     try { window.eventLogger?.log?.('RESTORE_APPLIED', null, { mode: m, refreshReason: rR, asNewDevice: !!aN, skipDeviceSettings: !!sDS, archiveMerged: !!eff?.data?.eventArchive?.available }); } catch {}
