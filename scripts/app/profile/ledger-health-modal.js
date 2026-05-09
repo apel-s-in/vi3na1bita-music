@@ -5,16 +5,16 @@ import { getLedgerHealth, rebuildLedgerCheckpointFromEvents } from '../../analyt
 import { readTrustState, refreshTrustState } from '../../analytics/trust-state.js';
 import { metaDB } from '../../analytics/meta-db.js';
 import { renderCloudSectionCard, fmtDateTime, renderInlineActions, renderKeyValueRow, renderWarnList, renderScoreBar } from './profile-render-kit.js';
+import { renderArchiveSummaryCard } from './archive-render-kit.js';
 
 const readCloudMeta = () => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_meta') || localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } };
 
-const renderServerVerify = v => !v ? '' : renderCloudSectionCard({ title:'Server-side ledger verify', style:'margin-top:10px', body: `
+const renderServerVerify = v => !v ? '' : `${renderCloudSectionCard({ title:'Server-side ledger verify', style:'margin-top:10px', body: `
   ${renderKeyValueRow({ label:'Статус', value:v.status || '—', valueColor:v.ok ? '#81c784' : '#ffb74d' })}
   ${renderKeyValueRow({ label:'Payload hash', value:v.payload?.reason || '—' })}
   ${renderKeyValueRow({ label:'Event hashes', value:`checked: ${v.eventHashes?.checked || 0} · broken: ${v.eventHashes?.broken || 0}` })}
   ${renderKeyValueRow({ label:'Chains', value:`${v.eventChain?.chains || 0} · links: ${v.eventChain?.checkedLinks || 0} · broken: ${v.eventChain?.brokenLinks || 0}` })}
-  ${renderKeyValueRow({ label:'Archive', value:`segments: ${v.archive?.segmentsCount || 0} · downloaded: ${v.archive?.downloadedSegments || 0} · events: ${v.archive?.eventCount || 0}` })}
-` });
+` })}${renderArchiveSummaryCard({ totals:{ segments:v.archive?.segmentsCount || 0, events:v.archive?.eventCount || 0 }, downloadedSegments:v.archive?.downloadedSegments || 0, restoredEventCount:v.archive?.eventCount || 0 }, { title:'Server archive coverage', style:'margin-top:10px' })}`;
 
 const renderHealthHtml = ({ h, trust, server = null }) => {
   const cp = h.checkpoint || {};
