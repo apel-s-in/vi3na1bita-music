@@ -1,7 +1,7 @@
 import DeviceRegistry from '../../analytics/device-registry.js';
 import { markDevicesDirty } from '../../analytics/sync-dirty-events.js';
 import { ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
-import { esc, fmtDateTime as fmt, renderMetaBox, renderSmallListRow, renderInlineActions } from './profile-render-kit.js';
+import { esc, fmtDateTime as fmt, renderMetaBox, renderSmallListRow, renderActionGrid, renderDeviceTitle, renderModalNote, renderStatusPill } from './profile-render-kit.js';
 
 const sS = v => String(v == null ? '' : v).trim(), icon = d => d?.platform === 'ios' ? '📱' : d?.platform === 'android' ? '🤖' : '💻', curId = () => localStorage.getItem('deviceStableId') || '';
 const rows = () => DeviceRegistry.normalizeDeviceRegistry(DeviceRegistry.getDeviceRegistry()).sort((a,b)=>(b.lastSeenAt||0)-(a.lastSeenAt||0));
@@ -24,19 +24,19 @@ const renderAuthHistory = d => {
 const openDeviceModal = async ({ stableId = '', rerender } = {}) => {
   const all = rows(), d = all.find(x => x.deviceStableId === stableId || x.deviceHash === stableId) || all[0];
   if (!d || !window.Modals?.open) return;
-  let deviceMetaHtml = '<div style="font-size:11px;color:#667">Device-settings в облаке: проверяется при необходимости</div>';
+  let deviceMetaHtml = renderModalNote('Device-settings в облаке: проверяется при необходимости', { tone: 'muted', style: 'margin:0' });
   try {
     const ya = window.YandexAuth, disk = window.YandexDisk, t = ya?.getToken?.();
     if (t && ya?.isTokenAlive?.() && d.deviceStableId) {
       const idx = disk?.getDeviceSettingsIndex ? await disk.getDeviceSettingsIndex(t).catch(() => null) : null, fromIdx = (idx?.items || []).find(x => String(x?.deviceStableId || '') === String(d.deviceStableId)), m = fromIdx || (disk?.getDeviceSettingsMeta ? await disk.getDeviceSettingsMeta(t, d.deviceStableId).catch(() => null) : null);
-      deviceMetaHtml = `<div style="font-size:11px;color:#7f93b5">Device-settings в облаке: ${m ? `есть · ${fmt(m.timestamp)}${m.keysCount ? ` · ключей: ${m.keysCount}` : ''}` : 'не найдено'}</div>`;
+      deviceMetaHtml = renderModalNote(`Device-settings в облаке: ${m ? `${renderStatusPill({ text:'есть', tone:'ok' })} · ${fmt(m.timestamp)}${m.keysCount ? ` · ключей: <b>${m.keysCount}</b>` : ''}` : renderStatusPill({ text:'не найдено', tone:'muted' })}`, { style: 'margin:0' });
     }
   } catch {}
 
   const isCur = DeviceRegistry.isCurrentDevice(d);
   const m = window.Modals.open({
     title: `${icon(d)} ${esc(d.label || 'Устройство')}`, maxWidth: 500,
-    bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px"><div class="profile-list-item"><div style="font-size:28px">${icon(d)}</div><div class="log-info"><div class="log-title">${esc(d.label || 'Устройство')}${isCur ? ' · это устройство' : ''}</div><div class="log-desc">${esc([d.class, d.platform, d.browser, d.pwa ? 'PWA' : 'браузер'].filter(Boolean).join(' · '))}</div></div></div><div class="yandex-auth-meta" style="grid-template-columns:1fr 1fr">${renderMetaBox({ label: 'Первый вход', value: fmt(d.firstSeenAt) })}${renderMetaBox({ label: 'Последний раз', value: fmt(d.lastSeenAt) })}${renderMetaBox({ label: 'Экран', value: d.screen || '—' })}${renderMetaBox({ label: 'Язык', value: d.lang || '—' })}</div>${deviceMetaHtml}<div style="font-size:10px;color:#556;word-break:break-all">stableId: ${esc(d.deviceStableId || '—')}<br>hash: ${esc(d.deviceHash || '—')}<br>aliases: ${(d.seenHashes || []).length}</div><div style="font-size:12px;font-weight:900;color:#eaf2ff;text-transform:uppercase;letter-spacing:.7px;margin-top:4px">История авторизаций</div><div style="display:flex;flex-direction:column;gap:6px">${renderAuthHistory(d)}</div>${renderInlineActions([{ text: '✏️ Переименовать', primary: true, attrs: 'data-dev-act="rename"' }, isCur ? { text: '↻ Обновить', attrs: 'data-dev-act="refresh"' } : { text: '🗑 Удалить из списка', attrs: 'data-dev-act="retire"' }])}</div>`
+    bodyHtml: `<div style="display:flex;flex-direction:column;gap:10px"><div class="profile-list-item"><div style="font-size:28px">${icon(d)}</div><div class="log-info"><div class="log-title">${renderDeviceTitle(d)}${isCur ? ' · это устройство' : ''}</div><div class="log-desc">${esc([d.class, d.platform, d.browser, d.pwa ? 'PWA' : 'браузер'].filter(Boolean).join(' · '))}</div></div></div><div class="yandex-auth-meta" style="grid-template-columns:1fr 1fr">${renderMetaBox({ label: 'Первый вход', value: fmt(d.firstSeenAt) })}${renderMetaBox({ label: 'Последний раз', value: fmt(d.lastSeenAt) })}${renderMetaBox({ label: 'Экран', value: d.screen || '—' })}${renderMetaBox({ label: 'Язык', value: d.lang || '—' })}</div>${deviceMetaHtml}<div style="font-size:10px;color:#556;word-break:break-all">stableId: ${esc(d.deviceStableId || '—')}<br>hash: ${esc(d.deviceHash || '—')}<br>aliases: ${(d.seenHashes || []).length}</div><div style="font-size:12px;font-weight:900;color:#eaf2ff;text-transform:uppercase;letter-spacing:.7px;margin-top:4px">История авторизаций</div><div style="display:flex;flex-direction:column;gap:6px">${renderAuthHistory(d)}</div>${renderActionGrid([{ text: '✏️ Переименовать', primary: true, attrs: 'data-dev-act="rename"' }, isCur ? { text: '↻ Обновить', attrs: 'data-dev-act="refresh"' } : { text: '🗑 Удалить из списка', attrs: 'data-dev-act="retire"' }])}</div>`
   });
 
   m?.addEventListener('click', async e => {
