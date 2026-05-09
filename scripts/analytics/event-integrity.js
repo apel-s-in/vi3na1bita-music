@@ -43,8 +43,19 @@ export const readLedgerCheckpoint = async (db = defaultMetaDB) =>
 export const writeLedgerCheckpoint = async (db = defaultMetaDB, cp = {}) => {
   const row = normalizeLedgerCheckpoint(cp);
   await db.setGlobal(LEDGER_CHECKPOINT_KEY, row);
+  try { if (row.chainId) localStorage.setItem(CHAIN_ID_KEY, row.chainId); } catch {}
   try { window.dispatchEvent(new CustomEvent('event-ledger:checkpoint', { detail: row })); } catch {}
   return row;
+};
+
+export const adoptLedgerCheckpointFromEvents = async ({ db = defaultMetaDB, deviceStableId = localStorage.getItem('deviceStableId') || '', reason = 'adopt_from_events' } = {}) => {
+  const [warmRaw, hotRaw] = await Promise.all([db.getEvents('events_warm').catch(() => []), db.getEvents('events_hot').catch(() => [])]);
+  const rows = normalizeEventList([...(warmRaw || []), ...(hotRaw || [])], { limit: 10000, sort: true, dedupeAchievementUnlocks: false, dropNoise: false })
+    .filter(e => s(e?.deviceStableId) === s(deviceStableId) && s(e?.chainId) && s(e?.eventHash) && n(e?.deviceSeq))
+    .sort((a, b) => n(a.timestamp) - n(b.timestamp) || n(a.deviceSeq) - n(b.deviceSeq));
+  const last = rows[rows.length - 1];
+  if (!last) return null;
+  return await writeLedgerCheckpoint(db, { chainId: last.chainId, deviceSeq: last.deviceSeq, headHash: last.eventHash, deviceStableId: last.deviceStableId, deviceHash: last.deviceHash || localStorage.getItem('deviceHash') || '', updatedAt: Date.now(), repairedAt: Date.now(), repairReason: reason, repairedEvents: rows.length });
 };
 
 const makeSourceClock = (ev, ts = Date.now()) => ev?.sourceClock && typeof ev.sourceClock === 'object' ? ev.sourceClock : {
@@ -168,5 +179,6 @@ export default {
   hashEvent,
   buildLedgerEvents,
   rebuildLedgerCheckpointFromEvents,
+  adoptLedgerCheckpointFromEvents,
   getLedgerHealth
 };
