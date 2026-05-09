@@ -5,7 +5,7 @@ import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 import { recordSyncRevision } from './sync-revisions.js';
 import { getCurrentEventArchiveBranch, getLocalEventArchiveWatermark, uploadLocalEventArchiveUntilCaughtUp } from './event-archive-sync.js';
 
-const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', HISTORY_MIN_INTERVAL_MS = 86400000, CLOUD_EVENT_TAIL_LIMIT = 1500, HISTORY_MATERIAL_DOMAINS = new Set(['achievements','favorites','playlists','profile','devices','stats']);
+const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', HISTORY_MIN_INTERVAL_MS = 86400000, CLOUD_EVENT_TAIL_LIMIT = 500, HISTORY_MATERIAL_DOMAINS = new Set(['achievements','favorites','playlists','profile','devices','stats']);
 const sS = v => String(v == null ? '' : v).trim(), sN = v => Number.isFinite(Number(v)) ? Number(v) : 0, jP = (raw, fb = null) => { try { return JSON.parse(raw); } catch { return fb; } };
 
 const normalizeDeviceForHash = d => ({ deviceStableId: sS(d?.deviceStableId), deviceHash: sS(d?.deviceHash), label: sS(d?.label), class: sS(d?.class), platform: sS(d?.platform), os: sS(d?.os), browser: sS(d?.browser), screen: sS(d?.screen), lang: sS(d?.lang), pwa: !!d?.pwa, firstSeenAt: sN(d?.firstSeenAt), retiredAt: sN(d?.retiredAt), authHistory: (Array.isArray(d?.authHistory) ? d.authHistory : []).map(x => ({ ts:sN(x?.ts), browser:sS(x?.browser), os:sS(x?.os), lang:sS(x?.lang), timezone:sS(x?.timezone), pwa:!!x?.pwa })).filter(x => x.ts > 0).slice(0,20), seenHashes: [...new Set((Array.isArray(d?.seenHashes) ? d.seenHashes : []).map(sS).filter(Boolean))].sort() });
@@ -23,15 +23,35 @@ const rehashBackupObject = async b => {
   return { ...b, integrity: { ...(b.integrity || {}), payloadHash, ownerBinding: await sha256Hex(`${b?.identity?.ownerYandexId || 'anon'}::${b?.identity?.internalUserId || 'local'}::${payloadHash}`), eventLogHash, sharedStorageHash } };
 };
 
-const compactBackupForCloud = async b => {
-  const events = Array.isArray(b?.data?.eventLog?.warm) ? b.data.eventLog.warm : [], br = await getCurrentEventArchiveBranch().catch(() => ({}));
-  if (!br?.branchId || events.length <= CLOUD_EVENT_TAIL_LIMIT) return b;
-  const wm = getLocalEventArchiveWatermark(br.branchId), cutSeq = Math.max(0, sN(wm.lastSeq) - CLOUD_EVENT_TAIL_LIMIT);
-  if (!sN(wm.lastSeq) || cutSeq <= 0) return b;
-  const kept = events.filter(e => sS(e?.deviceStableId) !== sS(br.deviceStableId) || sS(e?.chainId || '') !== sS(br.chainId || '') || !sN(e?.deviceSeq) || sN(e.deviceSeq) > cutSeq || !sS(e?.eventHash));
+const branchIdOfEvent = e => `${sS(e?.deviceStableId).replace(/[^A-Za-z0-9._-]/g, '') || 'unknown'}_${sS(e?.chainId || '').replace(/^chain_/, '').slice(0, 12) || 'legacy'}`;
+
+const compactBackupForCloud = async (b, { disk = null, token = '' } = {}) => {
+  const events = Array.isArray(b?.data?.eventLog?.warm) ? b.data.eventLog.warm : [];
+  if (events.length <= CLOUD_EVENT_TAIL_LIMIT) return b;
+
+  const idx = disk?.getEventArchiveIndex && token ? await disk.getEventArchiveIndex(token).catch(() => null) : null;
+  const coverage = new Map();
+  (idx?.items || []).forEach(x => {
+    const bid = sS(x?.branchId || ''), to = sN(x?.toSeq);
+    if (bid && to > sN(coverage.get(bid)?.toSeq || 0)) coverage.set(bid, { toSeq: to, hash: sS(x?.hash || '') });
+  });
+
+  if (!coverage.size) {
+    const br = await getCurrentEventArchiveBranch().catch(() => ({})), wm = getLocalEventArchiveWatermark(br?.branchId || '');
+    if (br?.branchId && sN(wm.lastSeq)) coverage.set(br.branchId, { toSeq: sN(wm.lastSeq), hash: sS(wm.lastHash || '') });
+  }
+  if (!coverage.size) return b;
+
+  const kept = events.filter(e => {
+    const bid = branchIdOfEvent(e), cov = coverage.get(bid);
+    if (!cov || !sN(e?.deviceSeq) || !sS(e?.eventHash)) return true;
+    return sN(e.deviceSeq) > Math.max(0, sN(cov.toSeq) - CLOUD_EVENT_TAIL_LIMIT);
+  });
+
   if (kept.length >= events.length) return b;
-  const out = { ...b, data: { ...(b.data || {}), eventLog: { ...(b.data?.eventLog || {}), warm: kept }, eventArchive: { ...(b.data?.eventArchive || {}), latestCompacted: true, compactedAt: Date.now(), compactTailLimit: CLOUD_EVENT_TAIL_LIMIT, eventCountFull: events.length, eventCountInSnapshot: kept.length, archivedDeviceStableId: sS(br.deviceStableId), archivedBranchId: sS(br.branchId), archivedCurrentSeq: sN(wm.lastSeq), archivedCurrentHash: sS(wm.lastHash || '') } }, revision: { ...(b.revision || {}), eventCount: events.length } };
-  console.info('[BackupCompact]', { beforeEvents: events.length, afterEvents: kept.length, branchId: br.branchId, archivedSeq: wm.lastSeq, tailLimit: CLOUD_EVENT_TAIL_LIMIT });
+  const maxArchivedSeq = Math.max(0, ...[...coverage.values()].map(x => sN(x.toSeq)));
+  const out = { ...b, data: { ...(b.data || {}), eventLog: { ...(b.data?.eventLog || {}), warm: kept }, eventArchive: { ...(b.data?.eventArchive || {}), latestCompacted: true, compactedAt: Date.now(), compactTailLimit: CLOUD_EVENT_TAIL_LIMIT, eventCountFull: events.length, eventCountInSnapshot: kept.length, archivedBranches: coverage.size, archivedCurrentSeq: maxArchivedSeq } }, revision: { ...(b.revision || {}), eventCount: events.length } };
+  console.info('[BackupCompact]', { beforeEvents: events.length, afterEvents: kept.length, archivedBranches: coverage.size, maxArchivedSeq, tailLimit: CLOUD_EVENT_TAIL_LIMIT });
   return await rehashBackupObject(out);
 };
 
@@ -52,7 +72,7 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
       console.info('[BackupArchive]', eventArchive);
     }
 
-    const cloudBackup = await compactBackupForCloud(b);
+    const cloudBackup = await compactBackupForCloud(b, { disk, token });
     meta = await disk.upload(token, cloudBackup, { writeHistory, changedDomains, syncLease });
     uploadedShared = true; persistMeta({ meta, backup: b, sharedHash });
     if (writeHistory) try { localStorage.setItem(LS_LAST_HISTORY_AT, String(Date.now())); } catch {}
