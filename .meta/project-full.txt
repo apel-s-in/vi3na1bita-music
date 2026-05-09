@@ -464,7 +464,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-09 12:15:49 UTC
+Сгенерировано: 2026-05-09 13:04:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5682,6 +5682,21 @@ export const YandexEventArchiveDisk = {
     const u = new URL(PROXY); u.searchParams.set('mode', 'event_download'); u.searchParams.set('path', s(path));
     const d = await fPJ(u.toString(), token, 2);
     return d?.exists && d?.segment ? normalizeEventArchiveSegment(d.segment) : null;
+  },
+
+  async inspectEventArchive(token) {
+    if (!token) throw new Error('no_token');
+    const u = new URL(PROXY); u.searchParams.set('mode', 'archive_inspect');
+    const d = await fPJ(u.toString(), token, 2);
+    return d?.archive || { index: { items: [] }, branches: [], totals: {} };
+  },
+
+  async uploadEventArchiveIndex(token, index) {
+    if (!token) throw new Error('no_token');
+    await ensureResourceDir(token, CLOUD_BACKUP_DIR).catch(() => null);
+    await ensureResourceDir(token, EVENT_ARCHIVE_DIR).catch(() => null);
+    await pJP(token, 'app:/Backup/events/index.json', normalizeEventArchiveIndex(index || { items: [] }));
+    return true;
   },
 
   async getEventArchiveIndex(token) {
