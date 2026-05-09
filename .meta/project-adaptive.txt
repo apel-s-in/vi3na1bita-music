@@ -459,7 +459,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-09 09:04:47 UTC
+Сгенерировано: 2026-05-09 09:05:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -833,7 +833,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.4.10'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-08');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.4.11'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-08');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -845,7 +845,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.4.10';
+const SW_VERSION = '8.4.11';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
