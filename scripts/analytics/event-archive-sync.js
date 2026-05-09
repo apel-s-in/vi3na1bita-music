@@ -1,5 +1,5 @@
-// UID.003_(Event log truth)_(загружать новые ledger events отдельными archive сегментами)_(latest backup пока сохраняется, но история уже архивируется)
-// UID.099_(Multi-device sync model)_(per-device seq watermark)_(каждое устройство догружает только свой хвост)
+// UID.003_(Event log truth)_(загружать новые ledger events отдельными archive сегментами)_(latest backup теперь можно безопасно облегчать)
+// UID.099_(Multi-device sync model)_(per-device seq watermark)_(каждое устройство догружает свой хвост, latest хранит только компактный хвост)
 // UID.100_(Backup snapshot as life capsule)_(archive upload best-effort)_(ошибка архива не ломает основной backup)
 
 import { metaDB as defaultMetaDB } from './meta-db.js';
@@ -29,6 +29,13 @@ export const setLocalEventArchiveWatermark = ({ deviceStableId = currentStableId
   } catch {}
 };
 
+export const getLocalDeviceMaxSeq = async ({ db = defaultMetaDB, deviceStableId = currentStableId() } = {}) => {
+  const sid = s(deviceStableId);
+  if (!sid) return 0;
+  const all = await readLocalEventLog(db, { forceFlush: true }).catch(() => []);
+  return Math.max(0, ...(Array.isArray(all) ? all : []).filter(e => s(e?.deviceStableId) === sid).map(e => n(e?.deviceSeq)));
+};
+
 export const buildLocalEventArchiveDelta = async ({ db = defaultMetaDB, limit = 500 } = {}) => {
   const sid = currentStableId();
   if (!sid) return null;
@@ -46,16 +53,7 @@ export const buildLocalEventArchiveDelta = async ({ db = defaultMetaDB, limit = 
   const hash = await sha256Hex(stableStringify(events));
   const path = buildEventSegmentPath({ deviceStableId: sid, fromSeq, toSeq, hash });
 
-  return normalizeEventArchiveSegment({
-    path,
-    createdAt: Date.now(),
-    deviceStableId: sid,
-    fromSeq,
-    toSeq,
-    eventCount: events.length,
-    hash,
-    events
-  });
+  return normalizeEventArchiveSegment({ path, createdAt: Date.now(), deviceStableId: sid, fromSeq, toSeq, eventCount: events.length, hash, events });
 };
 
 export const uploadLocalEventArchiveDelta = async ({ disk, token, db = defaultMetaDB } = {}) => {
@@ -68,9 +66,23 @@ export const uploadLocalEventArchiveDelta = async ({ disk, token, db = defaultMe
   return { ok: !!r?.ok, uploaded: !!r?.ok, segment: seg, item: r?.item || null, reason: r?.ok ? 'uploaded' : (r?.reason || 'upload_failed') };
 };
 
+export const uploadLocalEventArchiveUntilCaughtUp = async ({ disk, token, db = defaultMetaDB, maxSegments = 20 } = {}) => {
+  let uploadedSegments = 0, uploadedEvents = 0, last = null;
+  for (let i = 0; i < maxSegments; i++) {
+    last = await uploadLocalEventArchiveDelta({ disk, token, db }).catch(e => ({ ok: false, uploaded: false, reason: e?.message || 'archive_failed' }));
+    if (!last?.uploaded) break;
+    uploadedSegments++;
+    uploadedEvents += n(last?.segment?.eventCount);
+  }
+  const sid = currentStableId(), wm = getLocalEventArchiveWatermark(sid), maxSeq = await getLocalDeviceMaxSeq({ db, deviceStableId: sid }).catch(() => 0);
+  return { ok: !last || last.ok !== false, uploaded: uploadedSegments > 0, uploadedSegments, uploadedEvents, watermark: wm, maxSeq, caughtUp: !!sid && n(wm.lastSeq) >= n(maxSeq), reason: last?.reason || (uploadedSegments ? 'uploaded' : 'no_new_events') };
+};
+
 export default {
   getLocalEventArchiveWatermark,
   setLocalEventArchiveWatermark,
+  getLocalDeviceMaxSeq,
   buildLocalEventArchiveDelta,
-  uploadLocalEventArchiveDelta
+  uploadLocalEventArchiveDelta,
+  uploadLocalEventArchiveUntilCaughtUp
 };
