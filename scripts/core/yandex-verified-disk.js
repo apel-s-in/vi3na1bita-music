@@ -21,6 +21,9 @@ export const YandexVerifiedDisk = {
   verifyAchievements(token, achievementId = 'all') {
     return call('achievement_verify', token, { achievementId });
   },
+  getClaimsIndex(token) {
+    return call('claim_index', token);
+  },
   prepareClaim(token, achievementId) {
     return call('claim_prepare', token, { achievementId });
   },
