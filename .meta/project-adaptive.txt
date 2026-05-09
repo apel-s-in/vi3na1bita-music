@@ -468,7 +468,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-09 16:49:45 UTC
+Сгенерировано: 2026-05-09 16:50:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2284,6 +2284,11 @@ export const normalizeCloudBackupMeta = (m = {}) => ({
   eventLedgerHead: safeCloudString(m?.eventLedgerHead || ''),
   eventLedgerSeq: safeCloudNum(m?.eventLedgerSeq),
   eventLedgerDeviceStableId: safeCloudString(m?.eventLedgerDeviceStableId || ''),
+  archivableLedgerHead: safeCloudString(m?.archivableLedgerHead || ''),
+  archivableLedgerSeq: safeCloudNum(m?.archivableLedgerSeq),
+  archivableLedgerDeviceStableId: safeCloudString(m?.archivableLedgerDeviceStableId || ''),
+  archivableLedgerChainId: safeCloudString(m?.archivableLedgerChainId || ''),
+  archivableEventCount: safeCloudNum(m?.archivableEventCount),
   eventLogHash: safeCloudString(m?.eventLogHash || ''),
   sharedStorageHash: safeCloudString(m?.sharedStorageHash || ''),
   version: safeCloudString(m?.version || 'unknown'),
