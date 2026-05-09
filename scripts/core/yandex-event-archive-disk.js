@@ -19,6 +19,21 @@ export const YandexEventArchiveDisk = {
     return d?.exists && d?.segment ? normalizeEventArchiveSegment(d.segment) : null;
   },
 
+  async inspectEventArchive(token) {
+    if (!token) throw new Error('no_token');
+    const u = new URL(PROXY); u.searchParams.set('mode', 'archive_inspect');
+    const d = await fPJ(u.toString(), token, 2);
+    return d?.archive || { index: { items: [] }, branches: [], totals: {} };
+  },
+
+  async uploadEventArchiveIndex(token, index) {
+    if (!token) throw new Error('no_token');
+    await ensureResourceDir(token, CLOUD_BACKUP_DIR).catch(() => null);
+    await ensureResourceDir(token, EVENT_ARCHIVE_DIR).catch(() => null);
+    await pJP(token, 'app:/Backup/events/index.json', normalizeEventArchiveIndex(index || { items: [] }));
+    return true;
+  },
+
   async getEventArchiveIndex(token) {
     return this.getEventArchiveIndexViaProxy(token);
   },
