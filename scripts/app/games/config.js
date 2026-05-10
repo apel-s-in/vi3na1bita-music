@@ -4,15 +4,15 @@
 // UID.095_(Ownership boundary)_(Game Center не владеет auth/player/backup)_(main app остаётся источником истины)
 
 export const GAME_CENTER_SWITCH = {
-  status: 'off', // 'on' | 'off'
-  enterEnabled: false,
+  status: 'on', // 'on' | 'off'
+  enterEnabled: true,
   title: 'Зал Витрины',
-  eyebrow: 'Game Center · каркас',
-  message: 'Раздел готовится к запуску. Музыка, достижения и профиль уже подключены в режиме предпросмотра.',
-  disabledReason: 'Вход временно закрыт. Мы готовим первую комнату.',
+  eyebrow: 'Game Center · test room',
+  message: 'Тестовая 360-комната готова. Нажмите «Войти», чтобы открыть отдельный game-app из /Games/.',
+  disabledReason: '',
   buttonText: 'Войти',
   roomUrl: './Games/index.html',
-  revision: 'gc-2026-05-10-001',
+  revision: 'gc-2026-05-10-test-001',
   bridgeVersion: 1,
   minHostAppVersion: '8.5.6'
 };
