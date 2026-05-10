@@ -31,3 +31,11 @@ export async function loadFavoritesAlbum(ctx) {
 export async function loadShowcaseAlbum(ctx) { ctx.renderAlbumTitle('Витрина Разбита', 'showcase'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none'; if (window.ShowcaseManager) await window.ShowcaseManager.renderTab(); }
 export async function loadNewsAlbum(ctx) { ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none'; window.GalleryManager?.clear?.(); const s = document.getElementById('social-links'); if (s) s.innerHTML = `<a href="https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/" target="_blank" rel="noopener noreferrer">YouTube</a><a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://vk.com/apelsinov" target="_blank" rel="noopener noreferrer">VK</a><a href="https://www.tiktok.com/@vi3na1bita" target="_blank" rel="noopener noreferrer">TikTok</a>`; const c = document.getElementById('track-list'); if (c) await loadAndRenderNewsInline(c); }
 export async function loadProfileAlbum(ctx) { return loadProfileView(ctx); }
+export async function loadGamesAlbum(ctx) {
+  ctx.renderAlbumTitle('🎮 ЗАЛ ВИТРИНЫ 🎮', 'games');
+  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
+  window.GalleryManager?.clear?.();
+  const c = document.getElementById('track-list'); if (!c) return;
+  const { renderGameCenterHost } = await import('../games/host.js');
+  await renderGameCenterHost({ ctx, container: c });
+}
