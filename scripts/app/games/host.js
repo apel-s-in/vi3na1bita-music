@@ -92,16 +92,6 @@ export const renderGameCenterHost = async ({ container } = {}) => {
     btn.textContent = 'Комната открыта';
   });
 
-  const refresh = () => {
-    if (W.AlbumsManager?.getCurrentAlbum?.() !== (W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__')) return;
-    const next = render({ cfg, mounted: !!bridge });
-    const oldFrameHtml = frameWrap?.innerHTML || '';
-    container.innerHTML = next;
-    const fw = container.querySelector('#gc-frame-wrap');
-    if (fw && oldFrameHtml) { fw.hidden = false; fw.innerHTML = oldFrameHtml; }
-  };
-
-  W.addEventListener('achievements:updated', refresh, { once: true });
   return true;
 };
 
