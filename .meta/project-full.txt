@@ -459,6 +459,7 @@ vi3na1bita-music/
 │   └── PlayerCore.js
 ├── styles/
 │   ├── base.css
+│   ├── games.css
 │   ├── main.css
 │   ├── offline.css
 │   ├── player.css
@@ -473,7 +474,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-10 14:16:27 UTC
+Сгенерировано: 2026-05-10 14:16:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9544,6 +9545,55 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-in { animation: fadeInUp .4s ease-out; }
+
+//=================================================
+// FILE: /styles/games.css
+/* Game Center shell: lightweight preview only. No audio, no WebGL, no autoplay. */
+body.games-view #cover-wrap{display:none!important}
+body.games-view #track-list{max-width:395px}
+
+.active-album-title.games{color:#8ab8fd;letter-spacing:.03em}
+
+.gc-host{width:100%;margin:8px auto 20px;display:flex;flex-direction:column;gap:12px;animation:fadeInUp .25s ease-out}
+.gc-room-preview{position:relative;height:360px;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 50% 18%,rgba(77,170,255,.26),transparent 34%),linear-gradient(180deg,#07101c 0%,#101725 52%,#07090f 100%);border:1px solid rgba(77,170,255,.22);box-shadow:0 18px 44px rgba(0,0,0,.55),inset 0 0 60px rgba(77,170,255,.08)}
+.gc-room-sky{position:absolute;inset:0;background:linear-gradient(90deg,rgba(232,1,0,.08),transparent 24%,rgba(77,170,255,.09) 50%,transparent 76%,rgba(232,1,0,.08));opacity:.95}
+.gc-room-floor{position:absolute;left:-20%;right:-20%;bottom:-25%;height:48%;background:radial-gradient(ellipse at 50% 0%,rgba(77,170,255,.18),transparent 58%),repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 42px);transform:perspective(300px) rotateX(58deg);transform-origin:top center}
+.gc-door{position:absolute;bottom:96px;width:82px;height:132px;border-radius:12px 12px 4px 4px;background:linear-gradient(180deg,rgba(18,38,64,.95),rgba(5,10,18,.98));border:1px solid rgba(139,190,255,.28);box-shadow:inset 0 0 24px rgba(77,170,255,.08),0 12px 24px rgba(0,0,0,.42);display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;color:#cfe3ff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.7px}
+.gc-door--left{left:22px;transform:skewY(5deg) scale(.9);opacity:.78}
+.gc-door--center{left:50%;transform:translateX(-50%) scale(1.08);border-color:rgba(77,170,255,.58);box-shadow:0 0 28px rgba(77,170,255,.18),inset 0 0 34px rgba(77,170,255,.12)}
+.gc-door--right{right:22px;transform:skewY(-5deg) scale(.9);opacity:.78}
+.gc-core{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:154px;height:154px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle,rgba(77,170,255,.20),rgba(6,14,26,.94) 68%);border:1px solid rgba(139,190,255,.35);box-shadow:0 0 36px rgba(77,170,255,.24),inset 0 0 34px rgba(77,170,255,.12)}
+.gc-core-glow{position:absolute;inset:-22px;border-radius:50%;background:radial-gradient(circle,rgba(77,170,255,.24),transparent 66%);filter:blur(10px);animation:gcPulse 3s ease-in-out infinite}
+.gc-core-heart{position:relative;font-size:34px;filter:drop-shadow(0 0 10px rgba(77,170,255,.5))}
+.gc-core-title{position:relative;font-size:13px;font-weight:900;color:#fff;margin-top:8px}
+.gc-core-sub{position:relative;font-size:10px;color:#8ab8fd;margin-top:2px;text-transform:uppercase;letter-spacing:.6px}
+.gc-hotspots{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.gc-hotspots span{padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.38);border:1px solid rgba(77,170,255,.22);color:#dceaff;font-size:11px;font-weight:900;backdrop-filter:blur(6px)}
+.gc-panel{border-radius:16px;padding:14px;background:linear-gradient(180deg,rgba(22,28,40,.96),rgba(12,16,24,.98));border:1px solid rgba(77,170,255,.18);box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.gc-panel-kicker{font-size:10px;color:#8ab8fd;text-transform:uppercase;letter-spacing:1px;font-weight:900}
+.gc-panel-title{font-size:18px;color:#fff;font-weight:900;margin-top:4px}
+.gc-panel-text{font-size:12px;color:#9db7dd;line-height:1.45;margin-top:8px}
+.gc-panel-note{font-size:12px;color:#ffb74d;line-height:1.4;margin-top:10px;padding:10px;border-radius:12px;background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.18)}
+.gc-enter-btn{width:100%;min-height:46px;margin-top:12px;border:0;border-radius:14px;background:linear-gradient(135deg,#4daaff,#7c4dff);color:#fff;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;cursor:pointer;box-shadow:0 8px 22px rgba(77,170,255,.22);transition:transform .12s,filter .16s,opacity .16s}
+.gc-enter-btn:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
+.gc-enter-btn:active:not(:disabled){transform:scale(.98)}
+.gc-enter-btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.45);box-shadow:none}
+.gc-devline{margin-top:8px;font-size:10px;color:#556b88;text-align:center}
+.gc-frame-wrap{height:620px;border-radius:18px;overflow:hidden;border:1px solid rgba(77,170,255,.22);background:#05080d;box-shadow:0 12px 34px rgba(0,0,0,.48)}
+.gc-frame{display:block;width:100%;height:100%;border:0;background:#05080d}
+
+@keyframes gcPulse{0%,100%{opacity:.62;transform:scale(.98)}50%{opacity:1;transform:scale(1.05)}}
+
+@media(max-width:380px){
+  .gc-room-preview{height:330px}
+  .gc-door{width:72px;height:118px}
+  .gc-door--left{left:16px}
+  .gc-door--right{right:16px}
+  .gc-core{width:140px;height:140px}
+}
+@media(prefers-reduced-motion:reduce){
+  .gc-core-glow{animation:none}
+}
 
 //=================================================
 // FILE: /styles/main.css
