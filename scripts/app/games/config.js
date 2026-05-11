@@ -8,11 +8,11 @@ export const GAME_CENTER_SWITCH = {
   enterEnabled: true,
   title: 'Зал Витрины',
   eyebrow: 'Game Center · test room',
-  message: 'Тестовая 360-комната готова. Нажмите «Войти», чтобы открыть отдельный game-app из /Games/.',
+  message: 'Нажмите «Войти», чтобы открыть Game Center с Башней Витрины.',
   disabledReason: '',
   buttonText: 'Войти',
   roomUrl: './Games/index.html',
-  revision: 'gc-2026-05-10-test-001',
+  revision: 'gc-2026-05-11-tower-fit-001',
   bridgeVersion: 1,
   minHostAppVersion: '8.5.6'
 };
