@@ -62,14 +62,37 @@ export const renderGameCenterHost = async ({ container } = {}) => {
 
   btn?.addEventListener('click', () => {
     if (btn.disabled || !frameWrap) return;
+    const host = container.querySelector('.gc-host');
+    const panel = container.querySelector('.gc-panel');
+
     btn.disabled = true;
     btn.textContent = 'Открываем...';
+    host?.classList.add('is-mounted');
+    if (panel) panel.hidden = true;
+
     frameWrap.hidden = false;
-    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer"></iframe>`;
+    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
     const iframe = frameWrap.querySelector('iframe');
+
     bridge?.destroy?.();
-    bridge = createGameBridgeHost({ iframe, config: cfg, onState: () => {} });
-    try { W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_enter', revision: cfg.revision }); W.dispatchEvent(new CustomEvent('analytics:forceFlush')); } catch {}
+    bridge = createGameBridgeHost({
+      iframe,
+      config: cfg,
+      onState: st => {
+        if (st?.state === 'closed_by_game') {
+          try {
+            W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_exit', revision: cfg.revision });
+            W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+          } catch {}
+        }
+      }
+    });
+
+    try {
+      W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_enter', revision: cfg.revision });
+      W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+    } catch {}
+
     btn.textContent = 'Комната открыта';
   });
 
