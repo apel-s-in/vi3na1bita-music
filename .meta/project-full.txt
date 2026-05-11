@@ -474,7 +474,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-11 18:37:13 UTC
+Сгенерировано: 2026-05-11 18:39:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -848,7 +848,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.5.7'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-09');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.5.8'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-09');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -860,7 +860,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.5.7';
+const SW_VERSION = '8.5.8';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -3986,7 +3986,7 @@ export const GAME_CENTER_SWITCH = {
   disabledReason: '',
   buttonText: 'Войти',
   roomUrl: './Games/index.html',
-  revision: 'gc-2026-05-11-tower-fit-001',
+  revision: 'gc-2026-05-11-tower-lobby-001',
   bridgeVersion: 1,
   minHostAppVersion: '8.5.6'
 };
@@ -6314,7 +6314,7 @@ if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',init);else ini
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.5.7',
+  APP_VERSION: '8.5.8',
   BUILD_DATE: '2026-05-09',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
