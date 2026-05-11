@@ -474,7 +474,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-11 18:35:16 UTC
+Сгенерировано: 2026-05-11 18:36:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3916,7 +3916,35 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     const d = e.data || {};
     if (d.kind !== 'vitrina:game' || d.bridgeId !== bridgeId) return;
     if (d.type === 'GC_READY' || d.type === 'GC_REQUEST_SNAPSHOT') sendSnapshot();
-    if (d.type === 'GC_CLOSE') onState?.({ state: 'closed_by_game' });
+
+    if (d.type === 'GC_DOOR_CLICKED') {
+      try {
+        W.eventLogger?.log?.('FEATURE_USED', 'global', {
+          feature: 'game_center_door',
+          door: safe(d.payload?.door || ''),
+          revision: safe(config.revision || '')
+        });
+      } catch {}
+      return;
+    }
+
+    if (d.type === 'GC_PARENT_SCROLL') {
+      const dy = Math.max(-160, Math.min(160, n(d.payload?.deltaY || 0)));
+      if (dy) {
+        try { W.scrollBy({ top: dy, left: 0, behavior: 'auto' }); } catch { W.scrollBy(0, dy); }
+      }
+      return;
+    }
+
+    if (d.type === 'GC_CLOSE') {
+      try {
+        W.eventLogger?.log?.('FEATURE_USED', 'global', {
+          feature: 'game_center_close',
+          revision: safe(config.revision || '')
+        });
+      } catch {}
+      onState?.({ state: 'closed_by_game' });
+    }
   };
 
   const onHostUpdate = () => send('GC_HOST_STATE', buildSnapshot({ config }));
