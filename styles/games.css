@@ -105,3 +105,14 @@ body.games-view #track-list{max-width:395px;width:100%}
 @media(max-width:380px){
   .gc-panel{padding:12px}
 }
+.gc-host.is-mounted{
+  margin-top:0;
+}
+
+.gc-host.is-mounted .gc-panel{
+  display:none!important;
+}
+
+.gc-host.is-mounted .gc-frame-wrap{
+  margin-top:0;
+}
