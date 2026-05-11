@@ -12,7 +12,7 @@ export const GAME_CENTER_SWITCH = {
   disabledReason: '',
   buttonText: 'Войти',
   roomUrl: './Games/index.html',
-  revision: 'gc-2026-05-11-tower-fit-001',
+  revision: 'gc-2026-05-11-tower-lobby-001',
   bridgeVersion: 1,
   minHostAppVersion: '8.5.6'
 };
