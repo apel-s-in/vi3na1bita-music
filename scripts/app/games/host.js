@@ -37,27 +37,8 @@ const makeRoomUrl = cfg => {
 };
 
 const render = ({ cfg, mounted = false } = {}) => {
-  const a = W.achievementEngine;
-  const lvl = Number(a?.profile?.level || 1);
-  const xp = Number(a?.profile?.xp || 0);
-  const total = a?.achievements?.length || 0;
-  const unlocked = Object.keys(a?.unlocked || {}).length;
   const canEnter = cfg.status === 'on' && cfg.enterEnabled;
   return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
-    <div class="gc-room-preview" aria-label="Предпросмотр Game Center">
-      <div class="gc-room-sky"></div>
-      <div class="gc-room-floor"></div>
-      <div class="gc-door gc-door--left"><span>Игры</span></div>
-      <div class="gc-door gc-door--center"><span>Зал</span></div>
-      <div class="gc-door gc-door--right"><span>Трофеи</span></div>
-      <div class="gc-core">
-        <div class="gc-core-glow"></div>
-        <div class="gc-core-heart">💙</div>
-        <div class="gc-core-title">${esc(cfg.title)}</div>
-        <div class="gc-core-sub">${esc(cfg.eyebrow)}</div>
-      </div>
-      <div class="gc-hotspots"><span>🏆 ${unlocked}/${total}</span><span>⭐ ${lvl} ур.</span><span>${xp} XP</span></div>
-    </div>
     <div class="gc-panel">
       <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
       <div class="gc-panel-title">${esc(cfg.title)}</div>
