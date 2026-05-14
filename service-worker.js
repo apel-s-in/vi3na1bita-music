@@ -28,6 +28,9 @@ self.addEventListener('activate', e => e.waitUntil((async () => {
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url), isSilenceFile = url.pathname.endsWith('/audio/silence.mp3');
+
+  if (url.origin === self.location.origin && url.pathname.startsWith('/Games/')) return;
+
   if (!isSilenceFile && (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname))) return;
 
   if (isAirplaneMode) return e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
