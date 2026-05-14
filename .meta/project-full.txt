@@ -474,7 +474,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-14 22:20:48 UTC
+Сгенерировано: 2026-05-14 22:55:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -508,7 +508,7 @@ jobs:
           AWS_DEFAULT_REGION: 'ru-central1'
         run: |
           cat > /tmp/cors.json << 'EOF'
-          {"CORSRules":[{"AllowedOrigins":["https://vi3na1bita.website.yandexcloud.net","https://apel-s-in.github.io","http://localhost:*","http://127.0.0.1:*"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"MaxAgeSeconds":86400}]}
+          {"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"MaxAgeSeconds":86400}]}
           EOF
           aws --endpoint-url=https://storage.yandexcloud.net s3api put-bucket-cors --bucket vi3na1bita --cors-configuration file:///tmp/cors.json
 
