@@ -1,0 +1,1874 @@
+ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ (важно для качества ответов):
+- Ты — Senior Lead Architect и Code Optimizer с экспертным знанием JavaScript, PWA и оптимизации производительности.
+- Язык ответов: по умолчанию RU. Английский — если явно попросят или в именах/терминах.
+- Всегда начинай с полного и детального анализа всего приложения.
+- Всегда указывай точные пути файлов при ссылках (например, src/app/(main)/timeline/page.tsx).
+- Любой код выводи ТОЛЬКО в тройных бэктиках с указанием языка, например:
+  ```ts
+  export function x() {}
+  ```
+- Не используй тяжелое форматирование. Разрешены: списки, короткие таблицы.
+- Если требуются изменения в файле — показывай минимальный патч (unified diff) или целиком обновлённый файл (не смешивать).
+- Не выдумывай зависимости и API. Если данных нет — явно скажи «нужно уточнение».
+- Учитывай что я работаю через web интерфейс github.com и не возможности локально делать проект.
+- Стиль кода: TypeScript strict, ESM-импорты, 2 пробела.
+- НИКОГДА не генерируй весь файл project-full целиком; только блоки для замены со строгим указанием места.
+- Формат изменений: -> ФАЙЛ: путь -> НАЙТИ: [фрагмент дословно] -> ЗАМЕНИТЬ НА: [полный новый блок].
+- Всегда пиши компактно, не растягивая на много строк. максимально компактно, но не вовред читаемости и не в ущерб функциональности и логике!!
+- Если какой то файл приложения требует полной замены, то присылай именно этого файла полный и правильный (соответствующий моему проекту) файл который этого требует. 
+- Сохраняй комментарии, форматирование и импорт-структуру.
+- Если удаляем блок — укажи строку перед и строку после (из реального кода).
+- Всегда пиши краткое обоснование, что и почему делаем.
+- Очень важно! Прервать воспроизведение могут только кнопки Пауза, стоп, срабатывание таймера, Избранное имеет право вызвать STOP только в одном сценарии (единственный активный снят в favorites view, при всех остальных сценариях какие бы не были плеер всегда играет и на всех устройствах, ничего другого его не может остановить или сбросить или отключить звук, вообще никакая другая функция - это базовое правило этого проигрывателя.
+- Важно дважды! Ничего не должно мешать и нарушать фоновое воспроизведение и воспроизведение на заблокированном экране IOS устройств, для ios устройств должен создаваться идеальный сценарий для фонового воспроизвдения и воспроизведения на заблокированном экране. Если это в ущерб другим устройствам (десктопам и андроидам), то создавать отдельные сценарие, которые именно только для ios устройств. Всегда искать современные и надёжные способы по укреплению и продлению максимальной фоновой жизни воспроизведения на ios устройствах и на заблокированном экране, устранять проблемы которые могут создавать помехи фоновому воспроизведению, без регрессии проекта.
+- Статистика всегда должна быть правдопадобной, реальной, не выдуманной. Накапливаться, не сбрасываться, быть актуальной, не мешающая беспрерывному воспроизведению и не мешающая фоновому режиму ios.
+- Всегда предлагай список дальнейших улучшений и критических ошибок если они встречаются во всей программе при анализе.
+- Всегда предлагай список старого не используемого кода и не оставлять старого следа, если добавляем или модифицирем что-то в коде
+- Всегда предлагай как минимум одно исправление, которое бы значительно уменьшило количество строк в коде, но приэтом полностьб бы сохранило логику, логистику и функционирование приложение, без нарушение работоспособности приложения. Всегда стремиться к максимальному упрощению кода всего приложения
+
+Название репозитория: vi3na1bita-music
+Адрес репозитория: https://github.com/apel-s-in/vi3na1bita-music
+# ПОЛНЫЙ И ДЕТАЛЬНЫЙ АНАЛИЗ ПРИЛОЖЕНИЯ.
+## ИЗБРАННОЕ — принципы добавления/удаления трека
+Основные принципы добавления и удаления трека в ИЗБРАННОЕ:
+Лайк/анлайк (⭐) = избранность трека. Состояние ⭐ синхронизируется мгновенно во всех местах (родной альбом, «Избранное», другие списки).
+
+Удаление трека из окна «Избранное». Это отдельное действие – реализовано как двухступенчатая защита от случайного удаления. Подробная логика работы: 
+⭐ в родном альбоме (источник истины):
+- Поставили ⭐ — трек появляется в «Избранном» как активный.
+- Сняли ⭐ — трек полностью исчезает из «Избранного» (даже если был неактивным, «без следа»).
+
+⭐ в окне «Избранное»:
+- Сняли ⭐ с активной строки — она становится серой (inactive), ⭐ снимается и в «Избранном», и в родном альбоме.
+- Снятие ⭐ НЕ удаляет строку окончательно, а только переводит её в неактивное состояние (“буфер”).
+
+Поведение неактивной (серой) строки в «Избранном»:
+- Клик по серой строке (не по звезде) — открывает модалку с вариантами:
+  - Вернуть в избранное — строка становится активной, ⭐ сразу восстанавливается везде.
+  - Удалить — строка исчезает из «Избранного» окончательно. В родном альбоме ⭐ при этом снята.
+- Клик по ⭐ на серой строке — быстрое восстановление без модалки, строка мгновенно становится активной с ⭐.
+- Удаление строки из «Избранного» возможно только через модалку (или “без следа” через анлайк в родном альбоме).
+
+Синхронизация:
+- Любое изменение ⭐ приводит к мгновенному обновлению состояния во всех представлениях без перезагрузок.
+- В окне «Избранное»: снятие ⭐ на любой строке приводит к неактивности этой строки и синхронно снимает ⭐ в родном альбоме.
+- Полное удаление строки возможно только через модалку.
+
+Перестройка плейлиста «Избранное»:
+- Любые переходы трека в inactive, восстановление или удаление мгновенно отражаются на составе плейлиста.
+- Проигрывание текущей песни НЕ обрывается из-за перестройки плейлиста, изменения происходят “в фоне”.
+
+Особое правило для текущего трека:
+- Если трек становится inactive в «Избранном» во время воспроизведения — сразу переключается на следующий активный трек.
+- Если это был единственный активный трек — плеер переходит в режим стоп, музыка останавливается.
+
+Родной альбом всегда решает окончательно:
+- Если снять ⭐ с трека в родном альбоме — он полностью исчезает из «Избранного», даже если находился там как неактивная (серая) строка.
+
+Восстановление из неактивного:
+- При установке ⭐ на треке в родном альбоме, если соответствующая неактивная строка в «Избранном» уже есть — она становится активной.
+
+Итоги
+- Нет возможности случайного удаления — шаг удаления всегда подтверждается модалкой.
+- Все изменения состояния ⭐ мгновенно синхронизированы во всех точках.
+- Логика отображения и поведения не содержит противоречий: одно и то же действие всегда приводит к одному ожидаемому результату.
+- Родной альбом является финальным арбитром присутствия трека в «Избранном».
+ =========================================================================== 
+Назначение кнопки F (Только избранные)
+Кнопка F включает/выключает режим Favorites Only только для текущего playing-плейлиста: она никогда не ставит и не снимает ⭐, а лишь сужает доступный набор треков для Next/Prev/автоперехода/Shuffle и делает правило «что видно в playing-контексте — то и играет».
+F всегда относится к playing-context, а не к просто открытому экрану; полный и мини-плеер управляют одним и тем же состоянием, поэтому поведение F везде идентично.
+При F=ON в обычных альбомах/витрине доступны только ⭐-треки текущего playing-контекста, причём hidden в Showcase имеет приоритет выше ⭐, а если текущий трек не подходит — плеер мгновенно и без stop переходит на первый допустимый.
+Если в текущем playing-контексте нет ни одного допустимого ⭐-трека, F не включается, показывается уведомление «отметьте ⭐ понравившийся трек», а текущее воспроизведение не ломается.
+Если при F=ON пользователь запускает не⭐ трек из другого контекста, открывается модалка с вариантами: отключить F и воспроизвести, добавить ⭐ и продолжить в F, либо отменить; если запускается уже ⭐ трек, playing-context сразу перестраивается под новый список.
+В `__favorites__` inactive-строки — это только UI-буфер для возврата/удаления и они никогда не участвуют в playback, Next/Prev, autoplay и Shuffle ни при F=OFF, ни при F=ON; там F фактически no-op по составу playback, но должен оставаться единым системным режимом.
+Выключение F никогда не должно обрывать текущий трек: текущий uid сохраняется, а playing-плейлист просто расширяется обратно до полного source-context; повторное включение F, если текущий трек допустим, тоже не должно рвать звук.
+Снятие последней ⭐ при F=ON вне favorites-view не имеет права останавливать плеер: F автоматически выключается, обычный playing-плейлист восстанавливается и музыка продолжает играть; stop разрешён только в одном сценарии — если в favorites-view текущий трек стал inactive и больше не осталось active.
+
+Проект делается и обслуживается средствами https://github.com/ (GitHub Pages + GitHub Actions).
+
+Название репозитория: vi3na1bita-music
+Адрес репозитория: https://github.com/apel-s-in/vi3na1bita-music
+Назначение: основное музыкальное приложение vi3na1bita-music.
+Контекст: точечный контекст Game Center / iframe host / postMessage bridge / service worker / запуск /Games/
+Проект делается и обслуживается средствами https://github.com/ (GitHub Pages + GitHub Actions).
+
+СТРУКТУРА ПРОЕКТА:
+vi3na1bita-music/
+├── .git/
+├── .github/
+│   └── workflows/
+│       ├── deploy.yml
+│       ├── e2e.yml
+│       ├── generate-context.yml
+│       ├── generate-lyrics-index.yml
+│       └── validate.yml
+├── .meta/
+├── albums/
+│   ├── gallery/
+│   │   ├── 00/
+│   │   │   ├── 00-cover-01.jpg
+│   │   │   ├── 00-cover-01.png
+│   │   │   ├── 00-cover-01.webp
+│   │   │   ├── 00-cover-02.jpg
+│   │   │   ├── 00-cover-02.png
+│   │   │   ├── 00-cover-02.webp
+│   │   │   └── index.json
+│   │   ├── 01/
+│   │   │   ├── 01-cover-01.jpg
+│   │   │   ├── 01-cover-01.png
+│   │   │   ├── 01-cover-01.webp
+│   │   │   ├── 01-cover-02.jpg
+│   │   │   ├── 01-cover-02.png
+│   │   │   ├── 01-cover-02.webp
+│   │   │   ├── 01-cover-03.jpg
+│   │   │   ├── 01-cover-03.png
+│   │   │   ├── 01-cover-03.webp
+│   │   │   ├── 01-cover-04.jpg
+│   │   │   ├── 01-cover-04.png
+│   │   │   ├── 01-cover-04.webp
+│   │   │   └── index.json
+│   │   ├── 02/
+│   │   │   ├── 02-cover-01.jpg
+│   │   │   ├── 02-cover-01.png
+│   │   │   ├── 02-cover-01.webp
+│   │   │   ├── 02-cover-02.jpg
+│   │   │   ├── 02-cover-02.png
+│   │   │   ├── 02-cover-02.webp
+│   │   │   ├── 02-cover-03.jpg
+│   │   │   ├── 02-cover-03.png
+│   │   │   ├── 02-cover-03.webp
+│   │   │   ├── 02-cover-04.jpg
+│   │   │   ├── 02-cover-04.png
+│   │   │   ├── 02-cover-04.webp
+│   │   │   └── index.json
+│   │   ├── 03/
+│   │   │   ├── 03-cover-01.jpg
+│   │   │   ├── 03-cover-01.png
+│   │   │   ├── 03-cover-01.webp
+│   │   │   ├── 03-cover-02.jpg
+│   │   │   ├── 03-cover-02.png
+│   │   │   ├── 03-cover-02.webp
+│   │   │   ├── 03-cover-03.jpg
+│   │   │   ├── 03-cover-03.png
+│   │   │   ├── 03-cover-03.webp
+│   │   │   ├── 03-cover-04.jpg
+│   │   │   ├── 03-cover-04.png
+│   │   │   ├── 03-cover-04.webp
+│   │   │   └── index.json
+│   │   └── 04/
+│   │       ├── 04-cover-01.jpg
+│   │       ├── 04-cover-01.png
+│   │       ├── 04-cover-01.webp
+│   │       ├── 04-cover-02.jpg
+│   │       ├── 04-cover-02.png
+│   │       ├── 04-cover-02.webp
+│   │       ├── 04-cover-03.jpg
+│   │       ├── 04-cover-03.png
+│   │       ├── 04-cover-03.webp
+│   │       ├── 04-cover-04.jpg
+│   │       ├── 04-cover-04.png
+│   │       ├── 04-cover-04.webp
+│   │       └── index.json
+│   └── .gitkeep
+├── audio/
+│   └── silence.mp3
+├── data/
+│   ├── track-profiles/
+│   │   ├── _stub.profile.json
+│   │   └── README.txt
+│   ├── custom_achievements.json
+│   ├── taxonomy.json
+│   └── track-profiles-index.json
+├── icons/
+│   ├── .gitkeep
+│   ├── apple-touch-icon.png
+│   ├── favicon-16.png
+│   ├── favicon-32.png
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   └── ui-sprite.svg
+├── img/
+│   ├── desktop/
+│   │   ├── logo@1x.png
+│   │   ├── logo@2x.png
+│   │   └── logo@3x.png
+│   ├── icon_album/
+│   │   ├── mobile/
+│   │   │   ├── icon-album-00@1x.jpg
+│   │   │   ├── icon-album-00@2x.jpg
+│   │   │   ├── icon-album-01@1x.jpg
+│   │   │   ├── icon-album-01@2x.jpg
+│   │   │   ├── icon-album-02@1x.jpg
+│   │   │   ├── icon-album-02@2x.jpg
+│   │   │   ├── icon-album-03@1x.jpg
+│   │   │   ├── icon-album-03@2x.jpg
+│   │   │   ├── icon-album-04@1x.jpg
+│   │   │   ├── icon-album-04@2x.jpg
+│   │   │   ├── icon-album-news@1x.jpg
+│   │   │   ├── icon-album-news@2x.jpg
+│   │   │   ├── icon-album+00@1x.jpg
+│   │   │   └── icon-album+00@2x.jpg
+│   │   ├── icon-album-00.png
+│   │   ├── icon-album-00@1x.png
+│   │   ├── icon-album-00@2x.png
+│   │   ├── icon-album-01.png
+│   │   ├── icon-album-01@1x.png
+│   │   ├── icon-album-01@2x.png
+│   │   ├── icon-album-02.png
+│   │   ├── icon-album-02@1x.png
+│   │   ├── icon-album-02@2x.png
+│   │   ├── icon-album-03.png
+│   │   ├── icon-album-03@1x.png
+│   │   ├── icon-album-03@2x.png
+│   │   ├── icon-album-04.png
+│   │   ├── icon-album-04@1x.png
+│   │   ├── icon-album-04@2x.png
+│   │   ├── icon-album-news.png
+│   │   ├── icon-album-news@1x.png
+│   │   ├── icon-album-news@2x.png
+│   │   ├── icon-album+00.png
+│   │   ├── icon-album+00@1x.png
+│   │   └── icon-album+00@2x.png
+│   ├── mobile/
+│   │   ├── logo@1x.jpg
+│   │   └── logo@2x.jpg
+│   ├── .gitkeep
+│   ├── Fav_logo.png
+│   ├── logo.png
+│   └── vitrina-crack-01.svg
+├── news/
+│   ├── .gitkeep
+│   └── news.json
+├── scripts/
+│   ├── analytics/
+│   │   ├── achievement-engine.js
+│   │   ├── achievement-state.js
+│   │   ├── achievements-dict.js
+│   │   ├── archive-branch-validation.js
+│   │   ├── archive-maintenance.js
+│   │   ├── backup-branch-compare.js
+│   │   ├── backup-builders.js
+│   │   ├── backup-debug.js
+│   │   ├── backup-event-cleanup.js
+│   │   ├── backup-importers.js
+│   │   ├── backup-recovery.js
+│   │   ├── backup-summary.js
+│   │   ├── backup-sync-engine.js
+│   │   ├── backup-upload-runner.js
+│   │   ├── backup-vault.js
+│   │   ├── cloud-contract.js
+│   │   ├── device-registry.js
+│   │   ├── device-settings-contract.js
+│   │   ├── event-archive-contract.js
+│   │   ├── event-archive-restore.js
+│   │   ├── event-archive-sync.js
+│   │   ├── event-contract.js
+│   │   ├── event-integrity.js
+│   │   ├── event-logger.js
+│   │   ├── favorites-storage-merge.js
+│   │   ├── live-stats.js
+│   │   ├── meta-db.js
+│   │   ├── playback-runtime.js
+│   │   ├── playback-validity.js
+│   │   ├── playlists-storage-merge.js
+│   │   ├── session-tracker.js
+│   │   ├── share-generator.js
+│   │   ├── snapshot-contract.js
+│   │   ├── stats-aggregator.js
+│   │   ├── stats-state.js
+│   │   ├── storage-merge-utils.js
+│   │   ├── storage-merge.js
+│   │   ├── sync-cloud-guard.js
+│   │   ├── sync-dirty-events.js
+│   │   ├── sync-domains.js
+│   │   ├── sync-revisions.js
+│   │   ├── sync-scheduler.js
+│   │   ├── sync-state.js
+│   │   ├── tombstone-contract.js
+│   │   ├── trust-state.js
+│   │   └── verified-achievement-state.js
+│   ├── app/
+│   │   ├── albums/
+│   │   │   └── specials.js
+│   │   ├── games/
+│   │   │   ├── bridge-host.js
+│   │   │   ├── config.js
+│   │   │   └── host.js
+│   │   ├── player/
+│   │   │   ├── favorites-only-actions.js
+│   │   │   ├── favorites-only-resolver.js
+│   │   │   ├── playback-clock.js
+│   │   │   └── playback-context-source.js
+│   │   ├── player-ui/
+│   │   │   └── lyrics.js
+│   │   ├── profile/
+│   │   │   ├── account-benefits-view.js
+│   │   │   ├── account-bindings.js
+│   │   │   ├── account-cloud-renderers.js
+│   │   │   ├── account-devices-view.js
+│   │   │   ├── achievements-view.js
+│   │   │   ├── actions-reset.js
+│   │   │   ├── actions-trash.js
+│   │   │   ├── actions.js
+│   │   │   ├── archive-maintenance-modal.js
+│   │   │   ├── archive-render-kit.js
+│   │   │   ├── auth-onboarding-orchestrator.js
+│   │   │   ├── backup-info-modal.js
+│   │   │   ├── carousel-flat.js
+│   │   │   ├── cloud-action-render-kit.js
+│   │   │   ├── cloud-ui-helpers.js
+│   │   │   ├── fresh-restore-modal.js
+│   │   │   ├── ledger-health-modal.js
+│   │   │   ├── live-bindings.js
+│   │   │   ├── logs-formatters.js
+│   │   │   ├── logs-view.js
+│   │   │   ├── model.js
+│   │   │   ├── profile-render-kit.js
+│   │   │   ├── profile-tab-bindings.js
+│   │   │   ├── profile-tab-renderers.js
+│   │   │   ├── recs-view.js
+│   │   │   ├── render-shell.js
+│   │   │   ├── restore-backup-runner.js
+│   │   │   ├── restore-card-render-kit.js
+│   │   │   ├── restore-decision.js
+│   │   │   ├── restore-diff.js
+│   │   │   ├── restore-preview-modal.js
+│   │   │   ├── settings-conflict-section.js
+│   │   │   ├── settings-data-section.js
+│   │   │   ├── settings-download-section.js
+│   │   │   ├── settings-interface-section.js
+│   │   │   ├── settings-trash-section.js
+│   │   │   ├── settings-view.js
+│   │   │   ├── stats-view.js
+│   │   │   ├── tab-strip-physics.js
+│   │   │   ├── template.js
+│   │   │   ├── trust-check-modal.js
+│   │   │   ├── verified-achievements-view.js
+│   │   │   ├── view.js
+│   │   │   ├── yandex-actions.js
+│   │   │   ├── yandex-auth-view.js
+│   │   │   ├── yandex-auto-sync.js
+│   │   │   ├── yandex-modals.js
+│   │   │   ├── yandex-preload-cache.js
+│   │   │   └── yandex-runtime-refresh.js
+│   │   ├── showcase/
+│   │   │   ├── actions.js
+│   │   │   ├── edit.js
+│   │   │   ├── index.js
+│   │   │   ├── lyrics-search.js
+│   │   │   ├── modals.js
+│   │   │   ├── playlists.js
+│   │   │   ├── render.js
+│   │   │   ├── search.js
+│   │   │   └── store.js
+│   │   ├── albums.js
+│   │   ├── gallery.js
+│   │   ├── offline-ui-bootstrap.js
+│   │   ├── playback-cache-bootstrap.js
+│   │   ├── player-ui.js
+│   │   ├── promocode.js
+│   │   └── track-registry.js
+│   ├── ci/
+│   │   ├── generate-lyrics-index.mjs
+│   │   ├── lint-sw.mjs
+│   │   ├── validate-content.mjs
+│   │   └── validate-manifest.mjs
+│   ├── core/
+│   │   ├── bootstrap.js
+│   │   ├── config.js
+│   │   ├── device-identity.js
+│   │   ├── device-linking.js
+│   │   ├── device-profile.js
+│   │   ├── favorites-manager.js
+│   │   ├── utils.js
+│   │   ├── yandex-auth.js
+│   │   ├── yandex-backup-disk.js
+│   │   ├── yandex-device-settings-disk.js
+│   │   ├── yandex-disk-transport.js
+│   │   ├── yandex-disk.js
+│   │   ├── yandex-event-archive-disk.js
+│   │   └── yandex-verified-disk.js
+│   ├── e2e/
+│   │   ├── favorites.spec.js
+│   │   ├── player.spec.js
+│   │   └── utils.js
+│   ├── intel/
+│   │   ├── community/
+│   │   │   ├── cohorts.js
+│   │   │   ├── community-stats.js
+│   │   │   └── similar-listeners.js
+│   │   ├── listener/
+│   │   │   ├── listener-collection.js
+│   │   │   └── listener-profile.js
+│   │   ├── providers/
+│   │   │   ├── hybrid-sync.js
+│   │   │   ├── provider-actions.js
+│   │   │   ├── provider-consents.js
+│   │   │   └── provider-identity.js
+│   │   ├── recs/
+│   │   │   ├── recommendation-engine.js
+│   │   │   ├── recommendation-reasons.js
+│   │   │   ├── recommendation-strategies.js
+│   │   │   └── rediscovery.js
+│   │   ├── shared/
+│   │   │   ├── bus.js
+│   │   │   ├── contracts.js
+│   │   │   ├── guards.js
+│   │   │   └── helpers.js
+│   │   ├── telemetry/
+│   │   │   └── telemetry-mapper.js
+│   │   ├── track/
+│   │   │   ├── track-presentation.js
+│   │   │   ├── track-profiles.js
+│   │   │   └── track-relations.js
+│   │   ├── ui/
+│   │   │   ├── profile-insights.js
+│   │   │   ├── showcase-semantic.js
+│   │   │   └── track-profile-modal.js
+│   │   ├── bootstrap.js
+│   │   ├── flags.js
+│   │   └── roadmap.js
+│   ├── offline/
+│   │   ├── cache-db.js
+│   │   ├── net-policy.js
+│   │   ├── offline-manager.js
+│   │   ├── track-resolver.js
+│   │   └── update-checker.js
+│   ├── ui/
+│   │   ├── app-modals.js
+│   │   ├── cache-progress-overlay.js
+│   │   ├── icon-utils.js
+│   │   ├── logo-pulse.js
+│   │   ├── lyrics-modal.js
+│   │   ├── modals.js
+│   │   ├── news-inline.js
+│   │   ├── notify.js
+│   │   ├── offline-indicators.js
+│   │   ├── offline-modal.js
+│   │   ├── progress-formatters.js
+│   │   ├── sleep-timer.js
+│   │   ├── statistics-modal.js
+│   │   ├── sysinfo.js
+│   │   └── track-statistics-modal.js
+│   ├── utils/
+│   │   └── sw-manager.js
+│   └── app.js
+├── src/
+│   ├── player-core/
+│   │   ├── ios-audio-keeper.js
+│   │   └── media-session.js
+│   └── PlayerCore.js
+├── styles/
+│   ├── base.css
+│   ├── games.css
+│   ├── main.css
+│   ├── offline.css
+│   ├── player.css
+│   ├── profile.css
+│   ├── showcase.css
+│   └── ui-core.css
+├── .gitignore
+├── albums.json
+├── generate-context.js
+├── index.html
+├── manifest.json
+├── oauth-callback.html
+└── service-worker.js
+
+Сгенерировано: 2026-05-14 22:56:19 UTC
+
+ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
+- /.github/workflows/deploy.yml
+- /.github/workflows/generate-context.yml
+- /index.html
+- /manifest.json
+- /service-worker.js
+- /generate-context.js
+- /scripts/app.js
+- /scripts/app/albums.js
+- /scripts/app/albums/specials.js
+- /scripts/app/games/host.js
+- /scripts/app/games/bridge-host.js
+- /scripts/app/games/config.js
+- /scripts/core/config.js
+- /scripts/utils/sw-manager.js
+- /styles/games.css
+- /styles/main.css
+
+//=================================================
+// FILE: /.github/workflows/deploy.yml
+name: Deploy App to Yandex Cloud S3
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '.meta/**'
+      - '.github/workflows/generate-context.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: yc-s3-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Configure CORS
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'ru-central1'
+        run: |
+          cat > /tmp/cors.json << 'EOF'
+          {"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"MaxAgeSeconds":86400}]}
+          EOF
+          aws --endpoint-url=https://storage.yandexcloud.net s3api put-bucket-cors --bucket vi3na1bita --cors-configuration file:///tmp/cors.json
+
+      - name: Incremental deploy public files
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'ru-central1'
+          BEFORE_SHA: ${{ github.event.before }}
+          BUCKET: vi3na1bita
+        run: |
+          set -euo pipefail
+
+          is_public_file() {
+            case "$1" in
+              .git/*|.github/*|.meta/*|albums/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
+              albums/gallery/*|audio/*|data/*|icons/*|img/*|news/*|scripts/*|src/*|styles/*) return 0 ;;
+              index.html|oauth-callback.html|manifest.json|albums.json|service-worker.js) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          upload_file() {
+            local f="$1"
+            [ -f "$f" ] || return 0
+            is_public_file "$f" || return 0
+            echo "PUT $f"
+            aws --endpoint-url=https://storage.yandexcloud.net s3 cp "$f" "s3://$BUCKET/$f" --only-show-errors
+          }
+
+          delete_file() {
+            local f="$1"
+            is_public_file "$f" || return 0
+            echo "DELETE $f"
+            aws --endpoint-url=https://storage.yandexcloud.net s3 rm "s3://$BUCKET/$f" --only-show-errors || true
+          }
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "${BEFORE_SHA:-}" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "Manual/initial deploy: full public sync"
+            aws --endpoint-url=https://storage.yandexcloud.net s3 sync ./ "s3://$BUCKET/" --delete --only-show-errors \
+              --exclude "*" \
+              --include "index.html" \
+              --include "oauth-callback.html" \
+              --include "manifest.json" \
+              --include "albums.json" \
+              --include "service-worker.js" \
+              --include "styles/*" \
+              --include "scripts/*" \
+              --include "scripts/**" \
+              --include "src/*" \
+              --include "src/**" \
+              --include "data/*" \
+              --include "data/**" \
+              --include "icons/*" \
+              --include "img/*" \
+              --include "img/**" \
+              --include "audio/*" \
+              --include "news/*" \
+              --include "albums/gallery/*" \
+              --include "albums/gallery/**" \
+              --exclude ".meta/*" \
+              --exclude ".github/*" \
+              --exclude "scripts/ci/*" \
+              --exclude "scripts/e2e/*" \
+              --exclude "generate-context.js"
+            exit 0
+          fi
+
+          git diff --name-status "$BEFORE_SHA" "$GITHUB_SHA" | while IFS=$'\t' read -r status a b; do
+            file="${b:-$a}"
+            if [[ "$status" == D* ]]; then
+              delete_file "$a"
+            else
+              upload_file "$file"
+            fi
+          done
+
+//=================================================
+// FILE: /.github/workflows/generate-context.yml
+name: Generate .meta context
+on:
+  push:
+    branches: [main, master]
+    paths-ignore: ['.meta/**']
+  workflow_dispatch:
+permissions: { contents: write }
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node generate-context.js --mode=both --max-lines=20000 && ls -la .meta || true
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "CI: generate .meta context"
+          branch: ${{ github.ref_name }}
+          file_pattern: ".meta/**"
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+
+//=================================================
+// FILE: /index.html
+<!DOCTYPE html><html lang="ru"><head>
+<meta charset="UTF-8"><title>Витрина Разбита</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#181818">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Витрина Разбита">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="preload" href="img/logo.png" as="image">
+<link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
+<link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
+<link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/games.css">
+<link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
+<link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+<script src="./scripts/core/utils.js"></script><script src="./scripts/core/bootstrap.js"></script>
+<script src="./scripts/core/config.js" type="module"></script><script src="./scripts/utils/sw-manager.js" defer></script>
+<script src="./src/PlayerCore.js" type="module"></script><script src="./scripts/ui/icon-utils.js" type="module"></script>
+<script src="./scripts/ui/notify.js" defer></script><script src="./scripts/ui/modals.js" defer></script>
+<script src="./scripts/ui/sleep-timer.js" type="module"></script><script src="./scripts/ui/lyrics-modal.js" defer></script>
+<script src="./scripts/ui/sysinfo.js" defer></script><script src="./scripts/app/promocode.js" defer></script>
+<script src="./scripts/app/player-ui/lyrics.js" defer></script><script src="./scripts/app/player/favorites-only-resolver.js" type="module"></script>
+<script src="./scripts/app/player/playback-context-source.js" type="module"></script><script src="./scripts/app/player/favorites-only-actions.js" type="module"></script>
+<script src="./scripts/app/player-ui.js" defer></script><script src="./scripts/app/gallery.js" type="module"></script>
+<script src="./scripts/app/albums.js" type="module"></script><script src="./scripts/analytics/device-registry.js" type="module"></script>
+<script src="./scripts/analytics/backup-debug.js" type="module"></script><script src="./scripts/app.js" type="module"></script>
+</head><body>
+<div id="promocode-block"><div class="promo-inner">
+  <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
+  <h2>Вход по промокоду</h2>
+  <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
+  <button id="promo-btn">Войти</button><div id="promo-error"></div>
+</div></div>
+<div id="main-block" class="hidden">
+  <header>
+    <div id="active-album-title" class="active-album-title">—</div>
+    <div id="album-icons" class="album-icons" aria-label="Альбомы"></div>
+    <div id="cover-wrap">
+      <button class="cover-gallery-arrow" id="cover-gallery-arrow-left" title="Назад" aria-label="Предыдущая обложка"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-gallery-left"></use></svg></button>
+      <div id="cover-slot" aria-label="Обложка альбома"></div>
+      <button class="cover-gallery-arrow" id="cover-gallery-arrow-right" title="Вперёд" aria-label="Следующая обложка"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-gallery-right"></use></svg></button>
+    </div>
+    <div id="social-links" class="socials-under-cover"></div>
+    <div class="ach-hint-bubble" id="ach-hint-bubble" role="status" title="Открыть список достижений"><span id="ach-hint-bubble-text">✨ Подгружаем статистику...</span></div>
+  </header>
+  <div id="now-playing" class="now-playing-inline"></div><div class="track-list" id="track-list"></div>
+  <div class="bottom-controls-center" id="app-shell-controls">
+    <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
+    <button id="install-pwa-btn"><span style="font-size:18px;line-height:1">📱</span> УСТАНОВИТЬ ПРИЛОЖЕНИЕ</button>
+    <button class="hotkeys-btn hotkeys-hidden" id="hotkeys-btn">ГОРЯЧИЕ КЛАВИШИ</button>
+    <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
+    <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
+    <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
+    <button class="offline-btn" id="offline-btn">OFFLINE</button>
+  </div>
+</div>
+<div id="modals-container"></div>
+<template id="mini-header-template">
+  <div class="mini-now" id="mini-now" title="Вернуться к альбому">
+    <div class="mini-progress-fill" id="mini-now-progress"></div>
+    <div class="mini-text-switcher"><span class="mini-track-title" id="mini-now-title">—</span><span class="mini-track-hint">Нажми чтобы вернуться к альбому</span></div>
+    <span class="like-star like-star-svg" id="mini-now-star" data-liked="0" aria-label="звезда"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span>
+  </div>
+</template>
+<template id="player-template">
+  <div class="lyrics-player-block" id="lyricsplayerblock">
+    <div id="lyrics-window" class="lyrics-normal"><div class="lyrics-animated-bg"></div><div class="lyrics-scroll" id="lyrics"><div class="lyrics-placeholder lyrics-spinner"></div></div></div>
+    <div class="player-progress-wrapper"><div class="player-progress-bar" id="player-progress-bar"><div class="player-progress-fill" id="player-progress-fill"><div class="player-progress-handle"></div></div></div></div>
+    <div class="player-controls">
+      <div class="player-controls-row">
+        <span class="time-in-controls" id="time-elapsed">00:00</span>
+        <button class="player-control-btn" id="prev-btn" title="Предыдущий трек (P)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-prev"></use></svg></button>
+        <button class="player-control-btn main" id="play-pause-btn" title="Воспроизведение/Пауза (K)"><svg id="play-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-play"></use></svg></button>
+        <button class="player-control-btn" id="stop-btn" title="Стоп (X)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stop"></use></svg></button>
+        <button class="player-control-btn" id="next-btn" title="Следующий трек (N)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-next"></use></svg></button>
+        <span class="time-in-controls" id="time-remaining">--:--</span>
+      </div>
+      <div class="player-controls-row">
+        <button class="player-control-btn" id="pq-btn" title="Качество (Hi/Lo)"><span class="pq-btn-label" id="pq-btn-label">Hi</span></button>
+        <button class="player-control-btn" id="mute-btn" title="Без звука (M)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-mute"></use></svg></button>
+        <button class="player-control-btn" id="shuffle-btn" title="Случайный порядок (U)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-shuffle"></use></svg></button>
+        <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-repeat"></use></svg></button>
+        <button class="sleep-timer-btn" id="sleep-timer-btn" data-testid="sleep-open" title="Таймер сна (T)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-sleep"></use></svg><span class="sleep-timer-badge sleep-badge-hidden" id="sleep-timer-badge">0</span></button>
+        <button class="player-control-btn" id="favorites-btn" title="Только избранные (F)"><span id="favorites-btn-icon" class="like-star like-star-svg" data-liked="0" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="icons/ui-sprite.svg#icon-favorite-star"></use></svg></span></button>
+      </div>
+    </div>
+    <div class="volume-control-wrapper"><div class="volume-track" id="volume-track"><div class="volume-fill" id="volume-fill"></div><div class="volume-handle" id="volume-handle"></div></div><input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="100" aria-label="Громкость"></div>
+    <div class="player-buttons-wrapper"><div class="player-extra-buttons-row">
+      <button class="lyrics-toggle-btn lyrics-normal" id="lyrics-toggle-btn" title="Режим лирики (Y)"><span class="lyrics-toggle-btn-visual">Т</span></button>
+      <button class="animation-btn" id="animation-btn" title="Анимация лирики (A)">A</button>
+      <button class="karaoke-btn" id="lyrics-text-btn" title="Полный текст песни"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-lyrics"></use></svg></button>
+      <button class="stats-btn" id="stats-btn" title="Статистика"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-stats"></use></svg></button>
+      <div class="source-indicator" id="source-indicator" title="Источник потока"></div>
+      <button class="pulse-btn" id="pulse-btn" title="Пульсация логотипа"><span id="pulse-heart">🤍</span></button>
+      <a class="player-download-btn" href="#" id="track-download-btn" download title="Скачать трек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-download"></use></svg></a>
+    </div></div>
+  </div>
+</template>
+<script>
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.5.8'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-09');
+  window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
+  console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
+</script>
+</body></html>
+
+//=================================================
+// FILE: /manifest.json
+{"name":"Витрина Разбита","short_name":"Vi3na1bita","description":"Официальные альбомы группы Витрина Разбита","start_url":"./","display":"standalone","background_color":"#181818","theme_color":"#181818","orientation":"portrait-primary","icons":[{"src":"icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}],"categories":["music","entertainment"],"screenshots":[]}
+
+//=================================================
+// FILE: /service-worker.js
+const SW_VERSION = '8.5.8';
+const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
+const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
+let isAirplaneMode = false;
+
+const CORE_ASSETS = ['./','./index.html','./oauth-callback.html','./manifest.json','./albums.json','./audio/silence.mp3','./data/lyrics-index-v1.json','./data/track-profiles-index.json','./styles/base.css','./styles/ui-core.css','./styles/main.css','./styles/player.css','./styles/showcase.css','./styles/offline.css','./styles/profile.css','./img/logo.png','./icons/ui-sprite.svg','./icons/favicon-32.png','./icons/favicon-16.png','./icons/apple-touch-icon.png','./scripts/core/bootstrap.js','./scripts/core/config.js','./scripts/core/utils.js','./scripts/core/favorites-manager.js','./scripts/core/device-identity.js','./scripts/core/device-profile.js','./scripts/core/device-linking.js','./scripts/core/yandex-auth.js','./scripts/core/yandex-disk-transport.js','./scripts/core/yandex-backup-disk.js','./scripts/core/yandex-device-settings-disk.js','./scripts/core/yandex-event-archive-disk.js','./scripts/core/yandex-verified-disk.js','./scripts/core/yandex-disk.js','./src/PlayerCore.js','./src/player-core/media-session.js','./src/player-core/ios-audio-keeper.js'];
+const PROFILE_ASSETS = ['./scripts/app/profile/view.js','./scripts/app/profile/model.js','./scripts/app/profile/render-shell.js','./scripts/app/profile/profile-tab-renderers.js','./scripts/app/profile/profile-tab-bindings.js','./scripts/app/profile/account-bindings.js','./scripts/app/profile/profile-render-kit.js','./scripts/app/profile/cloud-action-render-kit.js','./scripts/app/profile/archive-render-kit.js','./scripts/app/profile/ledger-health-modal.js','./scripts/app/profile/trust-check-modal.js','./scripts/app/profile/archive-maintenance-modal.js','./scripts/app/profile/verified-achievements-view.js','./scripts/app/profile/account-benefits-view.js','./scripts/app/profile/account-devices-view.js','./scripts/app/profile/tab-strip-physics.js','./scripts/app/profile/actions-trash.js','./scripts/app/profile/actions-reset.js','./scripts/app/profile/actions.js','./scripts/app/profile/live-bindings.js','./scripts/app/profile/stats-view.js','./scripts/app/profile/recs-view.js','./scripts/app/profile/logs-formatters.js','./scripts/app/profile/logs-view.js','./scripts/app/profile/yandex-actions.js','./scripts/app/profile/backup-info-modal.js','./scripts/app/profile/restore-preview-modal.js','./scripts/app/profile/restore-diff.js','./scripts/app/profile/yandex-modals.js','./scripts/app/profile/restore-card-render-kit.js','./scripts/app/profile/fresh-restore-modal.js','./scripts/app/profile/account-cloud-renderers.js','./scripts/app/profile/yandex-auth-view.js','./scripts/app/profile/yandex-auto-sync.js','./scripts/app/profile/yandex-runtime-refresh.js','./scripts/app/profile/auth-onboarding-orchestrator.js','./scripts/app/profile/yandex-preload-cache.js','./scripts/app/profile/cloud-ui-helpers.js','./scripts/app/profile/restore-decision.js','./scripts/app/profile/restore-backup-runner.js','./scripts/app/profile/achievements-view.js','./scripts/app/profile/carousel-flat.js','./scripts/app/profile/template.js','./scripts/app/profile/settings-download-section.js','./scripts/app/profile/settings-interface-section.js','./scripts/app/profile/settings-conflict-section.js','./scripts/app/profile/settings-trash-section.js','./scripts/app/profile/settings-data-section.js','./scripts/app/profile/settings-view.js'];
+const ANALYTICS_ASSETS = ['./scripts/analytics/cloud-contract.js','./scripts/analytics/snapshot-contract.js','./scripts/analytics/device-settings-contract.js','./scripts/analytics/event-archive-contract.js','./scripts/analytics/event-integrity.js','./scripts/analytics/trust-state.js','./scripts/analytics/verified-achievement-state.js','./scripts/analytics/event-contract.js','./scripts/analytics/tombstone-contract.js','./scripts/analytics/achievement-state.js','./scripts/analytics/stats-state.js','./scripts/analytics/sync-revisions.js','./scripts/analytics/sync-dirty-events.js','./scripts/analytics/backup-event-cleanup.js','./scripts/analytics/backup-builders.js','./scripts/analytics/event-archive-sync.js','./scripts/analytics/event-archive-restore.js','./scripts/analytics/archive-maintenance.js','./scripts/analytics/archive-branch-validation.js','./scripts/analytics/backup-debug.js','./scripts/analytics/backup-upload-runner.js','./scripts/analytics/backup-importers.js','./scripts/analytics/sync-state.js','./scripts/analytics/sync-scheduler.js','./scripts/analytics/sync-cloud-guard.js','./scripts/analytics/backup-sync-engine.js','./scripts/analytics/backup-branch-compare.js','./scripts/analytics/backup-recovery.js','./scripts/analytics/storage-merge-utils.js','./scripts/analytics/favorites-storage-merge.js','./scripts/analytics/playlists-storage-merge.js','./scripts/analytics/storage-merge.js','./scripts/analytics/device-registry.js','./scripts/analytics/meta-db.js','./scripts/analytics/event-logger.js','./scripts/analytics/session-tracker.js','./scripts/analytics/stats-aggregator.js','./scripts/analytics/achievement-engine.js','./scripts/analytics/achievements-dict.js','./scripts/analytics/live-stats.js','./scripts/analytics/playback-runtime.js','./scripts/analytics/playback-validity.js','./scripts/analytics/backup-summary.js','./scripts/analytics/backup-vault.js','./scripts/analytics/share-generator.js'];
+const INTEL_ASSETS = ['./scripts/intel/roadmap.js','./scripts/intel/flags.js','./scripts/intel/bootstrap.js','./scripts/intel/shared/contracts.js','./scripts/intel/shared/bus.js','./scripts/intel/shared/guards.js','./scripts/intel/shared/helpers.js','./scripts/intel/track/track-profiles.js','./scripts/intel/track/track-presentation.js','./scripts/intel/track/track-relations.js','./scripts/intel/listener/listener-profile.js','./scripts/intel/listener/listener-collection.js','./scripts/intel/recs/recommendation-engine.js','./scripts/intel/recs/recommendation-strategies.js','./scripts/intel/recs/recommendation-reasons.js','./scripts/intel/recs/rediscovery.js','./scripts/intel/providers/provider-consents.js','./scripts/intel/providers/provider-identity.js','./scripts/intel/providers/hybrid-sync.js','./scripts/intel/providers/provider-actions.js','./scripts/intel/telemetry/telemetry-mapper.js','./scripts/intel/community/cohorts.js','./scripts/intel/community/similar-listeners.js','./scripts/intel/community/community-stats.js','./scripts/intel/ui/track-profile-modal.js','./scripts/intel/ui/profile-insights.js','./scripts/intel/ui/showcase-semantic.js'];
+const UI_ASSETS = ['./scripts/ui/icon-utils.js','./scripts/ui/notify.js','./scripts/ui/sleep-timer.js','./scripts/ui/lyrics-modal.js','./scripts/ui/sysinfo.js','./scripts/ui/modals.js','./scripts/ui/offline-modal.js','./scripts/ui/offline-indicators.js','./scripts/ui/cache-progress-overlay.js','./scripts/ui/track-statistics-modal.js','./scripts/ui/statistics-modal.js','./scripts/ui/progress-formatters.js','./scripts/ui/logo-pulse.js','./scripts/ui/news-inline.js','./scripts/ui/app-modals.js','./scripts/app/gallery.js','./scripts/app/player/favorites-only-resolver.js','./scripts/app/player/favorites-only-actions.js','./scripts/app/player/playback-context-source.js','./scripts/app/player/playback-clock.js','./scripts/app/player-ui.js','./scripts/app/player-ui/lyrics.js','./scripts/app/albums.js','./scripts/app/albums/specials.js','./scripts/app/track-registry.js','./scripts/app/offline-ui-bootstrap.js','./scripts/app/playback-cache-bootstrap.js','./scripts/app/showcase/index.js','./scripts/app/showcase/actions.js','./scripts/app/showcase/edit.js','./scripts/app/showcase/lyrics-search.js','./scripts/app/showcase/modals.js','./scripts/app/showcase/playlists.js','./scripts/app/showcase/render.js','./scripts/app/showcase/search.js','./scripts/app/showcase/store.js','./scripts/app/promocode.js','./scripts/app.js','./scripts/offline/cache-db.js','./scripts/offline/net-policy.js','./scripts/offline/offline-manager.js','./scripts/offline/track-resolver.js','./scripts/offline/update-checker.js'];
+const STATIC_ASSETS = [...CORE_ASSETS, ...PROFILE_ASSETS, ...ANALYTICS_ASSETS, ...INTEL_ASSETS, ...UI_ASSETS];
+
+const norm = u => { try { const p = new URL(u, self.registration.scope); p.hash = ''; p.search = ''; if (p.pathname.endsWith('/')) p.pathname += 'index.html'; return p.href; } catch { return String(u); } };
+const STATIC_SET = new Set([...new Set(STATIC_ASSETS)].map(norm));
+
+self.addEventListener('install', e => e.waitUntil((async () => {
+  const c = await caches.open(CORE_CACHE);
+  await Promise.all(STATIC_ASSETS.map(async u => { try { const req = new Request(norm(u), { cache: 'no-cache' }), res = await fetch(req); if (res.ok && !res.redirected) await c.put(req, res.clone()); } catch {} }));
+})()));
+
+self.addEventListener('activate', e => e.waitUntil((async () => {
+  const keep = new Set([CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE]);
+  const keys = await caches.keys();
+  await Promise.all(keys.map(n => keep.has(n) ? Promise.resolve() : caches.delete(n)));
+  (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).forEach(c => c.postMessage({ type: 'SW_VERSION', version: SW_VERSION }));
+})()));
+
+self.addEventListener('fetch', e => {
+  const req = e.request; if (req.method !== 'GET') return;
+  const url = new URL(req.url), isSilenceFile = url.pathname.endsWith('/audio/silence.mp3');
+
+  if (url.origin === self.location.origin && url.pathname.startsWith('/Games/')) return;
+
+  if (!isSilenceFile && (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname))) return;
+
+  if (isAirplaneMode) return e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
+
+  if (STATIC_SET.has(norm(url.href))) return e.respondWith((async () => {
+    const c = await caches.open(CORE_CACHE), key = new Request(norm(url.href)), cached = await c.match(key);
+    if (cached) return cached;
+    const res = await fetch(req); if (res.ok && !res.redirected) await c.put(key, res.clone());
+    return res;
+  })());
+
+  if (url.hostname.includes('yandexcloud.net') || url.hostname.includes('github.io')) {
+    if (/\.(png|jpe?g|webp|avif|gif|svg)$/i.test(url.pathname)) return e.respondWith((async () => {
+      const c = await caches.open(MEDIA_CACHE), cached = await c.match(req);
+      if (cached) return cached; const res = await fetch(req); if (res.ok) await c.put(req, res.clone()); return res;
+    })());
+    if (url.pathname.endsWith('.json')) return e.respondWith((async () => {
+      const c = await caches.open(RUNTIME_CACHE), cached = await c.match(req);
+      const fetchPromise = fetch(req).then(async res => { if (res.ok) await c.put(req, res.clone()); return res; }).catch(() => cached);
+      return cached || fetchPromise;
+    })());
+    return;
+  }
+
+  e.respondWith((async () => {
+    try {
+      const res = await fetch(req);
+      if (res.ok && res.status === 200 && url.protocol.startsWith('http') && url.hostname === self.location.hostname) {
+        const c = await caches.open(RUNTIME_CACHE); await c.put(req, res.clone());
+      }
+      return res;
+    } catch { return await caches.match(req) || new Response(null, { status: 503 }); }
+  })());
+});
+
+self.addEventListener('message', e => {
+  const d = e.data, p = e.ports[0]; if (!d) return;
+  if (d.type === 'SYNC_AIRPLANE_MODE') isAirplaneMode = !!d.payload;
+  else if (d.type === 'GET_SW_VERSION' && p) p.postMessage({ version: SW_VERSION });
+  else if (d.type === 'SKIP_WAITING') self.skipWaiting();
+  else if (d.type === 'CLEAR_CACHE') e.waitUntil(caches.keys().then(k => Promise.all(k.map(n => caches.delete(n)))));
+  else if (d.type === 'GET_CACHE_SIZE' && p) e.waitUntil((async () => {
+    let s = 0, n = 0;
+    try { for (const k of await caches.keys()) { const c = await caches.open(k), reqs = await c.keys(); n += reqs.length; for (const r of reqs) { const res = await c.match(r); if (res) s += parseInt(res.headers.get('content-length') || 0, 10); } } } catch {}
+    p.postMessage({ size: s, entries: n, approx: true });
+  })());
+});
+
+//=================================================
+// FILE: /generate-context.js
+/* eslint-disable no-console */
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+const argv = Object.fromEntries(process.argv.slice(2).map(a => {
+  const [k, ...r] = a.replace(/^--/, '').split('=');
+  return [k, r.join('=') === '' ? true : r.join('=')];
+}));
+
+const ROOT = path.resolve(argv.root || __dirname);
+const META_DIR = path.resolve(argv['out-dir'] || path.join(ROOT, '.meta'));
+const MODE = String(argv.mode || 'both').toLowerCase();
+const MAX_LINES = Number(argv['max-lines'] || 20000);
+
+if (!fs.existsSync(META_DIR)) fs.mkdirSync(META_DIR, { recursive: true });
+
+const FULL_FILE = path.join(META_DIR, 'project-full.txt');
+const ADAPTIVE_FILE = path.join(META_DIR, 'project-adaptive.txt');
+const MUSIC_GAMES_FILE = path.join(META_DIR, 'project-music-games.txt');
+
+const toUnix = p => String(p || '').replace(/\\/g, '/');
+const SELF_FULL_REL = toUnix(path.relative(ROOT, FULL_FILE));
+const SELF_ADAPT_REL = toUnix(path.relative(ROOT, ADAPTIVE_FILE));
+const SELF_MUSIC_GAMES_REL = toUnix(path.relative(ROOT, MUSIC_GAMES_FILE));
+
+const TEXT_EXTS = new Set([
+  '.html', '.htm', '.css', '.js', '.mjs', '.cjs', '.ts', '.tsx',
+  '.json', '.webmanifest', '.md', '.txt', '.yml', '.yaml'
+]);
+
+const EXCLUDE_FILES_RAW = [
+  'node_modules/**',
+  '.git/**',
+  '.meta/**',
+  'assets/**',
+  '.next/**',
+  'dist/**',
+  'build/**',
+  'out/**',
+  'coverage/**',
+  '.cache/**',
+  '.vscode/**',
+  '.idea/**',
+  '.husky/**',
+  '**/*.log',
+  '.DS_Store',
+  'ai-rules.txt',
+  '**/ai-rules.txt',
+  'data/lyrics-index-v1.json',
+  'qwen-code-*',
+  '**/qwen-code-*',
+  '.aider*',
+  '**/.aider*',
+  '.continue/**',
+  '.copilot/**',
+  '**/*.orig',
+  '**/*.rej',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml'
+];
+
+const EXCLUDE_TREE_RAW = [
+  'node_modules/**',
+  '.git/**',
+  '.meta/**',
+  '.next/**',
+  'dist/**',
+  'build/**',
+  'out/**',
+  'coverage/**',
+  '.cache/**',
+  '.vscode/**',
+  '.idea/**',
+  '.husky/**',
+  '**/*.log',
+  '.DS_Store',
+  'data/lyrics-index-v1.json',
+  'qwen-code-*',
+  '**/qwen-code-*',
+  '.aider*',
+  '**/.aider*',
+  '.continue/**',
+  '.copilot/**',
+  '**/*.orig',
+  '**/*.rej',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml'
+];
+
+const MUSIC_GAMES_FILES = [
+  '.github/workflows/deploy.yml',
+  '.github/workflows/generate-context.yml',
+  'index.html',
+  'manifest.json',
+  'service-worker.js',
+  'generate-context.js',
+  'scripts/app.js',
+  'scripts/app/albums.js',
+  'scripts/app/albums/specials.js',
+  'scripts/app/games/host.js',
+  'scripts/app/games/bridge-host.js',
+  'scripts/app/games/config.js',
+  'scripts/core/config.js',
+  'scripts/utils/sw-manager.js',
+  'styles/games.css',
+  'styles/main.css'
+];
+
+const PRIORITY = {
+  critical: [
+    /^index\.html?$/i,
+    /^service-worker\.js$/i,
+    /^manifest\.json$/i,
+    /^albums\.json$/i,
+    /^news\.html?$/i,
+    /^generate-index\.(js|mjs|cjs)$/i,
+    /^albums\/gallery\/[^/]+\/index\.json$/i,
+    /^\.github\/workflows\/.*\.ya?ml$/i
+  ],
+  high: [
+    /^AudioController\.(js|mjs|cjs|ts)$/i,
+    /^GlobalState\.(js|mjs|cjs|ts)$/i,
+    /^scripts\/.*\.(mjs|js|ts)$/i,
+    /^performance\/.*\.(js|ts)$/i,
+    /^.*\.(ya?ml)$/i
+  ],
+  medium: [
+    /^.*\.(js|mjs|cjs|ts|tsx|json|html?|css)$/i
+  ]
+};
+
+const globToRegExp = p => {
+  const hasPath = p.includes('/') || p.includes('**');
+  const esc = p
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '___GLOBSTAR___')
+    .replace(/\*/g, '[^/]*')
+    .replace(/___GLOBSTAR___/g, '.*');
+  return hasPath ? new RegExp(`^${esc}$`) : new RegExp(`(^|/)${esc}(/|$)`);
+};
+
+const EXCLUDE_FILES_PATTERNS = EXCLUDE_FILES_RAW.map(globToRegExp);
+const EXCLUDE_TREE_PATTERNS = EXCLUDE_TREE_RAW.map(globToRegExp);
+const ALWAYS_EXCLUDE = new Set(['ai-rules.txt']);
+
+const isExcluded = (rel, patterns) => {
+  const u = toUnix(rel);
+  if (
+    !u ||
+    u === SELF_FULL_REL ||
+    u === SELF_ADAPT_REL ||
+    u === SELF_MUSIC_GAMES_REL ||
+    ALWAYS_EXCLUDE.has(u) ||
+    ALWAYS_EXCLUDE.has(path.basename(u))
+  ) {
+    return true;
+  }
+  return patterns.some(re => re.test(u));
+};
+
+const isTextFile = rel => TEXT_EXTS.has(path.extname(rel).toLowerCase());
+
+const readText = rel => {
+  try {
+    return fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  } catch (e) {
+    return `// read error: ${e.message}`;
+  }
+};
+
+const countLines = s => (String(s || '').match(/\n/g) || []).length + (String(s || '').length ? 1 : 0);
+
+const listAllEntries = (includeFiles = true, forTree = false) => {
+  const out = [];
+  const stack = [ROOT];
+
+  while (stack.length) {
+    const dir = stack.pop();
+    let entries = [];
+
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const item of entries) {
+      const full = path.join(dir, item.name);
+      const rel = toUnix(path.relative(ROOT, full)) || '.';
+      if (isExcluded(rel, forTree ? EXCLUDE_TREE_PATTERNS : EXCLUDE_FILES_PATTERNS)) continue;
+
+      if (item.isDirectory()) {
+        out.push({ rel, full, dir: true });
+        stack.push(full);
+      } else if (item.isFile() && includeFiles) {
+        out.push({ rel, full, dir: false });
+      }
+    }
+  }
+
+  return out.sort((a, b) => a.dir !== b.dir ? (a.dir ? -1 : 1) : a.rel.localeCompare(b.rel));
+};
+
+const getPriority = rel => {
+  const u = toUnix(rel);
+  return Object.keys(PRIORITY).find(level => PRIORITY[level].some(re => re.test(u))) || 'low';
+};
+
+const readRepoUrl = () => {
+  try {
+    const cfg = path.join(ROOT, '.git', 'config');
+    if (!fs.existsSync(cfg)) return '';
+    return (fs.readFileSync(cfg, 'utf8').match(/url\s*=\s*(.+)\n/) || [])[1]?.trim() || '';
+  } catch {
+    return '';
+  }
+};
+
+const renderTree = () => {
+  const lines = ['СТРУКТУРА ПРОЕКТА:', `${path.basename(ROOT)}/`];
+
+  const walk = (dir, prefix = '') => {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const visible = entries
+      .filter(x => !isExcluded(toUnix(path.relative(ROOT, path.join(dir, x.name))), EXCLUDE_TREE_PATTERNS))
+      .sort((a, b) => a.isDirectory() !== b.isDirectory() ? (a.isDirectory() ? -1 : 1) : a.name.localeCompare(b.name));
+
+    visible.forEach((x, i) => {
+      const last = i === visible.length - 1;
+      lines.push(`${prefix}${last ? '└── ' : '├── '}${x.name}${x.isDirectory() ? '/' : ''}`);
+      if (x.isDirectory()) walk(path.join(dir, x.name), `${prefix}${last ? '    ' : '│   '}`);
+    });
+  };
+
+  walk(ROOT);
+  return lines.join('\n');
+};
+
+const headerBlock = ({ purpose = '' } = {}) => {
+  const rulesPath = path.join(ROOT, 'ai-rules.txt');
+  const rules = fs.existsSync(rulesPath) ? `${fs.readFileSync(rulesPath, 'utf8').trim()}\n\n` : '';
+  const repoName = String(argv['repo-name'] || path.basename(ROOT));
+  const repoUrl = String(argv['repo-url'] || readRepoUrl() || 'https://github.com/apel-s-in/vi3na1bita-music');
+
+  return `${rules}Название репозитория: ${repoName}
+Адрес репозитория: ${repoUrl}
+Назначение: основное музыкальное приложение vi3na1bita-music.
+${purpose ? `Контекст: ${purpose}\n` : ''}Проект делается и обслуживается средствами https://github.com/ (GitHub Pages + GitHub Actions).
+
+${renderTree()}
+
+Сгенерировано: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
+
+`;
+};
+
+const fileBlock = rel => `//=================================================
+// FILE: /${toUnix(rel)}
+${readText(rel)}
+`;
+
+const generate = mode => {
+  let out = headerBlock();
+  let lines = countLines(out);
+
+  const groups = listAllEntries(true, false)
+    .filter(e => !e.dir && isTextFile(e.rel))
+    .reduce((acc, e) => {
+      acc[getPriority(e.rel)].push(e.rel);
+      return acc;
+    }, { critical: [], high: [], medium: [], low: [] });
+
+  const order = mode === 'adaptive' ? ['critical', 'high', 'medium'] : ['critical', 'high', 'medium', 'low'];
+
+  for (const level of order) {
+    for (const rel of groups[level]) {
+      const block = fileBlock(rel);
+      const blockLines = countLines(block);
+      if (mode === 'adaptive' && lines + blockLines > MAX_LINES) {
+        return `${out}\n// ... (truncate)\n`;
+      }
+      out += block;
+      lines += blockLines;
+    }
+  }
+
+  return out;
+};
+
+const generateMusicGames = () => {
+  let out = headerBlock({
+    purpose: 'точечный контекст Game Center / iframe host / postMessage bridge / service worker / запуск /Games/'
+  });
+
+  out += `ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
+${MUSIC_GAMES_FILES.map(x => `- /${x}`).join('\n')}
+
+`;
+
+  MUSIC_GAMES_FILES.forEach(rel => {
+    const full = path.join(ROOT, rel);
+    if (fs.existsSync(full) && isTextFile(rel)) out += fileBlock(rel);
+    else out += `//=================================================
+// FILE: /${toUnix(rel)}
+// missing or non-text file
+`;
+  });
+
+  return out;
+};
+
+try {
+  if (MODE === 'full' || MODE === 'both') {
+    fs.writeFileSync(FULL_FILE, generate('full'), 'utf8');
+    console.log(`✅ ${FULL_FILE}`);
+  }
+
+  if (MODE === 'adaptive' || MODE === 'both') {
+    fs.writeFileSync(ADAPTIVE_FILE, generate('adaptive'), 'utf8');
+    console.log(`✅ ${ADAPTIVE_FILE}`);
+  }
+
+  if (MODE === 'music-games' || MODE === 'games' || MODE === 'both') {
+    fs.writeFileSync(MUSIC_GAMES_FILE, generateMusicGames(), 'utf8');
+    console.log(`✅ ${MUSIC_GAMES_FILE}`);
+  }
+} catch (e) {
+  console.error('❌', e);
+  process.exit(1);
+}
+
+//=================================================
+// FILE: /scripts/app.js
+// UID.092_(Incremental rollout order)_(держать staged boot как главный механизм безопасного развития)_(legacy app boot и intel boot должны быть отделены по фазам и soft-fallback) UID.094_(No-paralysis rule)_(оставить всё приложение работоспособным при отказе любого нового слоя)_(legacy/offline/analytics/ui boot не должны зависеть от intel success) UID.095_(Ownership boundary: legacy vs intel)_(жёстко развести bootstrap ownership)_(scripts/app.js остаётся хозяином legacy runtime orchestration, а intel bootstrap подключается только как optional надстройка после core слоёв) UID.096_(Helper-first anti-duplication policy)_(сразу закрепить курс на унификацию повторяющегося кода)_(повторяющиеся init/no-op/state/storage/emitter patterns в intel слое должны выноситься в shared helpers, а не копироваться по модулям)
+(function(W,D){'use strict';const $=id=>D.getElementById(id),cl=id=>$(id)?.click(),wt=async n=>{if(W.Utils?.waitFor)return W.Utils.waitFor(()=>!!W[n]?.initialize,3000);for(let i=0;!W[n]?.initialize&&i<30;i++)await new Promise(r=>setTimeout(r,100));return!!W[n];};const iM=async()=>{const C=W.APP_CONFIG||{};try{await import('./offline/net-policy.js').then(m=>m.initNetPolicy?.());await import('./app/offline-ui-bootstrap.js').then(m=>m.initOfflineUI?.());const om=await import('./offline/offline-manager.js');await om.default.initialize();await import('./offline/track-resolver.js').then(m=>m.initTrackResolver(om.default));await import('./app/playback-cache-bootstrap.js').then(m=>m.initPlaybackCache?.());await import('./offline/update-checker.js').then(m=>m.initUpdateChecker?.());}catch(e){console.error(e);}try{const[M,L,ST,SA,AE,LS,PF]=await Promise.all(['meta-db','event-logger','session-tracker','stats-aggregator','achievement-engine','live-stats','../ui/progress-formatters'].map(p=>import(`./analytics/${p}.js`)));await M.metaDB.init();await L.eventLogger.init();new ST.SessionTracker();new SA.StatsAggregator();await LS.liveStatsTracker.initialize();W.achievementEngine=new AE.AchievementEngine();try{const MK='migration:cleanup_duplicates:v3';if(!localStorage.getItem(MK)){const{default:DR}=await import('./analytics/device-registry.js'),b=DR.getDeviceRegistry(),c=DR.normalizeDeviceRegistry(b);if(c.length<b.length)DR.saveDeviceRegistry(c);await import('./analytics/backup-event-cleanup.js').then(m=>m.cleanupWarmEventsStore(M.metaDB,{migrationLabel:'Migration'}));localStorage.setItem(MK,String(Date.now()));}}catch{}W.addEventListener('achievements:updated',e=>{const d=e.detail||{},t=Number.isFinite(Number(d.total))?Number(d.total):(W.achievementEngine?.achievements?.length||0),u=Number.isFinite(Number(d.unlocked))?Number(d.unlocked):Object.keys(W.achievementEngine?.unlocked||{}).length,p=d.profile||W.achievementEngine?.profile||null;if($('achievementsCount'))$('achievementsCount').textContent=`ВЫПОЛНЕНО: ${u} / ${t}`;if($('achievementsFill')&&t)$('achievementsFill').style.width=`${(u/t)*100}%`;if(p){if($('user-level-badge'))$('user-level-badge').textContent=p.level;if($('pg-lvl-val'))$('pg-lvl-val').textContent=p.level;const cX=Math.pow(p.level-1,2)*100,nX=Math.pow(p.level,2)*100;if($('xp-progress-fill'))$('xp-progress-fill').style.width=`${Math.max(0,Math.min(100,((p.xp-cX)/(nX-cX))*100))}%`;if($('xp-text'))$('xp-text').textContent=`${p.xp} / ${nX} XP`;if($('pg-xp-cur'))$('pg-xp-cur').textContent=`${p.xp} XP`;}const bT=$('ach-hint-bubble-text');if(bT&&W.achievementEngine?.achievements){let g=W.achievementEngine.achievements.filter(a=>!a.isUnlocked&&!a.isHidden&&(a.progressMeta||a.progress?.target>a.progress?.current)).sort((a,b)=>(b.progress?.pct||0)-(a.progress?.pct||0));const pI=g.findIndex(a=>a.id==='pwa_installed');if(pI>=0&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone)g.unshift(g.splice(pI,1)[0]);g=g.slice(0,3).map(PF.fmtAchBubbleText);clearInterval(W._bInt);let i=0;const uB=()=>{if(!g.length)return;bT.style.opacity=0;setTimeout(()=>{bT.innerHTML=g[i++%g.length];bT.style.opacity=1;},300);};uB();if(g.length>1)W._bInt=setInterval(uB,8000);}});const bub=$('ach-hint-bubble');if(bub)bub.onclick=()=>{sessionStorage.setItem('jumpToAch','1');W.AlbumsManager?.loadAlbum(C.SPECIAL_PROFILE_KEY||'__profile__');};W.dispatchEvent(new CustomEvent('analytics:logUpdated'));}catch{}try{if(C.INTEL_LAYER_ENABLED!==false)await import('./intel/bootstrap.js').then(m=>m.initIntelBootstrap?.({W,D,C}));}catch{}try{await import('./core/yandex-auth.js').then(m=>m.YandexAuth?.checkAutoRelogin?.());}catch{}try{await import('./app/profile/yandex-auto-sync.js').then(m=>m.initYandexAutoSync());}catch{}try{await import('./analytics/backup-sync-engine.js').then(m=>m.initBackupSyncEngine());}catch{}const rn=n=>W[n]?.initialize?.();if(await wt('GalleryManager'))rn('GalleryManager');try{await import('./app/showcase/index.js').then(m=>m.default.initialize());}catch{}if(await wt('AlbumsManager'))rn('AlbumsManager');if(await wt('PlayerUI'))rn('PlayerUI');try{await import('./app/player/playback-clock.js').then(m=>m.initPlaybackClock?.());}catch{}try{await import('./ui/logo-pulse.js');}catch{}['SleepTimer','LyricsModal','SystemInfoManager'].forEach(rn);import('./ui/statistics-modal.js').catch(()=>{});import('./ui/app-modals.js').then(m=>m.bindAppModals?.({W,D,config:C})).catch(()=>{});};const sH=()=>{const ac={k:()=>W.PlayerUI?.togglePlayPause(),' ':e=>{e.preventDefault();W.PlayerUI?.togglePlayPause();},n:'next',p:'prev',x:'stop',arrowleft:()=>W.playerCore?.seek(Math.max(0,(W.playerCore?.getPosition()||0)-5)),arrowright:()=>W.playerCore?.seek(Math.min(W.playerCore?.getDuration()||0,(W.playerCore?.getPosition()||0)+5)),arrowup:e=>{e.preventDefault();W.playerCore?.setVolume(Math.min(100,W.playerCore.getVolume()+5));},arrowdown:e=>{e.preventDefault();W.playerCore?.setVolume(Math.max(0,W.playerCore.getVolume()-5));}},bn={m:'mute-btn',r:'repeat-btn',u:'shuffle-btn',a:'animation-btn',b:'pulse-btn',f:'favorites-btn',y:'lyrics-toggle-btn',t:()=>W.SleepTimer?.show?.()};D.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target?.tagName))return;const k=e.key.toLowerCase(),r=ac[k]||bn[k];if(typeof r==='function')r(e);else if(typeof r==='string'&&W.playerCore?.[r])W.playerCore[r]();else if(typeof r==='string')cl(r);});};const sP=()=>{let pP=null;const b=$('install-pwa-btn');if(matchMedia('(display-mode: standalone)').matches||navigator.standalone){if(b)b.style.display='none';}else{W.addEventListener('beforeinstallprompt',e=>{e.preventDefault();pP=e;});if(b)b.onclick=async()=>{if(pP){pP.prompt();if((await pP.userChoice).outcome==='accepted'){W.NotificationSystem?.success('Установка началась!');b.style.display='none';}pP=null;}else if(W.Utils?.getPlatform()?.isIOS){const el=D.createElement('div');el.className='ios-install-prompt';el.innerHTML=`<button class="ios-prompt-close" type="button">×</button><img class="ios-prompt-icon" src="icons/apple-touch-icon.png"><div class="ios-prompt-title">Установить на iPhone</div><div class="ios-prompt-text">Нажмите <strong>Поделиться</strong> ↗️ в меню браузера,<br>а затем выберите <strong>«На экран Домой»</strong></div><button class="ios-prompt-button" type="button">Понятно</button>`;el.onclick=e=>{if(e.target.closest('button')){el.classList.remove('show');setTimeout(()=>el.remove(),350);}};D.body.appendChild(el);requestAnimationFrame(()=>el.classList.add('show'));}else{W.NotificationSystem?.info('Установите через меню браузера');}};}W.addEventListener('appinstalled',()=>{W.NotificationSystem?.success('Успешно установлено!');if(b)b.style.display='none';if(W.eventLogger){W.eventLogger.log('FEATURE_USED','global',{feature:'pwa_installed'});W.dispatchEvent(new CustomEvent('analytics:forceFlush'));}});$('social-links')?.addEventListener('click',e=>{const l=e.target.closest?.('a');if(!l||!W.eventLogger)return;const h=String(l.getAttribute('href')||'').toLowerCase();let t='other';if(h.includes('youtube.com')||h.includes('youtu.be'))t='youtube';else if(h.includes('t.me'))t='telegram';else if(h.includes('vk.com'))t='vk';else if(h.includes('tiktok.com'))t='tiktok';W.eventLogger.log('FEATURE_USED','global',{feature:'social_visit',target:t});W.dispatchEvent(new CustomEvent('analytics:forceFlush'));});};const sS=()=>{if(!('serviceWorker' in navigator))return;const h=e=>{if(e.data?.type==='SW_VERSION'){const v=String(e.data.version||'').trim();if(v&&v!==String(W.VERSION||''))W.ServiceWorkerManager?.handleVersionMessage?.({swVer:v});}};navigator.serviceWorker.addEventListener('message',h);W.addEventListener('message',h);};const rP=async()=>{let st=null;try{st=JSON.parse(localStorage.getItem('playerStateV2')||'null');}catch{}if(!st?.trackUid||!st?.album||Date.now()-Number(st.ts||0)>43200000)return false;try{await W.TrackRegistry?.ensurePopulated?.();const l=W.PlaybackContextSource?.getSourcePlaylistForContext?.(st.album)||[];if(!l.length||!l.some(t=>String(t?.uid||'').trim()===String(st.trackUid||'').trim()))return false;if(st.album&&W.AlbumsManager?.getPlayingAlbum?.()!==st.album)W.AlbumsManager?.setPlayingAlbum?.(st.album);if(st.currentAlbum)await W.AlbumsManager?.loadAlbum?.(st.currentAlbum).catch(()=>{});if(Number.isFinite(Number(st.volume))){const v=Math.max(0,Math.min(100,Number(st.volume)))/100;try{localStorage.setItem('playerVolume',String(Math.round(v*100)));}catch{}try{if(W.Howler)W.Howler.volume(st.muted?0:v);}catch{}}if('muted' in st){try{W.playerCore.flags.mute=!!st.muted;}catch{}}if(st.quality)W.playerCore.qMode=String(st.quality).toLowerCase()==='lo'?'lo':'hi';W.playerCore.flags.rep=!!st.repeat;W.playerCore.flags.shuf=!!st.shuffle;if(!W.playerCore?.playExactFromPlaylist?.(l,st.trackUid,{dir:1,preserveOriginalPlaylist:true}))return false;setTimeout(()=>{try{if(st.position>0)W.playerCore?.seek?.(st.position);if(Number.isFinite(Number(st.volume))&&W.Howler)W.Howler.volume(st.muted?0:Math.max(0,Math.min(100,Number(st.volume)))/100);st.wasPlaying?W.playerCore?.play?.():W.playerCore?.pause?.();W.PlayerUI?.updateMiniHeader?.();W.PlayerUI?.updatePlaylistFiltering?.();}catch{}},600);return true;}catch{return false;}};const rU=async({reason='runtime'}={})=>{try{if(W.playerCore?.getCurrentTrackUid?.()){W.PlayerUI?.switchAlbumInstantly?.();W.PlayerUI?.updateMiniHeader?.();W.PlayerUI?.updatePlaylistFiltering?.();return true;}}catch{}return false;};let _i=false;W.app={checkShowcaseShare:()=>{const p=new URLSearchParams(W.location.search).get('playlist');if(p&&W.ShowcaseManager){W.ShowcaseManager.handleSharedPlaylist(p);W.history.replaceState(null,'',W.location.pathname);}},initialize:async()=>{if(_i)return;_i=true;try{await iM();sH();sP();sS();W.app.checkShowcaseShare();await rP().catch(()=>{});W.addEventListener('backup:restore:applied',()=>setTimeout(()=>rU({reason:'backup_restore_applied'}).catch(()=>{}),180));}catch(e){console.error(e);W.NotificationSystem?.error('Ошибка инициализации');}}};})(window,document);
+
+//=================================================
+// FILE: /scripts/app/albums.js
+// UID.002_(UID-first core)_(сохранить AlbumsManager как контентный навигатор по uid-трекам)_(album shell не должен брать на себя semantic/recommendation ownership) UID.017_(Launch source stats)_(подготовить точку фиксации запуска из album view)_(future analytics/recs слой сможет читать source=album именно отсюда) UID.019_(Compact TrackProfile index)_(дать будущим album-row/card enhancements опору)_(album screen сможет читать preview profile через TrackRegistry/Intel bridge без загрузки full profile) UID.041_(Showcase semantic filters)_(развести обычный album UI и semantic showcase)_(albums.js не должен превращаться в semantic browser) UID.094_(No-paralysis rule)_(обычные альбомы обязаны работать без intel-слоя)_(любой semantic enhancement на строке трека только optional)
+import { injectIndicator } from '../ui/offline-indicators.js'; import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js'; import { makeFavoritesOnlyAfterPlay, playWithFavoritesOnlyResolution } from './player/favorites-only-actions.js';
+const W = window, D = document, C = W.APP_CONFIG || {}, { $ = id => D.getElementById(id), toStr = v => v == null ? '' : String(v), escHtml = s => String(s || ''), isMobileUA = () => false } = W.AppUtils || {}, FAV = W.SPECIAL_FAVORITES_KEY || '__favorites__', NEWS = W.SPECIAL_RELIZ_KEY || '__reliz__', SHOWCASE = W.SPECIAL_SHOWCASE_KEY || '__showcase__', PROFILE = C.SPECIAL_PROFILE_KEY || '__profile__', GAMES = C.SPECIAL_GAMES_KEY || W.SPECIAL_GAMES_KEY || '__games__', LOGO = 'img/logo.png';
+class AlbumsManager {
+  curr = null; playing = null; cache = new Map(); covers = new Map(); loading = false; galVis = true;
+  async initialize() { if (!W.albumsIndex?.length) try { await W.Utils?.onceEvent?.(W, 'albumsIndex:ready', { timeoutMs: 5000 }); } catch {} this._renderIcons(); this._bindEvents(); const d = C.ICON_ALBUMS_ORDER?.find(x => !x.key.startsWith('__'))?.key || W.albumsIndex?.[0]?.key, k = localStorage.getItem('currentAlbum') || d; if (k) await this.loadAlbum(k); W.addEventListener('quality:changed', () => this.cache.forEach(c => delete c._pTracks)); }
+  _renderIcons() { const b = $('album-icons'); if (!b) return; const iM = isMobileUA(), idx = W.albumsIndex || [], aI = (C.ICON_ALBUMS_ORDER || []).filter(i => i.key && (i.key.startsWith('__') || idx.some(a => a.key === i.key))), aA = aI.filter(i => i.row === 'albums' || (!i.row && !i.key.startsWith('__'))), aN = aI.filter(i => i.row === 'nav' || (!i.row && i.key.startsWith('__'))); const mI = i => { if (i.key === PROFILE) { const l = W.achievementEngine?.profile?.level || '-', x = W.achievementEngine?.profile?.xp !== undefined ? `${W.achievementEngine.profile.xp} XP` : '...'; return `<div class="album-icon profile-dyn-icon" data-album="${i.key}" data-akey="${i.key}" title="${escHtml(i.title)}"><span class="pg-lvl-val" id="pg-lvl-val">${l}</span><div class="pg-xp-cur" id="pg-xp-cur">${x}</div></div>`; } let c = i.icon || LOGO, p1 = c, p2 = c; if (c.includes('icon_album') && !c.includes('Fav_logo')) { p1 = iM ? c.replace(/icon_album\/(.+)\.png$/, 'icon_album/mobile/$1@1x.jpg') : c.replace(/\.png$/, '@1x.png'); p2 = iM ? p1.replace(/@1x\.jpg$/, '@2x.jpg') : p1.replace(/@1x\.png$/, '@2x.png'); } return `<div class="album-icon" data-album="${i.key}" data-akey="${i.key}" title="${escHtml(i.title)}"><img src="${p1}" srcset="${p2} 2x" alt="${escHtml(i.title)}" draggable="false" loading="lazy" width="60" height="60"></div>`; }; b.innerHTML = `<div class="album-icons-row album-icons-row--albums" id="album-icons-albums">${aA.map(mI).join('')}</div><div class="album-icons-row album-icons-row--nav" id="album-icons-nav">${aN.map(mI).join('')}</div>`; }
+  _bindEvents() { const b = $('album-icons'); if (b) { let t = null, d = false; b.addEventListener('touchstart', e => { const k = e.target.closest('.album-icon')?.dataset.album; if (!k || k.startsWith('__')) return; d = false; t = setTimeout(() => { t = null; W.ShowcaseManager?.openColorPicker?.(null, k); }, 600); }, { passive: true }); b.addEventListener('touchmove', () => { d = true; if (t) clearTimeout(t); }, { passive: true }); b.addEventListener('touchend', () => { if (t) clearTimeout(t); }); b.addEventListener('contextmenu', e => { const k = e.target.closest('.album-icon')?.dataset.album; if (k && !k.startsWith('__')) { e.preventDefault(); W.ShowcaseManager?.openColorPicker?.(null, k); } }); b.addEventListener('click', e => { if (d) return; const k = e.target.closest('.album-icon')?.dataset.album; if (!k) return; if (this.curr === k && !k.startsWith('__')) { this.galVis = !this.galVis; const w = $('cover-wrap'); if (w) w.style.display = this.galVis ? '' : 'none'; W.NotificationSystem?.info(this.galVis ? '🖼️ Галерея показана' : '🚫 Галерея скрыта'); } else this.loadAlbum(k); }); } $('track-list')?.addEventListener('click', e => { W.playerCore?.prepareContext?.(); if (this.curr === FAV || e.target.closest('.offline-ind')) return; const tr = e.target.closest('.track'); if (!tr) return; const aK = toStr(tr.dataset.album).trim(), u = toStr(tr.dataset.uid).trim(), pc = W.playerCore; if (!aK || aK.startsWith('__')) return; const s = e.target.closest('.like-star'); if (s && u && pc) { e.preventDefault(); e.stopPropagation(); setFavoriteStarState(s, !pc.isFavorite(u)); s.classList.add('animating'); setTimeout(() => s.classList.remove('animating'), 320); pc.toggleFavorite(u, { fromAlbum: true, albumKey: aK }); return; } const c = this.cache.get(aK); if (!c || !pc) return; this.playing = aK; if (!c._pTracks) c._pTracks = c.tracks.filter(x => x.src).map(x => ({ ...x, artist: c.artist, album: c.title, cover: this.covers.get(aK) || LOGO, sourceAlbum: aK })); const pI = c._pTracks.findIndex(x => x.uid === u); if (pI === -1) return; const aP = makeFavoritesOnlyAfterPlay({ highlight: (i, m) => this.highlightCurrentTrack(i, m), ensureBlock: (i, o) => W.PlayerUI?.ensurePlayerBlock?.(i, o) }); return playWithFavoritesOnlyResolution({ list: c._pTracks, uid: u, albumKey: aK, track: c._pTracks[pI], play: (l, tu) => pc.playExactFromPlaylist?.(l, tu, { dir: 1 }), addFavorite: tu => pc.toggleFavorite(tu, { fromAlbum: true, albumKey: aK }), disableMode: () => localStorage.setItem('favoritesOnlyMode', '0'), afterPlay: () => aP({ index: pI, uid: u, albumKey: aK }) }); }); W.playerCore?.onFavoritesChanged(d => D.querySelectorAll(d?.albumKey ? `.like-star[data-album="${CSS.escape(d.albumKey)}"][data-uid="${CSS.escape(d.uid)}"]` : `.like-star[data-uid="${CSS.escape(d?.uid)}"]`).forEach(el => setFavoriteStarState(el, !!d?.liked))); }
+  async loadAlbum(k) { if (this.loading) return; this.loading = true; this.galVis = true; try { D.body.classList.toggle('profile-view', k === PROFILE); D.body.classList.toggle('games-view', k === GAMES); const tL = $('track-list'), sl = $('social-links'), pb = D.getElementById('lyricsplayerblock'); if (pb && tL?.contains(pb)) D.body.appendChild(pb); if (tL) tL.innerHTML = ''; if (sl) sl.innerHTML = ''; W.GalleryManager?.clear?.(); const sp = { [FAV]: 'loadFavoritesAlbum', [NEWS]: 'loadNewsAlbum', [SHOWCASE]: 'loadShowcaseAlbum', [PROFILE]: 'loadProfileAlbum', [GAMES]: 'loadGamesAlbum' }; if (sp[k]) { const m = await import('./albums/specials.js'), fn = m?.[sp[k]]; if (typeof fn !== 'function') throw new Error(`Missing ${sp[k]}`); await fn(this); } else { if (this.cache.has(k)) delete this.cache.get(k)._pTracks; await W.TrackRegistry?.ensurePopulated?.(); let d = this.cache.get(k); if (!d) { const cfg = W.TrackRegistry?.getAlbumConfig?.(k); if (!cfg) throw new Error(`Missing ${k}`); this.cache.set(k, d = { ...cfg, tracks: W.TrackRegistry?.getTracksForAlbum?.(k) || [] }); } await W.GalleryManager?.loadGallery?.(k); this.covers.set(k, await W.GalleryManager?.getFirstCoverUrl?.(k) || LOGO); const cS = $('cover-slot'), cW = $('cover-wrap'); if (cS && (W.GalleryManager?.getItemsCount?.() || 0) <= 0) cS.innerHTML = `<img src="${LOGO}" alt="Cover">`; if (cW) cW.style.display = ''; this.renderAlbumTitle(d?.title || '—'); if (sl) sl.innerHTML = (d?.links || []).filter(l => l?.url).map(l => `<a href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label}</a>`).join(''); if (tL) { tL.innerHTML = (Array.isArray(d?.tracks) ? d.tracks : []).map((t, i) => `<div class="track" id="trk${i}" data-index="${i}" data-album="${escHtml(k)}" data-uid="${escHtml(t?.uid)}"><div class="tnum">${String(t?.num ?? i + 1).padStart(2, '0')}.</div><div class="track-title">${escHtml(t?.title || 'Без названия')}</div>${renderFavoriteStar(!!(t?.uid && W.playerCore?.isFavorite?.(t.uid)), `data-album="${escHtml(k)}" data-uid="${escHtml(t?.uid)}"`)}</div>`).join(''); tL.querySelectorAll('.track[data-uid]').forEach(el => injectIndicator(el)); } this.highlightCurrentTrack(); W.PlayerUI?.updateMiniHeader?.(); } this.curr = k; localStorage.setItem('currentAlbum', k); D.body.classList.toggle('news-view', k === NEWS); D.querySelectorAll('.album-icon').forEach(e => e.classList.toggle('active', e.dataset.album === k)); const aR = D.getElementById('album-icons-albums'); if (aR) aR.dataset.active = k; if (tL) tL.classList.remove('filtered'); W.PlayerUI?.switchAlbumInstantly?.(k); W.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); } catch (e) { console.error(e); W.NotificationSystem?.error('Ошибка загрузки'); } finally { this.loading = false; } }
+  highlightCurrentTrack() { D.querySelectorAll('.current').forEach(n => { if (['track', 'showcase-track', 'profile-list-item', 'sm-top-row'].some(c => n.classList.contains(c)) || n.tagName === 'LI') n.classList.remove('current'); }); const u = W.playerCore?.getCurrentTrackUid?.(); if (u) D.querySelectorAll(`[data-uid="${CSS.escape(u)}"]`).forEach(el => { if (['track', 'showcase-track', 'profile-list-item', 'sm-top-row'].some(c => el.classList.contains(c)) || el.tagName === 'LI') el.classList.add('current'); }); }
+  getCurrentAlbum() { return this.curr; } getPlayingAlbum() { return this.playing; } setPlayingAlbum(k) { this.playing = k; } getPlayingAlbumTracks() { return W.PlaybackContextSource?.getSourcePlaylistForContext?.(this.playing) || []; } getAlbumSourcePlaylist(k) { return W.PlaybackContextSource?.getSourcePlaylistForContext?.(k) || []; } renderAlbumTitle(t, m) { const e = $('active-album-title'); if (e) { e.textContent = t; e.className = `active-album-title ${m || ''}`; } }
+}
+W.AlbumsManager = new AlbumsManager(); export default W.AlbumsManager;
+
+//=================================================
+// FILE: /scripts/app/albums/specials.js
+// UID.017_(Launch source stats)_(special albums — важные источники запуска и discovery)_(future launches from favorites/news/profile/showcase должны явно различаться в analytics) UID.053_(Rediscovery engine)_(favorites/profile special views станут consumption points для forgotten hits)_(здесь later можно подмешивать rediscovery sections без ломки legacy) UID.063_(Profile recs tab upgrade)_(special profile album станет главным host для personalized intelligence)_(но heavy rec logic должна жить вне этого файла) UID.068_(Public playlist analytics)_(showcase special view — social/discovery surface)_(future playlist analytics и shared flows связывать через showcase/profile layers) UID.094_(No-paralysis rule)_(special albums должны оставаться рабочими без intel)_(любые intelligent blocks строго optional, с fallback на текущий UI)
+import { loadAndRenderNewsInline } from '../../ui/news-inline.js'; import { injectOfflineIndicators } from '../../ui/offline-indicators.js'; import { renderFavoriteStar } from '../../ui/icon-utils.js'; import { loadProfileView } from '../profile/view.js';
+const FAV = window.SPECIAL_FAVORITES_KEY || '__favorites__', NEWS = window.SPECIAL_RELIZ_KEY || '__reliz__', esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s || '')) : String(s || '');
+export async function loadFavoritesAlbum(ctx) {
+  ctx.renderAlbumTitle('⭐⭐⭐ ИЗБРАННОЕ ⭐⭐⭐', 'fav'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none'; const c = document.getElementById('track-list'); if (!c) return;
+  const rb = () => {
+    const pc = window.playerCore; if (!pc) return; const { active = [], inactive = [] } = pc.getFavoritesState() || {}, it = [...active.map(i => ({ ...i, act: 1 })), ...inactive.map(i => ({ ...i, act: 0 }))];
+    const pb = document.getElementById('lyricsplayerblock'), hp = pb && c.contains(pb);
+    if (!it.length) { c.innerHTML = `<div class="fav-empty"><h3>Избранные треки</h3><p>Отметьте треки звёздочкой ⭐</p></div>`; if (hp) c.appendChild(pb); return; }
+    c.innerHTML = it.map((x, i) => {
+      const t = window.TrackRegistry?.getTrackByUid(x.uid) || { title: 'Загрузка...', sourceAlbum: x.sourceAlbum }, aT = window.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || window.albumsIndex?.find(a => a.key === t.sourceAlbum)?.title || 'Альбом';
+      let cv = window.APP_CONFIG?.ICON_ALBUMS_ORDER?.find(j => j.key === t.sourceAlbum)?.icon || 'img/logo.png'; if (window.Utils?.isMobile?.() && /\/icon_album\/[^/]+\.png$/i.test(cv)) { const m = cv.match(/\/icon_album\/([^/]+)\.png$/i); if (m?.[1]) cv = `img/icon_album/mobile/${m[1]}@1x.jpg`; }
+      return `<div class="track ${x.act ? '' : 'inactive'}" id="${esc(`fav_${x.sourceAlbum}_${x.uid}`)}" data-index="${i}" data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"><img src="${esc(cv)}" class="fav-track-thumb" loading="lazy"><div class="track-title fav-track-title-wrap" title="${esc(t.title)} - ${esc(aT)}"><div>${esc(t.title)}</div><div class="fav-track-meta">${esc(aT)}</div></div>${renderFavoriteStar(!!x.act, `data-album="${esc(t.sourceAlbum)}" data-uid="${esc(x.uid)}"`)}</div>`;
+    }).join('');
+    if (hp) { const r = c.querySelector(`.track[data-uid="${CSS.escape(pc.getCurrentTrackUid?.() || '')}"]`) || c.lastElementChild; r ? r.after(pb) : c.appendChild(pb); }
+    injectOfflineIndicators(c); ctx.highlightCurrentTrack();
+  };
+  if (!ctx._favB) {
+    ctx._favB = 1;
+    c.addEventListener('click', e => {
+      if (ctx.getCurrentAlbum() !== FAV || e.target.closest('.offline-ind')) return; const r = e.target.closest('.track'); if (!r) return;
+      const u = r.dataset.uid, aK = r.dataset.album, pc = window.playerCore, isA = pc.getFavoritesState().active.some(x => x.uid === u);
+      if (e.target.closest('.like-star')) return e.preventDefault(), e.stopPropagation(), isA ? pc.toggleFavorite(u, { source: 'favorites', albumKey: aK }) : pc.restoreInactive(u);
+      if (isA) { ctx.setPlayingAlbum(FAV); const tr = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || [], idx = tr.findIndex(t => t.uid === u); if (idx >= 0) { pc.playExactFromPlaylist(tr, u); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); ctx.highlightCurrentTrack(-1, { uid: u, albumKey: aK }); window.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); } }
+      else pc.showInactiveFavoriteModal({ uid: u, title: window.TrackRegistry?.getTrackByUid(u)?.title || 'Трек', onDeleted: () => { rb(); window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); } });
+    });
+    window.playerCore?.onFavoritesChanged(() => { if (ctx.getCurrentAlbum() === FAV) { rb(); const pc = window.playerCore; if (pc && ctx.getPlayingAlbum?.() === FAV) { const aT = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || []; if (aT.length) pc.originalPlaylist = aT; } window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); } });
+  }
+  rb();
+}
+export async function loadShowcaseAlbum(ctx) { ctx.renderAlbumTitle('Витрина Разбита', 'showcase'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none'; if (window.ShowcaseManager) await window.ShowcaseManager.renderTab(); }
+export async function loadNewsAlbum(ctx) { ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none'; window.GalleryManager?.clear?.(); const s = document.getElementById('social-links'); if (s) s.innerHTML = `<a href="https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/" target="_blank" rel="noopener noreferrer">YouTube</a><a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://vk.com/apelsinov" target="_blank" rel="noopener noreferrer">VK</a><a href="https://www.tiktok.com/@vi3na1bita" target="_blank" rel="noopener noreferrer">TikTok</a>`; const c = document.getElementById('track-list'); if (c) await loadAndRenderNewsInline(c); }
+export async function loadProfileAlbum(ctx) { return loadProfileView(ctx); }
+export async function loadGamesAlbum(ctx) {
+  ctx.renderAlbumTitle('🎮 ЗАЛ ВИТРИНЫ 🎮', 'games');
+  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
+  window.GalleryManager?.clear?.();
+  const c = document.getElementById('track-list'); if (!c) return;
+  const { renderGameCenterHost } = await import('../games/host.js');
+  await renderGameCenterHost({ ctx, container: c });
+}
+
+//=================================================
+// FILE: /scripts/app/games/host.js
+// UID.001_(Playback safety invariant)_(Game Center host не управляет плеером)_(только preview/iframe/read-only bridge)
+// UID.006_(Lazy loading)_(iframe грузится только после клика Войти)_(не мешаем startup, iOS background и locked-screen playback)
+// UID.094_(No-paralysis rule)_(ошибка Game Center не ломает музыку)_(fallback показывает информационную карточку)
+// UID.095_(Ownership boundary)_(Game Center — отдельный micro-app)_(основное приложение остаётся владельцем auth/profile/stats/player)
+
+import { createGameBridgeHost } from './bridge-host.js';
+
+const W = window;
+const esc = s => W.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
+
+const fallbackConfig = {
+  status: 'off',
+  enterEnabled: false,
+  title: 'Зал Витрины',
+  eyebrow: 'Game Center',
+  message: 'Раздел временно недоступен.',
+  disabledReason: 'Вход закрыт.',
+  buttonText: 'Войти',
+  roomUrl: './Games/index.html',
+  revision: 'fallback',
+  bridgeVersion: 1
+};
+
+const loadConfig = async () => {
+  try {
+    const m = await import(`./config.js?gc-hard=${Date.now()}`);
+    return m.normalizeGameCenterSwitch?.(m.GAME_CENTER_SWITCH || m.default) || m.default || fallbackConfig;
+  } catch {
+    return fallbackConfig;
+  }
+};
+
+const makeRoomUrl = cfg => {
+  const u = String(cfg.roomUrl || './Games/index.html');
+  const sep = u.includes('?') ? '&' : '?';
+  return `${u}${sep}bridge=1&rev=${encodeURIComponent(cfg.revision || 'dev')}`;
+};
+
+const render = ({ cfg, mounted = false } = {}) => {
+  const canEnter = cfg.status === 'on' && cfg.enterEnabled;
+  return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
+    <div class="gc-panel">
+      <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
+      <div class="gc-panel-title">${esc(cfg.title)}</div>
+      <div class="gc-panel-text">${esc(cfg.message)}</div>
+      ${!canEnter ? `<div class="gc-panel-note">${esc(cfg.disabledReason)}</div>` : ''}
+      <button class="gc-enter-btn" type="button" data-gc-enter ${canEnter ? '' : 'disabled'}>${mounted ? 'Комната открыта' : esc(cfg.buttonText)}</button>
+      <div class="gc-devline">rev: ${esc(cfg.revision)} · bridge v${Number(cfg.bridgeVersion || 1)}</div>
+    </div>
+    <div class="gc-frame-wrap" id="gc-frame-wrap" hidden></div>
+  </section>`;
+};
+
+export const renderGameCenterHost = async ({ container } = {}) => {
+  if (!container) return false;
+  const cfg = await loadConfig();
+  let bridge = null;
+  container.innerHTML = render({ cfg });
+
+  const btn = container.querySelector('[data-gc-enter]');
+  const frameWrap = container.querySelector('#gc-frame-wrap');
+
+  btn?.addEventListener('click', () => {
+    if (btn.disabled || !frameWrap) return;
+    const host = container.querySelector('.gc-host');
+    const panel = container.querySelector('.gc-panel');
+
+    btn.disabled = true;
+    btn.textContent = 'Открываем...';
+    host?.classList.add('is-mounted');
+    if (panel) panel.hidden = true;
+
+    frameWrap.hidden = false;
+    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+    const iframe = frameWrap.querySelector('iframe');
+
+    bridge?.destroy?.();
+    bridge = createGameBridgeHost({
+      iframe,
+      config: cfg,
+      onState: st => {
+        if (st?.state === 'closed_by_game') {
+          try {
+            W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_exit', revision: cfg.revision });
+            W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+          } catch {}
+        }
+      }
+    });
+
+    try {
+      W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_enter', revision: cfg.revision });
+      W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+    } catch {}
+
+    btn.textContent = 'Комната открыта';
+  });
+
+  return true;
+};
+
+export default { renderGameCenterHost };
+
+//=================================================
+// FILE: /scripts/app/games/bridge-host.js
+// UID.001_(Playback safety invariant)_(bridge не принимает playback-команды)_(Game iframe не может pause/stop/mute/seek/next/prev)
+// UID.082_(Local truth vs external telemetry split)_(iframe получает только safe snapshot)_(OAuth token/raw event log/localStorage не передаются)
+// UID.094_(No-paralysis rule)_(ошибка iframe не ломает приложение)_(bridge можно уничтожить без влияния на музыку)
+// UID.095_(Ownership boundary)_(parent остаётся владельцем профиля/stat/auth/backup/player)_(game-app только читает snapshot)
+
+const W = window;
+const safe = v => String(v == null ? '' : v).trim();
+const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+
+const buildSnapshot = ({ config = {} } = {}) => {
+  const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
+  const unlocked = Object.keys(a?.unlocked || {}).length;
+  const total = Array.isArray(a?.achievements) ? a.achievements.length : 0;
+  return {
+    kind: 'GC_SNAPSHOT',
+    app: {
+      version: safe(W.APP_CONFIG?.APP_VERSION || W.VERSION || ''),
+      buildDate: safe(W.APP_CONFIG?.BUILD_DATE || W.BUILD_DATE || ''),
+      bridgeVersion: n(config.bridgeVersion || 1)
+    },
+    gate: {
+      status: safe(config.status || 'off'),
+      enterEnabled: !!config.enterEnabled,
+      revision: safe(config.revision || '')
+    },
+    user: {
+      displayName: safe(ya?.getProfile?.()?.displayName || ya?.getProfile?.()?.login || 'Слушатель'),
+      avatar: safe(ya?.getProfile?.()?.avatar || ''),
+      authStatus: safe(ya?.getSessionStatus?.() || 'logged_out'),
+      yandexLinked: ya?.getSessionStatus?.() === 'active',
+      diskAccess: !!ya?.hasDiskAccess?.()
+    },
+    progress: {
+      level: n(a?.profile?.level || 1),
+      xp: n(a?.profile?.xp || 0),
+      achievementsUnlocked: unlocked,
+      achievementsTotal: total,
+      streak: n(live.projectedStreak || live.streak || 0),
+      totalListenSec: n(live.projectedTotalSec || 0)
+    },
+    player: {
+      playing: !!W.playerCore?.isPlaying?.(),
+      uid: safe(t?.uid || ''),
+      title: safe(t?.title || ''),
+      album: safe(t?.album || W.TrackRegistry?.getAlbumTitle?.(t?.sourceAlbum) || ''),
+      cover: safe(t?.cover || '')
+    }
+  };
+};
+
+export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
+  const bridgeId = crypto.randomUUID();
+  let alive = true;
+
+  const send = (type, payload = {}) => {
+    if (!alive || !iframe?.contentWindow) return false;
+    try {
+      iframe.contentWindow.postMessage({ kind: 'vitrina:game-host', bridgeId, type, payload }, '*');
+      return true;
+    } catch { return false; }
+  };
+
+  const sendSnapshot = () => send('GC_SNAPSHOT', buildSnapshot({ config }));
+
+  const onMessage = e => {
+    if (!alive || e.source !== iframe?.contentWindow) return;
+    const d = e.data || {};
+    if (d.kind !== 'vitrina:game' || d.bridgeId !== bridgeId) return;
+    if (d.type === 'GC_READY' || d.type === 'GC_REQUEST_SNAPSHOT') sendSnapshot();
+
+    if (d.type === 'GC_DOOR_CLICKED') {
+      try {
+        W.eventLogger?.log?.('FEATURE_USED', 'global', {
+          feature: 'game_center_door',
+          door: safe(d.payload?.door || ''),
+          revision: safe(config.revision || '')
+        });
+      } catch {}
+      return;
+    }
+
+    if (d.type === 'GC_PARENT_SCROLL') {
+      const dy = Math.max(-160, Math.min(160, n(d.payload?.deltaY || 0)));
+      if (dy) {
+        try { W.scrollBy({ top: dy, left: 0, behavior: 'auto' }); } catch { W.scrollBy(0, dy); }
+      }
+      return;
+    }
+
+    if (d.type === 'GC_CLOSE') {
+      try {
+        W.eventLogger?.log?.('FEATURE_USED', 'global', {
+          feature: 'game_center_close',
+          revision: safe(config.revision || '')
+        });
+      } catch {}
+      onState?.({ state: 'closed_by_game' });
+    }
+  };
+
+  const onHostUpdate = () => send('GC_HOST_STATE', buildSnapshot({ config }));
+
+  W.addEventListener('message', onMessage);
+  ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.addEventListener(x, onHostUpdate));
+
+  iframe.addEventListener('load', () => {
+    send('GC_INIT', { bridgeId, snapshot: buildSnapshot({ config }) });
+    sendSnapshot();
+  }, { once: true });
+
+  return {
+    bridgeId,
+    sendSnapshot,
+    destroy() {
+      alive = false;
+      W.removeEventListener('message', onMessage);
+      ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.removeEventListener(x, onHostUpdate));
+    }
+  };
+};
+
+export default { createGameBridgeHost };
+
+//=================================================
+// FILE: /scripts/app/games/config.js
+// UID.001_(Playback safety invariant)_(Game Center hard config не имеет доступа к playback)_(этот файл управляет только доступностью/текстами/URL)
+// UID.005_(Soft-disable feature)_(ручной hard-switch для Game Center)_(разработчик может отключить вход для всех пользователей через код)
+// UID.094_(No-paralysis rule)_(ошибка/выключение Game Center не ломает музыку)_(вкладка остаётся информационной, плеер продолжает работать)
+// UID.095_(Ownership boundary)_(Game Center не владеет auth/player/backup)_(main app остаётся источником истины)
+
+export const GAME_CENTER_SWITCH = {
+  status: 'on', // 'on' | 'off'
+  enterEnabled: true,
+  title: 'Зал Витрины',
+  eyebrow: 'Game Center · test room',
+  message: 'Нажмите «Войти», чтобы открыть Game Center с Башней Витрины.',
+  disabledReason: '',
+  buttonText: 'Войти',
+  roomUrl: './Games/index.html',
+  revision: 'gc-2026-05-11-tower-lobby-001',
+  bridgeVersion: 1,
+  minHostAppVersion: '8.5.6'
+};
+
+export const normalizeGameCenterSwitch = raw => {
+  const x = raw && typeof raw === 'object' ? raw : {};
+  const status = String(x.status || 'off').toLowerCase() === 'on' ? 'on' : 'off';
+  return {
+    status,
+    enterEnabled: status === 'on' && x.enterEnabled === true,
+    title: String(x.title || 'Зал Витрины'),
+    eyebrow: String(x.eyebrow || 'Game Center'),
+    message: String(x.message || ''),
+    disabledReason: String(x.disabledReason || 'Раздел временно недоступен.'),
+    buttonText: String(x.buttonText || 'Войти'),
+    roomUrl: String(x.roomUrl || './Games/index.html'),
+    revision: String(x.revision || 'dev'),
+    bridgeVersion: Math.max(1, Number(x.bridgeVersion || 1) || 1),
+    minHostAppVersion: String(x.minHostAppVersion || '')
+  };
+};
+
+export default normalizeGameCenterSwitch(GAME_CENTER_SWITCH);
+
+//=================================================
+// FILE: /scripts/core/config.js
+// UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
+export const APP_CONFIG = {
+  APP_VERSION: '8.5.8',
+  BUILD_DATE: '2026-05-09',
+  PROMOCODE: 'VITRINA2025',
+  ICON_ALBUMS_ORDER: [
+    { key: 'ne-vse-ravno', title: 'Не всё равно', icon: 'img/icon_album/icon-album-04.png', row: 'albums' },
+    { key: 'odnazhdy-v-skazke', title: 'Однажды в Сказке', icon: 'img/icon_album/icon-album-03.png', row: 'albums' },
+    { key: 'golos-dushi', title: 'Голос Души', icon: 'img/icon_album/icon-album-02.png', row: 'albums' },
+    { key: 'mezhdu-zlom-i-dobrom', title: 'Между Злом и Добром', icon: 'img/icon_album/icon-album-01.png', row: 'albums' },
+    { key: 'krevetochka', title: 'КРЕВЕцTOCHKA', icon: 'img/icon_album/icon-album+00.png', row: 'albums' },
+    { key: '__games__', title: 'ЗАЛ ВИТРИНЫ', icon: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%230f1624%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%2228%22%20fill%3D%22%2318273d%22%20stroke%3D%22%234daaff%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2232%22%20y%3D%2240%22%20font-size%3D%2228%22%20text-anchor%3D%22middle%22%3E%F0%9F%8E%AE%3C%2Ftext%3E%3C%2Fsvg%3E', row: 'nav' },
+    { key: '__showcase__', title: 'Витрина Разбита', icon: 'img/logo.png', row: 'nav' },
+    { key: '__favorites__', title: '⭐⭐⭐ИЗБРАННОЕ⭐⭐⭐', icon: 'img/Fav_logo.png', row: 'nav' },
+    { key: '__reliz__', title: 'НОВОСТИ', icon: 'img/icon_album/icon-album-news.png', row: 'nav' },
+    { key: '__profile__', title: 'ЛИЧНЫЙ КАБИНЕТ', icon: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22white%22%3E%3Cpath%20d%3D%22M12%2012c2.21%200%204-1.79%204-4s-1.79-4-4-4-4%201.79-4%204%201.79%204%204%204zm0%202c-2.67%200-8%201.34-8%204v2h16v-2c0-2.66-5.33-4-8-4z%22%2F%3E%3C%2Fsvg%3E', row: 'nav' }
+  ],
+  SPECIAL_FAVORITES_KEY: '__favorites__',
+  SPECIAL_RELIZ_KEY: '__reliz__',
+  SPECIAL_SHOWCASE_KEY: '__showcase__',
+  SPECIAL_PROFILE_KEY: '__profile__',
+  SPECIAL_GAMES_KEY: '__games__',
+  SUPPORT_URL: 'https://vk.com/apelsinov',
+  SUPPORT_EMAIL: 'apel-s-in@ya.ru',
+  GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music',
+  INTEL_LAYER_ENABLED: true,
+  INTEL_LAYER_BOOT_MODE: 'soft',
+  INTEL_LAYER_PROFILE_INDEX_URL: './data/track-profiles-index.json',
+  INTEL_LAYER_PROFILE_DIR: './data/track-profiles/',
+  INTEL_LAYER_STORAGE_DISABLE_KEY: 'intel:disable',
+  INTEL_LAYER_STORAGE_DEV_KEY: 'intel:dev'
+};
+if (typeof window !== 'undefined') {
+  window.APP_CONFIG = APP_CONFIG;
+  window.SPECIAL_FAVORITES_KEY = APP_CONFIG.SPECIAL_FAVORITES_KEY;
+  window.SPECIAL_RELIZ_KEY = APP_CONFIG.SPECIAL_RELIZ_KEY;
+  window.SPECIAL_SHOWCASE_KEY = APP_CONFIG.SPECIAL_SHOWCASE_KEY;
+  window.SPECIAL_GAMES_KEY = APP_CONFIG.SPECIAL_GAMES_KEY;
+}
+
+//=================================================
+// FILE: /scripts/utils/sw-manager.js
+(function (W, N, D) {
+  'use strict';
+  let refreshing = false;
+
+  class SWManager {
+    _clearUpdateUi() {
+      D.getElementById('update-app-panel')?.remove();
+      D.body.classList.remove('sw-update-visible');
+    }
+
+    async init() {
+      if (!('serviceWorker' in N)) return;
+      this._clearUpdateUi();
+
+      // Не reload по controllerchange сам по себе. Reload только если пользователь явно нажал «ОБНОВИТЬ».
+      N.serviceWorker.addEventListener('controllerchange', () => {
+        this._clearUpdateUi();
+        try { W.playerCore?._persistPlaybackState?.(true); } catch {}
+        if (refreshing) {
+          setTimeout(() => W.location.reload(), 80);
+          return;
+        }
+        try { W.NotificationSystem?.info?.('Обновление применится при следующем запуске.', 3500); } catch {}
+      });
+
+      try {
+        this.reg = await N.serviceWorker.register('./service-worker.js', { scope: './' });
+        if (!this.reg.waiting) this._clearUpdateUi(); else this._notifyUpdate();
+        this.reg.addEventListener('updatefound', () => {
+          const nw = this.reg.installing;
+          nw?.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && N.serviceWorker.controller) this._notifyUpdate();
+          });
+        });
+      } catch (e) {
+        console.warn('SW Register Failed:', e);
+      }
+    }
+
+    handleVersionMessage(d) {
+      if (d?.swVer && d.swVer !== (W.VERSION || '')) this._notifyUpdate();
+    }
+
+    _notifyUpdate() {
+      if (D.getElementById('update-app-panel')) return;
+      D.body.classList.add('sw-update-visible');
+      W.NotificationSystem?.info?.('Доступно обновление приложения.', 3500);
+
+      const panel = Object.assign(D.createElement('div'), {
+        id: 'update-app-panel',
+        className: 'sw-update-panel',
+        innerHTML: `<button type="button" class="sw-update-btn sw-update-btn--apply">ОБНОВИТЬ</button><button type="button" class="sw-update-btn sw-update-btn--later">ПОЗЖЕ</button>`
+      });
+
+      panel.querySelector('.sw-update-btn--apply')?.addEventListener('click', () => this.applyUpdate());
+      panel.querySelector('.sw-update-btn--later')?.addEventListener('click', () => {
+        this._clearUpdateUi();
+        W.NotificationSystem?.info?.('Обновится после перезапуска страницы.', 3500);
+      });
+
+      D.body.appendChild(panel);
+    }
+
+    applyUpdate() {
+      refreshing = true;
+      try { W.playerCore?._persistPlaybackState?.(true); } catch {}
+      const waiting = this.reg?.waiting;
+      if (waiting) {
+        waiting.postMessage?.({ type: 'SKIP_WAITING' });
+        setTimeout(() => { if (refreshing) W.location.reload(); }, 1800);
+      } else {
+        W.location.reload();
+      }
+    }
+
+    getCacheSize() {
+      if (!this.reg?.active) return Promise.resolve(0);
+      return new Promise(r => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = e => r(e.data?.size || 0);
+        setTimeout(() => r(0), 1000);
+        this.reg.active.postMessage({ type: 'GET_CACHE_SIZE' }, [ch.port2]);
+      });
+    }
+  }
+
+  W.ServiceWorkerManager = new SWManager();
+  D.readyState === 'loading' ? D.addEventListener('DOMContentLoaded', () => W.ServiceWorkerManager.init()) : W.ServiceWorkerManager.init();
+})(window, navigator, document);
+
+//=================================================
+// FILE: /styles/games.css
+/* Game Center host in main app. No audio, no WebGL, no autoplay. */
+body.games-view #cover-wrap{display:none!important}
+body.games-view #track-list{max-width:395px;width:100%}
+
+.active-album-title.games{color:#8ab8fd;letter-spacing:.03em}
+
+.gc-host{
+  width:100%;
+  margin:8px auto 20px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  animation:fadeInUp .25s ease-out;
+}
+
+.gc-panel{
+  border-radius:16px;
+  padding:14px;
+  background:linear-gradient(180deg,rgba(22,28,40,.96),rgba(12,16,24,.98));
+  border:1px solid rgba(77,170,255,.18);
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+}
+
+.gc-panel-kicker{
+  font-size:10px;
+  color:#8ab8fd;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  font-weight:900;
+}
+
+.gc-panel-title{
+  font-size:18px;
+  color:#fff;
+  font-weight:900;
+  margin-top:4px;
+}
+
+.gc-panel-text{
+  font-size:12px;
+  color:#9db7dd;
+  line-height:1.45;
+  margin-top:8px;
+}
+
+.gc-panel-note{
+  font-size:12px;
+  color:#ffb74d;
+  line-height:1.4;
+  margin-top:10px;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(255,152,0,.08);
+  border:1px solid rgba(255,152,0,.18);
+}
+
+.gc-enter-btn{
+  width:100%;
+  min-height:46px;
+  margin-top:12px;
+  border:0;
+  border-radius:14px;
+  background:linear-gradient(135deg,#4daaff,#7c4dff);
+  color:#fff;
+  font-size:13px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  cursor:pointer;
+  box-shadow:0 8px 22px rgba(77,170,255,.22);
+  transition:transform .12s,filter .16s,opacity .16s;
+}
+
+.gc-enter-btn:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
+.gc-enter-btn:active:not(:disabled){transform:scale(.98)}
+.gc-enter-btn:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.25);box-shadow:none}
+
+.gc-devline{
+  margin-top:8px;
+  font-size:10px;
+  color:#556b88;
+  text-align:center;
+}
+
+.gc-frame-wrap{
+  width:100%;
+  aspect-ratio:9/16;
+  height:auto;
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid rgba(77,170,255,.22);
+  background:#05080d;
+  box-shadow:0 12px 34px rgba(0,0,0,.48);
+}
+
+.gc-frame{
+  display:block;
+  width:100%;
+  height:100%;
+  border:0;
+  background:#05080d;
+  overflow:hidden;
+}
+
+@media(max-width:380px){
+  .gc-panel{padding:12px}
+}
+.gc-host.is-mounted{
+  margin-top:0;
+}
+
+.gc-host.is-mounted .gc-panel{
+  display:none!important;
+}
+
+.gc-host.is-mounted .gc-frame-wrap{
+  margin-top:0;
+}
+
+//=================================================
+// FILE: /styles/main.css
+/* ==========================================
+   ГЛАВНЫЙ ЛЕЙАУТ И БАЗОВЫЕ СПИСКИ (main.css)
+   Здесь остался только скелет приложения.
+   Все модули вынесены в отдельные файлы.
+   ========================================== */
+
+#main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px env(safe-area-inset-bottom)}
+#now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
+#hotkeys-btn.hotkeys-hidden,#sysinfo-btn.sysinfo-hidden{display:none}
+
+.active-album-title{width:100%;max-width:400px;margin:18px auto 6px;text-align:center;color:#eaf2ff;font-weight:900;letter-spacing:.01em;line-height:1.15;text-shadow:0 1px 0 rgba(0,0,0,.35);font-size:clamp(18px,4.6vw,24px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.active-album-title.fav{color:#ffd166;letter-spacing:.06em}
+.active-album-title.news{color:var(--c-blue);letter-spacing:.02em}
+
+/* --- КОНТЕЙНЕР ИКОНОК АЛЬБОМОВ --- */
+.album-icons{display:flex;flex-direction:column;gap:10px;margin:12px auto 0;max-width:400px;width:100%;padding:4px 8px}
+
+/* --- РЯД: ДВЕ СТРОКИ --- */
+.album-icons-row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
+.album-icons-row--albums{flex-wrap:nowrap}
+.album-icons-row--nav{flex-wrap:nowrap}
+
+/* --- БАЗОВАЯ ИКОНКА --- */
+.album-icon{
+  flex-shrink:0;
+  border-radius:10px;overflow:hidden;
+  border:1px solid var(--border-color);cursor:pointer;
+  filter:grayscale(70%) brightness(.88);opacity:.72;
+  transition:width .3s cubic-bezier(.4,0,.2,1),
+             height .3s cubic-bezier(.4,0,.2,1),
+             min-width .3s cubic-bezier(.4,0,.2,1),
+             filter .25s,opacity .25s,
+             box-shadow .25s,transform .15s;
+  touch-action:manipulation;-webkit-touch-callout:none;
+  width:clamp(52px,13.5vw,72px);
+  height:clamp(52px,13.5vw,72px);
+}
+.album-icon img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* --- АКТИВНАЯ ИКОНКА В РЯДУ АЛЬБОМОВ --- */
+.album-icons-row--albums .album-icon.active{
+  filter:none;opacity:1;
+  box-shadow:0 2px 14px rgba(77,170,255,.35);
+  width:clamp(64px,17vw,82px);
+  height:clamp(64px,17vw,82px);
+  border-color:rgba(77,170,255,.45);
+}
+
+/* --- НАВИГАЦИОННЫЙ РЯД: все иконки одинакового размера --- */
+.album-icons-row--nav .album-icon{
+  width:clamp(60px,15vw,76px);
+  height:clamp(60px,15vw,76px);
+}
+.album-icons-row--nav .album-icon.active{
+  filter:none;opacity:1;
+  box-shadow:0 2px 10px rgba(0,0,0,.35);
+  border-color:var(--secondary-color);
+}
+
+/* --- HOVER / ACTIVE --- */
+.album-icon:hover{transform:translateY(-2px);opacity:.9}
+.album-icon:active{transform:translateY(0) scale(.95)}
+
+/* --- Profile dynamic icon в nav-ряду --- */
+.album-icons-row--nav .profile-dyn-icon{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:4px;gap:2px;background:rgba(255,255,255,.03);
+}
+
+.track-list{margin:0 auto;max-width:370px;width:100%;font-size:1.05em;color:var(--c-e);background:0;padding:0}
+.fav-empty{padding:20px;text-align:center;color:#8ab8fd}
+.fav-empty h3{margin:0 0 10px}
+.fav-empty p{margin:0;opacity:.9}
+.fav-track-thumb{width:32px;height:32px;border-radius:4px;margin:0 8px 0 4px;object-fit:cover;flex-shrink:0}
+.fav-track-title-wrap{margin-left:0!important}
+.fav-track-meta{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.track{display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background .13s,transform .1s;background:0 0;user-select:none}
+.track:hover{background:rgba(255,255,255,.05)}
+.track.current{background:#232b38!important;border-left:3px solid var(--secondary-color)!important}
+.track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
+.track.inactive{opacity:.45;filter:grayscale(.6)}
+.favonly-filtered [data-hidden-by-favonly]{display:none!important}
+.tnum{min-width:30px;color:var(--c-blue);font-weight:500}
+.track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+
+.track,.player-control-btn,.offline-btn,button,a,input,select,textarea,[role="button"]{touch-action:manipulation;-webkit-touch-callout:none}
+
+.logo-bottom{max-width:112px;width:23vw;min-width:66px;height:auto;display:block;margin:0 auto 15px!important;cursor:pointer;transition:transform .05s ease-out!important;will-change:transform,filter;transform:translateZ(0);transform-origin:center}
+.logo-bottom:hover{opacity:.9}
+.bottom-controls-center{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:32px auto 0;gap:10px;width:100%;max-width:300px;padding-bottom:env(safe-area-inset-bottom)}
+
+#install-pwa-btn{display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;background:linear-gradient(135deg,#7c4dff,#4daaff);border:0;border-radius:14px;font-size:14px;font-weight:900;letter-spacing:0.5px;margin:0 auto 10px;padding:14px 20px;cursor:pointer;width:100%;max-width:370px;box-shadow:0 6px 20px rgba(124,77,255,.4);transition:transform .2s,box-shadow .2s,filter .2s;text-transform:uppercase}
+#install-pwa-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(124,77,255,.5);filter:brightness(1.1)}
+#install-pwa-btn:active{transform:translateY(0);box-shadow:0 4px 15px rgba(124,77,255,.4)}
+@media (display-mode: standalone) { #install-pwa-btn { display: none !important; } }
+
+.feedback-link,.support-link,.hotkeys-btn{color:var(--secondary-color)!important;text-decoration:underline!important;font-weight:800;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:color .18s;font-size:1em;display:block;text-align:center;width:100%;margin:6px 0;background:0 0;border:0;padding:8px}
+.feedback-link:hover,.support-link:hover,.hotkeys-btn:hover{color:var(--c-w)!important}
+
+.offline-btn{min-width:110px;height:40px;font-size:1.05em;font-weight:900;border:0;border-radius:10px;cursor:pointer;letter-spacing:.07em;box-shadow:0 2px 8px rgba(6,0,0,.2);transition:background .2s,color .14s,transform .1s,box-shadow .2s;display:block;margin:10px auto 0}
+.offline-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(6,0,0,.3)}
+.offline-btn:active{transform:translateY(0)}
+
+@media (max-width:600px){ .hotkeys-btn{display:none!important} }
+@media (max-width:380px){ .album-icon{width:54px;height:54px} .album-icon.active{width:60px;height:60px} }
+@media (display-mode:standalone){.bottom-controls-center{padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
+
