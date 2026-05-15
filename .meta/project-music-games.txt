@@ -475,7 +475,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-14 22:56:19 UTC
+Сгенерировано: 2026-05-15 14:10:58 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1759,7 +1759,27 @@ body.games-view #track-list{max-width:395px;width:100%}
 }
 
 .gc-host.is-mounted .gc-frame-wrap{
-  margin-top:0;
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  width:100vw;
+  height:100dvh;
+  max-width:none;
+  margin:0;
+  border:0;
+  border-radius:0;
+  aspect-ratio:auto;
+  box-shadow:none;
+  background:#03040c;
+}
+
+.gc-host.is-mounted .gc-frame{
+  width:100%;
+  height:100%;
+}
+
+body:has(.gc-host.is-mounted){
+  overflow:hidden;
 }
 
 //=================================================
