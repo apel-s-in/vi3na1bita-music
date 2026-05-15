@@ -475,7 +475,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-15 14:10:58 UTC
+Сгенерировано: 2026-05-15 14:13:54 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1270,21 +1270,51 @@ const loadConfig = async () => {
   }
 };
 
+const getInviteParams = () => {
+  const p = new URLSearchParams(W.location.search);
+  const gcGame = p.get('gcGame') || p.get('game') || '';
+  const room = p.get('room') || '';
+  const key = p.get('key') || p.get('secret') || '';
+
+  return {
+    hasInvite: gcGame === 'war_hearts' && !!room && !!key,
+    gcGame,
+    room,
+    key
+  };
+};
+
 const makeRoomUrl = cfg => {
-  const u = String(cfg.roomUrl || './Games/index.html');
-  const sep = u.includes('?') ? '&' : '?';
-  return `${u}${sep}bridge=1&rev=${encodeURIComponent(cfg.revision || 'dev')}`;
+  const url = new URL(String(cfg.roomUrl || './Games/index.html'), W.location.href);
+  const invite = getInviteParams();
+
+  url.searchParams.set('bridge', '1');
+  url.searchParams.set('rev', cfg.revision || 'dev');
+
+  if (invite.hasInvite) {
+    url.searchParams.set('gcGame', invite.gcGame);
+    url.searchParams.set('room', invite.room);
+    url.searchParams.set('key', invite.key);
+  }
+
+  return url.toString();
 };
 
 const render = ({ cfg, mounted = false } = {}) => {
   const canEnter = cfg.status === 'on' && cfg.enterEnabled;
+  const invite = getInviteParams();
+  const buttonText = invite.hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
+  const message = invite.hasInvite
+    ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.'
+    : esc(cfg.message);
+
   return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
     <div class="gc-panel">
       <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
       <div class="gc-panel-title">${esc(cfg.title)}</div>
-      <div class="gc-panel-text">${esc(cfg.message)}</div>
+      <div class="gc-panel-text">${message}</div>
       ${!canEnter ? `<div class="gc-panel-note">${esc(cfg.disabledReason)}</div>` : ''}
-      <button class="gc-enter-btn" type="button" data-gc-enter ${canEnter ? '' : 'disabled'}>${mounted ? 'Комната открыта' : esc(cfg.buttonText)}</button>
+      <button class="gc-enter-btn" type="button" data-gc-enter ${canEnter ? '' : 'disabled'}>${mounted ? 'Комната открыта' : buttonText}</button>
       <div class="gc-devline">rev: ${esc(cfg.revision)} · bridge v${Number(cfg.bridgeVersion || 1)}</div>
     </div>
     <div class="gc-frame-wrap" id="gc-frame-wrap" hidden></div>
@@ -1324,6 +1354,13 @@ export const renderGameCenterHost = async ({ container } = {}) => {
             W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_exit', revision: cfg.revision });
             W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
           } catch {}
+
+          frameWrap.hidden = true;
+          frameWrap.innerHTML = '';
+          host?.classList.remove('is-mounted');
+          if (panel) panel.hidden = false;
+          btn.disabled = false;
+          btn.textContent = getInviteParams().hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
         }
       }
     });
