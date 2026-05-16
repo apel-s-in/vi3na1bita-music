@@ -232,6 +232,7 @@ vi3na1bita-music/
 │   │   ├── logo@1x.jpg
 │   │   └── logo@2x.jpg
 │   ├── .gitkeep
+│   ├── bg-in.webp
 │   ├── Fav_logo.png
 │   ├── logo.png
 │   └── vitrina-crack-01.svg
@@ -474,7 +475,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-15 14:16:02 UTC
+Сгенерировано: 2026-05-16 13:19:44 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
