@@ -475,7 +475,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-16 15:48:11 UTC
+Сгенерировано: 2026-05-16 18:03:37 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9952,7 +9952,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 // FILE: /styles/games.css
 /* Game Center host in main app. No audio, no WebGL, no autoplay. */
 body.games-view {
-  background: linear-gradient(180deg,rgba(22,28,40,.92),rgba(12,16,24,.96)), url('../img/bg-in.webp') center/cover no-repeat fixed !important;
+  background: var(--primary-bg) !important;
 }
 
 body.games-view #cover-wrap{display:none!important}
@@ -9972,10 +9972,19 @@ body.games-view #track-list{max-width:395px;width:100%}
 }
 
 .gc-panel{
-  padding:20px 14px;
-  background:transparent;
-  border:none;
-  box-shadow:none;
+  border-radius:16px;
+  padding:24px 16px;
+  background:linear-gradient(180deg,rgba(22,28,40,.92),rgba(12,16,24,.96)), url('../img/bg-in.webp') center/cover no-repeat;
+  border:1px solid rgba(77,170,255,.18);
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 9/16;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .gc-panel-kicker{
