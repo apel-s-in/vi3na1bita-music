@@ -476,7 +476,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-17 20:38:39 UTC
+Сгенерировано: 2026-05-17 20:39:28 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10190,7 +10190,7 @@ body:has(.gc-host.is-mounted){
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 100000;
+  z-index: 10005;
   width: 140px;
   height: 140px;
   display: flex;
