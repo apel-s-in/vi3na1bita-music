@@ -475,7 +475,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-17 11:19:49 UTC
+Сгенерировано: 2026-05-17 11:47:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3863,6 +3863,8 @@ const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 const buildSnapshot = ({ config = {} } = {}) => {
   const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
   const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
+  const unlocked = Object.keys(a?.unlocked || {}).length;
+  const total = Array.isArray(a?.achievements) ? a.achievements.length : 0;
   let gameData = {};
   try { gameData = JSON.parse(localStorage.getItem(`gc_data_${gcId}`) || '{}'); } catch {}
   return {
