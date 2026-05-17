@@ -470,12 +470,13 @@ vi3na1bita-music/
 ├── .gitignore
 ├── albums.json
 ├── generate-context.js
+├── icon_game.png
 ├── index.html
 ├── manifest.json
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-17 11:47:17 UTC
+Сгенерировано: 2026-05-17 19:58:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
