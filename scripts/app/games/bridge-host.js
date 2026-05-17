@@ -105,6 +105,62 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       return;
     }
 
+    if (d.type === 'GC_COLLAPSE_GAME') {
+      const host = document.querySelector('.gc-host.is-mounted');
+      if (host) host.style.display = 'none';
+
+      const pc = W.playerCore;
+      const am = W.AlbumsManager;
+      if (pc && am) {
+        const track = pc.getCurrentTrack();
+        if (track && track.sourceAlbum) {
+          am.loadAlbum(track.sourceAlbum).then(() => {
+            setTimeout(() => {
+              const el = document.querySelector(`.track[data-uid="${CSS.escape(track.uid)}"]`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+          });
+        }
+      }
+
+      let floater = document.getElementById('gc-floating-heart');
+      if (!floater) {
+        floater = document.createElement('div');
+        floater.id = 'gc-floating-heart';
+        floater.innerHTML = `
+          <div class="gc-floating-pulse"></div>
+          <img src="img/icon_game.png" class="gc-floating-img" alt="Разбитое сердце">
+          <div class="gc-floating-text">ВЕРНИСЬ<br>В ИГРУ</div>
+          <button class="gc-floating-close" aria-label="Закрыть игру">✕</button>
+        `;
+        document.body.appendChild(floater);
+
+        const restore = () => {
+          floater.remove();
+          if (host) host.style.display = '';
+        };
+
+        floater.querySelector('.gc-floating-img').onclick = restore;
+        floater.querySelector('.gc-floating-text').onclick = restore;
+
+        floater.querySelector('.gc-floating-close').onclick = (e) => {
+          e.stopPropagation();
+          W.Modals?.confirm?.({
+            title: 'Выход из игры',
+            textHtml: 'Сессия прервётся, и не законченные игры не принесут очки. Точно выйти?',
+            confirmText: 'Выйти',
+            cancelText: 'Отмена',
+            onConfirm: () => {
+              floater.remove();
+              if (host) host.style.display = ''; // Возвращаем видимость перед удалением DOM
+              onState?.({ state: 'closed_by_game' });
+            }
+          });
+        };
+      }
+      return;
+    }
+
     if (d.type === 'GC_CLOSE') {
       try {
         W.eventLogger?.log?.('FEATURE_USED', 'global', {
