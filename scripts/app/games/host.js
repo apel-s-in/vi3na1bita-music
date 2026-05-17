@@ -115,14 +115,19 @@ export const renderGameCenterHost = async ({ container } = {}) => {
             W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
           } catch {}
 
-          frameWrap.hidden = true;
-          frameWrap.innerHTML = '';
-          host?.classList.remove('is-mounted');
-          if (panel) panel.hidden = false;
-          btn.disabled = false;
-          btn.textContent = getInviteParams().hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
+            frameWrap.hidden = true;
+            frameWrap.innerHTML = '';
+            host?.classList.remove('is-mounted');
+            if (panel) panel.hidden = false;
+            btn.disabled = false;
+            btn.textContent = getInviteParams().hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
+
+            // Если хост был перенесен в body при сворачивании, удаляем его
+            if (host && host.parentElement === document.body) {
+              host.remove();
+            }
+          }
         }
-      }
     });
 
     try {
