@@ -10,6 +10,8 @@ const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 const buildSnapshot = ({ config = {} } = {}) => {
   const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
   const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
+  const unlocked = Object.keys(a?.unlocked || {}).length;
+  const total = Array.isArray(a?.achievements) ? a.achievements.length : 0;
   let gameData = {};
   try { gameData = JSON.parse(localStorage.getItem(`gc_data_${gcId}`) || '{}'); } catch {}
   return {
