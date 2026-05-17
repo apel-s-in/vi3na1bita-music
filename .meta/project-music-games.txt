@@ -235,6 +235,7 @@ vi3na1bita-music/
 │   ├── .gitkeep
 │   ├── bg-in.webp
 │   ├── Fav_logo.png
+│   ├── icon_game.png
 │   ├── logo.png
 │   └── vitrina-crack-01.svg
 ├── news/
@@ -471,13 +472,12 @@ vi3na1bita-music/
 ├── .gitignore
 ├── albums.json
 ├── generate-context.js
-├── icon_game.png
 ├── index.html
 ├── manifest.json
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-17 19:58:51 UTC
+Сгенерировано: 2026-05-17 20:01:19 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
