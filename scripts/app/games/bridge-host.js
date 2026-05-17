@@ -107,7 +107,10 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
 
     if (d.type === 'GC_COLLAPSE_GAME') {
       const host = document.querySelector('.gc-host.is-mounted');
-      if (host) host.style.display = 'none';
+      if (host) {
+        document.body.appendChild(host); // Спасаем iframe от уничтожения при рендере альбома
+        host.style.display = 'none';
+      }
 
       const pc = W.playerCore;
       const am = W.AlbumsManager;
@@ -152,7 +155,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
             cancelText: 'Отмена',
             onConfirm: () => {
               floater.remove();
-              if (host) host.style.display = ''; // Возвращаем видимость перед удалением DOM
+              if (host) host.remove(); // Удаляем спасенный контейнер из body
               onState?.({ state: 'closed_by_game' });
             }
           });
