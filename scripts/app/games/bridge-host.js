@@ -9,8 +9,9 @@ const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 
 const buildSnapshot = ({ config = {} } = {}) => {
   const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
-  const unlocked = Object.keys(a?.unlocked || {}).length;
-  const total = Array.isArray(a?.achievements) ? a.achievements.length : 0;
+  const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
+  let gameData = {};
+  try { gameData = JSON.parse(localStorage.getItem(`gc_data_${gcId}`) || '{}'); } catch {}
   return {
     kind: 'GC_SNAPSHOT',
     app: {
@@ -24,12 +25,14 @@ const buildSnapshot = ({ config = {} } = {}) => {
       revision: safe(config.revision || '')
     },
     user: {
+      gcAccountId: gcId,
       displayName: safe(ya?.getProfile?.()?.displayName || ya?.getProfile?.()?.login || 'Слушатель'),
       avatar: safe(ya?.getProfile?.()?.avatar || ''),
       authStatus: safe(ya?.getSessionStatus?.() || 'logged_out'),
       yandexLinked: ya?.getSessionStatus?.() === 'active',
       diskAccess: !!ya?.hasDiskAccess?.()
     },
+    gameData,
     progress: {
       level: n(a?.profile?.level || 1),
       xp: n(a?.profile?.xp || 0),
@@ -67,6 +70,19 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     const d = e.data || {};
     if (d.kind !== 'vitrina:game' || d.bridgeId !== bridgeId) return;
     if (d.type === 'GC_READY' || d.type === 'GC_REQUEST_SNAPSHOT') sendSnapshot();
+
+    if (d.type === 'GC_SAVE_DATA') {
+      if (d.payload?.gameId && d.payload?.key) {
+        const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
+        try {
+          const root = JSON.parse(localStorage.getItem(`gc_data_${gcId}`) || '{}');
+          root[`${d.payload.gameId}_${d.payload.key}`] = d.payload.data;
+          localStorage.setItem(`gc_data_${gcId}`, JSON.stringify(root));
+          sendSnapshot(); // Рассылаем всем клиентам обновление
+        } catch {}
+      }
+      return;
+    }
 
     if (d.type === 'GC_DOOR_CLICKED') {
       try {
