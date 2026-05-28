@@ -165,17 +165,23 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
           }
 
           const frame = savedHost.querySelector('.gc-frame');
-          try {
-            frame?.contentWindow?.postMessage({
-              kind: 'vitrina:game-host',
-              bridgeId,
-              type: 'GC_RESTORE_GAME',
-              payload: {
-                gameId: d.payload?.gameId || '',
-                at: Date.now()
-              }
-            }, '*');
-          } catch {}
+          const gameId = d.payload?.gameId || 'war_hearts';
+          const post = (type, payload = {}) => {
+            try {
+              frame?.contentWindow?.postMessage({ kind: 'vitrina:game-host', bridgeId, type, payload }, '*');
+            } catch {}
+          };
+
+          // Re-handshake: если Safari/iOS выгрузил JS-state Башни, она заново получит bridgeId и gameId.
+          post('GC_INIT', { bridgeId, snapshot: buildSnapshot({ config }) });
+          post('GC_RESTORE_GAME', { gameId, at: Date.now() });
+          post('GC_SNAPSHOT', buildSnapshot({ config }));
+
+          setTimeout(() => {
+            post('GC_INIT', { bridgeId, snapshot: buildSnapshot({ config }) });
+            post('GC_RESTORE_GAME', { gameId, at: Date.now() });
+            post('GC_SNAPSHOT', buildSnapshot({ config }));
+          }, 160);
         };
 
         floater.querySelector('.gc-floating-img').onclick = restore;
