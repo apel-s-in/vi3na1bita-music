@@ -477,7 +477,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-28 14:31:56 UTC
+Сгенерировано: 2026-05-28 14:57:31 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1498,6 +1498,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       const host = document.querySelector('.gc-host.is-mounted');
       if (host) {
         document.body.appendChild(host); // Спасаем iframe от уничтожения при рендере альбома
+        host.dataset.gcCollapsed = '1';
         host.style.display = 'none';
       }
 
@@ -1531,24 +1532,35 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
           floater.remove();
 
           const savedHost = host || document.querySelector('.gc-host.is-mounted');
-          if (savedHost) {
-            savedHost.style.display = '';
-            savedHost.classList.add('is-mounted');
+          if (!savedHost) return;
+
+          savedHost.dataset.gcCollapsed = '0';
+          savedHost.hidden = false;
+          savedHost.style.display = '';
+          savedHost.classList.add('is-mounted');
+
+          const frameWrap = savedHost.querySelector('#gc-frame-wrap, .gc-frame-wrap');
+          if (frameWrap) {
+            frameWrap.hidden = false;
+            frameWrap.style.display = '';
           }
 
-          const frameWrap = savedHost?.querySelector?.('#gc-frame-wrap');
-          if (frameWrap) frameWrap.hidden = false;
+          const panel = savedHost.querySelector('.gc-panel');
+          if (panel) {
+            panel.hidden = true;
+            panel.style.display = 'none';
+          }
 
-          const panel = savedHost?.querySelector?.('.gc-panel');
-          if (panel) panel.hidden = true;
-
-          const frame = savedHost?.querySelector?.('.gc-frame');
+          const frame = savedHost.querySelector('.gc-frame');
           try {
             frame?.contentWindow?.postMessage({
               kind: 'vitrina:game-host',
               bridgeId,
               type: 'GC_RESTORE_GAME',
-              payload: { at: Date.now() }
+              payload: {
+                gameId: d.payload?.gameId || '',
+                at: Date.now()
+              }
             }, '*');
           } catch {}
         };
@@ -1565,7 +1577,10 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
             cancelText: 'Отмена',
             onConfirm: () => {
               floater.remove();
-              if (host) host.remove(); // Удаляем спасенный контейнер из body
+
+              const savedHost = host || document.querySelector('.gc-host.is-mounted');
+              if (savedHost) savedHost.remove();
+
               onState?.({ state: 'closed_by_game' });
             }
           });
