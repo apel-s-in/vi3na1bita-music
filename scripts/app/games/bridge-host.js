@@ -140,7 +140,28 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
 
         const restore = () => {
           floater.remove();
-          if (host) host.style.display = '';
+
+          const savedHost = host || document.querySelector('.gc-host.is-mounted');
+          if (savedHost) {
+            savedHost.style.display = '';
+            savedHost.classList.add('is-mounted');
+          }
+
+          const frameWrap = savedHost?.querySelector?.('#gc-frame-wrap');
+          if (frameWrap) frameWrap.hidden = false;
+
+          const panel = savedHost?.querySelector?.('.gc-panel');
+          if (panel) panel.hidden = true;
+
+          const frame = savedHost?.querySelector?.('.gc-frame');
+          try {
+            frame?.contentWindow?.postMessage({
+              kind: 'vitrina:game-host',
+              bridgeId,
+              type: 'GC_RESTORE_GAME',
+              payload: { at: Date.now() }
+            }, '*');
+          } catch {}
         };
 
         floater.querySelector('.gc-floating-img').onclick = restore;
