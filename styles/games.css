@@ -119,6 +119,19 @@ body.games-view #track-list{max-width:395px;width:100%}
 @media(max-width:380px){
   .gc-panel{padding:12px}
 }
+.gc-host.is-gc-parked{
+  position:fixed!important;
+  left:-200vw!important;
+  top:0!important;
+  width:1px!important;
+  height:1px!important;
+  min-height:1px!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  overflow:hidden!important;
+  transform:translate3d(-200vw,0,0)!important;
+}
+
 .gc-host.is-mounted{
   margin-top:0;
 }
