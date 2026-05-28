@@ -110,7 +110,8 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       if (host) {
         document.body.appendChild(host); // Спасаем iframe от уничтожения при рендере альбома
         host.dataset.gcCollapsed = '1';
-        host.style.display = 'none';
+        host.classList.add('is-gc-parked');
+        host.style.display = '';
       }
 
       const pc = W.playerCore;
@@ -146,6 +147,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
           if (!savedHost) return;
 
           savedHost.dataset.gcCollapsed = '0';
+          savedHost.classList.remove('is-gc-parked');
           savedHost.hidden = false;
           savedHost.style.display = '';
           savedHost.classList.add('is-mounted');
