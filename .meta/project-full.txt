@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-30 18:19:58 UTC
+Сгенерировано: 2026-05-30 18:21:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3949,6 +3949,24 @@ const applyIdentity = async () => {
   if (id?.friendId && id.friendId !== _lastFriendId) {
     _lastFriendId = id.friendId;
     try { await _core.register(); } catch {}
+    
+    const url = new URL(W.location.href);
+    const addId = url.searchParams.get('addFriend');
+    const addKey = url.searchParams.get('key');
+    
+    if (addId && addKey) {
+      try {
+        await _core.acceptInvite({ inviteId: addId, secret: addKey });
+        W.NotificationSystem?.success?.('Друг успешно добавлен! 🤝');
+      } catch (e) {
+        const msg = e.message === 'self_friend_forbidden' ? 'Нельзя добавить в друзья самого себя' : 'Приглашение устарело или недействительно';
+        W.NotificationSystem?.warning?.(msg);
+      }
+      url.searchParams.delete('addFriend');
+      url.searchParams.delete('key');
+      W.history.replaceState(null, '', url.toString());
+    }
+
     _ui?.refresh?.({ force: true });
     startPushPolling();
   } else {
