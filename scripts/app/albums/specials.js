@@ -36,6 +36,19 @@ export async function loadGamesAlbum(ctx) {
   const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
   window.GalleryManager?.clear?.();
   const c = document.getElementById('track-list'); if (!c) return;
+
+  const friendsHost = document.createElement('div');
+  friendsHost.className = 'vf-host-in-games';
+  c.appendChild(friendsHost);
+  try {
+    const { mountFriendsBlock } = await import('../friends/friends-block.js');
+    await mountFriendsBlock({ container: friendsHost });
+  } catch (e) {
+    console.warn('[Friends] mount failed:', e?.message || e);
+  }
+
+  const gcHost = document.createElement('div');
+  c.appendChild(gcHost);
   const { renderGameCenterHost } = await import('../games/host.js');
-  await renderGameCenterHost({ ctx, container: c });
+  await renderGameCenterHost({ ctx, container: gcHost });
 }
