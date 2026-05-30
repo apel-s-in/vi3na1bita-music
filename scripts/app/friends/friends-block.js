@@ -31,6 +31,7 @@ const applyIdentity = async () => {
 
   if (!prof.active || !prof.yandexId) {
     _core.setIdentity({ friendId: '', yandexLinked: false });
+    W.__vfIdentity = null;
     _lastFriendId = '';
     _ui?.refresh?.();
     return;
@@ -41,6 +42,8 @@ const applyIdentity = async () => {
     displayName: prof.displayName,
     avatar: prof.avatar
   });
+  
+  W.__vfIdentity = id;
 
   // Регистрируем игрока/профиль только при смене аккаунта (экономим вызовы функции).
   if (id?.friendId && id.friendId !== _lastFriendId) {
