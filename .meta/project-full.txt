@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-30 17:39:04 UTC
+Сгенерировано: 2026-05-30 18:01:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3855,6 +3855,7 @@ export async function loadGamesAlbum(ctx) {
 // Тонкий адаптер: основное приложение -> внешний модуль /Friends/
 
 const W = window;
+const D = document;
 const FRIENDS_CORE_URL = '/Friends/friends-core.js';
 const FRIENDS_UI_URL = '/Friends/friends-ui.js';
 
@@ -3863,6 +3864,7 @@ let _ui = null;
 let _container = null;
 let _bound = false;
 let _lastFriendId = '';
+let _pushTimer = 0;
 
 const readYandexProfile = () => {
   const ya = W.YandexAuth;
@@ -3876,6 +3878,52 @@ const readYandexProfile = () => {
   };
 };
 
+const handlePushes = async (items) => {
+  for (const push of items) {
+    if (push.kind === 'GAME_INVITE') {
+      let name = 'Друг';
+      try {
+        const prof = await _core.getProfile(push.fromFriendId);
+        if (prof?.displayName) name = prof.displayName;
+      } catch {}
+
+      W.Modals?.choice?.({
+        title: '🎮 Вызов на дуэль',
+        textHtml: `<b>${W.Utils?.escapeHtml?.(name) || name}</b> приглашает вас в игру <b>Война Сердец</b>.<br><br>Принять вызов?`,
+        actions: [
+          {
+            key: 'accept',
+            text: 'Принять',
+            primary: true,
+            onClick: () => {
+              const u = new URL(W.location.href);
+              u.searchParams.set('gcGame', push.gameId);
+              u.searchParams.set('room', push.roomId);
+              u.searchParams.set('key', push.roomSecret);
+              W.history.pushState(null, '', u.toString());
+              W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
+              W.NotificationSystem?.success?.('Подключаемся к бою...');
+            }
+          },
+          { key: 'reject', text: 'Позже', onClick: () => {} }
+        ]
+      });
+    }
+  }
+};
+
+const startPushPolling = () => {
+  clearInterval(_pushTimer);
+  _pushTimer = setInterval(async () => {
+    // Останавливаем поллинг, если приложение свёрнуто или модуль не готов
+    if (D.hidden || !_core || !_core.isReady()) return;
+    try {
+      const items = await _core.getPushes();
+      if (items.length) handlePushes(items);
+    } catch {}
+  }, 12000); // Опрос каждые 12 секунд
+};
+
 const applyIdentity = async () => {
   if (!_core) return;
   const prof = readYandexProfile();
@@ -3884,6 +3932,7 @@ const applyIdentity = async () => {
     _core.setIdentity({ friendId: '', yandexLinked: false });
     W.__vfIdentity = null;
     _lastFriendId = '';
+    clearInterval(_pushTimer);
     _ui?.refresh?.();
     return;
   }
@@ -3896,22 +3945,18 @@ const applyIdentity = async () => {
   
   W.__vfIdentity = id;
 
-  // Регистрируем игрока/профиль только при смене аккаунта (экономим вызовы функции).
   if (id?.friendId && id.friendId !== _lastFriendId) {
     _lastFriendId = id.friendId;
     try { await _core.register(); } catch {}
     _ui?.refresh?.({ force: true });
+    startPushPolling();
   } else {
     _ui?.refresh?.();
   }
 };
 
 const onGameInvite = async ({ friendId, gameId }) => {
-  // Фаза A: приглашение в игру — заглушка. Реальный flow (room_create + push) появится в Фазе C.
-  W.NotificationSystem?.info?.('Приглашение в игру появится в следующем обновлении.');
-  try {
-    W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'friends_game_invite_intent', gameId: String(gameId || ''), friendId: String(friendId || '') });
-  } catch {}
+  W.NotificationSystem?.info?.('Чтобы пригласить друга, откройте игру в Game Center и нажмите «Пригласить» на экране «Соперник».');
 };
 
 export const mountFriendsBlock = async ({ container } = {}) => {
