@@ -97,6 +97,24 @@ const applyIdentity = async () => {
   if (id?.friendId && id.friendId !== _lastFriendId) {
     _lastFriendId = id.friendId;
     try { await _core.register(); } catch {}
+    
+    const url = new URL(W.location.href);
+    const addId = url.searchParams.get('addFriend');
+    const addKey = url.searchParams.get('key');
+    
+    if (addId && addKey) {
+      try {
+        await _core.acceptInvite({ inviteId: addId, secret: addKey });
+        W.NotificationSystem?.success?.('Друг успешно добавлен! 🤝');
+      } catch (e) {
+        const msg = e.message === 'self_friend_forbidden' ? 'Нельзя добавить в друзья самого себя' : 'Приглашение устарело или недействительно';
+        W.NotificationSystem?.warning?.(msg);
+      }
+      url.searchParams.delete('addFriend');
+      url.searchParams.delete('key');
+      W.history.replaceState(null, '', url.toString());
+    }
+
     _ui?.refresh?.({ force: true });
     startPushPolling();
   } else {
