@@ -477,7 +477,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-28 16:09:41 UTC
+Сгенерировано: 2026-05-30 13:36:59 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1343,7 +1343,7 @@ export const renderGameCenterHost = async ({ container } = {}) => {
     if (panel) panel.hidden = true;
 
     frameWrap.hidden = false;
-    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
     const iframe = frameWrap.querySelector('iframe');
 
     bridge?.destroy?.();
