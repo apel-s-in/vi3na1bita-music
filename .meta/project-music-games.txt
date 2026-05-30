@@ -292,6 +292,8 @@ vi3na1bita-music/
 │   ├── app/
 │   │   ├── albums/
 │   │   │   └── specials.js
+│   │   ├── friends/
+│   │   │   └── friends-block.js
 │   │   ├── games/
 │   │   │   ├── bridge-host.js
 │   │   │   ├── config.js
@@ -477,7 +479,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-30 15:25:01 UTC
+Сгенерировано: 2026-05-30 15:25:51 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
