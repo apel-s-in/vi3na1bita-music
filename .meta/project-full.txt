@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-30 17:38:00 UTC
+Сгенерировано: 2026-05-30 17:39:04 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3987,6 +3987,7 @@ const buildSnapshot = ({ config = {} } = {}) => {
       enterEnabled: !!config.enterEnabled,
       revision: safe(config.revision || '')
     },
+    friend: W.__vfIdentity || null,
     user: {
       gcAccountId: gcId,
       displayName: safe(ya?.getProfile?.()?.displayName || ya?.getProfile?.()?.login || 'Слушатель'),
