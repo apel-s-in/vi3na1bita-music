@@ -26,6 +26,7 @@ const buildSnapshot = ({ config = {} } = {}) => {
       enterEnabled: !!config.enterEnabled,
       revision: safe(config.revision || '')
     },
+    friend: W.__vfIdentity || null,
     user: {
       gcAccountId: gcId,
       displayName: safe(ya?.getProfile?.()?.displayName || ya?.getProfile?.()?.login || 'Слушатель'),
