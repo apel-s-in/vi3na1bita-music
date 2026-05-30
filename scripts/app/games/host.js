@@ -101,7 +101,7 @@ export const renderGameCenterHost = async ({ container } = {}) => {
     if (panel) panel.hidden = true;
 
     frameWrap.hidden = false;
-    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
     const iframe = frameWrap.querySelector('iframe');
 
     bridge?.destroy?.();
