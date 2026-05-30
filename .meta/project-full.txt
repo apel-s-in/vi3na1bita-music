@@ -476,7 +476,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-30 13:36:59 UTC
+Сгенерировано: 2026-05-30 15:24:22 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -762,6 +762,7 @@ jobs:
 <link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
 <link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
 <link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/games.css">
+<link rel="stylesheet" href="/Friends/styles.css">
 <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
