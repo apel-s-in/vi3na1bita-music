@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-30 15:27:30 UTC
+Сгенерировано: 2026-05-30 17:38:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3882,6 +3882,7 @@ const applyIdentity = async () => {
 
   if (!prof.active || !prof.yandexId) {
     _core.setIdentity({ friendId: '', yandexLinked: false });
+    W.__vfIdentity = null;
     _lastFriendId = '';
     _ui?.refresh?.();
     return;
@@ -3892,6 +3893,8 @@ const applyIdentity = async () => {
     displayName: prof.displayName,
     avatar: prof.avatar
   });
+  
+  W.__vfIdentity = id;
 
   // Регистрируем игрока/профиль только при смене аккаунта (экономим вызовы функции).
   if (id?.friendId && id.friendId !== _lastFriendId) {
