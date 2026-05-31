@@ -82,6 +82,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
           root[`${d.payload.gameId}_${d.payload.key}`] = d.payload.data;
           localStorage.setItem(`gc_data_${gcId}`, JSON.stringify(root));
           sendSnapshot(); // Рассылаем всем клиентам обновление
+          W.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'profile', immediate: true } }));
         } catch {}
       }
       return;
