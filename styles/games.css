@@ -5,17 +5,18 @@ body.games-view {
 
 body.games-view #cover-wrap{display:none!important}
 body.games-view #track-list{max-width:395px;width:100%}
-.vf-host-in-games{display:block;width:100%;max-width:320px;margin:0 auto 18px;border-radius:18px;overflow:hidden;background:rgba(8,11,26,.5);border:1px solid rgba(132,145,255,.18)}
+.vf-host-in-games{display:block;width:100%;max-width:320px;margin:0 auto 24px;border-radius:18px;overflow:hidden;background:rgba(8,11,26,.5);border:1px solid rgba(132,145,255,.18);box-sizing:border-box}
+.vf-host-in-games.is-unauth .vf-app{display:none!important}
 .vf-host-in-games .vf-app{position:static!important;inset:auto!important;max-width:none!important;height:auto!important;overflow:visible!important;background:transparent!important;padding:14px!important}
 
 .active-album-title.games{color:#8ab8fd;letter-spacing:.03em;display:none}
 
 .gc-host{
   width:100%;
-  min-height:70vh;
-  margin:0 auto;
+  margin:0 auto 32px;
   display:flex;
   flex-direction:column;
+  align-items:center;
   justify-content:center;
   gap:12px;
   animation:fadeInUp .25s ease-out;
