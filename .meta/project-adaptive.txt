@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-31 14:42:35 UTC
+Сгенерировано: 2026-05-31 14:44:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -853,7 +853,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.6.3'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-31');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.6.4'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-31');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -865,7 +865,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.6.3';
+const SW_VERSION = '8.6.4';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -3884,7 +3884,6 @@ let _container = null;
 let _bound = false;
 let _lastFriendId = '';
 let _pushTimer = 0;
-let _unauthBox = null;
 
 const readYandexProfile = () => {
   const ya = W.YandexAuth;
@@ -3959,16 +3958,19 @@ const applyIdentity = async () => {
     clearInterval(_pushTimer);
     _ui?.refresh?.();
 
-    if (!_unauthBox && _container) {
-      _unauthBox = D.createElement('div');
-      _unauthBox.innerHTML = `<div style="font-size:28px;margin-bottom:12px">🔒</div><button class="yandex-auth-mainbtn" id="vf-ya-login-btn" style="width:100%;max-width:260px;margin-bottom:12px;min-height:46px;font-size:15px;font-weight:900;border-radius:12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;background:linear-gradient(135deg,#d50000,#8f0000);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 22px rgba(213,0,0,.25);transition:opacity .2s,transform .15s"><span style="font-size:20px;line-height:1">Я</span><span>Войти через Яндекс</span></button><div style="font-size:12px;color:#9db7dd;line-height:1.4;text-align:center">Друзья доступны после входа в основном приложении.</div>`;
-      _unauthBox.querySelector('#vf-ya-login-btn').onclick = () => W.YandexAuth?.login?.();
-      _unauthBox.style.cssText = 'padding:30px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;';
-      _container.appendChild(_unauthBox);
+    if (_container) {
+      _container.classList.add('is-unauth');
+      let box = _container.querySelector('.custom-ya-unauth');
+      if (!box) {
+        box = D.createElement('div');
+        box.className = 'custom-ya-unauth';
+        box.innerHTML = `<div style="font-size:28px;margin-bottom:12px">🔒</div><button class="yandex-auth-mainbtn" id="vf-ya-login-btn" style="width:100%;max-width:260px;margin-bottom:12px;min-height:46px;font-size:15px;font-weight:900;border-radius:12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;background:linear-gradient(135deg,#d50000,#8f0000);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 22px rgba(213,0,0,.25);transition:opacity .2s,transform .15s"><span style="font-size:20px;line-height:1">Я</span><span>Войти через Яндекс</span></button><div style="font-size:12px;color:#9db7dd;line-height:1.4;text-align:center">Друзья доступны после входа в основном приложении.</div>`;
+        box.querySelector('#vf-ya-login-btn').onclick = () => W.YandexAuth?.login?.();
+        box.style.cssText = 'padding:30px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;';
+        _container.appendChild(box);
+      }
+      box.style.display = 'flex';
     }
-    if (_unauthBox) _unauthBox.style.display = 'flex';
-    const app = _container.querySelector('.vf-app');
-    if (app) app.style.display = 'none';
     
     // Если есть инвайт, но юзер не авторизован - показываем окно и ждём входа
     if (addId && addKey && !W.sessionStorage.getItem('pending_friend_id')) {
@@ -4005,9 +4007,11 @@ const applyIdentity = async () => {
   
   W.__vfIdentity = id;
 
-  if (_unauthBox) _unauthBox.style.display = 'none';
-  const app = _container.querySelector('.vf-app');
-  if (app) app.style.display = '';
+  if (_container) {
+    _container.classList.remove('is-unauth');
+    const box = _container.querySelector('.custom-ya-unauth');
+    if (box) box.style.display = 'none';
+  }
 
   if (id?.friendId && id.friendId !== _lastFriendId) {
     _lastFriendId = id.friendId;
@@ -6752,7 +6756,7 @@ if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',init);else ini
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.6.3',
+  APP_VERSION: '8.6.4',
   BUILD_DATE: '2026-05-31',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
