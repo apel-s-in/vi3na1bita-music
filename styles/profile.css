@@ -156,7 +156,8 @@
 .prof-reset-wrap{display:flex;justify-content:center;margin-top:8px}
 .backup-btn--dark{background:#444}
 
-.ach-hint-bubble{background:linear-gradient(180deg,rgba(26,34,50,.95),rgba(12,16,24,.98));border-radius:12px;padding:12px 18px;font-size:13px;color:#eaf2ff;font-weight:700;display:flex;align-items:center;justify-content:center;margin:16px auto 8px;max-width:320px;cursor:pointer;border:1px solid rgba(77,170,255,.4);box-shadow:0 6px 16px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .2s,box-shadow .2s}
+.ach-hint-bubble{background:linear-gradient(180deg,rgba(26,34,50,.95),rgba(12,16,24,.98));border-radius:12px;padding:12px 18px;font-size:13px;color:#eaf2ff;font-weight:700;display:flex;align-items:center;justify-content:center;margin:16px auto 8px;width:100%;max-width:320px;height:44px;box-sizing:border-box;overflow:hidden;cursor:pointer;border:1px solid rgba(77,170,255,.4);box-shadow:0 6px 16px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .2s,box-shadow .2s}
+#ach-hint-bubble-text{white-space:nowrap;display:inline-block;transform-origin:center center;transition:opacity 0.3s}
 .ach-hint-bubble:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1);border-color:rgba(77,170,255,.6)}
 .ach-hint-bubble:active{transform:scale(.98)}
 .ach-rpg-header{display:flex;align-items:center;gap:14px;margin-bottom:14px;text-align:left;background:rgba(255,255,255,.03);padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.05)}
