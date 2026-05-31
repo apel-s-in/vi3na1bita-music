@@ -35,12 +35,15 @@ const getInviteParams = () => {
   const gcGame = p.get('gcGame') || p.get('game') || '';
   const room = p.get('room') || '';
   const key = p.get('key') || p.get('secret') || '';
+  const inviteFriend = p.get('inviteFriend') || '';
 
   return {
     hasInvite: gcGame === 'war_hearts' && !!room && !!key,
+    isSendingInvite: gcGame === 'war_hearts' && !!inviteFriend,
     gcGame,
     room,
-    key
+    key,
+    inviteFriend
   };
 };
 
@@ -55,6 +58,9 @@ const makeRoomUrl = cfg => {
     url.searchParams.set('gcGame', invite.gcGame);
     url.searchParams.set('room', invite.room);
     url.searchParams.set('key', invite.key);
+  } else if (invite.isSendingInvite) {
+    url.searchParams.set('gcGame', invite.gcGame);
+    url.searchParams.set('inviteFriend', invite.inviteFriend);
   }
 
   return url.toString();
@@ -63,10 +69,10 @@ const makeRoomUrl = cfg => {
   const render = ({ cfg, mounted = false } = {}) => {
     const canEnter = cfg.status === 'on' && cfg.enterEnabled;
     const invite = getInviteParams();
-    const buttonText = invite.hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
+    const buttonText = invite.hasInvite ? 'Принять приглашение' : (invite.isSendingInvite ? 'Запустить и пригласить' : esc(cfg.buttonText));
     const message = invite.hasInvite
       ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.'
-      : esc(cfg.message);
+      : (invite.isSendingInvite ? 'Запустите игру, чтобы отправить вызов.' : esc(cfg.message));
 
     return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
       <div class="gc-panel">
@@ -99,6 +105,7 @@ const makeRoomUrl = cfg => {
       url.searchParams.delete('room');
       url.searchParams.delete('key');
       url.searchParams.delete('secret');
+      url.searchParams.delete('inviteFriend');
       W.history.replaceState(null, '', url.toString());
       renderGameCenterHost({ container });
     });
