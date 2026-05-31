@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-31 12:36:57 UTC
+Сгенерировано: 2026-05-31 12:37:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4161,6 +4161,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
           root[`${d.payload.gameId}_${d.payload.key}`] = d.payload.data;
           localStorage.setItem(`gc_data_${gcId}`, JSON.stringify(root));
           sendSnapshot(); // Рассылаем всем клиентам обновление
+          W.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'profile', immediate: true } }));
         } catch {}
       }
       return;
