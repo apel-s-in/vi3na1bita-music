@@ -152,7 +152,15 @@ const applyIdentity = async () => {
 };
 
 const onGameInvite = async ({ friendId, gameId }) => {
-  W.NotificationSystem?.info?.('Чтобы пригласить друга, откройте игру в Game Center и нажмите «Пригласить» на экране «Соперник».');
+  D.querySelector('.vf-modal-ov')?.remove();
+  
+  const u = new URL(W.location.href);
+  u.searchParams.set('gcGame', gameId);
+  u.searchParams.set('inviteFriend', friendId);
+  W.history.pushState(null, '', u.toString());
+  
+  W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
+  W.NotificationSystem?.success?.('Запускаем игру...');
 };
 
 export const mountFriendsBlock = async ({ container } = {}) => {
