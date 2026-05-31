@@ -111,18 +111,25 @@ const makeRoomUrl = cfg => {
     });
 
     btn?.addEventListener('click', () => {
-    if (btn.disabled || !frameWrap) return;
-    const host = container.querySelector('.gc-host');
-    const panel = container.querySelector('.gc-panel');
+      if (btn.disabled || !frameWrap) return;
+      const host = container.querySelector('.gc-host');
+      const panel = container.querySelector('.gc-panel');
 
-    btn.disabled = true;
-    btn.textContent = 'Открываем...';
-    host?.classList.add('is-mounted');
-    if (panel) panel.hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Открываем...';
+      host?.classList.add('is-mounted');
+      if (panel) panel.hidden = true;
 
-    frameWrap.hidden = false;
-    frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
-    const iframe = frameWrap.querySelector('iframe');
+      frameWrap.hidden = false;
+      frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+      const iframe = frameWrap.querySelector('iframe');
+
+      // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
+      const u = new URL(W.location.href);
+      if (u.searchParams.has('inviteFriend')) {
+        u.searchParams.delete('inviteFriend');
+        W.history.replaceState(null, '', u.toString());
+      }
 
     bridge?.destroy?.();
     bridge = createGameBridgeHost({
