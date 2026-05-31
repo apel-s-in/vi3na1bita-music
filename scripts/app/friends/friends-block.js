@@ -76,6 +76,10 @@ const startPushPolling = () => {
 const applyIdentity = async () => {
   if (!_core) return;
   const prof = readYandexProfile();
+  
+  const url = new URL(W.location.href);
+  const addId = url.searchParams.get('addFriend') || W.sessionStorage.getItem('pending_friend_id');
+  const addKey = url.searchParams.get('key') || W.sessionStorage.getItem('pending_friend_key');
 
   if (!prof.active || !prof.yandexId) {
     _core.setIdentity({ friendId: '', yandexLinked: false });
@@ -83,6 +87,31 @@ const applyIdentity = async () => {
     _lastFriendId = '';
     clearInterval(_pushTimer);
     _ui?.refresh?.();
+    
+    // Если есть инвайт, но юзер не авторизован - показываем окно и ждём входа
+    if (addId && addKey && !W.sessionStorage.getItem('pending_friend_id')) {
+      try {
+        const info = await _core.getInviteInfo(addId, addKey);
+        const inviterName = info?.fromProfile?.displayName || 'Пользователь';
+        W.Modals?.choice?.({
+          title: '👋 Заявка в друзья',
+          textHtml: `<b>${W.Utils?.escapeHtml?.(inviterName)}</b> приглашает вас в друзья.<br><br>Авторизуйтесь через Яндекс Аккаунт, чтобы принять заявку.`,
+          actions: [
+            { key: 'login', text: 'Войти через Яндекс', primary: true, onClick: () => {
+                W.sessionStorage.setItem('pending_friend_id', addId);
+                W.sessionStorage.setItem('pending_friend_key', addKey);
+                W.YandexAuth?.login?.();
+            }},
+            { key: 'cancel', text: 'Отмена', onClick: () => {} }
+          ]
+        });
+      } catch (e) {
+        W.NotificationSystem?.warning?.('Приглашение устарело или недействительно');
+      }
+      url.searchParams.delete('addFriend');
+      url.searchParams.delete('key');
+      W.history.replaceState(null, '', url.toString());
+    }
     return;
   }
 
@@ -98,10 +127,7 @@ const applyIdentity = async () => {
     _lastFriendId = id.friendId;
     try { await _core.register(); } catch {}
     
-    const url = new URL(W.location.href);
-    const addId = url.searchParams.get('addFriend');
-    const addKey = url.searchParams.get('key');
-    
+    // Если есть отложенный или URL инвайт — принимаем
     if (addId && addKey) {
       try {
         await _core.acceptInvite({ inviteId: addId, secret: addKey });
@@ -110,6 +136,8 @@ const applyIdentity = async () => {
         const msg = e.message === 'self_friend_forbidden' ? 'Нельзя добавить в друзья самого себя' : 'Приглашение устарело или недействительно';
         W.NotificationSystem?.warning?.(msg);
       }
+      W.sessionStorage.removeItem('pending_friend_id');
+      W.sessionStorage.removeItem('pending_friend_key');
       url.searchParams.delete('addFriend');
       url.searchParams.delete('key');
       W.history.replaceState(null, '', url.toString());
