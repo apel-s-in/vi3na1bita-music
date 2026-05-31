@@ -1,6 +1,7 @@
 (function (W, N, D) {
   'use strict';
   let refreshing = false;
+  let silentUpdate = false;
   let progBar = null;
 
   class SWManager {
@@ -43,6 +44,10 @@
           setTimeout(() => W.location.reload(), 80);
           return;
         }
+        if (silentUpdate) {
+          silentUpdate = false;
+          return;
+        }
         try { W.NotificationSystem?.info?.('Обновление применится при следующем запуске.', 3500); } catch {}
       });
 
@@ -52,7 +57,18 @@
         this.reg.addEventListener('updatefound', () => {
           const nw = this.reg.installing;
           nw?.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && N.serviceWorker.controller) this._notifyUpdate();
+            if (nw.state === 'installed' && N.serviceWorker.controller) {
+              const ch = new MessageChannel();
+              ch.port1.onmessage = e => {
+                if (e.data?.version && e.data.version !== (W.VERSION || '')) {
+                  this._notifyUpdate();
+                } else {
+                  silentUpdate = true;
+                  nw.postMessage({ type: 'SKIP_WAITING' });
+                }
+              };
+              nw.postMessage({ type: 'GET_SW_VERSION' }, [ch.port2]);
+            }
           });
         });
       } catch (e) {
