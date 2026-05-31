@@ -60,37 +60,50 @@ const makeRoomUrl = cfg => {
   return url.toString();
 };
 
-const render = ({ cfg, mounted = false } = {}) => {
-  const canEnter = cfg.status === 'on' && cfg.enterEnabled;
-  const invite = getInviteParams();
-  const buttonText = invite.hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
-  const message = invite.hasInvite
-    ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.'
-    : esc(cfg.message);
+  const render = ({ cfg, mounted = false } = {}) => {
+    const canEnter = cfg.status === 'on' && cfg.enterEnabled;
+    const invite = getInviteParams();
+    const buttonText = invite.hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
+    const message = invite.hasInvite
+      ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.'
+      : esc(cfg.message);
 
-  return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
-    <div class="gc-panel">
-      <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
-      <div class="gc-panel-title">${esc(cfg.title)}</div>
-      <div class="gc-panel-text">${message}</div>
-      ${!canEnter ? `<div class="gc-panel-note">${esc(cfg.disabledReason)}</div>` : ''}
-      <button class="gc-enter-btn" type="button" data-gc-enter ${canEnter ? '' : 'disabled'}>${mounted ? 'Комната открыта' : buttonText}</button>
-      <div class="gc-devline">rev: ${esc(cfg.revision)} · bridge v${Number(cfg.bridgeVersion || 1)}</div>
-    </div>
-    <div class="gc-frame-wrap" id="gc-frame-wrap" hidden></div>
-  </section>`;
-};
+    return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
+      <div class="gc-panel">
+        <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
+        <div class="gc-panel-title">${esc(cfg.title)}</div>
+        <div class="gc-panel-text">${message}</div>
+        ${!canEnter ? `<div class="gc-panel-note">${esc(cfg.disabledReason)}</div>` : ''}
+        <button class="gc-enter-btn" type="button" data-gc-enter ${canEnter ? '' : 'disabled'}>${mounted ? 'Комната открыта' : buttonText}</button>
+        ${invite.hasInvite && !mounted ? `<button class="gc-enter-btn" type="button" data-gc-decline style="background:transparent; border:1px solid rgba(255,49,89,0.4); color:#ff3159; box-shadow:none; margin-top:8px;">Отклонить</button>` : ''}
+        <div class="gc-devline">rev: ${esc(cfg.revision)} · bridge v${Number(cfg.bridgeVersion || 1)}</div>
+      </div>
+      <div class="gc-frame-wrap" id="gc-frame-wrap" hidden></div>
+    </section>`;
+  };
 
-export const renderGameCenterHost = async ({ container } = {}) => {
-  if (!container) return false;
-  const cfg = await loadConfig();
-  let bridge = null;
-  container.innerHTML = render({ cfg });
+  export const renderGameCenterHost = async ({ container } = {}) => {
+    if (!container) return false;
+    const cfg = await loadConfig();
+    let bridge = null;
+    container.innerHTML = render({ cfg });
 
-  const btn = container.querySelector('[data-gc-enter]');
-  const frameWrap = container.querySelector('#gc-frame-wrap');
+    const btn = container.querySelector('[data-gc-enter]');
+    const declineBtn = container.querySelector('[data-gc-decline]');
+    const frameWrap = container.querySelector('#gc-frame-wrap');
 
-  btn?.addEventListener('click', () => {
+    declineBtn?.addEventListener('click', () => {
+      const url = new URL(W.location.href);
+      url.searchParams.delete('gcGame');
+      url.searchParams.delete('game');
+      url.searchParams.delete('room');
+      url.searchParams.delete('key');
+      url.searchParams.delete('secret');
+      W.history.replaceState(null, '', url.toString());
+      renderGameCenterHost({ container });
+    });
+
+    btn?.addEventListener('click', () => {
     if (btn.disabled || !frameWrap) return;
     const host = container.querySelector('.gc-host');
     const panel = container.querySelector('.gc-panel');
