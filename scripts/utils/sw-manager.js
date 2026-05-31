@@ -1,8 +1,30 @@
 (function (W, N, D) {
   'use strict';
   let refreshing = false;
+  let progBar = null;
 
   class SWManager {
+    _initProgress() {
+      if (progBar) return;
+      progBar = Object.assign(D.createElement('div'), { id: 'global-sw-progress' });
+      progBar.style.cssText = 'position:fixed;top:0;left:0;height:3px;background:var(--secondary-color,#4daaff);z-index:999999;transition:width 0.2s ease, opacity 0.3s ease;width:0%;opacity:0;pointer-events:none;box-shadow:0 0 8px var(--secondary-color,#4daaff);';
+      D.body.appendChild(progBar);
+      
+      N.serviceWorker.addEventListener('message', e => {
+        if (e.data?.type === 'CACHE_PROGRESS' && progBar) {
+          const p = e.data.percent || 0;
+          if (p < 100) {
+            progBar.style.opacity = '1';
+            progBar.style.width = `${p}%`;
+          } else {
+            progBar.style.width = '100%';
+            setTimeout(() => { if(progBar) progBar.style.opacity = '0'; }, 500);
+            setTimeout(() => { if(progBar) progBar.style.width = '0%'; }, 800);
+          }
+        }
+      });
+    }
+
     _clearUpdateUi() {
       D.getElementById('update-app-panel')?.remove();
       D.body.classList.remove('sw-update-visible');
@@ -10,7 +32,8 @@
 
     async init() {
       if (!('serviceWorker' in N)) return;
-      this._clearUpdateUi();
+      this._initProgress();
+      this._clearUpdateUi();;
 
       // Не reload по controllerchange сам по себе. Reload только если пользователь явно нажал «ОБНОВИТЬ».
       N.serviceWorker.addEventListener('controllerchange', () => {
@@ -66,8 +89,8 @@
       try { W.playerCore?._persistPlaybackState?.(true); } catch {}
       const waiting = this.reg?.waiting;
       if (waiting) {
-        waiting.postMessage?.({ type: 'SKIP_WAITING' });
-        setTimeout(() => { if (refreshing) W.location.reload(); }, 1800);
+        waiting.postMessage({ type: 'SKIP_WAITING' });
+        setTimeout(() => { if (refreshing) W.location.reload(); }, 1200);
       } else {
         W.location.reload();
       }
