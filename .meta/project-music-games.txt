@@ -479,7 +479,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-31 12:20:12 UTC
+Сгенерировано: 2026-05-31 12:21:54 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -740,7 +740,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.6.2'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-31');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.6.3'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-31');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -1729,7 +1729,7 @@ export default normalizeGameCenterSwitch(GAME_CENTER_SWITCH);
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.6.2',
+  APP_VERSION: '8.6.3',
   BUILD_DATE: '2026-05-31',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -1772,8 +1772,30 @@ if (typeof window !== 'undefined') {
 (function (W, N, D) {
   'use strict';
   let refreshing = false;
+  let progBar = null;
 
   class SWManager {
+    _initProgress() {
+      if (progBar) return;
+      progBar = Object.assign(D.createElement('div'), { id: 'global-sw-progress' });
+      progBar.style.cssText = 'position:fixed;top:0;left:0;height:3px;background:var(--secondary-color,#4daaff);z-index:999999;transition:width 0.2s ease, opacity 0.3s ease;width:0%;opacity:0;pointer-events:none;box-shadow:0 0 8px var(--secondary-color,#4daaff);';
+      D.body.appendChild(progBar);
+      
+      N.serviceWorker.addEventListener('message', e => {
+        if (e.data?.type === 'CACHE_PROGRESS' && progBar) {
+          const p = e.data.percent || 0;
+          if (p < 100) {
+            progBar.style.opacity = '1';
+            progBar.style.width = `${p}%`;
+          } else {
+            progBar.style.width = '100%';
+            setTimeout(() => { if(progBar) progBar.style.opacity = '0'; }, 500);
+            setTimeout(() => { if(progBar) progBar.style.width = '0%'; }, 800);
+          }
+        }
+      });
+    }
+
     _clearUpdateUi() {
       D.getElementById('update-app-panel')?.remove();
       D.body.classList.remove('sw-update-visible');
@@ -1781,7 +1803,8 @@ if (typeof window !== 'undefined') {
 
     async init() {
       if (!('serviceWorker' in N)) return;
-      this._clearUpdateUi();
+      this._initProgress();
+      this._clearUpdateUi();;
 
       // Не reload по controllerchange сам по себе. Reload только если пользователь явно нажал «ОБНОВИТЬ».
       N.serviceWorker.addEventListener('controllerchange', () => {
@@ -1837,8 +1860,8 @@ if (typeof window !== 'undefined') {
       try { W.playerCore?._persistPlaybackState?.(true); } catch {}
       const waiting = this.reg?.waiting;
       if (waiting) {
-        waiting.postMessage?.({ type: 'SKIP_WAITING' });
-        setTimeout(() => { if (refreshing) W.location.reload(); }, 1800);
+        waiting.postMessage({ type: 'SKIP_WAITING' });
+        setTimeout(() => { if (refreshing) W.location.reload(); }, 1200);
       } else {
         W.location.reload();
       }
