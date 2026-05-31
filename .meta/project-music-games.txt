@@ -479,7 +479,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-31 09:30:21 UTC
+Сгенерировано: 2026-05-31 10:10:21 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -740,7 +740,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.5.9'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-31');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.6.0'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-05-31');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -752,7 +752,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.5.9';
+const SW_VERSION = '8.6.0';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -1319,37 +1319,50 @@ const makeRoomUrl = cfg => {
   return url.toString();
 };
 
-const render = ({ cfg, mounted = false } = {}) => {
-  const canEnter = cfg.status === 'on' && cfg.enterEnabled;
-  const invite = getInviteParams();
-  const buttonText = invite.hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
-  const message = invite.hasInvite
-    ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.'
-    : esc(cfg.message);
+  const render = ({ cfg, mounted = false } = {}) => {
+    const canEnter = cfg.status === 'on' && cfg.enterEnabled;
+    const invite = getInviteParams();
+    const buttonText = invite.hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
+    const message = invite.hasInvite
+      ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.'
+      : esc(cfg.message);
 
-  return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
-    <div class="gc-panel">
-      <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
-      <div class="gc-panel-title">${esc(cfg.title)}</div>
-      <div class="gc-panel-text">${message}</div>
-      ${!canEnter ? `<div class="gc-panel-note">${esc(cfg.disabledReason)}</div>` : ''}
-      <button class="gc-enter-btn" type="button" data-gc-enter ${canEnter ? '' : 'disabled'}>${mounted ? 'Комната открыта' : buttonText}</button>
-      <div class="gc-devline">rev: ${esc(cfg.revision)} · bridge v${Number(cfg.bridgeVersion || 1)}</div>
-    </div>
-    <div class="gc-frame-wrap" id="gc-frame-wrap" hidden></div>
-  </section>`;
-};
+    return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
+      <div class="gc-panel">
+        <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
+        <div class="gc-panel-title">${esc(cfg.title)}</div>
+        <div class="gc-panel-text">${message}</div>
+        ${!canEnter ? `<div class="gc-panel-note">${esc(cfg.disabledReason)}</div>` : ''}
+        <button class="gc-enter-btn" type="button" data-gc-enter ${canEnter ? '' : 'disabled'}>${mounted ? 'Комната открыта' : buttonText}</button>
+        ${invite.hasInvite && !mounted ? `<button class="gc-enter-btn" type="button" data-gc-decline style="background:transparent; border:1px solid rgba(255,49,89,0.4); color:#ff3159; box-shadow:none; margin-top:8px;">Отклонить</button>` : ''}
+        <div class="gc-devline">rev: ${esc(cfg.revision)} · bridge v${Number(cfg.bridgeVersion || 1)}</div>
+      </div>
+      <div class="gc-frame-wrap" id="gc-frame-wrap" hidden></div>
+    </section>`;
+  };
 
-export const renderGameCenterHost = async ({ container } = {}) => {
-  if (!container) return false;
-  const cfg = await loadConfig();
-  let bridge = null;
-  container.innerHTML = render({ cfg });
+  export const renderGameCenterHost = async ({ container } = {}) => {
+    if (!container) return false;
+    const cfg = await loadConfig();
+    let bridge = null;
+    container.innerHTML = render({ cfg });
 
-  const btn = container.querySelector('[data-gc-enter]');
-  const frameWrap = container.querySelector('#gc-frame-wrap');
+    const btn = container.querySelector('[data-gc-enter]');
+    const declineBtn = container.querySelector('[data-gc-decline]');
+    const frameWrap = container.querySelector('#gc-frame-wrap');
 
-  btn?.addEventListener('click', () => {
+    declineBtn?.addEventListener('click', () => {
+      const url = new URL(W.location.href);
+      url.searchParams.delete('gcGame');
+      url.searchParams.delete('game');
+      url.searchParams.delete('room');
+      url.searchParams.delete('key');
+      url.searchParams.delete('secret');
+      W.history.replaceState(null, '', url.toString());
+      renderGameCenterHost({ container });
+    });
+
+    btn?.addEventListener('click', () => {
     if (btn.disabled || !frameWrap) return;
     const host = container.querySelector('.gc-host');
     const panel = container.querySelector('.gc-panel');
