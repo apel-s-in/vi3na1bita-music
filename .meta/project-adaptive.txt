@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-31 12:37:56 UTC
+Сгенерировано: 2026-05-31 14:07:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8585,6 +8585,7 @@ export default { openTrackStatisticsModal };
 (function (W, N, D) {
   'use strict';
   let refreshing = false;
+  let silentUpdate = false;
   let progBar = null;
 
   class SWManager {
@@ -8627,6 +8628,10 @@ export default { openTrackStatisticsModal };
           setTimeout(() => W.location.reload(), 80);
           return;
         }
+        if (silentUpdate) {
+          silentUpdate = false;
+          return;
+        }
         try { W.NotificationSystem?.info?.('Обновление применится при следующем запуске.', 3500); } catch {}
       });
 
@@ -8636,7 +8641,18 @@ export default { openTrackStatisticsModal };
         this.reg.addEventListener('updatefound', () => {
           const nw = this.reg.installing;
           nw?.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && N.serviceWorker.controller) this._notifyUpdate();
+            if (nw.state === 'installed' && N.serviceWorker.controller) {
+              const ch = new MessageChannel();
+              ch.port1.onmessage = e => {
+                if (e.data?.version && e.data.version !== (W.VERSION || '')) {
+                  this._notifyUpdate();
+                } else {
+                  silentUpdate = true;
+                  nw.postMessage({ type: 'SKIP_WAITING' });
+                }
+              };
+              nw.postMessage({ type: 'GET_SW_VERSION' }, [ch.port2]);
+            }
           });
         });
       } catch (e) {
