@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-05-31 08:49:11 UTC
+Сгенерировано: 2026-05-31 09:23:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3857,8 +3857,9 @@ export async function loadGamesAlbum(ctx) {
 
 const W = window;
 const D = document;
-const FRIENDS_CORE_URL = '/Friends/friends-core.js';
-const FRIENDS_UI_URL = '/Friends/friends-ui.js';
+const BASE_FRIENDS = 'https://vi3na1bita.website.yandexcloud.net/Friends';
+const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js`;
+const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js`;
 
 let _core = null;
 let _ui = null;
