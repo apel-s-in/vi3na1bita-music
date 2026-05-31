@@ -5,8 +5,9 @@
 
 const W = window;
 const D = document;
-const FRIENDS_CORE_URL = '/Friends/friends-core.js';
-const FRIENDS_UI_URL = '/Friends/friends-ui.js';
+const BASE_FRIENDS = 'https://vi3na1bita.website.yandexcloud.net/Friends';
+const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js`;
+const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js`;
 
 let _core = null;
 let _ui = null;
