@@ -81,6 +81,42 @@ self.addEventListener('fetch', e => {
   })());
 });
 
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data?.json?.() || {}; } catch {
+    try { data = JSON.parse(e.data?.text?.() || '{}'); } catch {}
+  }
+
+  const title = String(data.title || 'Витрина Разбита');
+  const body = String(data.body || data.text || 'Новое уведомление');
+  const url = String(data.url || './');
+
+  e.waitUntil(self.registration.showNotification(title, {
+    body,
+    icon: './icons/icon-192.png',
+    badge: './icons/favicon-32.png',
+    tag: String(data.tag || 'vi3-notification'),
+    data: { url },
+    requireInteraction: data.requireInteraction === true
+  }));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const targetUrl = new URL(e.notification?.data?.url || './', self.registration.scope).href;
+
+  e.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = clientsList.find(c => c.url && new URL(c.url).origin === new URL(targetUrl).origin);
+    if (existing) {
+      await existing.focus();
+      existing.postMessage({ type: 'PUSH_NOTIFICATION_CLICK', url: targetUrl });
+      return;
+    }
+    await self.clients.openWindow(targetUrl);
+  })());
+});
+
 self.addEventListener('message', e => {
   const d = e.data, p = e.ports[0]; if (!d) return;
   if (d.type === 'SYNC_AIRPLANE_MODE') isAirplaneMode = !!d.payload;
