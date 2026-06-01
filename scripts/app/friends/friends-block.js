@@ -16,6 +16,7 @@ let _bound = false;
 let _lastFriendId = '';
 let _pushTimer = 0;
 let _heartbeatTimer = 0;
+let _webPushReady = false;
 
 const readYandexProfile = () => {
   const ya = W.YandexAuth;
@@ -89,6 +90,17 @@ const startPresenceHeartbeat = () => {
 
   beat();
   _heartbeatTimer = setInterval(beat, 45000);
+};
+
+const syncWebPushIfAllowed = async () => {
+  if (_webPushReady || !_core?.isReady?.()) return;
+  if (!('Notification' in W) || W.Notification.permission !== 'granted') return;
+
+  try {
+    const mod = await import('../push/web-push.js');
+    const res = await mod.syncWebPushSubscription({ core: _core, ask: false });
+    _webPushReady = !!res?.ok;
+  } catch {}
 };
 
 const startPushPolling = () => {
@@ -200,6 +212,10 @@ const applyIdentity = async () => {
     _ui?.refresh?.({ force: true });
     startPresenceHeartbeat();
     startPushPolling();
+    syncWebPushIfAllowed();
+    W.Vi3WebPush = {
+      enable: () => import('../push/web-push.js').then(m => m.enableWebPush(_core))
+    };
   } else {
     _ui?.refresh?.();
   }
