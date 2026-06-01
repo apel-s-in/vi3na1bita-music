@@ -137,7 +137,7 @@ const makeRoomUrl = cfg => {
 
       // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
       const u = new URL(W.location.href);
-      ['inviteFriend', 'room', 'key', 'secret'].forEach(k => {
+      ['gcGame', 'game', 'inviteFriend', 'room', 'key', 'secret'].forEach(k => {
         if (u.searchParams.has(k)) u.searchParams.delete(k);
       });
       if (invite.hasInvite || invite.isSendingInvite) W.history.replaceState(null, '', u.toString());
