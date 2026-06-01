@@ -104,6 +104,7 @@ const MUSIC_GAMES_FILES = [
   'scripts/app/games/host.js',
   'scripts/app/games/bridge-host.js',
   'scripts/app/games/config.js',
+  'scripts/app/friends/friends-block.js',
   'scripts/core/config.js',
   'scripts/utils/sw-manager.js',
   'styles/games.css',
