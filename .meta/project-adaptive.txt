@@ -478,7 +478,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-01 09:34:05 UTC
+Сгенерировано: 2026-06-01 10:05:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4565,7 +4565,7 @@ const makeRoomUrl = cfg => {
 
       // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
       const u = new URL(W.location.href);
-      ['inviteFriend', 'room', 'key', 'secret'].forEach(k => {
+      ['gcGame', 'game', 'inviteFriend', 'room', 'key', 'secret'].forEach(k => {
         if (u.searchParams.has(k)) u.searchParams.delete(k);
       });
       if (invite.hasInvite || invite.isSendingInvite) W.history.replaceState(null, '', u.toString());
