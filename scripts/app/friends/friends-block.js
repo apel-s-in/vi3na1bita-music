@@ -221,6 +221,23 @@ const applyIdentity = async () => {
   }
 };
 
+const enableWebPushFromUi = async () => {
+  if (!_core?.isReady?.()) {
+    W.NotificationSystem?.warning?.('Сначала войдите через Яндекс');
+    return { ok: false };
+  }
+
+  try {
+    const mod = await import('../push/web-push.js');
+    const res = await mod.enableWebPush(_core);
+    _webPushReady = !!res?.ok;
+    return res;
+  } catch {
+    W.NotificationSystem?.warning?.('Не удалось включить системные уведомления');
+    return { ok: false };
+  }
+};
+
 const onGameInvite = async ({ friendId, gameId }) => {
   D.querySelector('.vf-modal-ov')?.remove();
   
@@ -243,7 +260,10 @@ export const mountFriendsBlock = async ({ container } = {}) => {
   ]);
 
   _core = _core || new FriendsCore();
-  _ui = mountFriendsUI(container, _core, { onGameInvite });
+  _ui = mountFriendsUI(container, _core, {
+    onGameInvite,
+    onEnableWebPush: enableWebPushFromUi
+  });
 
   await applyIdentity();
 
