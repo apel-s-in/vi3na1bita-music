@@ -481,7 +481,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-01 10:52:54 UTC
+Сгенерировано: 2026-06-01 10:57:43 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -497,6 +497,7 @@ vi3na1bita-music/
 - /scripts/app/games/bridge-host.js
 - /scripts/app/games/config.js
 - /scripts/app/friends/friends-block.js
+- /scripts/app/push/web-push.js
 - /scripts/core/config.js
 - /scripts/utils/sw-manager.js
 - /styles/games.css
@@ -996,6 +997,7 @@ const MUSIC_GAMES_FILES = [
   'scripts/app/games/bridge-host.js',
   'scripts/app/games/config.js',
   'scripts/app/friends/friends-block.js',
+  'scripts/app/push/web-push.js',
   'scripts/core/config.js',
   'scripts/utils/sw-manager.js',
   'styles/games.css',
@@ -2067,6 +2069,53 @@ export const mountFriendsBlock = async ({ container } = {}) => {
 };
 
 export default { mountFriendsBlock };
+
+//=================================================
+// FILE: /scripts/app/push/web-push.js
+const W = window;
+const N = navigator;
+
+const urlBase64ToUint8Array = base64 => {
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(ch => ch.charCodeAt(0)));
+};
+
+export const syncWebPushSubscription = async ({ core, ask = false } = {}) => {
+  if (!core?.isReady?.()) return { ok: false, reason: 'friends_not_ready' };
+  if (!('serviceWorker' in N) || !('PushManager' in W) || !('Notification' in W)) {
+    return { ok: false, reason: 'web_push_not_supported' };
+  }
+
+  let permission = Notification.permission;
+  if (permission === 'default' && ask) permission = await Notification.requestPermission();
+  if (permission !== 'granted') return { ok: false, reason: `permission_${permission}` };
+
+  const cfg = await core.getWebPushConfig();
+  if (!cfg?.enabled || !cfg.vapidPublicKey) return { ok: false, reason: 'web_push_disabled' };
+
+  const reg = await N.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(cfg.vapidPublicKey)
+    });
+  }
+
+  await core.subscribeWebPush(sub.toJSON());
+  return { ok: true };
+};
+
+export const enableWebPush = async core => {
+  const res = await syncWebPushSubscription({ core, ask: true });
+  if (res.ok) W.NotificationSystem?.success?.('Системные уведомления включены');
+  else W.NotificationSystem?.warning?.('Не удалось включить системные уведомления');
+  return res;
+};
+
+export default { syncWebPushSubscription, enableWebPush };
 
 //=================================================
 // FILE: /scripts/core/config.js

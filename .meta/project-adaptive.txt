@@ -480,7 +480,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-01 10:52:54 UTC
+Сгенерировано: 2026-06-01 10:57:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9374,6 +9374,7 @@ const MUSIC_GAMES_FILES = [
   'scripts/app/games/bridge-host.js',
   'scripts/app/games/config.js',
   'scripts/app/friends/friends-block.js',
+  'scripts/app/push/web-push.js',
   'scripts/core/config.js',
   'scripts/utils/sw-manager.js',
   'styles/games.css',
