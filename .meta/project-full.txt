@@ -354,6 +354,8 @@ vi3na1bita-music/
 │   │   │   ├── yandex-modals.js
 │   │   │   ├── yandex-preload-cache.js
 │   │   │   └── yandex-runtime-refresh.js
+│   │   ├── push/
+│   │   │   └── web-push.js
 │   │   ├── showcase/
 │   │   │   ├── actions.js
 │   │   │   ├── edit.js
@@ -478,7 +480,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-01 10:46:17 UTC
+Сгенерировано: 2026-06-01 10:47:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6346,6 +6348,53 @@ export default { runPostRestoreRefresh };
 //=================================================
 // FILE: /scripts/app/promocode.js
 (function(W,D){'use strict';const $=id=>D.getElementById(id),LS=localStorage,K='promocode',isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)&&!W.MSStream;const unlock=()=>{document.getElementById('promocode-block')?.classList.add('hidden');document.getElementById('main-block')?.classList.remove('hidden');const init=()=>W.app?.initialize?.();if(!init()){let a=0,t=setInterval(()=>(init()||++a>50)&&clearInterval(t),50);}};W.addEventListener('load',()=>{if(isIOS)D.body.classList.add('ios');const c=String(W.APP_CONFIG?.PROMOCODE||'').trim(),i=$('promo-inp');if(!c||LS.getItem(K)===c)return unlock();const chk=()=>{if(i?.value.trim()===c){LS.setItem(K,c);unlock();i.blur();}else if(i){const e=$('promo-error');if(e)e.textContent='❌ Неверный промокод';i.classList.add('error');setTimeout(()=>{if(e)e.textContent='';i.classList.remove('error');},2000);}};document.getElementById('promo-btn')?.addEventListener('click',chk);i?.addEventListener('keydown',e=>(e.key==='Enter'||e.keyCode===13)&&(e.preventDefault(),chk()));setTimeout(()=>i&&!i.disabled&&i.focus(),100);});})(window,document);
+
+//=================================================
+// FILE: /scripts/app/push/web-push.js
+const W = window;
+const N = navigator;
+
+const urlBase64ToUint8Array = base64 => {
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(ch => ch.charCodeAt(0)));
+};
+
+export const syncWebPushSubscription = async ({ core, ask = false } = {}) => {
+  if (!core?.isReady?.()) return { ok: false, reason: 'friends_not_ready' };
+  if (!('serviceWorker' in N) || !('PushManager' in W) || !('Notification' in W)) {
+    return { ok: false, reason: 'web_push_not_supported' };
+  }
+
+  let permission = Notification.permission;
+  if (permission === 'default' && ask) permission = await Notification.requestPermission();
+  if (permission !== 'granted') return { ok: false, reason: `permission_${permission}` };
+
+  const cfg = await core.getWebPushConfig();
+  if (!cfg?.enabled || !cfg.vapidPublicKey) return { ok: false, reason: 'web_push_disabled' };
+
+  const reg = await N.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(cfg.vapidPublicKey)
+    });
+  }
+
+  await core.subscribeWebPush(sub.toJSON());
+  return { ok: true };
+};
+
+export const enableWebPush = async core => {
+  const res = await syncWebPushSubscription({ core, ask: true });
+  if (res.ok) W.NotificationSystem?.success?.('Системные уведомления включены');
+  else W.NotificationSystem?.warning?.('Не удалось включить системные уведомления');
+  return res;
+};
+
+export default { syncWebPushSubscription, enableWebPush };
 
 //=================================================
 // FILE: /scripts/app/showcase/actions.js
