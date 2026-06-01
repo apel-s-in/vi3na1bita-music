@@ -15,6 +15,7 @@ let _container = null;
 let _bound = false;
 let _lastFriendId = '';
 let _pushTimer = 0;
+let _heartbeatTimer = 0;
 
 const readYandexProfile = () => {
   const ya = W.YandexAuth;
@@ -30,6 +31,17 @@ const readYandexProfile = () => {
 
 const handlePushes = async (items) => {
   for (const push of items) {
+    if (push.kind === 'CHAT_MESSAGE') {
+      let name = 'Друг';
+      try {
+        const prof = await _core.getProfile(push.fromFriendId);
+        if (prof?.displayName) name = prof.displayName;
+      } catch {}
+
+      W.NotificationSystem?.info?.(`💬 ${name}: ${String(push.text || '').slice(0, 80)}`, 6000);
+      continue;
+    }
+
     if (push.kind === 'GAME_INVITE') {
       let name = 'Друг';
       try {
@@ -62,16 +74,36 @@ const handlePushes = async (items) => {
   }
 };
 
+const startPresenceHeartbeat = () => {
+  clearInterval(_heartbeatTimer);
+
+  const beat = async () => {
+    if (D.hidden || !_core?.isReady?.()) return;
+    try {
+      await _core.heartbeat({
+        gameId: '',
+        roomId: ''
+      });
+    } catch {}
+  };
+
+  beat();
+  _heartbeatTimer = setInterval(beat, 45000);
+};
+
 const startPushPolling = () => {
   clearInterval(_pushTimer);
-  _pushTimer = setInterval(async () => {
-    // Останавливаем поллинг, если приложение свёрнуто или модуль не готов
+
+  const poll = async () => {
     if (D.hidden || !_core || !_core.isReady()) return;
     try {
       const items = await _core.getPushes();
       if (items.length) handlePushes(items);
     } catch {}
-  }, 12000); // Опрос каждые 12 секунд
+  };
+
+  poll();
+  _pushTimer = setInterval(poll, 12000);
 };
 
 const applyIdentity = async () => {
@@ -87,6 +119,7 @@ const applyIdentity = async () => {
     W.__vfIdentity = null;
     _lastFriendId = '';
     clearInterval(_pushTimer);
+    clearInterval(_heartbeatTimer);
     _ui?.refresh?.();
 
     if (_container) {
@@ -165,6 +198,7 @@ const applyIdentity = async () => {
     }
 
     _ui?.refresh?.({ force: true });
+    startPresenceHeartbeat();
     startPushPolling();
   } else {
     _ui?.refresh?.();
@@ -200,6 +234,12 @@ export const mountFriendsBlock = async ({ container } = {}) => {
   if (!_bound) {
     _bound = true;
     W.addEventListener('yandex:auth:changed', () => applyIdentity().catch(() => {}));
+    D.addEventListener('visibilitychange', () => {
+      if (!D.hidden && _core?.isReady?.()) {
+        startPresenceHeartbeat();
+        startPushPolling();
+      }
+    });
   }
 
   return true;
