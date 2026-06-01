@@ -153,6 +153,12 @@ const makeRoomUrl = cfg => {
       onState: st => {
         if (st?.state === 'closed_by_game') {
           try {
+            const u = new URL(W.location.href);
+            ['gcGame', 'game', 'inviteFriend', 'room', 'key', 'secret'].forEach(k => u.searchParams.delete(k));
+            W.history.replaceState(null, '', u.toString());
+          } catch {}
+
+          try {
             W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_exit', revision: cfg.revision });
             W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
           } catch {}
