@@ -110,28 +110,43 @@ const makeRoomUrl = cfg => {
       renderGameCenterHost({ container });
     });
 
-    btn?.addEventListener('click', () => {
-      if (btn.disabled || !frameWrap) return;
+    const mountGameCenter = () => {
+      if (btn?.disabled || !frameWrap) return;
       const host = container.querySelector('.gc-host');
       const panel = container.querySelector('.gc-panel');
+      const invite = getInviteParams();
 
-      btn.disabled = true;
-      btn.textContent = 'Открываем...';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Открываем...';
+      }
+
       host?.classList.add('is-mounted');
       if (panel) panel.hidden = true;
 
       frameWrap.hidden = false;
-      frameWrap.innerHTML = `<iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+      frameWrap.innerHTML = `
+        <div class="gc-launch-cover">
+          <div class="gc-launch-logo">💔</div>
+          <b>${invite.hasInvite ? 'Подключаемся к вызову' : invite.isSendingInvite ? 'Готовим приглашение' : 'Открываем Зал Витрины'}</b>
+          <span>Соединение будет настроено автоматически...</span>
+        </div>
+        <iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>
+      `;
       const iframe = frameWrap.querySelector('iframe');
 
       // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
       const u = new URL(W.location.href);
-      if (u.searchParams.has('inviteFriend')) {
-        u.searchParams.delete('inviteFriend');
-        W.history.replaceState(null, '', u.toString());
-      }
+      ['inviteFriend', 'room', 'key', 'secret'].forEach(k => {
+        if (u.searchParams.has(k)) u.searchParams.delete(k);
+      });
+      if (invite.hasInvite || invite.isSendingInvite) W.history.replaceState(null, '', u.toString());
 
-    bridge?.destroy?.();
+      iframe?.addEventListener('load', () => {
+        frameWrap.querySelector('.gc-launch-cover')?.remove();
+      }, { once: true });
+
+      bridge?.destroy?.();
     bridge = createGameBridgeHost({
       iframe,
       config: cfg,
@@ -162,8 +177,15 @@ const makeRoomUrl = cfg => {
       W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
     } catch {}
 
-    btn.textContent = 'Комната открыта';
-  });
+    if (btn) btn.textContent = 'Комната открыта';
+    };
+
+    btn?.addEventListener('click', mountGameCenter);
+
+    const invite = getInviteParams();
+    if (invite.hasInvite || invite.isSendingInvite) {
+      setTimeout(mountGameCenter, 80);
+    }
 
   return true;
 };
