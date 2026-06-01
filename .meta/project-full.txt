@@ -480,7 +480,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-01 10:51:48 UTC
+Сгенерировано: 2026-06-01 10:52:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -855,7 +855,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.6.5'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-06-01');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.6.6'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-06-01');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -867,7 +867,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.6.5';
+const SW_VERSION = '8.6.6';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 const DEFAULT_SW_CONFIG = { mediaMaxCacheMB: 150, nonRangeMaxStoreMB: 25, nonRangeMaxStoreMBSlow: 10, allowUnknownSize: false, revalidateDays: 7 };
 let isAirplaneMode = false;
@@ -6925,7 +6925,7 @@ if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',init);else ini
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.6.5',
+  APP_VERSION: '8.6.6',
   BUILD_DATE: '2026-06-01',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
