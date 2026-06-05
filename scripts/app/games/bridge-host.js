@@ -74,6 +74,13 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     if (d.kind !== 'vitrina:game' || d.bridgeId !== bridgeId) return;
     if (d.type === 'GC_READY' || d.type === 'GC_REQUEST_SNAPSHOT') sendSnapshot();
 
+    if (d.type === 'GC_AUTH_LOGIN') {
+      try {
+        W.YandexAuth?.login?.();
+      } catch {}
+      return;
+    }
+
     if (d.type === 'GC_SAVE_DATA') {
       if (d.payload?.gameId && d.payload?.key) {
         const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
