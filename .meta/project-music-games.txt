@@ -481,7 +481,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-07 18:27:06 UTC
+Сгенерировано: 2026-06-07 18:28:32 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -2038,17 +2038,35 @@ const applyIdentity = async () => {
 const enableWebPushFromUi = async () => {
   if (!_core?.isReady?.()) {
     W.NotificationSystem?.warning?.('Сначала войдите через Яндекс');
-    return { ok: false };
+    return { ok: false, reason: 'friends_not_ready' };
   }
 
   try {
     const mod = await import('../push/web-push.js');
     const res = await mod.enableWebPush(_core);
     _webPushReady = !!res?.ok;
+
+    if (res?.ok && _core.identity?.friendId) {
+      const test = await _core.sendPush({
+        toFriendId: _core.identity.friendId,
+        kind: 'GENERIC',
+        text: '✅ Тест системных уведомлений Витрины'
+      }).catch(err => ({ ok: false, error: err?.message || 'test_push_failed' }));
+
+      if (test?.webPush?.sent > 0) {
+        W.NotificationSystem?.success?.('Тестовое уведомление отправлено');
+      } else {
+        W.NotificationSystem?.warning?.(`Подписка есть, но test push не доставлен: ${test?.webPush?.error || test?.webPush?.reason || test?.error || 'sent_0'}`);
+      }
+
+      return { ...res, test };
+    }
+
     return res;
-  } catch {
-    W.NotificationSystem?.warning?.('Не удалось включить системные уведомления');
-    return { ok: false };
+  } catch (err) {
+    const reason = err?.message || 'enable_failed';
+    W.NotificationSystem?.warning?.(`Не удалось включить системные уведомления: ${reason}`);
+    return { ok: false, reason };
   }
 };
 
