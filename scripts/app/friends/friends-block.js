@@ -17,6 +17,29 @@ let _lastFriendId = '';
 let _pushTimer = 0;
 let _heartbeatTimer = 0;
 let _webPushReady = false;
+let _unread = {};
+
+const loadUnread = () => {
+  try { _unread = JSON.parse(localStorage.getItem('vf_unread') || '{}') || {}; } catch { _unread = {}; }
+};
+
+const saveUnread = () => {
+  try { localStorage.setItem('vf_unread', JSON.stringify(_unread)); } catch {}
+};
+
+const addUnread = friendId => {
+  if (!friendId) return;
+  _unread[friendId] = Number(_unread[friendId] || 0) + 1;
+  saveUnread();
+  _ui?.refresh?.();
+};
+
+const clearUnread = friendId => {
+  if (!friendId || !_unread[friendId]) return;
+  delete _unread[friendId];
+  saveUnread();
+  _ui?.refresh?.();
+};
 
 const readYandexProfile = () => {
   const ya = W.YandexAuth;
@@ -39,6 +62,7 @@ const handlePushes = async (items) => {
         if (prof?.displayName) name = prof.displayName;
       } catch {}
 
+      addUnread(push.fromFriendId);
       W.NotificationSystem?.info?.(`💬 ${name}: ${String(push.text || '').slice(0, 80)}`, 6000);
       continue;
     }
