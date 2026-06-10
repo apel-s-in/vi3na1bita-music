@@ -302,9 +302,12 @@ export const mountFriendsBlock = async ({ container } = {}) => {
   ]);
 
   _core = _core || new FriendsCore();
+  loadUnread();
   _ui = mountFriendsUI(container, _core, {
     onGameInvite,
-    onEnableWebPush: enableWebPushFromUi
+    onEnableWebPush: enableWebPushFromUi,
+    getUnread: friendId => Number(_unread[friendId] || 0),
+    onChatOpened: friendId => clearUnread(friendId)
   });
 
   await applyIdentity();
