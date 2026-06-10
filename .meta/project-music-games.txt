@@ -481,7 +481,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-07 18:34:07 UTC
+Сгенерировано: 2026-06-10 19:02:46 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -853,8 +853,13 @@ self.addEventListener('push', e => {
     body,
     icon: './icons/icon-192.png',
     badge: './icons/favicon-32.png',
-    tag: String(data.tag || 'vi3-notification'),
+    tag: String(data.tag || `vi3-${Date.now()}`),
     data: { url },
+    // renotify: повторный пуш с тем же tag снова будит экран/вибрирует (важно для чата).
+    renotify: true,
+    silent: false,
+    vibrate: [200, 100, 200],
+    timestamp: Date.now(),
     requireInteraction: data.requireInteraction === true
   }));
 });
