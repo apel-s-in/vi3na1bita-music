@@ -481,7 +481,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-12 11:12:01 UTC
+Сгенерировано: 2026-06-12 11:12:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11431,7 +11431,6 @@ body:has(.gc-host.is-mounted:not(.is-gc-parked)){
 /* --- АДАПТИВНОСТЬ --- */
 body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:none!important}
 @media (max-width:600px){
-  .hotkeys-btn{display:none!important}
   .player-controls-row{gap:8px}
   .player-control-btn,.sleep-timer-btn{width:40px;height:40px;padding:8px}
   .player-control-btn.main{width:48px;height:48px}
