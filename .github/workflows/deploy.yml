@@ -55,8 +55,11 @@ jobs:
             local f="$1"
             [ -f "$f" ] || return 0
             is_public_file "$f" || return 0
+            local cc="public,max-age=3600"
+            if [[ "$f" == img/* ]] || [[ "$f" == audio/* ]] || [[ "$f" == icons/* ]]; then cc="public,max-age=31536000,immutable"; fi
+            if [[ "$f" == *.html ]] || [[ "$f" == manifest.json ]] || [[ "$f" == service-worker.js ]]; then cc="no-cache"; fi
             echo "PUT $f"
-            aws --endpoint-url=https://storage.yandexcloud.net s3 cp "$f" "s3://$BUCKET/$f" --only-show-errors
+            aws --endpoint-url=https://storage.yandexcloud.net s3 cp "$f" "s3://$BUCKET/$f" --cache-control "$cc" --only-show-errors
           }
 
           delete_file() {
