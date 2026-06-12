@@ -482,7 +482,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-12 10:18:33 UTC
+Сгенерировано: 2026-06-12 10:21:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10194,7 +10194,6 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     }
 
     initialize() {
-      Favorites?.init?.();
       initIosAudioKeeper();
       this._bindPlaybackPersistence();
     }
