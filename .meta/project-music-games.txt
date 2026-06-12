@@ -92,397 +92,59 @@ F всегда относится к playing-context, а не к просто о
 Контекст: точечный контекст Game Center / iframe host / postMessage bridge / service worker / запуск /Games/
 Проект делается и обслуживается средствами https://github.com/ (GitHub Pages + GitHub Actions).
 
-СТРУКТУРА ПРОЕКТА:
-vi3na1bita-music/
-├── .git/
-├── .github/
-│   └── workflows/
-│       ├── deploy.yml
-│       ├── e2e.yml
-│       ├── generate-context.yml
-│       ├── generate-lyrics-index.yml
-│       └── validate.yml
-├── .meta/
-├── albums/
-│   ├── gallery/
-│   │   ├── 00/
-│   │   │   ├── 00-cover-01.jpg
-│   │   │   ├── 00-cover-01.png
-│   │   │   ├── 00-cover-01.webp
-│   │   │   ├── 00-cover-02.jpg
-│   │   │   ├── 00-cover-02.png
-│   │   │   ├── 00-cover-02.webp
-│   │   │   └── index.json
-│   │   ├── 01/
-│   │   │   ├── 01-cover-01.jpg
-│   │   │   ├── 01-cover-01.png
-│   │   │   ├── 01-cover-01.webp
-│   │   │   ├── 01-cover-02.jpg
-│   │   │   ├── 01-cover-02.png
-│   │   │   ├── 01-cover-02.webp
-│   │   │   ├── 01-cover-03.jpg
-│   │   │   ├── 01-cover-03.png
-│   │   │   ├── 01-cover-03.webp
-│   │   │   ├── 01-cover-04.jpg
-│   │   │   ├── 01-cover-04.png
-│   │   │   ├── 01-cover-04.webp
-│   │   │   └── index.json
-│   │   ├── 02/
-│   │   │   ├── 02-cover-01.jpg
-│   │   │   ├── 02-cover-01.png
-│   │   │   ├── 02-cover-01.webp
-│   │   │   ├── 02-cover-02.jpg
-│   │   │   ├── 02-cover-02.png
-│   │   │   ├── 02-cover-02.webp
-│   │   │   ├── 02-cover-03.jpg
-│   │   │   ├── 02-cover-03.png
-│   │   │   ├── 02-cover-03.webp
-│   │   │   ├── 02-cover-04.jpg
-│   │   │   ├── 02-cover-04.png
-│   │   │   ├── 02-cover-04.webp
-│   │   │   └── index.json
-│   │   ├── 03/
-│   │   │   ├── 03-cover-01.jpg
-│   │   │   ├── 03-cover-01.png
-│   │   │   ├── 03-cover-01.webp
-│   │   │   ├── 03-cover-02.jpg
-│   │   │   ├── 03-cover-02.png
-│   │   │   ├── 03-cover-02.webp
-│   │   │   ├── 03-cover-03.jpg
-│   │   │   ├── 03-cover-03.png
-│   │   │   ├── 03-cover-03.webp
-│   │   │   ├── 03-cover-04.jpg
-│   │   │   ├── 03-cover-04.png
-│   │   │   ├── 03-cover-04.webp
-│   │   │   └── index.json
-│   │   └── 04/
-│   │       ├── 04-cover-01.jpg
-│   │       ├── 04-cover-01.png
-│   │       ├── 04-cover-01.webp
-│   │       ├── 04-cover-02.jpg
-│   │       ├── 04-cover-02.png
-│   │       ├── 04-cover-02.webp
-│   │       ├── 04-cover-03.jpg
-│   │       ├── 04-cover-03.png
-│   │       ├── 04-cover-03.webp
-│   │       ├── 04-cover-04.jpg
-│   │       ├── 04-cover-04.png
-│   │       ├── 04-cover-04.webp
-│   │       └── index.json
-│   └── .gitkeep
-├── audio/
-│   └── silence.mp3
-├── data/
-│   ├── track-profiles/
-│   │   ├── _stub.profile.json
-│   │   └── README.txt
-│   ├── custom_achievements.json
-│   ├── taxonomy.json
-│   └── track-profiles-index.json
-├── icons/
-│   ├── .gitkeep
-│   ├── apple-touch-icon.png
-│   ├── favicon-16.png
-│   ├── favicon-32.png
-│   ├── icon-192.png
-│   ├── icon-512.png
-│   └── ui-sprite.svg
-├── img/
-│   ├── desktop/
-│   │   ├── logo@1x.png
-│   │   ├── logo@2x.png
-│   │   └── logo@3x.png
-│   ├── icon_album/
-│   │   ├── mobile/
-│   │   │   ├── icon-album-00@1x.jpg
-│   │   │   ├── icon-album-00@2x.jpg
-│   │   │   ├── icon-album-01@1x.jpg
-│   │   │   ├── icon-album-01@2x.jpg
-│   │   │   ├── icon-album-02@1x.jpg
-│   │   │   ├── icon-album-02@2x.jpg
-│   │   │   ├── icon-album-03@1x.jpg
-│   │   │   ├── icon-album-03@2x.jpg
-│   │   │   ├── icon-album-04@1x.jpg
-│   │   │   ├── icon-album-04@2x.jpg
-│   │   │   ├── icon-album-news@1x.jpg
-│   │   │   ├── icon-album-news@2x.jpg
-│   │   │   ├── icon-album+00@1x.jpg
-│   │   │   └── icon-album+00@2x.jpg
-│   │   ├── icon-album-00.png
-│   │   ├── icon-album-00@1x.png
-│   │   ├── icon-album-00@2x.png
-│   │   ├── icon-album-01.png
-│   │   ├── icon-album-01@1x.png
-│   │   ├── icon-album-01@2x.png
-│   │   ├── icon-album-02.png
-│   │   ├── icon-album-02@1x.png
-│   │   ├── icon-album-02@2x.png
-│   │   ├── icon-album-03.png
-│   │   ├── icon-album-03@1x.png
-│   │   ├── icon-album-03@2x.png
-│   │   ├── icon-album-04.png
-│   │   ├── icon-album-04@1x.png
-│   │   ├── icon-album-04@2x.png
-│   │   ├── icon-album-news.png
-│   │   ├── icon-album-news@1x.png
-│   │   ├── icon-album-news@2x.png
-│   │   ├── icon-album+00.png
-│   │   ├── icon-album+00@1x.png
-│   │   └── icon-album+00@2x.png
-│   ├── mobile/
-│   │   ├── logo@1x.jpg
-│   │   └── logo@2x.jpg
-│   ├── .gitkeep
-│   ├── bg-in.webp
-│   ├── Fav_logo.png
-│   ├── icon_game.png
-│   ├── logo.png
-│   └── vitrina-crack-01.svg
-├── news/
-│   ├── .gitkeep
-│   └── news.json
-├── scripts/
-│   ├── analytics/
-│   │   ├── achievement-engine.js
-│   │   ├── achievement-state.js
-│   │   ├── achievements-dict.js
-│   │   ├── archive-branch-validation.js
-│   │   ├── archive-maintenance.js
-│   │   ├── backup-branch-compare.js
-│   │   ├── backup-builders.js
-│   │   ├── backup-debug.js
-│   │   ├── backup-event-cleanup.js
-│   │   ├── backup-importers.js
-│   │   ├── backup-recovery.js
-│   │   ├── backup-summary.js
-│   │   ├── backup-sync-engine.js
-│   │   ├── backup-upload-runner.js
-│   │   ├── backup-vault.js
-│   │   ├── cloud-contract.js
-│   │   ├── device-registry.js
-│   │   ├── device-settings-contract.js
-│   │   ├── event-archive-contract.js
-│   │   ├── event-archive-restore.js
-│   │   ├── event-archive-sync.js
-│   │   ├── event-contract.js
-│   │   ├── event-integrity.js
-│   │   ├── event-logger.js
-│   │   ├── favorites-storage-merge.js
-│   │   ├── live-stats.js
-│   │   ├── meta-db.js
-│   │   ├── playback-runtime.js
-│   │   ├── playback-validity.js
-│   │   ├── playlists-storage-merge.js
-│   │   ├── session-tracker.js
-│   │   ├── share-generator.js
-│   │   ├── snapshot-contract.js
-│   │   ├── stats-aggregator.js
-│   │   ├── stats-state.js
-│   │   ├── storage-merge-utils.js
-│   │   ├── storage-merge.js
-│   │   ├── sync-cloud-guard.js
-│   │   ├── sync-dirty-events.js
-│   │   ├── sync-domains.js
-│   │   ├── sync-revisions.js
-│   │   ├── sync-scheduler.js
-│   │   ├── sync-state.js
-│   │   ├── tombstone-contract.js
-│   │   ├── trust-state.js
-│   │   └── verified-achievement-state.js
-│   ├── app/
-│   │   ├── albums/
-│   │   │   └── specials.js
-│   │   ├── friends/
-│   │   │   └── friends-block.js
-│   │   ├── games/
-│   │   │   ├── bridge-host.js
-│   │   │   ├── config.js
-│   │   │   └── host.js
-│   │   ├── player/
-│   │   │   ├── favorites-only-actions.js
-│   │   │   ├── favorites-only-resolver.js
-│   │   │   ├── playback-clock.js
-│   │   │   └── playback-context-source.js
-│   │   ├── player-ui/
-│   │   │   └── lyrics.js
-│   │   ├── profile/
-│   │   │   ├── account-benefits-view.js
-│   │   │   ├── account-bindings.js
-│   │   │   ├── account-cloud-renderers.js
-│   │   │   ├── account-devices-view.js
-│   │   │   ├── achievements-view.js
-│   │   │   ├── actions-reset.js
-│   │   │   ├── actions-trash.js
-│   │   │   ├── actions.js
-│   │   │   ├── archive-maintenance-modal.js
-│   │   │   ├── archive-render-kit.js
-│   │   │   ├── auth-onboarding-orchestrator.js
-│   │   │   ├── backup-info-modal.js
-│   │   │   ├── carousel-flat.js
-│   │   │   ├── cloud-action-render-kit.js
-│   │   │   ├── cloud-ui-helpers.js
-│   │   │   ├── fresh-restore-modal.js
-│   │   │   ├── ledger-health-modal.js
-│   │   │   ├── live-bindings.js
-│   │   │   ├── logs-formatters.js
-│   │   │   ├── logs-view.js
-│   │   │   ├── model.js
-│   │   │   ├── profile-render-kit.js
-│   │   │   ├── profile-tab-bindings.js
-│   │   │   ├── profile-tab-renderers.js
-│   │   │   ├── recs-view.js
-│   │   │   ├── render-shell.js
-│   │   │   ├── restore-backup-runner.js
-│   │   │   ├── restore-card-render-kit.js
-│   │   │   ├── restore-decision.js
-│   │   │   ├── restore-diff.js
-│   │   │   ├── restore-preview-modal.js
-│   │   │   ├── settings-conflict-section.js
-│   │   │   ├── settings-data-section.js
-│   │   │   ├── settings-download-section.js
-│   │   │   ├── settings-interface-section.js
-│   │   │   ├── settings-trash-section.js
-│   │   │   ├── settings-view.js
-│   │   │   ├── stats-view.js
-│   │   │   ├── tab-strip-physics.js
-│   │   │   ├── template.js
-│   │   │   ├── trust-check-modal.js
-│   │   │   ├── verified-achievements-view.js
-│   │   │   ├── view.js
-│   │   │   ├── yandex-actions.js
-│   │   │   ├── yandex-auth-view.js
-│   │   │   ├── yandex-auto-sync.js
-│   │   │   ├── yandex-preload-cache.js
-│   │   │   └── yandex-runtime-refresh.js
-│   │   ├── push/
-│   │   │   └── web-push.js
-│   │   ├── showcase/
-│   │   │   ├── actions.js
-│   │   │   ├── edit.js
-│   │   │   ├── index.js
-│   │   │   ├── lyrics-search.js
-│   │   │   ├── modals.js
-│   │   │   ├── playlists.js
-│   │   │   ├── render.js
-│   │   │   ├── search.js
-│   │   │   └── store.js
-│   │   ├── albums.js
-│   │   ├── gallery.js
-│   │   ├── offline-ui-bootstrap.js
-│   │   ├── playback-cache-bootstrap.js
-│   │   ├── player-ui.js
-│   │   ├── promocode.js
-│   │   └── track-registry.js
-│   ├── ci/
-│   │   ├── generate-lyrics-index.mjs
-│   │   ├── lint-sw.mjs
-│   │   ├── validate-content.mjs
-│   │   └── validate-manifest.mjs
-│   ├── core/
-│   │   ├── bootstrap.js
-│   │   ├── config.js
-│   │   ├── device-identity.js
-│   │   ├── device-linking.js
-│   │   ├── device-profile.js
-│   │   ├── favorites-manager.js
-│   │   ├── utils.js
-│   │   ├── yandex-auth.js
-│   │   ├── yandex-backup-disk.js
-│   │   ├── yandex-device-settings-disk.js
-│   │   ├── yandex-disk-transport.js
-│   │   ├── yandex-disk.js
-│   │   ├── yandex-event-archive-disk.js
-│   │   └── yandex-verified-disk.js
-│   ├── e2e/
-│   │   ├── favorites.spec.js
-│   │   ├── player.spec.js
-│   │   └── utils.js
-│   ├── intel/
-│   │   ├── community/
-│   │   │   ├── cohorts.js
-│   │   │   ├── community-stats.js
-│   │   │   └── similar-listeners.js
-│   │   ├── listener/
-│   │   │   ├── listener-collection.js
-│   │   │   └── listener-profile.js
-│   │   ├── providers/
-│   │   │   ├── hybrid-sync.js
-│   │   │   ├── provider-actions.js
-│   │   │   ├── provider-consents.js
-│   │   │   └── provider-identity.js
-│   │   ├── recs/
-│   │   │   ├── recommendation-engine.js
-│   │   │   ├── recommendation-reasons.js
-│   │   │   ├── recommendation-strategies.js
-│   │   │   └── rediscovery.js
-│   │   ├── shared/
-│   │   │   ├── bus.js
-│   │   │   ├── contracts.js
-│   │   │   ├── guards.js
-│   │   │   └── helpers.js
-│   │   ├── telemetry/
-│   │   │   └── telemetry-mapper.js
-│   │   ├── track/
-│   │   │   ├── track-presentation.js
-│   │   │   ├── track-profiles.js
-│   │   │   └── track-relations.js
-│   │   ├── ui/
-│   │   │   ├── profile-insights.js
-│   │   │   ├── showcase-semantic.js
-│   │   │   └── track-profile-modal.js
-│   │   ├── bootstrap.js
-│   │   ├── flags.js
-│   │   └── roadmap.js
-│   ├── offline/
-│   │   ├── cache-db.js
-│   │   ├── net-policy.js
-│   │   ├── offline-manager.js
-│   │   ├── track-resolver.js
-│   │   └── update-checker.js
-│   ├── ui/
-│   │   ├── app-modals.js
-│   │   ├── cache-progress-overlay.js
-│   │   ├── icon-utils.js
-│   │   ├── logo-pulse.js
-│   │   ├── lyrics-modal.js
-│   │   ├── modals.js
-│   │   ├── news-inline.js
-│   │   ├── notify.js
-│   │   ├── offline-indicators.js
-│   │   ├── offline-modal.js
-│   │   ├── progress-formatters.js
-│   │   ├── sleep-timer.js
-│   │   ├── statistics-modal.js
-│   │   ├── sysinfo.js
-│   │   └── track-statistics-modal.js
-│   ├── utils/
-│   │   └── sw-manager.js
-│   ├── vendor/
-│   │   └── howler.min.js
-│   └── app.js
-├── src/
-│   ├── player-core/
-│   │   ├── ios-audio-keeper.js
-│   │   └── media-session.js
-│   └── PlayerCore.js
-├── styles/
-│   ├── base.css
-│   ├── games.css
-│   ├── main.css
-│   ├── offline.css
-│   ├── player.css
-│   ├── profile.css
-│   ├── showcase.css
-│   └── ui-core.css
-├── .gitignore
-├── albums.json
-├── generate-context.js
-├── index.html
-├── manifest.json
-├── oauth-callback.html
-└── service-worker.js
+СТРУКТУРА ПРОЕКТА (компактная):
+[/] .gitignore, albums.json, generate-context.js, index.html, manifest.json, oauth-callback.html, service-worker.js
+[/.git/] (пусто)
+[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-lyrics-index.yml, validate.yml
+[/.meta/] (пусто)
+[/albums/] .gitkeep
+[/albums/gallery/00/] 00-cover-01.jpg, 00-cover-01.png, 00-cover-01.webp, 00-cover-02.jpg, 00-cover-02.png, 00-cover-02.webp, index.json
+[/albums/gallery/01/] 01-cover-01.jpg, 01-cover-01.png, 01-cover-01.webp, 01-cover-02.jpg, 01-cover-02.png, 01-cover-02.webp, 01-cover-03.jpg, 01-cover-03.png, 01-cover-03.webp, 01-cover-04.jpg, 01-cover-04.png, 01-cover-04.webp, index.json
+[/albums/gallery/02/] 02-cover-01.jpg, 02-cover-01.png, 02-cover-01.webp, 02-cover-02.jpg, 02-cover-02.png, 02-cover-02.webp, 02-cover-03.jpg, 02-cover-03.png, 02-cover-03.webp, 02-cover-04.jpg, 02-cover-04.png, 02-cover-04.webp, index.json
+[/albums/gallery/03/] 03-cover-01.jpg, 03-cover-01.png, 03-cover-01.webp, 03-cover-02.jpg, 03-cover-02.png, 03-cover-02.webp, 03-cover-03.jpg, 03-cover-03.png, 03-cover-03.webp, 03-cover-04.jpg, 03-cover-04.png, 03-cover-04.webp, index.json
+[/albums/gallery/04/] 04-cover-01.jpg, 04-cover-01.png, 04-cover-01.webp, 04-cover-02.jpg, 04-cover-02.png, 04-cover-02.webp, 04-cover-03.jpg, 04-cover-03.png, 04-cover-03.webp, 04-cover-04.jpg, 04-cover-04.png, 04-cover-04.webp, index.json
+[/audio/] silence.mp3
+[/data/] custom_achievements.json, taxonomy.json, track-profiles-index.json
+[/data/track-profiles/] _stub.profile.json, README.txt
+[/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
+[/img/] .gitkeep, bg-in.webp, Fav_logo.png, icon_game.png, logo.png, vitrina-crack-01.svg
+[/img/desktop/] logo@1x.png, logo@2x.png, logo@3x.png
+[/img/icon_album/] icon-album-00.png, icon-album-00@1x.png, icon-album-00@2x.png, icon-album-01.png, icon-album-01@1x.png, icon-album-01@2x.png, icon-album-02.png, icon-album-02@1x.png, icon-album-02@2x.png, icon-album-03.png, icon-album-03@1x.png, icon-album-03@2x.png, icon-album-04.png, icon-album-04@1x.png, icon-album-04@2x.png, icon-album-news.png, icon-album-news@1x.png, icon-album-news@2x.png, icon-album+00.png, icon-album+00@1x.png, icon-album+00@2x.png
+[/img/icon_album/mobile/] icon-album-00@1x.jpg, icon-album-00@2x.jpg, icon-album-01@1x.jpg, icon-album-01@2x.jpg, icon-album-02@1x.jpg, icon-album-02@2x.jpg, icon-album-03@1x.jpg, icon-album-03@2x.jpg, icon-album-04@1x.jpg, icon-album-04@2x.jpg, icon-album-news@1x.jpg, icon-album-news@2x.jpg, icon-album+00@1x.jpg, icon-album+00@2x.jpg
+[/img/mobile/] logo@1x.jpg, logo@2x.jpg
+[/news/] .gitkeep, news.json
+[/scripts/] app.js
+[/scripts/analytics/] achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorites-storage-merge.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js, verified-achievement-state.js
+[/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, track-registry.js
+[/scripts/app/albums/] specials.js
+[/scripts/app/friends/] friends-block.js
+[/scripts/app/games/] bridge-host.js, config.js, host.js
+[/scripts/app/player/] favorites-only-actions.js, favorites-only-resolver.js, playback-clock.js, playback-context-source.js
+[/scripts/app/player-ui/] lyrics.js
+[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-devices-view.js, achievements-view.js, actions-reset.js, actions-trash.js, actions.js, archive-maintenance-modal.js, archive-render-kit.js, auth-onboarding-orchestrator.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, cloud-ui-helpers.js, fresh-restore-modal.js, ledger-health-modal.js, live-bindings.js, logs-formatters.js, logs-view.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, restore-backup-runner.js, restore-card-render-kit.js, restore-decision.js, restore-diff.js, restore-preview-modal.js, settings-conflict-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, verified-achievements-view.js, view.js, yandex-actions.js, yandex-auth-view.js, yandex-auto-sync.js, yandex-preload-cache.js, yandex-runtime-refresh.js
+[/scripts/app/push/] web-push.js
+[/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
+[/scripts/ci/] generate-lyrics-index.mjs, lint-sw.mjs, validate-content.mjs, validate-manifest.mjs
+[/scripts/core/] bootstrap.js, config.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-verified-disk.js
+[/scripts/e2e/] favorites.spec.js, player.spec.js, utils.js
+[/scripts/intel/] bootstrap.js, flags.js, roadmap.js
+[/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
+[/scripts/intel/listener/] listener-collection.js, listener-profile.js
+[/scripts/intel/providers/] hybrid-sync.js, provider-actions.js, provider-consents.js, provider-identity.js
+[/scripts/intel/recs/] recommendation-engine.js, recommendation-reasons.js, recommendation-strategies.js, rediscovery.js
+[/scripts/intel/shared/] bus.js, contracts.js, guards.js, helpers.js
+[/scripts/intel/telemetry/] telemetry-mapper.js
+[/scripts/intel/track/] track-presentation.js, track-profiles.js, track-relations.js
+[/scripts/intel/ui/] profile-insights.js, showcase-semantic.js, track-profile-modal.js
+[/scripts/offline/] cache-db.js, net-policy.js, offline-manager.js, track-resolver.js, update-checker.js
+[/scripts/ui/] app-modals.js, cache-progress-overlay.js, icon-utils.js, logo-pulse.js, lyrics-modal.js, modals.js, news-inline.js, notify.js, offline-indicators.js, offline-modal.js, progress-formatters.js, sleep-timer.js, statistics-modal.js, sysinfo.js, track-statistics-modal.js
+[/scripts/utils/] sw-manager.js
+[/scripts/vendor/] howler.min.js
+[/src/] PlayerCore.js
+[/src/player-core/] ios-audio-keeper.js, media-session.js
+[/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-12 11:13:35 UTC
+Сгенерировано: 2026-06-12 11:30:15 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1123,28 +785,18 @@ const readRepoUrl = () => {
 };
 
 const renderTree = () => {
-  const lines = ['СТРУКТУРА ПРОЕКТА:', `${path.basename(ROOT)}/`];
-
-  const walk = (dir, prefix = '') => {
+  const lines = ['СТРУКТУРА ПРОЕКТА (компактная):'];
+  const walk = (dir, relDir) => {
     let entries = [];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    const visible = entries
-      .filter(x => !isExcluded(toUnix(path.relative(ROOT, path.join(dir, x.name))), EXCLUDE_TREE_PATTERNS))
-      .sort((a, b) => a.isDirectory() !== b.isDirectory() ? (a.isDirectory() ? -1 : 1) : a.name.localeCompare(b.name));
-
-    visible.forEach((x, i) => {
-      const last = i === visible.length - 1;
-      lines.push(`${prefix}${last ? '└── ' : '├── '}${x.name}${x.isDirectory() ? '/' : ''}`);
-      if (x.isDirectory()) walk(path.join(dir, x.name), `${prefix}${last ? '    ' : '│   '}`);
-    });
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    const visible = entries.filter(x => !isExcluded(toUnix(path.relative(ROOT, path.join(dir, x.name))), EXCLUDE_TREE_PATTERNS)).sort((a, b) => a.name.localeCompare(b.name));
+    const files = visible.filter(x => !x.isDirectory()).map(x => x.name), subdirs = visible.filter(x => x.isDirectory());
+    const p = relDir ? `/${relDir}/` : '/';
+    if (files.length) lines.push(`[${p}] ${files.join(', ')}`);
+    else if (!subdirs.length) lines.push(`[${p}] (пусто)`);
+    subdirs.forEach(x => walk(path.join(dir, x.name), relDir ? `${relDir}/${x.name}` : x.name));
   };
-
-  walk(ROOT);
+  walk(ROOT, '');
   return lines.join('\n');
 };
 
