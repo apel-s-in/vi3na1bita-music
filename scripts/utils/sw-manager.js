@@ -34,7 +34,7 @@
     async init() {
       if (!('serviceWorker' in N)) return;
       this._initProgress();
-      this._clearUpdateUi();;
+      this._clearUpdateUi();
 
       // Не reload по controllerchange сам по себе. Reload только если пользователь явно нажал «ОБНОВИТЬ».
       N.serviceWorker.addEventListener('controllerchange', () => {
