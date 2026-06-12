@@ -6,7 +6,7 @@
 
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px env(safe-area-inset-bottom)}
 #now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
-#hotkeys-btn.hotkeys-hidden,#sysinfo-btn.sysinfo-hidden{display:none}
+#sysinfo-btn.sysinfo-hidden{display:none}
 
 .active-album-title{width:100%;max-width:400px;margin:18px auto 6px;text-align:center;color:#eaf2ff;font-weight:900;letter-spacing:.01em;line-height:1.15;text-shadow:0 1px 0 rgba(0,0,0,.35);font-size:clamp(18px,4.6vw,24px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .active-album-title.fav{color:#ffd166;letter-spacing:.06em}
@@ -95,13 +95,11 @@
 #install-pwa-btn:active{transform:translateY(0);box-shadow:0 4px 15px rgba(124,77,255,.4)}
 @media (display-mode: standalone) { #install-pwa-btn { display: none !important; } }
 
-.feedback-link,.support-link,.hotkeys-btn{color:var(--secondary-color)!important;text-decoration:underline!important;font-weight:800;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:color .18s;font-size:1em;display:block;text-align:center;width:100%;margin:6px 0;background:0 0;border:0;padding:8px}
-.feedback-link:hover,.support-link:hover,.hotkeys-btn:hover{color:var(--c-w)!important}
+.feedback-link,.support-link{color:var(--secondary-color)!important;text-decoration:underline!important;font-weight:800;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:color .18s;font-size:1em;display:block;text-align:center;width:100%;margin:6px 0;background:0 0;border:0;padding:8px}
+.feedback-link:hover,.support-link:hover{color:var(--c-w)!important}
 
 .offline-btn{min-width:110px;height:40px;font-size:1.05em;font-weight:900;border:0;border-radius:10px;cursor:pointer;letter-spacing:.07em;box-shadow:0 2px 8px rgba(6,0,0,.2);transition:background .2s,color .14s,transform .1s,box-shadow .2s;display:block;margin:10px auto 0}
 .offline-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(6,0,0,.3)}
 .offline-btn:active{transform:translateY(0)}
-
-@media (max-width:600px){ .hotkeys-btn{display:none!important} }
 @media (max-width:380px){ .album-icon{width:54px;height:54px} .album-icon.active{width:60px;height:60px} }
 @media (display-mode:standalone){.bottom-controls-center{padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
