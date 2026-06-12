@@ -482,7 +482,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-12 10:16:39 UTC
+Сгенерировано: 2026-06-12 10:17:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8956,7 +8956,7 @@ export default { openTrackStatisticsModal };
     async init() {
       if (!('serviceWorker' in N)) return;
       this._initProgress();
-      this._clearUpdateUi();;
+      this._clearUpdateUi();
 
       // Не reload по controllerchange сам по себе. Reload только если пользователь явно нажал «ОБНОВИТЬ».
       N.serviceWorker.addEventListener('controllerchange', () => {
