@@ -50,7 +50,6 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     }
 
     initialize() {
-      Favorites?.init?.();
       initIosAudioKeeper();
       this._bindPlaybackPersistence();
     }
