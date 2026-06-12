@@ -7,7 +7,7 @@
     if (t.fulltext || t.uid) {
       const urls = [...(await W.TrackRegistry?.getSmartUrlInfo?.(t.uid, 'fulltext').then(s=>s?.url?[s.url]:[]).catch(()=>[])), t.fulltext].filter((v,i,a)=>v&&a.indexOf(v)===i);
       for (const u of urls) {
-        try { txt = U?.fetchCache?.getText ? await U.fetchCache.getText({ key: `lyrics:fulltext:${u}`, url: u, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch(u, { cache: 'force-cache' }).then(r => r.ok ? r.text() : ''); if (txt) break; } catch {}
+        try { txt = await U.fetchCache.getText({ key: `lyrics:fulltext:${u}`, url: u, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }); if (txt) break; } catch {}
       }
     }
     if (!txt) txt = (W.LyricsController?.getCurrentLyricsLines?.() || []).map(i => i.line).filter(Boolean).join('\n');
