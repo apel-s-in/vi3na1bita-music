@@ -482,7 +482,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-12 10:21:12 UTC
+Сгенерировано: 2026-06-12 10:38:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -772,7 +772,7 @@ jobs:
 <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+<script src="./scripts/vendor/howler.min.js"></script><script>window.Howler||document.write('<script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"><\\/script>')</script>
 <script src="./scripts/core/utils.js"></script><script src="./scripts/core/bootstrap.js"></script>
 <script src="./scripts/core/config.js" type="module"></script><script src="./scripts/utils/sw-manager.js" defer></script>
 <script src="./src/PlayerCore.js" type="module"></script><script src="./scripts/ui/icon-utils.js" type="module"></script>
@@ -783,7 +783,7 @@ jobs:
 <script src="./scripts/app/player/playback-context-source.js" type="module"></script><script src="./scripts/app/player/favorites-only-actions.js" type="module"></script>
 <script src="./scripts/app/player-ui.js" defer></script><script src="./scripts/app/gallery.js" type="module"></script>
 <script src="./scripts/app/albums.js" type="module"></script><script src="./scripts/analytics/device-registry.js" type="module"></script>
-<script src="./scripts/analytics/backup-debug.js" type="module"></script><script src="./scripts/app.js" type="module"></script>
+<script src="./scripts/app.js" type="module"></script>
 </head><body>
 <div id="promocode-block"><div class="promo-inner">
   <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
@@ -807,7 +807,6 @@ jobs:
   <div class="bottom-controls-center" id="app-shell-controls">
     <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
     <button id="install-pwa-btn"><span style="font-size:18px;line-height:1">📱</span> УСТАНОВИТЬ ПРИЛОЖЕНИЕ</button>
-    <button class="hotkeys-btn hotkeys-hidden" id="hotkeys-btn">ГОРЯЧИЕ КЛАВИШИ</button>
     <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
     <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
     <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
