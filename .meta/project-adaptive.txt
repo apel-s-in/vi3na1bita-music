@@ -481,7 +481,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-12 11:13:12 UTC
+Сгенерировано: 2026-06-12 11:13:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7061,7 +7061,7 @@ if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',init);else ini
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.6.8',
+  APP_VERSION: '8.6.9',
   BUILD_DATE: '2026-06-07',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
