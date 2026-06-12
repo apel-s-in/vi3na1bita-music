@@ -9,7 +9,7 @@ export const trackProfiles = {
   async reloadIndex() { st.idx = null; st.idxLoadedAt = 0; return this.ensureIndex(); },
   async hasPreview(uid) { return !!this.getPreview(uid) || !!(await this.ensureIndex()).items?.[String(uid || '').trim()]; },
   getPreview: u => { const k = String(u || '').trim(); return k && st.idx?.items ? st.idx.items[k] || null : null; },
-  async getProfile(uid) { const k = String(uid || '').trim(); if (!k) return null; if (st.cache.has(k)) return st.cache.get(k); try { const cU = `${getDir()}${encodeURIComponent(k)}.json?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`, fc = window.Utils?.fetchCache, d = fc?.getJson ? await fc.getJson({ key: `intel:profile:${k}`, url: cU, ttlMs: 2592000000, store: 'local', fetchInit: { cache: 'force-cache' } }) : await fetch(cU).then(r => r.json()); if (d) st.cache.set(k, d); return d || null; } catch { return null; } },
+  async getProfile(uid) { const k = String(uid || '').trim(); if (!k) return null; if (st.cache.has(k)) return st.cache.get(k); try { const cU = `${getDir()}${encodeURIComponent(k)}.json?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`, d = await window.Utils.fetchCache.getJson({ key: `intel:profile:${k}`, url: cU, ttlMs: 2592000000, store: 'local', fetchInit: { cache: 'force-cache' } }); if (d) st.cache.set(k, d); return d || null; } catch { return null; } },
   dropProfile: u => st.cache.delete(String(u || '').trim()),
   getState: () => ({ indexLoaded: !!st.idx, indexLoadedAt: st.idxLoadedAt, cachedProfiles: st.cache.size })
 };
