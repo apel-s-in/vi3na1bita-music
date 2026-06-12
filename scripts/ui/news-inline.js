@@ -8,7 +8,7 @@ export const loadAndRenderNewsInline = async c => {
   if (!c) return; renderNewsInlineSkeleton(c);
   const st = c.querySelector('#news-inline-status'), lst = c.querySelector('#news-inline-list'); if (!lst) return;
   try {
-    const j = window.Utils?.fetchCache?.getJson ? await window.Utils.fetchCache.getJson({ key: 'news:inline:v1', url: './news/news.json', ttlMs: 300000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await fetch('./news/news.json', { cache: 'force-cache' }).then(r => r.ok ? r.json() : { items: [] });
+    const j = await window.Utils.fetchCache.getJson({ key: 'news:inline:v1', url: './news/news.json', ttlMs: 300000, store: 'session', fetchInit: { cache: 'force-cache' } });
     if (!j?.items?.length) return st && (st.textContent = 'Пока новостей нет');
     if (st) st.style.display = 'none'; lst.innerHTML = j.items.map(renderCard).join('');
   } catch { if (st) { st.textContent = 'Не удалось загрузить новости'; st.classList.add('news-inline__status--error'); } }
