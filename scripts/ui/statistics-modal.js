@@ -35,9 +35,6 @@ export async function openStatisticsModal(uid = null) {
   window.AlbumsManager?.highlightCurrentTrack?.();
 }
 
-window.StatisticsModal = { openStatisticsModal, init: () => document.addEventListener('click', e => {
-  const btn = e.target.closest('.stats-trigger');
-  if (btn) openStatisticsModal(btn.dataset.uid);
-}) };
+window.StatisticsModal = { openStatisticsModal };
 
 export default { openStatisticsModal };
