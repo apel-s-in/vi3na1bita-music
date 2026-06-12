@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-12 12:09:10 UTC
+Сгенерировано: 2026-06-12 12:09:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10313,75 +10313,24 @@ body:has(.gc-host.is-mounted:not(.is-gc-parked)){overflow:hidden}
 
 //=================================================
 // FILE: /styles/main.css
-/* ==========================================
-   ГЛАВНЫЙ ЛЕЙАУТ И БАЗОВЫЕ СПИСКИ (main.css)
-   Здесь остался только скелет приложения.
-   Все модули вынесены в отдельные файлы.
-   ========================================== */
-
+/* ========================================== ГЛАВНЫЙ ЛЕЙАУТ И БАЗОВЫЕ СПИСКИ (main.css) ========================================== */
 #main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px env(safe-area-inset-bottom)}
 #now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
 #sysinfo-btn.sysinfo-hidden{display:none}
-
 .active-album-title{width:100%;max-width:400px;margin:18px auto 6px;text-align:center;color:#eaf2ff;font-weight:900;letter-spacing:.01em;line-height:1.15;text-shadow:0 1px 0 rgba(0,0,0,.35);font-size:clamp(18px,4.6vw,24px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .active-album-title.fav{color:#ffd166;letter-spacing:.06em}
 .active-album-title.news{color:var(--c-blue);letter-spacing:.02em}
-
-/* --- КОНТЕЙНЕР ИКОНОК АЛЬБОМОВ --- */
 .album-icons{display:flex;flex-direction:column;gap:10px;margin:12px auto 0;max-width:400px;width:100%;padding:4px 8px}
-
-/* --- РЯД: ДВЕ СТРОКИ --- */
 .album-icons-row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
-.album-icons-row--albums{flex-wrap:nowrap}
-.album-icons-row--nav{flex-wrap:nowrap}
-
-/* --- БАЗОВАЯ ИКОНКА --- */
-.album-icon{
-  flex-shrink:0;
-  border-radius:10px;overflow:hidden;
-  border:1px solid var(--border-color);cursor:pointer;
-  filter:grayscale(70%) brightness(.88);opacity:.72;
-  transition:width .3s cubic-bezier(.4,0,.2,1),
-             height .3s cubic-bezier(.4,0,.2,1),
-             min-width .3s cubic-bezier(.4,0,.2,1),
-             filter .25s,opacity .25s,
-             box-shadow .25s,transform .15s;
-  touch-action:manipulation;-webkit-touch-callout:none;
-  width:clamp(52px,13.5vw,72px);
-  height:clamp(52px,13.5vw,72px);
-}
+.album-icons-row--albums,.album-icons-row--nav{flex-wrap:nowrap}
+.album-icon{flex-shrink:0;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);cursor:pointer;filter:grayscale(70%) brightness(.88);opacity:.72;transition:width .3s cubic-bezier(.4,0,.2,1),height .3s cubic-bezier(.4,0,.2,1),min-width .3s cubic-bezier(.4,0,.2,1),filter .25s,opacity .25s,box-shadow .25s,transform .15s;touch-action:manipulation;-webkit-touch-callout:none;width:clamp(52px,13.5vw,72px);height:clamp(52px,13.5vw,72px)}
 .album-icon img{width:100%;height:100%;object-fit:cover;display:block}
-
-/* --- АКТИВНАЯ ИКОНКА В РЯДУ АЛЬБОМОВ --- */
-.album-icons-row--albums .album-icon.active{
-  filter:none;opacity:1;
-  box-shadow:0 2px 14px rgba(77,170,255,.35);
-  width:clamp(64px,17vw,82px);
-  height:clamp(64px,17vw,82px);
-  border-color:rgba(77,170,255,.45);
-}
-
-/* --- НАВИГАЦИОННЫЙ РЯД: все иконки одинакового размера --- */
-.album-icons-row--nav .album-icon{
-  width:clamp(60px,15vw,76px);
-  height:clamp(60px,15vw,76px);
-}
-.album-icons-row--nav .album-icon.active{
-  filter:none;opacity:1;
-  box-shadow:0 2px 10px rgba(0,0,0,.35);
-  border-color:var(--secondary-color);
-}
-
-/* --- HOVER / ACTIVE --- */
+.album-icons-row--albums .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 14px rgba(77,170,255,.35);width:clamp(64px,17vw,82px);height:clamp(64px,17vw,82px);border-color:rgba(77,170,255,.45)}
+.album-icons-row--nav .album-icon{width:clamp(60px,15vw,76px);height:clamp(60px,15vw,76px)}
+.album-icons-row--nav .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 10px rgba(0,0,0,.35);border-color:var(--secondary-color)}
 .album-icon:hover{transform:translateY(-2px);opacity:.9}
 .album-icon:active{transform:translateY(0) scale(.95)}
-
-/* --- Profile dynamic icon в nav-ряду --- */
-.album-icons-row--nav .profile-dyn-icon{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:4px;gap:2px;background:rgba(255,255,255,.03);
-}
-
+.album-icons-row--nav .profile-dyn-icon{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;gap:2px;background:rgba(255,255,255,.03)}
 .track-list{margin:0 auto;max-width:370px;width:100%;font-size:1.05em;color:var(--c-e);background:0;padding:0}
 .fav-empty{padding:20px;text-align:center;color:#8ab8fd}
 .fav-empty h3{margin:0 0 10px}
@@ -10389,7 +10338,6 @@ body:has(.gc-host.is-mounted:not(.is-gc-parked)){overflow:hidden}
 .fav-track-thumb{width:32px;height:32px;border-radius:4px;margin:0 8px 0 4px;object-fit:cover;flex-shrink:0}
 .fav-track-title-wrap{margin-left:0!important}
 .fav-track-meta{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
 .track{display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background .13s,transform .1s;background:0 0;user-select:none}
 .track:hover{background:rgba(255,255,255,.05)}
 .track.current{background:#232b38!important;border-left:3px solid var(--secondary-color)!important}
@@ -10398,26 +10346,21 @@ body:has(.gc-host.is-mounted:not(.is-gc-parked)){overflow:hidden}
 .favonly-filtered [data-hidden-by-favonly]{display:none!important}
 .tnum{min-width:30px;color:var(--c-blue);font-weight:500}
 .track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-
 .track,.player-control-btn,.offline-btn,button,a,input,select,textarea,[role="button"]{touch-action:manipulation;-webkit-touch-callout:none}
-
 .logo-bottom{max-width:112px;width:23vw;min-width:66px;height:auto;display:block;margin:0 auto 15px!important;cursor:pointer;transition:transform .05s ease-out!important;will-change:transform,filter;transform:translateZ(0);transform-origin:center}
 .logo-bottom:hover{opacity:.9}
 .bottom-controls-center{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:32px auto 0;gap:10px;width:100%;max-width:300px;padding-bottom:env(safe-area-inset-bottom)}
-
 #install-pwa-btn{display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;background:linear-gradient(135deg,#7c4dff,#4daaff);border:0;border-radius:14px;font-size:14px;font-weight:900;letter-spacing:0.5px;margin:0 auto 10px;padding:14px 20px;cursor:pointer;width:100%;max-width:370px;box-shadow:0 6px 20px rgba(124,77,255,.4);transition:transform .2s,box-shadow .2s,filter .2s;text-transform:uppercase}
 #install-pwa-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(124,77,255,.5);filter:brightness(1.1)}
 #install-pwa-btn:active{transform:translateY(0);box-shadow:0 4px 15px rgba(124,77,255,.4)}
-@media (display-mode: standalone) { #install-pwa-btn { display: none !important; } }
-
+@media(display-mode:standalone){#install-pwa-btn{display:none!important}}
 .feedback-link,.support-link{color:var(--secondary-color)!important;text-decoration:underline!important;font-weight:800;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:color .18s;font-size:1em;display:block;text-align:center;width:100%;margin:6px 0;background:0 0;border:0;padding:8px}
 .feedback-link:hover,.support-link:hover{color:var(--c-w)!important}
-
 .offline-btn{min-width:110px;height:40px;font-size:1.05em;font-weight:900;border:0;border-radius:10px;cursor:pointer;letter-spacing:.07em;box-shadow:0 2px 8px rgba(6,0,0,.2);transition:background .2s,color .14s,transform .1s,box-shadow .2s;display:block;margin:10px auto 0}
 .offline-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(6,0,0,.3)}
 .offline-btn:active{transform:translateY(0)}
-@media (max-width:380px){ .album-icon{width:54px;height:54px} .album-icon.active{width:60px;height:60px} }
-@media (display-mode:standalone){.bottom-controls-center{padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
+@media(max-width:380px){.album-icon{width:54px;height:54px}.album-icon.active{width:60px;height:60px}}
+@media(display-mode:standalone){.bottom-controls-center{padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
 
 //=================================================
 // FILE: /styles/offline.css
