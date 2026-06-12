@@ -6,7 +6,7 @@ export const ensureLyricsIndexLoaded = async () => {
   if (_l) return true;
   return W.Utils.func.memoAsyncOnce('app:showcase:lyrics-index', async () => {
     try {
-      const j = W.Utils?.fetchCache?.getJson ? await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } }) : await (W.NetPolicy?.fetchWithTraffic?.(I, { cache: 'force-cache' }) || fetch(I, { cache: 'force-cache' })).then(r => { if (!r.ok) throw 1; return r.json(); });
+      const j = await W.Utils.fetchCache.getJson({ key: 'lyrics:index:v1', url: I, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } });
       if (!j || j.v !== 1) throw 1;
       _idx = j.idx && typeof j.idx === 'object' ? j.idx : {}; _l = true; return true;
     } catch { _idx = {}; _l = false; return false; }
