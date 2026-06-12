@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-12 11:53:02 UTC
+Сгенерировано: 2026-06-12 12:08:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9442,7 +9442,7 @@ try {
 
 //=================================================
 // FILE: /oauth-callback.html
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Авторизация...</title><style>body{background:#0f1218;color:#eaf2ff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:16px}.msg{text-align:center;opacity:.7}</style></head><body><div class="msg">Авторизация... Окно закроется автоматически.</div><script>(()=>{try{const h=new URLSearchParams(window.location.hash.replace('#','')),t=h.get('access_token'),e=h.get('expires_in'),err=h.get('error'),s=h.get('scope')||'';if(window.opener&&!window.opener.closed)window.opener.postMessage({type:'YANDEX_OAUTH_CALLBACK',token:t||null,expiresIn:e||'0',error:err||null,scope:s},window.location.origin);}catch{if(window.opener&&!window.opener.closed)window.opener.postMessage({type:'YANDEX_OAUTH_CALLBACK',token:null,error:'callback_error'},window.location.origin);}finally{setTimeout(()=>window.close(),300);}})();</script></body></html>
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Авторизация...</title><style>body{background:#0f1218;color:#eaf2ff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:16px}.msg{text-align:center;opacity:.7}</style></head><body><div class="msg">Авторизация... Окно закроется автоматически.</div><script>(()=>{try{const h=new URLSearchParams(window.location.hash.replace('#','')),t=h.get('access_token'),e=h.get('expires_in'),err=h.get('error'),s=h.get('scope')||'';if(window.opener&&!window.opener.closed)window.opener.postMessage({type:'YANDEX_OAUTH_CALLBACK',token:t||null,expiresIn:e||'0',error:err||null,scope:s},window.location.origin);}catch{if(window.opener&&!window.opener.closed)window.opener.postMessage({type:'YANDEX_OAUTH_CALLBACK',token:null,error:'callback_error'},window.location.origin);}finally{setTimeout(()=>window.close(),300);}})();</script></body></html>
 
 //=================================================
 // FILE: /src/player-core/ios-audio-keeper.js
