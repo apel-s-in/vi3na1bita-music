@@ -352,7 +352,6 @@ vi3na1bita-music/
 │   │   │   ├── yandex-actions.js
 │   │   │   ├── yandex-auth-view.js
 │   │   │   ├── yandex-auto-sync.js
-│   │   │   ├── yandex-modals.js
 │   │   │   ├── yandex-preload-cache.js
 │   │   │   └── yandex-runtime-refresh.js
 │   │   ├── push/
@@ -483,7 +482,7 @@ vi3na1bita-music/
 ├── oauth-callback.html
 └── service-worker.js
 
-Сгенерировано: 2026-06-12 11:09:04 UTC
+Сгенерировано: 2026-06-12 11:09:33 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
