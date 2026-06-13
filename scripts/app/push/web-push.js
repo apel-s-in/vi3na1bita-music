@@ -90,8 +90,15 @@ export const syncWebPushSubscription = async ({ core, ask = false, force = false
   };
 };
 
+const isIosStandalone = () => {
+  const ua = String(N.userAgent || '');
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (N.platform === 'MacIntel' && N.maxTouchPoints > 1);
+  const standalone = W.matchMedia?.('(display-mode: standalone)')?.matches || N.standalone === true;
+  return isIOS && standalone;
+};
+
 export const enableWebPush = async core => {
-  return syncWebPushSubscription({ core, ask: true, force: true });
+  return syncWebPushSubscription({ core, ask: true, force: isIosStandalone() });
 };
 
 export default { syncWebPushSubscription, enableWebPush };
