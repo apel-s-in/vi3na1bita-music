@@ -454,10 +454,10 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       if (e.data?.type !== 'PUSH_NOTIFICATION_CLICK') return;
       try {
         const u = new URL(e.data.url || W.location.href, W.location.href);
-        const voiceWith = u.searchParams.get('voiceWith') || '';
-        const voiceRoom = u.searchParams.get('voiceRoom') || '';
-        const voiceKey = u.searchParams.get('key') || '';
-        const callId = u.searchParams.get('callId') || '';
+        const voiceWith = u.searchParams.get('voiceWith') || e.data.fromFriendId || '';
+        const voiceRoom = u.searchParams.get('voiceRoom') || e.data.roomId || '';
+        const voiceKey = u.searchParams.get('key') || e.data.roomSecret || '';
+        const callId = u.searchParams.get('callId') || e.data.callId || '';
         if (voiceWith && voiceRoom && voiceKey) {
           openFriendsVoiceCall(voiceWith, { callId, roomId: voiceRoom, roomSecret: voiceKey });
           return;
