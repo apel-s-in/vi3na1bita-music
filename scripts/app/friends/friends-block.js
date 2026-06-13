@@ -69,7 +69,6 @@ const showMailOverlay = ({ friendId, name = 'Друг', text = '' } = {}) => {
 
   ov.querySelector('[data-vf-read]')?.addEventListener('click', async () => {
     ov.remove();
-    clearUnread(friendId);
     await openFriendsChat(friendId);
   });
 
@@ -80,10 +79,10 @@ const openFriendsChat = async friendId => {
   if (!friendId) return false;
   try {
     await W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
-    setTimeout(() => {
-      clearUnread(friendId);
-      _ui?.openChat?.(friendId);
-    }, 250);
+    setTimeout(async () => {
+      const ok = await _ui?.openChat?.(friendId);
+      if (ok) clearUnread(friendId);
+    }, 300);
     return true;
   } catch {
     return false;
