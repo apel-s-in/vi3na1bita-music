@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 10:42:00 UTC
+Сгенерировано: 2026-06-13 10:43:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3677,7 +3677,6 @@ const showMailOverlay = ({ friendId, name = 'Друг', text = '' } = {}) => {
 
   ov.querySelector('[data-vf-read]')?.addEventListener('click', async () => {
     ov.remove();
-    clearUnread(friendId);
     await openFriendsChat(friendId);
   });
 
@@ -3688,10 +3687,10 @@ const openFriendsChat = async friendId => {
   if (!friendId) return false;
   try {
     await W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
-    setTimeout(() => {
-      clearUnread(friendId);
-      _ui?.openChat?.(friendId);
-    }, 250);
+    setTimeout(async () => {
+      const ok = await _ui?.openChat?.(friendId);
+      if (ok) clearUnread(friendId);
+    }, 300);
     return true;
   } catch {
     return false;
