@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 09:55:03 UTC
+Сгенерировано: 2026-06-13 09:56:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3776,13 +3776,21 @@ const startPresenceHeartbeat = () => {
 };
 
 const syncWebPushIfAllowed = async () => {
-  if (_webPushReady || !_core?.isReady?.()) return;
+  if (!_core?.isReady?.()) return;
   if (!('Notification' in W) || W.Notification.permission !== 'granted') return;
+
+  const standalone = W.matchMedia?.('(display-mode: standalone)')?.matches || W.navigator.standalone === true;
+  const key = `vf_webpush_sync_${_core.identity?.friendId || 'me'}`;
+  const last = Number(localStorage.getItem(key) || 0);
+  const force = standalone && Date.now() - last > 24 * 60 * 60 * 1000;
+
+  if (_webPushReady && !force) return;
 
   try {
     const mod = await import('../push/web-push.js');
-    const res = await mod.syncWebPushSubscription({ core: _core, ask: false });
+    const res = await mod.syncWebPushSubscription({ core: _core, ask: false, force });
     _webPushReady = !!res?.ok;
+    if (res?.ok) localStorage.setItem(key, String(Date.now()));
   } catch {}
 };
 
