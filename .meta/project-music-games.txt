@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 11:38:14 UTC
+Сгенерировано: 2026-06-13 12:07:24 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1547,11 +1547,20 @@ const addUnread = (friendId, meta = {}) => {
   _ui?.refresh?.();
 };
 
-const clearUnread = friendId => {
+const clearUnread = (friendId, { refresh = true } = {}) => {
   if (!friendId || !_unread[friendId]) return;
   delete _unread[friendId];
   saveUnread();
-  _ui?.refresh?.();
+
+  try {
+    D.querySelectorAll(`[data-unread-chat="${CSS.escape(friendId)}"]`).forEach(node => {
+      const small = D.createElement('small');
+      small.textContent = 'не в сети';
+      node.replaceWith(small);
+    });
+  } catch {}
+
+  if (refresh && !D.querySelector('.vf-modal-ov')) _ui?.refresh?.();
 };
 
 const showMailOverlay = ({ friendId, name = 'Друг' } = {}) => {
@@ -1867,7 +1876,7 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     onUnreadClick: friendId => openFriendsChat(friendId),
     onChatOpened: async friendId => {
       await _core.markChatRead?.({ friendId }).catch(() => null);
-      clearUnread(friendId);
+      clearUnread(friendId, { refresh: false });
     }
   });
 
