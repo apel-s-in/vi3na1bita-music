@@ -87,35 +87,66 @@ self.addEventListener('push', e => {
     try { data = JSON.parse(e.data?.text?.() || '{}'); } catch {}
   }
 
+  const kind = String(data.kind || '');
   const title = String(data.title || 'Витрина Разбита');
   const body = String(data.body || data.text || 'Новое уведомление');
   const url = String(data.url || './');
+  const actions = kind === 'CHAT_MESSAGE'
+    ? [
+      { action: 'read', title: 'Прочитать' },
+      { action: 'later', title: 'Позже' }
+    ]
+    : [];
 
   e.waitUntil(self.registration.showNotification(title, {
     body,
     icon: './icons/icon-192.png',
     badge: './icons/favicon-32.png',
     tag: String(data.tag || `vi3-${Date.now()}`),
-    data: { url },
-    // renotify: повторный пуш с тем же tag снова будит экран/вибрирует (важно для чата).
+    data: {
+      url,
+      kind,
+      fromFriendId: String(data.fromFriendId || ''),
+      gameId: String(data.gameId || ''),
+      roomId: String(data.roomId || '')
+    },
+    actions,
     renotify: true,
     silent: false,
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
-    requireInteraction: data.requireInteraction === true
+    requireInteraction: data.requireInteraction === true || kind === 'CHAT_MESSAGE' || kind === 'GAME_INVITE'
   }));
 });
 
 self.addEventListener('notificationclick', e => {
+  if (e.action === 'later') {
+    e.notification.close();
+    return;
+  }
+
   e.notification.close();
-  const targetUrl = new URL(e.notification?.data?.url || './', self.registration.scope).href;
+
+  const data = e.notification?.data || {};
+  const target = new URL(data.url || './', self.registration.scope);
+  if (data.kind === 'CHAT_MESSAGE' && data.fromFriendId) {
+    target.searchParams.set('openFriends', '1');
+    target.searchParams.set('chatWith', data.fromFriendId);
+  }
+
+  const targetUrl = target.href;
 
   e.waitUntil((async () => {
     const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = clientsList.find(c => c.url && new URL(c.url).origin === new URL(targetUrl).origin);
     if (existing) {
       await existing.focus();
-      existing.postMessage({ type: 'PUSH_NOTIFICATION_CLICK', url: targetUrl });
+      existing.postMessage({
+        type: 'PUSH_NOTIFICATION_CLICK',
+        url: targetUrl,
+        kind: data.kind || '',
+        fromFriendId: data.fromFriendId || ''
+      });
       return;
     }
     await self.clients.openWindow(targetUrl);
