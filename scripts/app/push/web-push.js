@@ -21,14 +21,17 @@ const b64 = bytes => {
 const getReadyRegistration = async () => {
   if (!('serviceWorker' in N)) return null;
 
+  let reg = null;
   try {
-    if (!N.serviceWorker.controller) {
-      await N.serviceWorker.register('./service-worker.js', { scope: './' }).catch(() => null);
-    }
+    reg = await N.serviceWorker.register('./service-worker.js', { scope: './' });
+    await reg.update?.().catch(() => null);
   } catch {}
 
-  const ready = await timeout(N.serviceWorker.ready, 8000, 'service_worker_not_ready');
-  return ready?.__timeout ? null : ready;
+  const ready = await timeout(N.serviceWorker.ready, 10000, 'service_worker_not_ready');
+  if (!ready?.__timeout) return ready;
+
+  const regs = await N.serviceWorker.getRegistrations?.().catch(() => []);
+  return regs?.find?.(x => x.scope === new URL('./', W.location.href).href) || reg || null;
 };
 
 export const syncWebPushSubscription = async ({ core, ask = false, force = false } = {}) => {
@@ -39,6 +42,7 @@ export const syncWebPushSubscription = async ({ core, ask = false, force = false
 
   let permission = Notification.permission;
   if (permission === 'default' && ask) permission = await Notification.requestPermission();
+  if (permission === 'denied') return { ok: false, reason: 'уведомления заблокированы в настройках браузера' };
   if (permission !== 'granted') return { ok: false, reason: `permission_${permission}` };
 
   const cfg = await core.getWebPushConfig().catch(err => ({ error: err?.message || 'webpush_config_failed' }));
