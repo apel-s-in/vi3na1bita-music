@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 14:30:14 UTC
+Сгенерировано: 2026-06-13 14:35:24 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -537,7 +537,9 @@ self.addEventListener('push', e => {
       fromFriendId: String(data.fromFriendId || ''),
       gameId: String(data.gameId || ''),
       roomId: String(data.roomId || ''),
-      msgId: String(data.msgId || '')
+      roomSecret: String(data.roomSecret || ''),
+      msgId: String(data.msgId || ''),
+      callId: String(data.callId || '')
     },
     actions,
     renotify: true,
@@ -565,6 +567,10 @@ self.addEventListener('notificationclick', e => {
 
   if (data.kind === 'VOICE_CALL') {
     target.searchParams.set('openFriends', '1');
+    if (data.fromFriendId) target.searchParams.set('voiceWith', data.fromFriendId);
+    if (data.roomId) target.searchParams.set('voiceRoom', data.roomId);
+    if (data.roomSecret) target.searchParams.set('key', data.roomSecret);
+    if (data.callId) target.searchParams.set('callId', data.callId);
   }
 
   const targetUrl = target.href;
@@ -579,7 +585,10 @@ self.addEventListener('notificationclick', e => {
         url: targetUrl,
         kind: data.kind || '',
         fromFriendId: data.fromFriendId || '',
-        msgId: data.msgId || ''
+        roomId: data.roomId || '',
+        roomSecret: data.roomSecret || '',
+        msgId: data.msgId || '',
+        callId: data.callId || ''
       });
       return;
     }
