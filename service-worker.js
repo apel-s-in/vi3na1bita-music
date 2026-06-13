@@ -96,7 +96,12 @@ self.addEventListener('push', e => {
       { action: 'read', title: 'Прочитать' },
       { action: 'later', title: 'Позже' }
     ]
-    : [];
+    : (kind === 'VOICE_CALL'
+      ? [
+        { action: 'answer', title: 'Ответить' },
+        { action: 'later', title: 'Отклонить' }
+      ]
+      : []);
 
   e.waitUntil(self.registration.showNotification(title, {
     body,
@@ -116,7 +121,7 @@ self.addEventListener('push', e => {
     silent: false,
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
-    requireInteraction: data.requireInteraction === true || kind === 'CHAT_MESSAGE' || kind === 'GAME_INVITE'
+    requireInteraction: data.requireInteraction === true || kind === 'CHAT_MESSAGE' || kind === 'GAME_INVITE' || kind === 'VOICE_CALL'
   }));
 });
 
@@ -133,6 +138,10 @@ self.addEventListener('notificationclick', e => {
   if (data.kind === 'CHAT_MESSAGE' && data.fromFriendId) {
     target.searchParams.set('openFriends', '1');
     target.searchParams.set('chatWith', data.fromFriendId);
+  }
+
+  if (data.kind === 'VOICE_CALL') {
+    target.searchParams.set('openFriends', '1');
   }
 
   const targetUrl = target.href;
