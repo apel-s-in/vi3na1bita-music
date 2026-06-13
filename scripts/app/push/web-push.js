@@ -91,15 +91,7 @@ export const syncWebPushSubscription = async ({ core, ask = false, force = false
 };
 
 export const enableWebPush = async core => {
-  const res = await syncWebPushSubscription({ core, ask: true, force: true });
-
-  if (res.ok) {
-    W.NotificationSystem?.success?.(`Системные уведомления включены · ${res.endpointTail || 'ok'}`);
-  } else {
-    W.NotificationSystem?.warning?.(`Уведомления не включены: ${res.reason || 'unknown'}`);
-  }
-
-  return res;
+  return syncWebPushSubscription({ core, ask: true, force: true });
 };
 
 export default { syncWebPushSubscription, enableWebPush };
