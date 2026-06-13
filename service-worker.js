@@ -114,7 +114,9 @@ self.addEventListener('push', e => {
       fromFriendId: String(data.fromFriendId || ''),
       gameId: String(data.gameId || ''),
       roomId: String(data.roomId || ''),
-      msgId: String(data.msgId || '')
+      roomSecret: String(data.roomSecret || ''),
+      msgId: String(data.msgId || ''),
+      callId: String(data.callId || '')
     },
     actions,
     renotify: true,
@@ -142,6 +144,10 @@ self.addEventListener('notificationclick', e => {
 
   if (data.kind === 'VOICE_CALL') {
     target.searchParams.set('openFriends', '1');
+    if (data.fromFriendId) target.searchParams.set('voiceWith', data.fromFriendId);
+    if (data.roomId) target.searchParams.set('voiceRoom', data.roomId);
+    if (data.roomSecret) target.searchParams.set('key', data.roomSecret);
+    if (data.callId) target.searchParams.set('callId', data.callId);
   }
 
   const targetUrl = target.href;
@@ -156,7 +162,10 @@ self.addEventListener('notificationclick', e => {
         url: targetUrl,
         kind: data.kind || '',
         fromFriendId: data.fromFriendId || '',
-        msgId: data.msgId || ''
+        roomId: data.roomId || '',
+        roomSecret: data.roomSecret || '',
+        msgId: data.msgId || '',
+        callId: data.callId || ''
       });
       return;
     }
