@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 09:56:16 UTC
+Сгенерировано: 2026-06-13 10:40:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6317,15 +6317,7 @@ export const syncWebPushSubscription = async ({ core, ask = false, force = false
 };
 
 export const enableWebPush = async core => {
-  const res = await syncWebPushSubscription({ core, ask: true, force: true });
-
-  if (res.ok) {
-    W.NotificationSystem?.success?.(`Системные уведомления включены · ${res.endpointTail || 'ok'}`);
-  } else {
-    W.NotificationSystem?.warning?.(`Уведомления не включены: ${res.reason || 'unknown'}`);
-  }
-
-  return res;
+  return syncWebPushSubscription({ core, ask: true, force: true });
 };
 
 export default { syncWebPushSubscription, enableWebPush };
