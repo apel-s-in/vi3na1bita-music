@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 10:40:10 UTC
+Сгенерировано: 2026-06-13 10:42:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3922,28 +3922,9 @@ const enableWebPushFromUi = async () => {
     const mod = await import('../push/web-push.js');
     const res = await mod.enableWebPush(_core);
     _webPushReady = !!res?.ok;
-
-    if (res?.ok && _core.identity?.friendId) {
-      const test = await _core.sendPush({
-        toFriendId: _core.identity.friendId,
-        kind: 'GENERIC',
-        text: '✅ Тест системных уведомлений Витрины'
-      }).catch(err => ({ ok: false, error: err?.message || 'test_push_failed' }));
-
-      if (test?.webPush?.sent > 0) {
-        W.NotificationSystem?.success?.('Тестовое уведомление отправлено');
-      } else {
-        W.NotificationSystem?.warning?.(`Подписка есть, но test push не доставлен: ${test?.webPush?.error || test?.webPush?.reason || test?.error || 'sent_0'}`);
-      }
-
-      return { ...res, test };
-    }
-
     return res;
   } catch (err) {
-    const reason = err?.message || 'enable_failed';
-    W.NotificationSystem?.warning?.(`Не удалось включить системные уведомления: ${reason}`);
-    return { ok: false, reason };
+    return { ok: false, reason: err?.message || 'enable_failed' };
   }
 };
 
