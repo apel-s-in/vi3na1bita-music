@@ -31,7 +31,7 @@ const getReadyRegistration = async () => {
   return ready?.__timeout ? null : ready;
 };
 
-export const syncWebPushSubscription = async ({ core, ask = false } = {}) => {
+export const syncWebPushSubscription = async ({ core, ask = false, force = false } = {}) => {
   if (!core?.isReady?.()) return { ok: false, reason: 'friends_not_ready' };
   if (!('serviceWorker' in N)) return { ok: false, reason: 'service_worker_not_supported' };
   if (!('PushManager' in W)) return { ok: false, reason: 'push_manager_not_supported' };
@@ -53,7 +53,7 @@ export const syncWebPushSubscription = async ({ core, ask = false } = {}) => {
   let sub = await reg.pushManager.getSubscription();
 
   const oldKeyB64 = sub?.options?.applicationServerKey ? b64(sub.options.applicationServerKey) : '';
-  if (sub && oldKeyB64 && oldKeyB64 !== appKeyB64) {
+  if (sub && (force || (oldKeyB64 && oldKeyB64 !== appKeyB64))) {
     await sub.unsubscribe().catch(() => null);
     sub = null;
   }
@@ -91,7 +91,7 @@ export const syncWebPushSubscription = async ({ core, ask = false } = {}) => {
 };
 
 export const enableWebPush = async core => {
-  const res = await syncWebPushSubscription({ core, ask: true });
+  const res = await syncWebPushSubscription({ core, ask: true, force: true });
 
   if (res.ok) {
     W.NotificationSystem?.success?.(`Системные уведомления включены · ${res.endpointTail || 'ok'}`);
