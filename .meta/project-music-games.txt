@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 12:07:24 UTC
+Сгенерировано: 2026-06-13 13:06:26 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -2013,8 +2013,15 @@ export const syncWebPushSubscription = async ({ core, ask = false, force = false
   };
 };
 
+const isIosStandalone = () => {
+  const ua = String(N.userAgent || '');
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (N.platform === 'MacIntel' && N.maxTouchPoints > 1);
+  const standalone = W.matchMedia?.('(display-mode: standalone)')?.matches || N.standalone === true;
+  return isIOS && standalone;
+};
+
 export const enableWebPush = async core => {
-  return syncWebPushSubscription({ core, ask: true, force: true });
+  return syncWebPushSubscription({ core, ask: true, force: isIosStandalone() });
 };
 
 export default { syncWebPushSubscription, enableWebPush };
