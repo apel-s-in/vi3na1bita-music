@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 13:06:26 UTC
+Сгенерировано: 2026-06-13 13:53:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -630,7 +630,12 @@ self.addEventListener('push', e => {
       { action: 'read', title: 'Прочитать' },
       { action: 'later', title: 'Позже' }
     ]
-    : [];
+    : (kind === 'VOICE_CALL'
+      ? [
+        { action: 'answer', title: 'Ответить' },
+        { action: 'later', title: 'Отклонить' }
+      ]
+      : []);
 
   e.waitUntil(self.registration.showNotification(title, {
     body,
@@ -650,7 +655,7 @@ self.addEventListener('push', e => {
     silent: false,
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
-    requireInteraction: data.requireInteraction === true || kind === 'CHAT_MESSAGE' || kind === 'GAME_INVITE'
+    requireInteraction: data.requireInteraction === true || kind === 'CHAT_MESSAGE' || kind === 'GAME_INVITE' || kind === 'VOICE_CALL'
   }));
 });
 
@@ -667,6 +672,10 @@ self.addEventListener('notificationclick', e => {
   if (data.kind === 'CHAT_MESSAGE' && data.fromFriendId) {
     target.searchParams.set('openFriends', '1');
     target.searchParams.set('chatWith', data.fromFriendId);
+  }
+
+  if (data.kind === 'VOICE_CALL') {
+    target.searchParams.set('openFriends', '1');
   }
 
   const targetUrl = target.href;
