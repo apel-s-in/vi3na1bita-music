@@ -47,7 +47,7 @@ const clearUnread = friendId => {
   _ui?.refresh?.();
 };
 
-const showMailOverlay = ({ friendId, name = 'Друг', text = '' } = {}) => {
+const showMailOverlay = ({ friendId, name = 'Друг' } = {}) => {
   if (!friendId || D.getElementById('vf-mail-ov')) return;
 
   const ov = D.createElement('div');
@@ -58,7 +58,7 @@ const showMailOverlay = ({ friendId, name = 'Друг', text = '' } = {}) => {
       <div class="vf-mail-icon">💌</div>
       <div class="vf-mail-title">Новое сообщение</div>
       <div class="vf-mail-from">${W.Utils?.escapeHtml?.(name) || name}</div>
-      <div class="vf-mail-text">${W.Utils?.escapeHtml?.(text) || text}</div>
+      <div class="vf-mail-text">Откройте чат, чтобы прочитать сообщение.</div>
       <div class="vf-mail-actions">
         <button class="vf-btn" type="button" data-vf-read>Прочитать</button>
         <button class="vf-btn vf-sec" type="button" data-vf-later>Позже</button>
@@ -78,12 +78,11 @@ const showMailOverlay = ({ friendId, name = 'Друг', text = '' } = {}) => {
 const openFriendsChat = async friendId => {
   if (!friendId) return false;
   try {
-    await W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
-    setTimeout(async () => {
-      const ok = await _ui?.openChat?.(friendId);
-      if (ok) clearUnread(friendId);
-    }, 300);
-    return true;
+    const gamesKey = W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__';
+    if (W.AlbumsManager?.getCurrentAlbum?.() !== gamesKey) {
+      await W.AlbumsManager?.loadAlbum?.(gamesKey);
+    }
+    return !!(await _ui?.openChat?.(friendId));
   } catch {
     return false;
   }
@@ -112,8 +111,9 @@ const handlePushes = async (items) => {
 
       const text = String(push.text || '').slice(0, 180);
       addUnread(push.fromFriendId, { name, text });
-      showMailOverlay({ friendId: push.fromFriendId, name, text });
-      W.NotificationSystem?.info?.(`💬 ${name}: ${text.slice(0, 80)}`, 6000);
+      showMailOverlay({ friendId: push.fromFriendId, name });
+      await _core.markChatDelivered?.({ friendId: push.fromFriendId, msgId: push.msgId }).catch(() => null);
+      W.NotificationSystem?.info?.(`💬 Новое сообщение от ${name}`, 6000);
       continue;
     }
 
@@ -179,9 +179,11 @@ const syncWebPushIfAllowed = async () => {
 
   try {
     const mod = await import('../push/web-push.js');
+    const prev = _webPushReady;
     const res = await mod.syncWebPushSubscription({ core: _core, ask: false, force });
     _webPushReady = !!res?.ok;
     if (res?.ok) localStorage.setItem(key, String(Date.now()));
+    if (prev !== _webPushReady) _ui?.refresh?.({ force: true });
   } catch {}
 };
 
@@ -313,6 +315,7 @@ const enableWebPushFromUi = async () => {
     const mod = await import('../push/web-push.js');
     const res = await mod.enableWebPush(_core);
     _webPushReady = !!res?.ok;
+    _ui?.refresh?.({ force: true });
     return res;
   } catch (err) {
     return { ok: false, reason: err?.message || 'enable_failed' };
@@ -345,6 +348,7 @@ export const mountFriendsBlock = async ({ container } = {}) => {
   _ui = mountFriendsUI(container, _core, {
     onGameInvite,
     onEnableWebPush: enableWebPushFromUi,
+    getWebPushEnabled: () => _webPushReady,
     getUnread: friendId => {
       const v = _unread[friendId];
       return Number(typeof v === 'object' ? v.count : v || 0);
@@ -354,7 +358,10 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       return typeof v === 'object' ? v : null;
     },
     onUnreadClick: friendId => openFriendsChat(friendId),
-    onChatOpened: friendId => clearUnread(friendId)
+    onChatOpened: async friendId => {
+      await _core.markChatRead?.({ friendId }).catch(() => null);
+      clearUnread(friendId);
+    }
   });
 
   await applyIdentity();
