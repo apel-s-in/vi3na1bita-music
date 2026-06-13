@@ -108,7 +108,8 @@ self.addEventListener('push', e => {
       kind,
       fromFriendId: String(data.fromFriendId || ''),
       gameId: String(data.gameId || ''),
-      roomId: String(data.roomId || '')
+      roomId: String(data.roomId || ''),
+      msgId: String(data.msgId || '')
     },
     actions,
     renotify: true,
@@ -145,7 +146,8 @@ self.addEventListener('notificationclick', e => {
         type: 'PUSH_NOTIFICATION_CLICK',
         url: targetUrl,
         kind: data.kind || '',
-        fromFriendId: data.fromFriendId || ''
+        fromFriendId: data.fromFriendId || '',
+        msgId: data.msgId || ''
       });
       return;
     }
