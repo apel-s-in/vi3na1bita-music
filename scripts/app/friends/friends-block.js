@@ -40,11 +40,20 @@ const addUnread = (friendId, meta = {}) => {
   _ui?.refresh?.();
 };
 
-const clearUnread = friendId => {
+const clearUnread = (friendId, { refresh = true } = {}) => {
   if (!friendId || !_unread[friendId]) return;
   delete _unread[friendId];
   saveUnread();
-  _ui?.refresh?.();
+
+  try {
+    D.querySelectorAll(`[data-unread-chat="${CSS.escape(friendId)}"]`).forEach(node => {
+      const small = D.createElement('small');
+      small.textContent = 'не в сети';
+      node.replaceWith(small);
+    });
+  } catch {}
+
+  if (refresh && !D.querySelector('.vf-modal-ov')) _ui?.refresh?.();
 };
 
 const showMailOverlay = ({ friendId, name = 'Друг' } = {}) => {
@@ -360,7 +369,7 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     onUnreadClick: friendId => openFriendsChat(friendId),
     onChatOpened: async friendId => {
       await _core.markChatRead?.({ friendId }).catch(() => null);
-      clearUnread(friendId);
+      clearUnread(friendId, { refresh: false });
     }
   });
 
