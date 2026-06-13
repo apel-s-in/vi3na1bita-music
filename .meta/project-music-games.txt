@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-13 08:55:43 UTC
+Сгенерировано: 2026-06-13 09:05:55 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1532,9 +1532,15 @@ const saveUnread = () => {
   try { localStorage.setItem('vf_unread', JSON.stringify(_unread)); } catch {}
 };
 
-const addUnread = friendId => {
+const addUnread = (friendId, meta = {}) => {
   if (!friendId) return;
-  _unread[friendId] = Number(_unread[friendId] || 0) + 1;
+  const old = typeof _unread[friendId] === 'object' ? _unread[friendId] : { count: Number(_unread[friendId] || 0) };
+  _unread[friendId] = {
+    count: Number(old.count || 0) + 1,
+    name: String(meta.name || old.name || 'Друг').trim(),
+    text: String(meta.text || old.text || '').trim().slice(0, 180),
+    at: Date.now()
+  };
   saveUnread();
   _ui?.refresh?.();
 };
@@ -1544,6 +1550,49 @@ const clearUnread = friendId => {
   delete _unread[friendId];
   saveUnread();
   _ui?.refresh?.();
+};
+
+const showMailOverlay = ({ friendId, name = 'Друг', text = '' } = {}) => {
+  if (!friendId || D.getElementById('vf-mail-ov')) return;
+
+  const ov = D.createElement('div');
+  ov.id = 'vf-mail-ov';
+  ov.className = 'vf-mail-ov';
+  ov.innerHTML = `
+    <div class="vf-mail-card" role="dialog" aria-modal="true">
+      <div class="vf-mail-icon">💌</div>
+      <div class="vf-mail-title">Новое сообщение</div>
+      <div class="vf-mail-from">${W.Utils?.escapeHtml?.(name) || name}</div>
+      <div class="vf-mail-text">${W.Utils?.escapeHtml?.(text) || text}</div>
+      <div class="vf-mail-actions">
+        <button class="vf-btn" type="button" data-vf-read>Прочитать</button>
+        <button class="vf-btn vf-sec" type="button" data-vf-later>Позже</button>
+      </div>
+    </div>
+  `;
+  D.body.appendChild(ov);
+
+  ov.querySelector('[data-vf-read]')?.addEventListener('click', async () => {
+    ov.remove();
+    clearUnread(friendId);
+    await openFriendsChat(friendId);
+  });
+
+  ov.querySelector('[data-vf-later]')?.addEventListener('click', () => ov.remove());
+};
+
+const openFriendsChat = async friendId => {
+  if (!friendId) return false;
+  try {
+    await W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
+    setTimeout(() => {
+      clearUnread(friendId);
+      _ui?.openChat?.(friendId);
+    }, 250);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 const readYandexProfile = () => {
@@ -1567,8 +1616,10 @@ const handlePushes = async (items) => {
         if (prof?.displayName) name = prof.displayName;
       } catch {}
 
-      addUnread(push.fromFriendId);
-      W.NotificationSystem?.info?.(`💬 ${name}: ${String(push.text || '').slice(0, 80)}`, 6000);
+      const text = String(push.text || '').slice(0, 180);
+      addUnread(push.fromFriendId, { name, text });
+      showMailOverlay({ friendId: push.fromFriendId, name, text });
+      W.NotificationSystem?.info?.(`💬 ${name}: ${text.slice(0, 80)}`, 6000);
       continue;
     }
 
@@ -1811,11 +1862,23 @@ export const mountFriendsBlock = async ({ container } = {}) => {
   _ui = mountFriendsUI(container, _core, {
     onGameInvite,
     onEnableWebPush: enableWebPushFromUi,
-    getUnread: friendId => Number(_unread[friendId] || 0),
+    getUnread: friendId => {
+      const v = _unread[friendId];
+      return Number(typeof v === 'object' ? v.count : v || 0);
+    },
     onChatOpened: friendId => clearUnread(friendId)
   });
 
   await applyIdentity();
+
+  const url = new URL(W.location.href);
+  const chatWith = url.searchParams.get('chatWith');
+  if (chatWith && _core?.isReady?.()) {
+    setTimeout(() => openFriendsChat(chatWith), 350);
+    url.searchParams.delete('chatWith');
+    url.searchParams.delete('openFriends');
+    W.history.replaceState(null, '', url.toString());
+  }
 
   if (!_bound) {
     _bound = true;
@@ -1826,6 +1889,18 @@ export const mountFriendsBlock = async ({ container } = {}) => {
         startPushPolling();
       }
     });
+
+    const onSwPushClick = e => {
+      if (e.data?.type !== 'PUSH_NOTIFICATION_CLICK') return;
+      try {
+        const u = new URL(e.data.url || W.location.href, W.location.href);
+        const chatWith = u.searchParams.get('chatWith') || e.data.fromFriendId || '';
+        if (chatWith) openFriendsChat(chatWith);
+      } catch {}
+    };
+
+    navigator.serviceWorker?.addEventListener?.('message', onSwPushClick);
+    W.addEventListener('message', onSwPushClick);
   }
 
   return true;
