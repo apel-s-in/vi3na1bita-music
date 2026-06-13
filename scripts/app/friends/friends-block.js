@@ -84,6 +84,19 @@ const showMailOverlay = ({ friendId, name = 'Друг' } = {}) => {
   ov.querySelector('[data-vf-later]')?.addEventListener('click', () => ov.remove());
 };
 
+const openFriendsVoiceCall = async (friendId, incoming = null) => {
+  if (!friendId) return false;
+  try {
+    const gamesKey = W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__';
+    if (W.AlbumsManager?.getCurrentAlbum?.() !== gamesKey) {
+      await W.AlbumsManager?.loadAlbum?.(gamesKey);
+    }
+    return !!(await _ui?.openVoiceCall?.(friendId, incoming));
+  } catch {
+    return false;
+  }
+};
+
 const openFriendsChat = async friendId => {
   if (!friendId) return false;
   try {
@@ -123,6 +136,33 @@ const handlePushes = async (items) => {
       showMailOverlay({ friendId: push.fromFriendId, name });
       await _core.markChatDelivered?.({ friendId: push.fromFriendId, msgId: push.msgId }).catch(() => null);
       W.NotificationSystem?.info?.(`💬 Новое сообщение от ${name}`, 6000);
+      continue;
+    }
+
+    if (push.kind === 'VOICE_CALL') {
+      let name = 'Друг';
+      try {
+        const prof = await _core.getProfile(push.fromFriendId);
+        if (prof?.displayName) name = prof.displayName;
+      } catch {}
+
+      W.Modals?.choice?.({
+        title: '📞 Входящий звонок',
+        textHtml: `<b>${W.Utils?.escapeHtml?.(name) || name}</b> звонит вам.<br><br>Открыть голосовой чат?`,
+        actions: [
+          {
+            key: 'answer',
+            text: 'Ответить',
+            primary: true,
+            onClick: () => openFriendsVoiceCall(push.fromFriendId, {
+              callId: push.callId || push.pushId || '',
+              roomId: push.roomId,
+              roomSecret: push.roomSecret
+            })
+          },
+          { key: 'reject', text: 'Отклонить', onClick: () => {} }
+        ]
+      });
       continue;
     }
 
@@ -367,6 +407,7 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       return typeof v === 'object' ? v : null;
     },
     onUnreadClick: friendId => openFriendsChat(friendId),
+    onVoiceOpened: friendId => {},
     onChatOpened: async friendId => {
       await _core.markChatRead?.({ friendId }).catch(() => null);
       clearUnread(friendId, { refresh: false });
@@ -377,10 +418,25 @@ export const mountFriendsBlock = async ({ container } = {}) => {
 
   const url = new URL(W.location.href);
   const chatWith = url.searchParams.get('chatWith');
+  const voiceWith = url.searchParams.get('voiceWith');
+  const voiceRoom = url.searchParams.get('voiceRoom');
+  const voiceKey = url.searchParams.get('key');
+  const callId = url.searchParams.get('callId');
+
   if (chatWith && _core?.isReady?.()) {
     setTimeout(() => openFriendsChat(chatWith), 350);
     url.searchParams.delete('chatWith');
     url.searchParams.delete('openFriends');
+    W.history.replaceState(null, '', url.toString());
+  }
+
+  if (voiceWith && voiceRoom && voiceKey && _core?.isReady?.()) {
+    setTimeout(() => openFriendsVoiceCall(voiceWith, {
+      callId,
+      roomId: voiceRoom,
+      roomSecret: voiceKey
+    }), 450);
+    ['voiceWith', 'voiceRoom', 'key', 'callId', 'openFriends'].forEach(k => url.searchParams.delete(k));
     W.history.replaceState(null, '', url.toString());
   }
 
@@ -398,6 +454,15 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       if (e.data?.type !== 'PUSH_NOTIFICATION_CLICK') return;
       try {
         const u = new URL(e.data.url || W.location.href, W.location.href);
+        const voiceWith = u.searchParams.get('voiceWith') || '';
+        const voiceRoom = u.searchParams.get('voiceRoom') || '';
+        const voiceKey = u.searchParams.get('key') || '';
+        const callId = u.searchParams.get('callId') || '';
+        if (voiceWith && voiceRoom && voiceKey) {
+          openFriendsVoiceCall(voiceWith, { callId, roomId: voiceRoom, roomSecret: voiceKey });
+          return;
+        }
+
         const chatWith = u.searchParams.get('chatWith') || e.data.fromFriendId || '';
         if (chatWith) openFriendsChat(chatWith);
       } catch {}
