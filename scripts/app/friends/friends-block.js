@@ -314,28 +314,9 @@ const enableWebPushFromUi = async () => {
     const mod = await import('../push/web-push.js');
     const res = await mod.enableWebPush(_core);
     _webPushReady = !!res?.ok;
-
-    if (res?.ok && _core.identity?.friendId) {
-      const test = await _core.sendPush({
-        toFriendId: _core.identity.friendId,
-        kind: 'GENERIC',
-        text: '✅ Тест системных уведомлений Витрины'
-      }).catch(err => ({ ok: false, error: err?.message || 'test_push_failed' }));
-
-      if (test?.webPush?.sent > 0) {
-        W.NotificationSystem?.success?.('Тестовое уведомление отправлено');
-      } else {
-        W.NotificationSystem?.warning?.(`Подписка есть, но test push не доставлен: ${test?.webPush?.error || test?.webPush?.reason || test?.error || 'sent_0'}`);
-      }
-
-      return { ...res, test };
-    }
-
     return res;
   } catch (err) {
-    const reason = err?.message || 'enable_failed';
-    W.NotificationSystem?.warning?.(`Не удалось включить системные уведомления: ${reason}`);
-    return { ok: false, reason };
+    return { ok: false, reason: err?.message || 'enable_failed' };
   }
 };
 
