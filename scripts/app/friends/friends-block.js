@@ -168,13 +168,21 @@ const startPresenceHeartbeat = () => {
 };
 
 const syncWebPushIfAllowed = async () => {
-  if (_webPushReady || !_core?.isReady?.()) return;
+  if (!_core?.isReady?.()) return;
   if (!('Notification' in W) || W.Notification.permission !== 'granted') return;
+
+  const standalone = W.matchMedia?.('(display-mode: standalone)')?.matches || W.navigator.standalone === true;
+  const key = `vf_webpush_sync_${_core.identity?.friendId || 'me'}`;
+  const last = Number(localStorage.getItem(key) || 0);
+  const force = standalone && Date.now() - last > 24 * 60 * 60 * 1000;
+
+  if (_webPushReady && !force) return;
 
   try {
     const mod = await import('../push/web-push.js');
-    const res = await mod.syncWebPushSubscription({ core: _core, ask: false });
+    const res = await mod.syncWebPushSubscription({ core: _core, ask: false, force });
     _webPushReady = !!res?.ok;
+    if (res?.ok) localStorage.setItem(key, String(Date.now()));
   } catch {}
 };
 
