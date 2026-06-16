@@ -1,4 +1,4 @@
-const SW_VERSION = '8.7.1';
+const SW_VERSION = '8.7.2';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 let isAirplaneMode = false;
 
