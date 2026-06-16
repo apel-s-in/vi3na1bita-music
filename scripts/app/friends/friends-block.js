@@ -18,6 +18,10 @@ let _pushTimer = 0;
 let _heartbeatTimer = 0;
 let _webPushReady = false;
 let _unread = {};
+let _pushBusy = false;
+let _pushFails = 0;
+let _heartbeatBusy = false;
+let _heartbeatFails = 0;
 
 const loadUnread = () => {
   try { _unread = JSON.parse(localStorage.getItem('vf_unread') || '{}') || {}; } catch { _unread = {}; }
@@ -202,17 +206,21 @@ const startPresenceHeartbeat = () => {
   clearInterval(_heartbeatTimer);
 
   const beat = async () => {
-    if (D.hidden || !_core?.isReady?.()) return;
+    if (D.hidden || !_core?.isReady?.() || _heartbeatBusy) return;
+    if (_heartbeatFails >= 3 && Date.now() % 3 !== 0) return;
+    _heartbeatBusy = true;
     try {
-      await _core.heartbeat({
-        gameId: '',
-        roomId: ''
-      });
-    } catch {}
+      await _core.heartbeat({ gameId: '', roomId: '' });
+      _heartbeatFails = 0;
+    } catch {
+      _heartbeatFails++;
+    } finally {
+      _heartbeatBusy = false;
+    }
   };
 
   beat();
-  _heartbeatTimer = setInterval(beat, 45000);
+  _heartbeatTimer = setInterval(beat, 90000);
 };
 
 const syncWebPushIfAllowed = async () => {
@@ -240,15 +248,25 @@ const startPushPolling = () => {
   clearInterval(_pushTimer);
 
   const poll = async () => {
-    if (D.hidden || !_core || !_core.isReady()) return;
+    if (D.hidden || !_core?.isReady?.() || _pushBusy) return;
+    _pushBusy = true;
     try {
       const items = await _core.getPushes();
+      _pushFails = 0;
       if (items.length) handlePushes(items);
-    } catch {}
+    } catch {
+      _pushFails++;
+    } finally {
+      _pushBusy = false;
+    }
   };
 
-  poll();
-  _pushTimer = setInterval(poll, 12000);
+  const loop = async () => {
+    await poll();
+    clearTimeout(_pushTimer);
+    _pushTimer = setTimeout(loop, Math.min(60000, 15000 + _pushFails * 10000));
+  };
+  loop();
 };
 
 const applyIdentity = async () => {
