@@ -126,8 +126,20 @@ const readYandexProfile = () => {
   };
 };
 
+const isStaleSessionPush = push => {
+  const t = Date.now();
+  const createdAt = Number(push.createdAt || 0);
+  const expiresAt = Number(push.expiresAt || 0);
+  const age = createdAt ? t - createdAt : 0;
+  if (expiresAt && expiresAt < t) return true;
+  if (push.kind === 'GAME_INVITE' && age > 120000) return true;
+  if (push.kind === 'VOICE_CALL' && age > 120000) return true;
+  return false;
+};
+
 const handlePushes = async (items) => {
   for (const push of items) {
+    if (isStaleSessionPush(push)) continue;
     if (push.kind === 'CHAT_MESSAGE') {
       let name = 'Друг';
       try {
@@ -158,11 +170,18 @@ const handlePushes = async (items) => {
             key: 'answer',
             text: 'Ответить',
             primary: true,
-            onClick: () => openFriendsVoiceCall(push.fromFriendId, {
-              callId: push.callId || push.pushId || '',
-              roomId: push.roomId,
-              roomSecret: push.roomSecret
-            })
+            onClick: async () => {
+              const room = await _core.getRoom(push.roomId).catch(() => null);
+              if (!room?.room || room.room.status === 'closed') {
+                W.NotificationSystem?.warning?.('Звонок уже завершён');
+                return;
+              }
+              return openFriendsVoiceCall(push.fromFriendId, {
+                callId: push.callId || push.pushId || '',
+                roomId: push.roomId,
+                roomSecret: push.roomSecret
+              });
+            }
           },
           { key: 'reject', text: 'Отклонить', onClick: () => {} }
         ]
@@ -185,7 +204,13 @@ const handlePushes = async (items) => {
             key: 'accept',
             text: 'Принять',
             primary: true,
-            onClick: () => {
+            onClick: async () => {
+              const room = await _core.getRoom(push.roomId).catch(() => null);
+              if (!room?.room || room.room.status === 'closed') {
+                W.NotificationSystem?.warning?.('Игровое приглашение уже устарело');
+                return;
+              }
+
               const u = new URL(W.location.href);
               u.searchParams.set('gcGame', push.gameId);
               u.searchParams.set('room', push.roomId);
