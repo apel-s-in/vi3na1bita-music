@@ -237,7 +237,7 @@ const startPresenceHeartbeat = () => {
   clearInterval(_heartbeatTimer);
 
   const beat = async () => {
-    if (D.hidden || !_core?.isReady?.() || _heartbeatBusy) return;
+    if (!_core?.isReady?.() || _heartbeatBusy) return;
     if (_heartbeatFails >= 3 && Date.now() % 3 !== 0) return;
     _heartbeatBusy = true;
     try {
@@ -279,7 +279,7 @@ const startPushPolling = () => {
   clearInterval(_pushTimer);
 
   const poll = async () => {
-    if (D.hidden || !_core?.isReady?.() || _pushBusy) return;
+    if (!_core?.isReady?.() || _pushBusy) return;
     _pushBusy = true;
     try {
       const items = await _core.getPushes();
