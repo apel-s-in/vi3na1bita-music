@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-06-17 10:26:12 UTC
+Сгенерировано: 2026-06-17 12:47:49 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1917,6 +1917,8 @@ const applyIdentity = async () => {
     }
 
     _ui?.refresh?.({ force: true });
+    startPresenceHeartbeat();
+    startPushPolling();
     syncWebPushIfAllowed();
     W.Vi3WebPush = {
       enable: () => import('../push/web-push.js').then(m => m.enableWebPush(_core))
@@ -2016,7 +2018,11 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     _bound = true;
     W.addEventListener('yandex:auth:changed', () => applyIdentity().catch(() => {}));
     D.addEventListener('visibilitychange', () => {
-      if (!D.hidden && _core?.isReady?.()) _ui?.refresh?.();
+      if (!D.hidden && _core?.isReady?.()) {
+        startPresenceHeartbeat();
+        startPushPolling();
+        _ui?.refresh?.();
+      }
     });
 
     const onSwPushClick = e => {
