@@ -392,6 +392,8 @@ const applyIdentity = async () => {
     }
 
     _ui?.refresh?.({ force: true });
+    startPresenceHeartbeat();
+    startPushPolling();
     syncWebPushIfAllowed();
     W.Vi3WebPush = {
       enable: () => import('../push/web-push.js').then(m => m.enableWebPush(_core))
@@ -491,7 +493,11 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     _bound = true;
     W.addEventListener('yandex:auth:changed', () => applyIdentity().catch(() => {}));
     D.addEventListener('visibilitychange', () => {
-      if (!D.hidden && _core?.isReady?.()) _ui?.refresh?.();
+      if (!D.hidden && _core?.isReady?.()) {
+        startPresenceHeartbeat();
+        startPushPolling();
+        _ui?.refresh?.();
+      }
     });
 
     const onSwPushClick = e => {
