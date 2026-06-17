@@ -141,6 +141,12 @@ const handlePushes = async (items) => {
   for (const push of items) {
     if (isStaleSessionPush(push)) continue;
     if (push.kind === 'CHAT_MESSAGE') {
+      const activeChatId = _ui?.getActiveChatFriendId?.() || '';
+      if (activeChatId && activeChatId === push.fromFriendId && _ui?.pushIncomingChat?.(push)) {
+        await _core.markChatRead?.({ friendId: push.fromFriendId, msgId: push.msgId }).catch(() => null);
+        continue;
+      }
+
       let name = 'Друг';
       try {
         const prof = await _core.getProfile(push.fromFriendId);
@@ -386,8 +392,6 @@ const applyIdentity = async () => {
     }
 
     _ui?.refresh?.({ force: true });
-    startPresenceHeartbeat();
-    startPushPolling();
     syncWebPushIfAllowed();
     W.Vi3WebPush = {
       enable: () => import('../push/web-push.js').then(m => m.enableWebPush(_core))
@@ -487,10 +491,7 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     _bound = true;
     W.addEventListener('yandex:auth:changed', () => applyIdentity().catch(() => {}));
     D.addEventListener('visibilitychange', () => {
-      if (!D.hidden && _core?.isReady?.()) {
-        startPresenceHeartbeat();
-        startPushPolling();
-      }
+      if (!D.hidden && _core?.isReady?.()) _ui?.refresh?.();
     });
 
     const onSwPushClick = e => {
