@@ -57,18 +57,33 @@
 
   const render = (pos) => {
     if (!initDom() || !dom.lyr || !st.has) return;
-    const lst = st.list, fT = lst[0].time;
-    if (pos < fT && fT > 5) {
-      const rem = fT - pos, sec = Math.ceil(rem);
-      if (st.lIdx === -sec && rem >= 1) return;
-      dom.lyr.innerHTML = `<div class="lyrics-countdown${rem<1?' fade-out':''}"${rem<1?` style="opacity:${rem.toFixed(2)}"`:''}>${sec}</div>`;
-      st.lIdx = -sec; return;
-    }
+    const lst = st.list;
     let idx = -1; for (let i = 0; i < lst.length && pos >= lst[i].time; i++) idx = i;
-    if (idx === st.lIdx) return;
-    st.lIdx = idx;
+    
+    const curLine = idx >= 0 ? lst[idx] : null;
+    const nextLine = idx + 1 < lst.length ? lst[idx + 1] : null;
+    const inGap = !curLine || pos >= curLine.end;
+    
+    if (inGap) {
+      const gapStart = curLine ? curLine.end : 0;
+      const gapEnd = nextLine ? nextLine.time : (W.playerCore?.getDuration?.() || gapStart + 10);
+      if (gapEnd - gapStart > 5 && pos >= gapStart && pos < gapEnd) {
+        const rem = gapEnd - pos, sec = Math.ceil(rem);
+        if (st.lIdx === -sec && rem >= 1) return;
+        dom.lyr.innerHTML = `<div class="lyrics-countdown${rem<1?' fade-out':''}"${rem<1?` style="opacity:${rem.toFixed(2)}"`:''}>${sec}</div>`;
+        st.lIdx = -sec; return;
+      }
+    }
+    
+    const stateKey = inGap ? 'gap_' + idx : idx;
+    if (stateKey === st.lIdx) return;
+    st.lIdx = stateKey;
+    
     const sz = st.mode === 'expanded' ? 9 : 5, hf = (sz-1)/2, s = Math.max(0, idx-hf), pT = Math.max(0, hf-idx), html = Array(sz).fill('<div class="lyrics-window-line"></div>');
-    for(let i=0, end=Math.min(lst.length-s, sz-pT); i<end; i++) html[pT+i] = `<div class="lyrics-window-line${(s+i)===idx?' active':''}">${esc(lst[s+i].text)}</div>`;
+    for(let i=0, end=Math.min(lst.length-s, sz-pT); i<end; i++) {
+      const isActive = !inGap && (s+i) === idx;
+      html[pT+i] = `<div class="lyrics-window-line${isActive?' active':''}">${esc(lst[s+i].text)}</div>`;
+    }
     dom.lyr.innerHTML = html.join('');
   };
 
@@ -81,7 +96,11 @@
       if (!t?.lyrics || t.hasLyrics === false) return updateUI();
       if (initDom() && dom.lyr) dom.lyr.innerHTML = '<div class="lyrics-spinner"></div>';
       const d = await fetchL(t.lyrics);
-      if (d) { st.list = (Array.isArray(d) ? d : []).map(i => ({ time: Number(i?.time), text: String(i?.line || i?.text || '').trim() })).filter(i => Number.isFinite(i.time) && i.text).sort((a,b) => a.time - b.time); st.has = st.list.length > 0; }
+      if (d) {
+        st.list = (Array.isArray(d) ? d : []).map(i => ({ time: Number(i?.time ?? i?.start), end: Number(i?.end ?? 0), text: String(i?.line || i?.text || '').trim() })).filter(i => Number.isFinite(i.time) && i.text).sort((a,b) => a.time - b.time);
+        for (let j = 0; j < st.list.length; j++) if (!st.list[j].end) st.list[j].end = st.list[j+1] ? st.list[j+1].time : st.list[j].time + 5;
+        st.has = st.list.length > 0;
+      }
       updateUI();
     },
     onTick: (pos, opts) => { if (!uiSuspended() && st.mode !== 'hidden' && !opts?.inMiniMode && st.has) render(pos); },
