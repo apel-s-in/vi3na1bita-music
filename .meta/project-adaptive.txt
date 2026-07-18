@@ -109,7 +109,7 @@ F всегда относится к playing-context, а не к просто о
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
 [/img/] .gitkeep, bg-in.webp, Fav_logo.png, icon_game.png, logo.png, vitrina-crack-01.svg
 [/img/desktop/] logo@1x.png, logo@2x.png, logo@3x.png
-[/img/icon_album/] icon-album-00.png, icon-album-00@1x.png, icon-album-00@2x.png, icon-album-01.png, icon-album-01@1x.png, icon-album-01@2x.png, icon-album-02.png, icon-album-02@1x.png, icon-album-02@2x.png, icon-album-03.png, icon-album-03@1x.png, icon-album-03@2x.png, icon-album-04.png, icon-album-04@1x.png, icon-album-04@2x.png, icon-album-news.png, icon-album-news@1x.png, icon-album-news@2x.png, icon-album+00.png, icon-album+00@1x.png, icon-album+00@2x.png
+[/img/icon_album/] icon-album-00.png, icon-album-00@1x.png, icon-album-00@2x.png, icon-album-01.png, icon-album-01@1x.png, icon-album-01@2x.png, icon-album-02.png, icon-album-02@1x.png, icon-album-02@2x.png, icon-album-03.png, icon-album-03@1x.png, icon-album-03@2x.png, icon-album-04.png, icon-album-04@1x.png, icon-album-04@2x.png, icon-album-05.png, icon-album-05@1x.png, icon-album-05@2x.png, icon-album-news.png, icon-album-news@1x.png, icon-album-news@2x.png, icon-album+00.png, icon-album+00@1x.png, icon-album+00@2x.png
 [/img/icon_album/mobile/] icon-album-00@1x.jpg, icon-album-00@2x.jpg, icon-album-01@1x.jpg, icon-album-01@2x.jpg, icon-album-02@1x.jpg, icon-album-02@2x.jpg, icon-album-03@1x.jpg, icon-album-03@2x.jpg, icon-album-04@1x.jpg, icon-album-04@2x.jpg, icon-album-05@1x.jpg, icon-album-05@2x.jpg, icon-album-news@1x.jpg, icon-album-news@2x.jpg, icon-album+00@1x.jpg, icon-album+00@2x.jpg
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 15:16:45 UTC
+Сгенерировано: 2026-07-18 15:18:13 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
