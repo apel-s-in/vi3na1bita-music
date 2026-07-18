@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 17:40:10 UTC
+Сгенерировано: 2026-07-18 17:42:46 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -2397,6 +2397,8 @@ body:has(.gc-host.is-mounted:not(.is-gc-parked)){overflow:hidden}
 .album-icons{display:flex;flex-direction:column;gap:10px;margin:12px auto 0;max-width:400px;width:100%;padding:4px 8px}
 .album-icons-row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
 .album-icons-row--albums,.album-icons-row--nav{flex-wrap:nowrap}
+.album-icons-row--albums{justify-content:safe center;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.album-icons-row--albums::-webkit-scrollbar{display:none}
 .album-icon{flex-shrink:0;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);cursor:pointer;filter:grayscale(70%) brightness(.88);opacity:.72;transition:width .3s cubic-bezier(.4,0,.2,1),height .3s cubic-bezier(.4,0,.2,1),min-width .3s cubic-bezier(.4,0,.2,1),filter .25s,opacity .25s,box-shadow .25s,transform .15s;touch-action:manipulation;-webkit-touch-callout:none;width:clamp(52px,13.5vw,72px);height:clamp(52px,13.5vw,72px)}
 .album-icon img{width:100%;height:100%;object-fit:cover;display:block}
 .album-icons-row--albums .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 14px rgba(77,170,255,.35);width:clamp(64px,17vw,82px);height:clamp(64px,17vw,82px);border-color:rgba(77,170,255,.45)}
