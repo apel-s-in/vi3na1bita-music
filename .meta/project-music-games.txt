@@ -103,7 +103,7 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/02/] 02-cover-01.jpg, 02-cover-01.png, 02-cover-01.webp, 02-cover-02.jpg, 02-cover-02.png, 02-cover-02.webp, 02-cover-03.jpg, 02-cover-03.png, 02-cover-03.webp, 02-cover-04.jpg, 02-cover-04.png, 02-cover-04.webp, index.json
 [/albums/gallery/03/] 03-cover-01.jpg, 03-cover-01.png, 03-cover-01.webp, 03-cover-02.jpg, 03-cover-02.png, 03-cover-02.webp, 03-cover-03.jpg, 03-cover-03.png, 03-cover-03.webp, 03-cover-04.jpg, 03-cover-04.png, 03-cover-04.webp, index.json
 [/albums/gallery/04/] 04-cover-01.jpg, 04-cover-01.png, 04-cover-01.webp, 04-cover-02.jpg, 04-cover-02.png, 04-cover-02.webp, 04-cover-03.jpg, 04-cover-03.png, 04-cover-03.webp, 04-cover-04.jpg, 04-cover-04.png, 04-cover-04.webp, index.json
-[/albums/gallery/05/] 05-cover-01.jpg, 05-cover-01.png, 05-cover-01.webp, 05-cover-02.jpg, 05-cover-02.png, 05-cover-02.webp, 05-cover-03.jpg, 05-cover-03.png, 05-cover-03.webp, 05-cover-04.jpg, 05-cover-04.png, 05-cover-04.webp
+[/albums/gallery/05/] 05-cover-01.jpg, 05-cover-01.png, 05-cover-01.webp, 05-cover-02.jpg, 05-cover-02.png, 05-cover-02.webp, 05-cover-03.jpg, 05-cover-03.png, 05-cover-03.webp, 05-cover-04.jpg, 05-cover-04.png, 05-cover-04.webp, index.json
 [/audio/] silence.mp3
 [/data/] custom_achievements.json, taxonomy.json, track-profiles-index.json
 [/data/track-profiles/] _stub.profile.json, README.txt
@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 15:38:35 UTC
+Сгенерировано: 2026-07-18 15:39:41 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
