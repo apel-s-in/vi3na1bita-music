@@ -34,38 +34,46 @@ test('favoritesOnly survives backup self-restore',async({page})=>{
   const st=await page.evaluate(()=>({playing:!!window.playerCore?.isPlaying?.(),favOn:localStorage.getItem('favoritesOnlyMode')==='1'}));
   expect(st.playing).toBeTruthy();expect(st.favOn).toBeTruthy();
 });
-test('album carousel shows seven albums, rotates circularly and never stops playback',async({page})=>{
+test('album carousel is circular, auto-loads settled album and never stops playback',async({page})=>{
   await loginByPromo(page);
   await page.waitForSelector('#album-icons-albums.album-carousel',{timeout:1e4});
-  const initial=await page.evaluate(()=>({
-    count:document.querySelectorAll('#album-icons-albums .album-icon').length,
-    visible:document.querySelectorAll('#album-icons-albums .album-icon:not(.album-carousel-hidden)').length,
-    center:document.querySelector('#album-icons-albums [data-carousel-center="1"]')?.dataset.album||''
-  }));
-  expect(initial.count).toBe(7);
-  expect(initial.visible).toBe(7);
-  expect(initial.center).toBe('v-ssore');
+
+  const initial=await page.evaluate(()=>[...document.querySelectorAll('#album-icons-albums .album-icon')].sort((a,b)=>Number(a.dataset.carouselSlot)-Number(b.dataset.carouselSlot)).map(x=>x.dataset.album));
+  expect(initial).toEqual(['mezhdu-zlom-i-dobrom','odnazhdy-v-skazke','neizvestniy','v-ssore','ne-vse-ravno','golos-dushi','krevetochka']);
 
   await page.click('#track-list .track >> nth=0');
-  const before=await page.evaluate(()=>({
-    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
-    playing:!!window.playerCore?.isPlaying?.()
-  }));
+  const before=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}));
 
-  await page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]').click();
-  await expect(page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]')).toHaveAttribute('data-carousel-center','1');
-  const focused=await page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''));
-  expect(focused).toBe('v-ssore');
+  await page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]').click();
+  await expect(page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]')).toHaveAttribute('data-carousel-center','1');
+  await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');
 
-  await page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]').click();
-  await page.waitForTimeout(300);
-  const after=await page.evaluate(()=>({
-    album:String(window.AlbumsManager?.getCurrentAlbum?.()||''),
-    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
-    playing:!!window.playerCore?.isPlaying?.()
-  }));
-
-  expect(after.album).toBe('neizvestniy');
+  const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.(),saved:localStorage.getItem('albumCarouselCenter:v1')||''}));
   expect(after.playing).toBeTruthy();
   expect(after.uid).toBe(before.uid);
+  expect(after.saved).toBe('ne-vse-ravno');
+});
+test('album gallery visibility persists and special navigation clears album highlight',async({page})=>{
+  await loginByPromo(page);
+  await page.waitForSelector('#cover-wrap',{timeout:1e4});
+
+  await page.locator('#album-icons-albums [data-carousel-center="1"]').click();
+  await expect(page.locator('#cover-wrap')).toBeHidden();
+
+  await page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]').click();
+  await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');
+  await expect(page.locator('#cover-wrap')).toBeHidden();
+
+  await page.locator('.album-icon[data-album="__favorites__"]').click();
+  await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('__favorites__');
+
+  const state=await page.evaluate(()=>({
+    albumActive:document.querySelectorAll('#album-icons-albums .album-icon.active').length,
+    navActive:document.querySelectorAll('#album-icons-nav .album-icon.active').length,
+    center:document.querySelector('#album-icons-albums [data-carousel-center="1"]')?.dataset.album||''
+  }));
+
+  expect(state.albumActive).toBe(0);
+  expect(state.navActive).toBe(1);
+  expect(state.center).toBe('ne-vse-ravno');
 });
