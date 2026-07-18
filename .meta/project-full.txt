@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 20:23:08 UTC
+Сгенерировано: 2026-07-18 21:29:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3645,9 +3645,14 @@ W.AlbumsManager = new AlbumsManager(); export default W.AlbumsManager;
 
 //=================================================
 // FILE: /scripts/app/albums/album-carousel.js
-// UID.001_(Playback safety invariant)_(карусель не управляет playback)_(только визуально фокусирует существующие album-icon)
-// UID.094_(No-paralysis rule)_(ошибка карусели не ломает выбор альбома)_(AlbumsManager остаётся владельцем загрузки)
-// UID.096_(Helper-first anti-duplication policy)_(вся pointer/wheel/keyboard физика альбомов живёт в одном модуле)
+// UID.001_(Playback safety invariant)_(карусель не управляет playback)_(только выбирает экран альбома)
+// UID.094_(No-paralysis rule)_(ошибка карусели не ломает AlbumsManager)_(загрузка остаётся во внешнем callback)
+// UID.096_(Helper-first anti-duplication policy)_(pointer/wheel/keyboard/settle физика живёт в одном модуле)
+
+const STORAGE_KEY = 'albumCarouselCenter:v1';
+const SETTLE_MS = 520;
+const SWIPE_DISTANCE = 34;
+const FLICK_VELOCITY = 0.22;
 
 const SLOT_CLASSES = [
   'album-carousel-slot-m3',
@@ -3662,60 +3667,103 @@ const SLOT_CLASSES = [
 
 const mod = (value, length) => ((value % length) + length) % length;
 
-const slotFor = (index, center, length) => {
-  const distance = mod(index - center, length);
-  if (distance === 0) return 0;
-  const rank = Math.ceil(distance / 2);
-  if (rank > 3) return null;
-  return distance % 2 ? rank : -rank;
+const buildCircularOrder = items => {
+  if (items.length < 2) return [...items];
+  const right = items.filter((_, index) => index > 0 && index % 2 === 0);
+  const left = items.filter((_, index) => index % 2 === 1).reverse();
+  return [items[0], ...right, ...left];
+};
+
+const signedDistance = (index, center, length) => {
+  let distance = mod(index - center, length);
+  if (distance > Math.floor(length / 2)) distance -= length;
+  return distance;
 };
 
 const slotClass = slot => {
-  if (slot == null) return 'album-carousel-hidden';
+  if (slot == null || Math.abs(slot) > 3) return 'album-carousel-hidden';
   if (slot === 0) return 'album-carousel-slot-0';
   return `album-carousel-slot-${slot < 0 ? `m${Math.abs(slot)}` : `p${slot}`}`;
 };
 
 export const mountAlbumCarousel = ({
   root,
-  itemSelector = '.album-icon'
+  itemSelector = '.album-icon',
+  onSettled
 } = {}) => {
   if (!root) return null;
 
-  const items = [...root.querySelectorAll(itemSelector)]
+  const sourceItems = [...root.querySelectorAll(itemSelector)]
     .filter(item => !String(item.dataset.album || '').startsWith('__'));
 
-  if (!items.length) return null;
+  if (!sourceItems.length) return null;
 
+  const items = buildCircularOrder(sourceItems);
   let center = 0;
   let pointerId = null;
   let startX = 0;
   let startY = 0;
+  let lastX = 0;
+  let lastAt = 0;
+  let velocityX = 0;
   let dragX = 0;
   let horizontalDrag = false;
   let suppressClickUntil = 0;
   let wheelLockedUntil = 0;
+  let settleTimer = 0;
+  let destroyed = false;
+
+  const getCurrentItem = () => items[center] || null;
+  const getCurrentKey = () => String(getCurrentItem()?.dataset.album || '');
 
   const render = () => {
     items.forEach((item, index) => {
-      const slot = slotFor(index, center, items.length);
+      const slot = signedDistance(index, center, items.length);
       item.classList.remove(...SLOT_CLASSES);
       item.classList.add(slotClass(slot));
       item.dataset.carouselCenter = slot === 0 ? '1' : '0';
+      item.dataset.carouselSlot = String(slot);
       item.tabIndex = slot === 0 ? 0 : -1;
       item.setAttribute('role', 'button');
-      item.setAttribute('aria-hidden', slot == null ? 'true' : 'false');
+      item.setAttribute('aria-hidden', Math.abs(slot) > 3 ? 'true' : 'false');
     });
 
-    const current = items[center];
-    root.dataset.centerAlbum = String(current?.dataset.album || '');
-    root.setAttribute('aria-label', `Альбомы. В центре: ${current?.title || current?.dataset.album || ''}`);
+    const current = getCurrentItem();
+    root.dataset.centerAlbum = getCurrentKey();
+    root.setAttribute(
+      'aria-label',
+      `Альбомы. В центре: ${current?.title || getCurrentKey()}`
+    );
   };
 
-  const setCurrent = (keyOrIndex, { animate = true } = {}) => {
+  const cancelPendingSelection = () => {
+    clearTimeout(settleTimer);
+    settleTimer = 0;
+  };
+
+  const scheduleSettled = ({ notify = true, reason = 'interaction' } = {}) => {
+    cancelPendingSelection();
+    if (!notify) return;
+
+    settleTimer = setTimeout(() => {
+      settleTimer = 0;
+      if (destroyed) return;
+      const key = getCurrentKey();
+      if (key) onSettled?.(key, { reason });
+    }, SETTLE_MS);
+  };
+
+  const setCurrent = (keyOrIndex, {
+    animate = true,
+    notify = false,
+    persist = true,
+    reason = 'programmatic'
+  } = {}) => {
     const index = typeof keyOrIndex === 'number'
       ? mod(keyOrIndex, items.length)
-      : items.findIndex(item => item.dataset.album === String(keyOrIndex || ''));
+      : items.findIndex(item =>
+        item.dataset.album === String(keyOrIndex || '')
+      );
 
     if (index < 0) return false;
 
@@ -3723,14 +3771,29 @@ export const mountAlbumCarousel = ({
     center = index;
     render();
 
-    if (!animate) {
-      requestAnimationFrame(() => root.classList.remove('album-carousel-no-animation'));
+    if (persist) {
+      try {
+        localStorage.setItem(STORAGE_KEY, getCurrentKey());
+      } catch {}
     }
 
+    if (!animate) {
+      requestAnimationFrame(() => {
+        root.classList.remove('album-carousel-no-animation');
+      });
+    }
+
+    scheduleSettled({ notify, reason });
     return true;
   };
 
-  const step = direction => setCurrent(center + direction);
+  const step = (direction, reason = 'step') =>
+    setCurrent(center + direction, {
+      animate: true,
+      notify: true,
+      persist: true,
+      reason
+    });
 
   const onClickCapture = event => {
     const item = event.target.closest(itemSelector);
@@ -3747,17 +3810,30 @@ export const mountAlbumCarousel = ({
 
     event.preventDefault();
     event.stopImmediatePropagation();
-    setCurrent(index);
+
+    setCurrent(index, {
+      animate: true,
+      notify: true,
+      persist: true,
+      reason: 'item_click'
+    });
+
     item.focus({ preventScroll: true });
   };
 
   const onPointerDown = event => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    cancelPendingSelection();
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
+    lastX = event.clientX;
+    lastAt = performance.now();
+    velocityX = 0;
     dragX = 0;
     horizontalDrag = false;
+
     root.classList.add('album-carousel-dragging');
     root.setPointerCapture?.(pointerId);
   };
@@ -3768,14 +3844,23 @@ export const mountAlbumCarousel = ({
     const dx = event.clientX - startX;
     const dy = event.clientY - startY;
 
-    if (!horizontalDrag && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) + 6) {
+    if (!horizontalDrag && Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) + 5) {
       horizontalDrag = true;
     }
 
     if (!horizontalDrag) return;
 
+    const now = performance.now();
+    const elapsed = Math.max(1, now - lastAt);
+    velocityX = (event.clientX - lastX) / elapsed;
+    lastX = event.clientX;
+    lastAt = now;
     dragX = dx;
-    root.style.transform = `translateX(${Math.max(-24, Math.min(24, dx * 0.12))}px)`;
+
+    root.style.setProperty(
+      '--album-carousel-drag-x',
+      `${Math.max(-72, Math.min(72, dx * 0.42))}px`
+    );
   };
 
   const finishPointer = event => {
@@ -3786,15 +3871,20 @@ export const mountAlbumCarousel = ({
     } catch {}
 
     root.classList.remove('album-carousel-dragging');
-    root.style.transform = '';
+    root.style.removeProperty('--album-carousel-drag-x');
 
-    if (horizontalDrag && Math.abs(dragX) >= 38) {
-      suppressClickUntil = Date.now() + 320;
-      step(dragX < 0 ? 1 : -1);
+    const shouldMove =
+      horizontalDrag &&
+      (Math.abs(dragX) >= SWIPE_DISTANCE || Math.abs(velocityX) >= FLICK_VELOCITY);
+
+    if (shouldMove) {
+      suppressClickUntil = Date.now() + 360;
+      step(dragX < 0 || velocityX < -FLICK_VELOCITY ? 1 : -1, 'swipe');
     }
 
     pointerId = null;
     dragX = 0;
+    velocityX = 0;
     horizontalDrag = false;
   };
 
@@ -3806,23 +3896,28 @@ export const mountAlbumCarousel = ({
     if (Math.abs(delta) < 2 || Date.now() < wheelLockedUntil) return;
 
     event.preventDefault();
-    wheelLockedUntil = Date.now() + 180;
-    step(delta > 0 ? 1 : -1);
+    wheelLockedUntil = Date.now() + 190;
+    step(delta > 0 ? 1 : -1, 'wheel');
   };
 
   const onKeyDown = event => {
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      step(-1);
+      step(-1, 'keyboard');
     } else if (event.key === 'ArrowRight') {
       event.preventDefault();
-      step(1);
+      step(1, 'keyboard');
     } else if (event.key === 'Home') {
       event.preventDefault();
-      setCurrent(0);
+      setCurrent(0, {
+        animate: true,
+        notify: true,
+        persist: true,
+        reason: 'keyboard_home'
+      });
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      items[center]?.click();
+      getCurrentItem()?.click();
     }
   };
 
@@ -3835,15 +3930,32 @@ export const mountAlbumCarousel = ({
   root.addEventListener('wheel', onWheel, { passive: false });
   root.addEventListener('keydown', onKeyDown);
 
-  setCurrent(0, { animate: false });
+  let savedKey = '';
+  try {
+    savedKey = localStorage.getItem(STORAGE_KEY) || '';
+  } catch {}
+
+  setCurrent(savedKey || 0, {
+    animate: false,
+    notify: false,
+    persist: false,
+    reason: 'restore'
+  });
 
   return {
     setCurrent,
     step,
-    getCurrentKey: () => String(items[center]?.dataset.album || ''),
+    cancelPendingSelection,
+    getCurrentKey,
     destroy() {
-      root.classList.remove('album-carousel', 'album-carousel-dragging');
-      root.style.transform = '';
+      destroyed = true;
+      cancelPendingSelection();
+      root.classList.remove(
+        'album-carousel',
+        'album-carousel-dragging',
+        'album-carousel-no-animation'
+      );
+      root.style.removeProperty('--album-carousel-drag-x');
       root.removeEventListener('click', onClickCapture, true);
       root.removeEventListener('pointerdown', onPointerDown);
       root.removeEventListener('pointermove', onPointerMove);
@@ -3851,9 +3963,11 @@ export const mountAlbumCarousel = ({
       root.removeEventListener('pointercancel', finishPointer);
       root.removeEventListener('wheel', onWheel);
       root.removeEventListener('keydown', onKeyDown);
+
       items.forEach(item => {
         item.classList.remove(...SLOT_CLASSES);
         item.removeAttribute('data-carousel-center');
+        item.removeAttribute('data-carousel-slot');
         item.removeAttribute('aria-hidden');
         item.removeAttribute('role');
         item.removeAttribute('tabindex');
