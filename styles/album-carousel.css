@@ -1,37 +1,38 @@
-/* Обычные альбомы: компактная круговая Cover Flow-карусель. */
+/* Обычные альбомы: круговая Cover Flow-карусель без влияния на playback. */
 .album-icons-row--albums.album-carousel{
-  --album-carousel-x1:clamp(62px,18vw,72px);
-  --album-carousel-x2:clamp(105px,32vw,128px);
-  --album-carousel-x3:clamp(138px,43vw,170px);
+  --album-carousel-x1:clamp(54px,17vw,70px);
+  --album-carousel-x2:clamp(88px,28vw,118px);
+  --album-carousel-x3:clamp(112px,37vw,154px);
+  --album-carousel-drag-x:0px;
   position:relative;
   display:block;
   width:100%;
-  height:92px;
-  overflow:hidden;
+  height:118px;
+  margin:-8px 0 -8px;
+  padding:18px 0;
+  overflow:visible;
   perspective:900px;
-  perspective-origin:50% 45%;
+  perspective-origin:50% 48%;
   touch-action:pan-y;
   cursor:grab;
   user-select:none;
   -webkit-user-select:none;
-  transition:transform .16s ease-out;
 }
 
 .album-icons-row--albums.album-carousel.album-carousel-dragging{
   cursor:grabbing;
-  transition:none;
 }
 
 .album-icons-row--albums.album-carousel .album-icon{
   position:absolute;
-  top:14px;
+  top:32px;
   left:50%;
   width:52px;
   height:52px;
   margin:0;
   opacity:.42;
   filter:grayscale(70%) brightness(.72);
-  transform:translateX(-50%) scale(.82);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) scale(.82);
   transform-origin:center;
   transition:
     left .5s cubic-bezier(.22,1,.36,1),
@@ -47,87 +48,91 @@
   backface-visibility:hidden;
 }
 
+.album-icons-row--albums.album-carousel.album-carousel-dragging .album-icon{
+  transition:none!important;
+}
+
 .album-icons-row--albums.album-carousel .album-icon:hover{
   opacity:1;
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-slot-0{
   left:50%;
-  top:0;
+  top:18px;
   z-index:10;
   width:82px;
   height:82px;
   opacity:1;
   filter:none;
-  transform:translateX(-50%) translateZ(70px) scale(1);
-  border-color:rgba(77,170,255,.72);
-  box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(77,170,255,.28);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) translateZ(70px);
+  border-color:var(--border-color);
+  box-shadow:0 8px 20px rgba(0,0,0,.42);
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-slot-p1{
   left:calc(50% + var(--album-carousel-x1));
-  top:8px;
+  top:26px;
   z-index:8;
   width:66px;
   height:66px;
   opacity:.88;
   filter:grayscale(24%) brightness(.9);
-  transform:translateX(-50%) rotateY(-28deg) scale(.96);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(-28deg) scale(.96);
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-slot-m1{
   left:calc(50% - var(--album-carousel-x1));
-  top:8px;
+  top:26px;
   z-index:8;
   width:66px;
   height:66px;
   opacity:.88;
   filter:grayscale(24%) brightness(.9);
-  transform:translateX(-50%) rotateY(28deg) scale(.96);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(28deg) scale(.96);
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-slot-p2{
   left:calc(50% + var(--album-carousel-x2));
-  top:14px;
+  top:32px;
   z-index:6;
   width:54px;
   height:54px;
   opacity:.68;
   filter:grayscale(48%) brightness(.78);
-  transform:translateX(-50%) rotateY(-38deg) scale(.9);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(-38deg) scale(.9);
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-slot-m2{
   left:calc(50% - var(--album-carousel-x2));
-  top:14px;
+  top:32px;
   z-index:6;
   width:54px;
   height:54px;
   opacity:.68;
   filter:grayscale(48%) brightness(.78);
-  transform:translateX(-50%) rotateY(38deg) scale(.9);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(38deg) scale(.9);
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-slot-p3{
   left:calc(50% + var(--album-carousel-x3));
-  top:20px;
+  top:38px;
   z-index:4;
   width:44px;
   height:44px;
   opacity:.44;
   filter:grayscale(72%) brightness(.66);
-  transform:translateX(-50%) rotateY(-48deg) scale(.84);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(-48deg) scale(.84);
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-slot-m3{
   left:calc(50% - var(--album-carousel-x3));
-  top:20px;
+  top:38px;
   z-index:4;
   width:44px;
   height:44px;
   opacity:.44;
   filter:grayscale(72%) brightness(.66);
-  transform:translateX(-50%) rotateY(48deg) scale(.84);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(48deg) scale(.84);
 }
 
 .album-icons-row--albums.album-carousel .album-carousel-hidden{
@@ -135,12 +140,20 @@
   z-index:0;
   opacity:0;
   pointer-events:none;
-  transform:translateX(-50%) scale(.55);
+  transform:translateX(calc(-50% + var(--album-carousel-drag-x))) scale(.55);
+}
+
+/* Светится только реально открытый альбом, а не просто центральная позиция. */
+.album-icons-row--albums.album-carousel .album-icon.active.album-carousel-slot-0{
+  border-color:rgba(77,170,255,.72);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.5),
+    0 0 22px rgba(77,170,255,.38);
 }
 
 .album-icons-row--albums.album-carousel .album-icon.active:not(.album-carousel-slot-0){
-  border-color:rgba(77,170,255,.65);
-  box-shadow:0 0 12px rgba(77,170,255,.28);
+  border-color:rgba(77,170,255,.58);
+  box-shadow:0 0 12px rgba(77,170,255,.24);
 }
 
 .album-icons-row--albums.album-carousel.album-carousel-no-animation .album-icon{
@@ -149,23 +162,41 @@
 
 @media(max-width:380px){
   .album-icons-row--albums.album-carousel{
-    height:86px;
+    --album-carousel-x1:56px;
+    --album-carousel-x2:96px;
+    --album-carousel-x3:132px;
+    height:112px;
   }
 
   .album-icons-row--albums.album-carousel .album-carousel-slot-0{
     width:74px;
     height:74px;
+    top:20px;
   }
 
   .album-icons-row--albums.album-carousel .album-carousel-slot-p1,
   .album-icons-row--albums.album-carousel .album-carousel-slot-m1{
     width:60px;
     height:60px;
+    top:27px;
+  }
+
+  .album-icons-row--albums.album-carousel .album-carousel-slot-p3,
+  .album-icons-row--albums.album-carousel .album-carousel-slot-m3{
+    width:40px;
+    height:40px;
+  }
+}
+
+@media(max-width:340px){
+  .album-icons-row--albums.album-carousel{
+    --album-carousel-x1:52px;
+    --album-carousel-x2:88px;
+    --album-carousel-x3:116px;
   }
 }
 
 @media(prefers-reduced-motion:reduce){
-  .album-icons-row--albums.album-carousel,
   .album-icons-row--albums.album-carousel .album-icon{
     transition:none!important;
   }
