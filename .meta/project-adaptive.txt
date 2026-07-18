@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 17:36:57 UTC
+Сгенерировано: 2026-07-18 17:38:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4202,7 +4202,7 @@ export default { mountFriendsBlock };
 
 //=================================================
 // FILE: /scripts/app/gallery.js
-const W = window, D = document, $ = id => D.getElementById(id), BASE = './albums/gallery/', LOGO = 'img/logo.png', C404 = 'gallery_404_cache:v2', MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04', 'neizvestniy': '05' }, ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
+const W = window, D = document, $ = id => D.getElementById(id), BASE = './albums/gallery/', LOGO = 'img/logo.png', C404 = 'gallery_404_cache:v2', MAP = { 'krevetochka': '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04', 'neizvestniy': '05', 'v-ssore': '06' }, ss = (k, v) => v === undefined ? JSON.parse(sessionStorage.getItem(k) || '{}') : sessionStorage.setItem(k, JSON.stringify(v));
 class GalleryManager {
   it = []; idx = 0; tm = null; pre = new Set(); flip = 0; meta = new Map();
   initialize() { const g = d => this.it.length > 1 && (this.show((this.idx + d + this.it.length) % this.it.length), this.play()); $('cover-gallery-arrow-left')?.addEventListener('click', () => g(-1)); $('cover-gallery-arrow-right')?.addEventListener('click', () => g(1)); const w = $('cover-wrap'); if (w) { let x = null; w.addEventListener('touchstart', e => x = e.touches[0].clientX, { passive: true }); w.addEventListener('touchend', e => { if (x !== null && Math.abs(e.changedTouches[0].clientX - x) > 50) g(e.changedTouches[0].clientX < x ? 1 : -1); x = null; }, { passive: true }); } D.addEventListener('visibilitychange', () => D.hidden ? this.stop() : this.play()); }
