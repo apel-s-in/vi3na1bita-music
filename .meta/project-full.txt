@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 20:22:23 UTC
+Сгенерировано: 2026-07-18 20:23:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7637,6 +7637,41 @@ test('favoritesOnly survives backup self-restore',async({page})=>{
   await page.evaluate(async()=>{window.YandexAuth={...(window.YandexAuth||{}),getProfile:()=>({yandexId:'e2e'}),getSessionStatus:()=> 'active',isTokenAlive:()=>true};const {BackupVault}=await import('./scripts/analytics/backup-vault.js');const b=await BackupVault.buildBackupObject();b.identity.ownerYandexId='e2e';await BackupVault.importBackupObject(b,'all');});
   const st=await page.evaluate(()=>({playing:!!window.playerCore?.isPlaying?.(),favOn:localStorage.getItem('favoritesOnlyMode')==='1'}));
   expect(st.playing).toBeTruthy();expect(st.favOn).toBeTruthy();
+});
+test('album carousel shows seven albums, rotates circularly and never stops playback',async({page})=>{
+  await loginByPromo(page);
+  await page.waitForSelector('#album-icons-albums.album-carousel',{timeout:1e4});
+  const initial=await page.evaluate(()=>({
+    count:document.querySelectorAll('#album-icons-albums .album-icon').length,
+    visible:document.querySelectorAll('#album-icons-albums .album-icon:not(.album-carousel-hidden)').length,
+    center:document.querySelector('#album-icons-albums [data-carousel-center="1"]')?.dataset.album||''
+  }));
+  expect(initial.count).toBe(7);
+  expect(initial.visible).toBe(7);
+  expect(initial.center).toBe('v-ssore');
+
+  await page.click('#track-list .track >> nth=0');
+  const before=await page.evaluate(()=>({
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    playing:!!window.playerCore?.isPlaying?.()
+  }));
+
+  await page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]').click();
+  await expect(page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]')).toHaveAttribute('data-carousel-center','1');
+  const focused=await page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''));
+  expect(focused).toBe('v-ssore');
+
+  await page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]').click();
+  await page.waitForTimeout(300);
+  const after=await page.evaluate(()=>({
+    album:String(window.AlbumsManager?.getCurrentAlbum?.()||''),
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    playing:!!window.playerCore?.isPlaying?.()
+  }));
+
+  expect(after.album).toBe('neizvestniy');
+  expect(after.playing).toBeTruthy();
+  expect(after.uid).toBe(before.uid);
 });
 
 //=================================================
