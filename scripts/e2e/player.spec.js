@@ -34,3 +34,38 @@ test('favoritesOnly survives backup self-restore',async({page})=>{
   const st=await page.evaluate(()=>({playing:!!window.playerCore?.isPlaying?.(),favOn:localStorage.getItem('favoritesOnlyMode')==='1'}));
   expect(st.playing).toBeTruthy();expect(st.favOn).toBeTruthy();
 });
+test('album carousel shows seven albums, rotates circularly and never stops playback',async({page})=>{
+  await loginByPromo(page);
+  await page.waitForSelector('#album-icons-albums.album-carousel',{timeout:1e4});
+  const initial=await page.evaluate(()=>({
+    count:document.querySelectorAll('#album-icons-albums .album-icon').length,
+    visible:document.querySelectorAll('#album-icons-albums .album-icon:not(.album-carousel-hidden)').length,
+    center:document.querySelector('#album-icons-albums [data-carousel-center="1"]')?.dataset.album||''
+  }));
+  expect(initial.count).toBe(7);
+  expect(initial.visible).toBe(7);
+  expect(initial.center).toBe('v-ssore');
+
+  await page.click('#track-list .track >> nth=0');
+  const before=await page.evaluate(()=>({
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    playing:!!window.playerCore?.isPlaying?.()
+  }));
+
+  await page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]').click();
+  await expect(page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]')).toHaveAttribute('data-carousel-center','1');
+  const focused=await page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''));
+  expect(focused).toBe('v-ssore');
+
+  await page.locator('#album-icons-albums .album-icon[data-album="neizvestniy"]').click();
+  await page.waitForTimeout(300);
+  const after=await page.evaluate(()=>({
+    album:String(window.AlbumsManager?.getCurrentAlbum?.()||''),
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    playing:!!window.playerCore?.isPlaying?.()
+  }));
+
+  expect(after.album).toBe('neizvestniy');
+  expect(after.playing).toBeTruthy();
+  expect(after.uid).toBe(before.uid);
+});
