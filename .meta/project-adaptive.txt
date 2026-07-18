@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 15:18:13 UTC
+Сгенерировано: 2026-07-18 15:20:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -387,6 +387,12 @@ jobs:
       "title": "Не всё равно",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/",
       "github_base": "https://apel-s-in.github.io/vi3na1bita-ne-vse-ravno/"
+    },
+    {
+      "key": "neizvestniy",
+      "title": "Неизвестный",
+      "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/",
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-neizvestniy/"
     },
     {
       "key": "krevetochka",
