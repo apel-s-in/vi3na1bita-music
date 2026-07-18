@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 17:38:47 UTC
+Сгенерировано: 2026-07-18 17:40:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7044,7 +7044,7 @@ const af = path.resolve('albums.json'); if (!fs.existsSync(af)) fail('albums.jso
 const albs = JSON.parse(fs.readFileSync(af, 'utf8'))?.albums; if (!Array.isArray(albs)) fail('albums must be array');
 albs.forEach((a, i) => { if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) fail(`album[${i}] missing fields`); if (!/^https?:\/\//i.test(a.base || a.yandex_base || a.github_base)) fail(`album[${i}] base invalid`); });
 if (new Set(albs.map(a => a.key)).size !== albs.length) fail('duplicate keys');
-['00','01','02','03','04','05'].forEach(id => { const iF = path.join(path.resolve('albums/gallery', id), 'index.json'); if (!fs.existsSync(iF)) fail(`gallery ${id} missing`); try { const it = JSON.parse(fs.readFileSync(iF, 'utf8'))?.items || []; if (!Array.isArray(it)) fail('items not array'); } catch { fail(`gallery ${id} invalid json`); } });
+['00','01','02','03','04','05','06'].forEach(id => { const iF = path.join(path.resolve('albums/gallery', id), 'index.json'); if (!fs.existsSync(iF)) fail(`gallery ${id} missing`); try { const it = JSON.parse(fs.readFileSync(iF, 'utf8'))?.items || []; if (!Array.isArray(it)) fail('items not array'); } catch { fail(`gallery ${id} invalid json`); } });
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
