@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 08:41:53 UTC
+Сгенерировано: 2026-07-19 08:42:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -596,7 +596,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.7.6'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-07-18');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.7.7'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-07-19');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -8368,6 +8368,22 @@ test('album gallery visibility persists and special navigation clears album high
   expect(state.albumActive).toBe(0);
   expect(state.navActive).toBe(1);
   expect(state.center).toBe('ne-vse-ravno');
+});
+test('desktop mouse click opens carousel album and toggles its gallery',async({page})=>{
+  await loginByPromo(page);
+  await page.waitForSelector('#album-icons-albums.album-carousel',{timeout:1e4});
+
+  const side=page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]');
+  await side.click();
+  await expect(side).toHaveAttribute('data-carousel-center','1');
+  await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');
+
+  const center=page.locator('#album-icons-albums [data-carousel-center="1"]');
+  await center.click();
+  await expect(page.locator('#cover-wrap')).toBeHidden();
+
+  await center.click();
+  await expect(page.locator('#cover-wrap')).toBeVisible();
 });
 
 //=================================================
