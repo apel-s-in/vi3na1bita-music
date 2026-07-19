@@ -29,6 +29,7 @@ const NEWS = W.SPECIAL_RELIZ_KEY || '__reliz__';
 const SHOWCASE = W.SPECIAL_SHOWCASE_KEY || '__showcase__';
 const PROFILE = C.SPECIAL_PROFILE_KEY || '__profile__';
 const GAMES = C.SPECIAL_GAMES_KEY || W.SPECIAL_GAMES_KEY || '__games__';
+const FRIENDS = C.SPECIAL_FRIENDS_KEY || W.SPECIAL_FRIENDS_KEY || '__friends__';
 const LOGO = 'img/logo.png';
 const GALLERY_VISIBLE_KEY = 'albumGalleryVisible:v1';
 
@@ -37,7 +38,8 @@ const SPECIAL_LOADERS = {
   [NEWS]: 'loadNewsAlbum',
   [SHOWCASE]: 'loadShowcaseAlbum',
   [PROFILE]: 'loadProfileAlbum',
-  [GAMES]: 'loadGamesAlbum'
+  [GAMES]: 'loadGamesAlbum',
+  [FRIENDS]: 'loadFriendsAlbum'
 };
 
 class AlbumsManager {
@@ -310,6 +312,7 @@ class AlbumsManager {
   _prepareAlbumScreen(key) {
     D.body.classList.toggle('profile-view', key === PROFILE);
     D.body.classList.toggle('games-view', key === GAMES);
+    D.body.classList.toggle('friends-view', key === FRIENDS);
 
     const trackList = $('track-list');
     const socialLinks = $('social-links');
