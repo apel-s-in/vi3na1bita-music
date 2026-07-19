@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-18 21:40:34 UTC
+Сгенерировано: 2026-07-19 08:38:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -3835,7 +3835,6 @@ export const mountAlbumCarousel = ({
     horizontalDrag = false;
 
     root.classList.add('album-carousel-dragging');
-    root.setPointerCapture?.(pointerId);
   };
 
   const onPointerMove = event => {
@@ -3846,6 +3845,9 @@ export const mountAlbumCarousel = ({
 
     if (!horizontalDrag && Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) + 5) {
       horizontalDrag = true;
+      try {
+        root.setPointerCapture?.(event.pointerId);
+      } catch {}
     }
 
     if (!horizontalDrag) return;
