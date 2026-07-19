@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 23:11:58 UTC
+Сгенерировано: 2026-07-19 23:13:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9382,8 +9382,14 @@ test('E2EE device key is non-extractable and AES payload roundtrip works',async(
   await loginByPromo(page);
 
   const result=await page.evaluate(async()=>{
-    const module=await import(
-      `https://vi3na1bita.website.yandexcloud.net/Friends/friends-crypto.js?v=8.8.5&e2e=${Date.now()}`
+    const build = String(
+      window.APP_CONFIG?.APP_VERSION ||
+      window.VERSION ||
+      'dev'
+    );
+
+    const module = await import(
+      `https://vi3na1bita.website.yandexcloud.net/Friends/friends-crypto.js?v=${encodeURIComponent(build)}&e2e=${Date.now()}`
     );
 
     const requests=[];
