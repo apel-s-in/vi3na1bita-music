@@ -12,6 +12,8 @@ const chromeVer = isChrome ? Number(ua.match(/Chrome\/(\d+)/)?.[1] || 0) : 0;
 
 let _el = null, _started = false, _bound = false;
 let _watchdogInterval = null, _retryTimer = null, _retryCount = 0;
+let _playbackIntent = false;
+let _lastKnownPosition = 0;
 const MAX_RETRY = 5;
 
 // ─── silence <audio> ────────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ function _createEl() {
 }
 
 function _scheduleRetry() {
-  if (_retryCount >= MAX_RETRY || !window.playerCore?.isPlaying?.()) return;
+  if (_retryCount >= MAX_RETRY || !_playbackIntent) return;
   clearTimeout(_retryTimer);
   const delay = Math.min(30000, 1000 * Math.pow(2, _retryCount));
   _retryCount++;
@@ -74,7 +76,7 @@ function _bindCtxWatcher() {
   if (c && !c._keeperWatching) {
     c._keeperWatching = true;
     c.addEventListener('statechange', () => {
-      if (window.playerCore?.isPlaying?.()) _resumeCtx();
+      if (_playbackIntent) _resumeCtx();
     });
   }
 }
@@ -83,7 +85,7 @@ function _bindCtxWatcher() {
 function _startWatchdog() {
   if (_watchdogInterval) return;
   _watchdogInterval = setInterval(() => {
-    if (!window.playerCore?.isPlaying?.()) return;
+    if (!_playbackIntent) return;
 
     _resumeCtx();
 
@@ -96,10 +98,13 @@ function _startWatchdog() {
     if (isIOS) {
       const pc = window.playerCore;
       if (pc?.sound && !pc.sound.playing()) {
-        const pos = pc.getPosition?.() || 0;
+        const pos = pc.getPosition?.() || _lastKnownPosition || 0;
         setTimeout(() => {
-          if (!window.playerCore?.isPlaying?.() && pc?.sound && !pc.sound.playing()) {
-            try { pc.sound.seek(pos); pc.sound.play(); } catch {}
+          if (_playbackIntent && pc?.sound && !pc.sound.playing()) {
+            try {
+              pc.sound.seek(pos);
+              pc.sound.play();
+            } catch {}
           }
         }, 600);
       }
@@ -157,6 +162,8 @@ export function initIosAudioKeeper() {
   _bound = true;
 
   window.addEventListener('player:play', () => {
+    _playbackIntent = true;
+    _lastKnownPosition = window.playerCore?.getPosition?.() || _lastKnownPosition;
     _bindCtxWatcher();
     _resumeCtx();
     if (isIOS) {
@@ -167,10 +174,18 @@ export function initIosAudioKeeper() {
   });
 
   window.addEventListener('player:pause', () => {
+    _playbackIntent = false;
+    _lastKnownPosition = window.playerCore?.getPosition?.() || _lastKnownPosition;
+    if (isIOS) {
+      stopKeeper();
+      _stopWatchdog();
+    }
     _updateMediaSessionPaused();
   });
 
   window.addEventListener('player:stop', () => {
+    _playbackIntent = false;
+    _lastKnownPosition = 0;
     if (isIOS) {
       stopKeeper();
       _stopWatchdog();
@@ -189,7 +204,8 @@ export function initIosAudioKeeper() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       _lastPos = window.playerCore?.getPosition?.() || 0;
-      _wasPlaying = !!window.playerCore?.isPlaying?.();
+      _lastKnownPosition = _lastPos;
+      _wasPlaying = _playbackIntent;
       return;
     }
 
@@ -198,14 +214,14 @@ export function initIosAudioKeeper() {
     _resumeCtx();
 
     if (isIOS) {
-      if (!_started && window.playerCore?.isPlaying?.()) startKeeper();
+      if (!_started && _playbackIntent) startKeeper();
 
       if (_wasPlaying) {
         // Даём 500мс и проверяем — iOS мог заморозить
         setTimeout(() => {
           const pc = window.playerCore;
           if (!pc) return;
-          if (!pc.isPlaying() || (pc.sound && !pc.sound.playing())) {
+          if (_playbackIntent && (!pc.isPlaying() || (pc.sound && !pc.sound.playing()))) {
             const p = _lastPos || 0;
             try { if (pc.sound) { pc.sound.seek(p); pc.sound.play(); } } catch {}
           }
@@ -222,8 +238,9 @@ export function initIosAudioKeeper() {
 
   // ── Сохраняем позицию каждые 4 сек ──────────────────────────────────────────
   setInterval(() => {
-    if (window.playerCore?.isPlaying?.()) {
-      _lastPos = window.playerCore.getPosition?.() || 0;
+    if (_playbackIntent) {
+      _lastPos = window.playerCore?.getPosition?.() || _lastKnownPosition || 0;
+      _lastKnownPosition = _lastPos;
     }
   }, 4000);
 
