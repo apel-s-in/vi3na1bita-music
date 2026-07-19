@@ -589,11 +589,26 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     _bound = true;
     W.addEventListener('yandex:auth:changed', () => applyIdentity().catch(() => {}));
     D.addEventListener('visibilitychange', () => {
-      if (!D.hidden && _core?.isReady?.()) {
-        startPresenceHeartbeat();
-        startPushPolling();
+      if (D.hidden) {
+        stopFriendsBackgroundTasks();
+        return;
+      }
+
+      if (isFriendsSectionActive() && _core?.isReady?.()) {
+        resumeFriendsBackgroundTasks();
         _ui?.refresh?.();
       }
+    });
+
+    W.addEventListener('album:changed', event => {
+      const friendsKey = W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || FRIENDS_KEY;
+      if (event.detail?.key !== friendsKey) {
+        stopFriendsBackgroundTasks();
+        return;
+      }
+
+      resumeFriendsBackgroundTasks();
+      _ui?.refresh?.();
     });
 
     const onSwPushClick = e => {
