@@ -93,3 +93,18 @@ test('desktop mouse click opens carousel album and toggles its gallery',async({p
   await center.click();
   await expect(page.locator('#cover-wrap')).toBeVisible();
 });
+test('special navigation has six items and Friends is separated from Game Center',async({page})=>{
+  await loginByPromo(page);
+  const keys=await page.locator('#album-icons-nav .album-icon').evaluateAll(a=>a.map(x=>x.dataset.album));
+  expect(keys).toEqual(['__games__','__friends__','__showcase__','__favorites__','__reliz__','__profile__']);
+
+  await page.locator('[data-album="__games__"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__games__');
+  await expect(page.locator('#active-album-title')).toContainText('ЗАЛ ВИТРИНЫ');
+  await expect(page.locator('.vf-host-in-friends')).toHaveCount(0);
+
+  await page.locator('[data-album="__friends__"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');
+  await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');
+  await expect(page.locator('.gc-host')).toHaveCount(0);
+});
