@@ -303,8 +303,14 @@ test('E2EE device key is non-extractable and AES payload roundtrip works',async(
   await loginByPromo(page);
 
   const result=await page.evaluate(async()=>{
-    const module=await import(
-      `https://vi3na1bita.website.yandexcloud.net/Friends/friends-crypto.js?v=8.8.5&e2e=${Date.now()}`
+    const build = String(
+      window.APP_CONFIG?.APP_VERSION ||
+      window.VERSION ||
+      'dev'
+    );
+
+    const module = await import(
+      `https://vi3na1bita.website.yandexcloud.net/Friends/friends-crypto.js?v=${encodeURIComponent(build)}&e2e=${Date.now()}`
     );
 
     const requests=[];
