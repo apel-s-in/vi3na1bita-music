@@ -5,6 +5,7 @@ body.games-view #track-list,body.friends-view #track-list{max-width:395px;width:
 .vf-host-in-friends{display:block;width:100%;max-width:320px;margin:0 auto 24px;border-radius:18px;overflow:hidden;background:rgba(8,11,26,.5);border:1px solid rgba(132,145,255,.18);box-sizing:border-box}
 .vf-host-in-friends.is-unauth>*:not(.custom-ya-unauth){display:none!important}
 .vf-host-in-friends .vf-app{position:static!important;inset:auto!important;max-width:none!important;height:auto!important;overflow:visible!important;background:transparent!important;padding:14px!important}
+.vf-host-in-friends .vf-wrap>.vf-head{display:none!important}
 .vf-host-in-friends.is-unauth>.vf-wrap,.vf-host-in-friends.is-unauth>.friends-authorized-guide{display:none!important}
 .custom-ya-unauth,.friends-authorized-guide{width:100%;padding:18px 14px;color:#eaf2ff;box-sizing:border-box}
 .custom-ya-unauth{display:flex;flex-direction:column;align-items:center;text-align:center}
