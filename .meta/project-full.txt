@@ -117,7 +117,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/] app.js
 [/scripts/analytics/] achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorites-storage-merge.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js, verified-achievement-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, track-registry.js
-[/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, specials.js
+[/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
 [/scripts/app/player/] favorites-only-actions.js, favorites-only-resolver.js, playback-clock.js, playback-context-source.js
@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 09:39:17 UTC
+Сгенерировано: 2026-07-19 09:40:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4555,6 +4555,28 @@ export default {
   renderAlbumIcon,
   renderAlbumIconRows
 };
+
+//=================================================
+// FILE: /scripts/app/albums/album-track-renderer.js
+// UID.002_(UID-first core)_(строки обычного альбома адресуются по uid)_(renderer не владеет playback)
+// UID.094_(No-paralysis rule)_(renderer только создаёт DOM)_(не вызывает play/pause/stop)
+// UID.096_(Helper-first anti-duplication policy)_(HTML обычных track rows вынесен из AlbumsManager)
+
+import { injectIndicator } from '../../ui/offline-indicators.js';
+import { renderFavoriteStar } from '../../ui/icon-utils.js';
+
+export const renderAlbumTracks = ({ root, albumKey, tracks = [], escapeHtml = v => String(v || ''), isFavorite = () => false } = {}) => {
+  if (!root) return false;
+  const esc = escapeHtml, key = esc(albumKey);
+  root.innerHTML = (Array.isArray(tracks) ? tracks : []).map((t, i) => {
+    const uid = esc(t?.uid), liked = !!(t?.uid && isFavorite(t.uid)), num = String(t?.num ?? i + 1).padStart(2, '0');
+    return `<div class="track" id="trk${i}" data-index="${i}" data-album="${key}" data-uid="${uid}"><div class="tnum">${num}.</div><div class="track-title">${esc(t?.title || 'Без названия')}</div>${renderFavoriteStar(liked, `data-album="${key}" data-uid="${uid}"`)}</div>`;
+  }).join('');
+  root.querySelectorAll('.track[data-uid]').forEach(injectIndicator);
+  return true;
+};
+
+export default { renderAlbumTracks };
 
 //=================================================
 // FILE: /scripts/app/albums/specials.js
@@ -11644,8 +11666,11 @@ body:has(.gc-host.is-mounted:not(.is-gc-parked)){overflow:hidden}
 .album-icon{flex-shrink:0;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);cursor:pointer;filter:grayscale(70%) brightness(.88);opacity:.72;transition:width .3s cubic-bezier(.4,0,.2,1),height .3s cubic-bezier(.4,0,.2,1),min-width .3s cubic-bezier(.4,0,.2,1),filter .25s,opacity .25s,box-shadow .25s,transform .15s;touch-action:manipulation;-webkit-touch-callout:none;width:clamp(52px,13.5vw,72px);height:clamp(52px,13.5vw,72px)}
 .album-icon img{width:100%;height:100%;object-fit:cover;display:block}
 .album-icons-row--albums .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 14px rgba(77,170,255,.35);width:clamp(64px,17vw,82px);height:clamp(64px,17vw,82px);border-color:rgba(77,170,255,.45)}
-.album-icons-row--nav .album-icon{width:clamp(60px,15vw,76px);height:clamp(60px,15vw,76px)}
+.album-icons-row--nav{gap:clamp(3px,1vw,6px)}
+.album-icons-row--nav .album-icon{width:clamp(42px,13.4vw,56px);height:clamp(42px,13.4vw,56px);min-width:0}
 .album-icons-row--nav .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 10px rgba(0,0,0,.35);border-color:var(--secondary-color)}
+.album-icons-row--nav .pg-lvl-val{font-size:clamp(19px,6vw,26px)}
+.album-icons-row--nav .pg-xp-cur{font-size:clamp(8px,2.4vw,10px)}
 .album-icon:hover{transform:translateY(-2px);opacity:.9}
 .album-icon:active{transform:translateY(0) scale(.95)}
 .album-icons-row--nav .profile-dyn-icon{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;gap:2px;background:rgba(255,255,255,.03)}
