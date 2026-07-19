@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 10:50:06 UTC
+Сгенерировано: 2026-07-19 10:50:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5208,11 +5208,26 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     _bound = true;
     W.addEventListener('yandex:auth:changed', () => applyIdentity().catch(() => {}));
     D.addEventListener('visibilitychange', () => {
-      if (!D.hidden && _core?.isReady?.()) {
-        startPresenceHeartbeat();
-        startPushPolling();
+      if (D.hidden) {
+        stopFriendsBackgroundTasks();
+        return;
+      }
+
+      if (isFriendsSectionActive() && _core?.isReady?.()) {
+        resumeFriendsBackgroundTasks();
         _ui?.refresh?.();
       }
+    });
+
+    W.addEventListener('album:changed', event => {
+      const friendsKey = W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || FRIENDS_KEY;
+      if (event.detail?.key !== friendsKey) {
+        stopFriendsBackgroundTasks();
+        return;
+      }
+
+      resumeFriendsBackgroundTasks();
+      _ui?.refresh?.();
     });
 
     const onSwPushClick = e => {
