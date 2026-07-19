@@ -141,7 +141,6 @@ self.addEventListener('push', e => {
       fromFriendId: String(data.fromFriendId || ''),
       gameId: String(data.gameId || ''),
       roomId: String(data.roomId || ''),
-      roomSecret: String(data.roomSecret || ''),
       msgId: String(data.msgId || ''),
       callId: String(data.callId || '')
     },
