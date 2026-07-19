@@ -381,8 +381,12 @@ class AlbumsManager {
   }
 
   _commitLoadedAlbum(key, trackList) {
+    const previousKey = this.curr;
     this.curr = key;
     localStorage.setItem('currentAlbum', key);
+    W.dispatchEvent(new CustomEvent('album:changed', {
+      detail: { key, previousKey }
+    }));
     D.body.classList.toggle('news-view', key === NEWS);
 
     D.querySelectorAll('.album-icon').forEach(element => {
