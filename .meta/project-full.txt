@@ -94,7 +94,7 @@ F всегда относится к playing-context, а не к просто о
 СТРУКТУРА ПРОЕКТА (компактная):
 [/] .gitignore, albums.json, generate-context.js, index.html, manifest.json, oauth-callback.html, service-worker.js
 [/.git/] (пусто)
-[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-lyrics-index.yml, validate.yml
+[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-lyrics-index.yml, release-version.yml, validate.yml
 [/.meta/] (пусто)
 [/.release/] version.json
 [/albums/] .gitkeep
@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 17:24:11 UTC
+Сгенерировано: 2026-07-19 17:24:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -334,6 +334,107 @@ jobs:
           file_pattern: "data/lyrics-index-v1.json"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
+
+//=================================================
+// FILE: /.github/workflows/release-version.yml
+name: Release version across repositories
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Новая версия приложения, например 8.8.3'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cross-repo-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout music repository
+        uses: actions/checkout@v4
+        with:
+          path: music
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Checkout Friends repository
+        uses: actions/checkout@v4
+        with:
+          repository: apel-s-in/vi3na1bita-friends
+          ref: main
+          path: friends
+          fetch-depth: 0
+          token: ${{ secrets.CROSS_REPO_RELEASE_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Synchronize release version
+        run: |
+          node music/scripts/ci/sync-version.mjs \
+            --music-root=music \
+            --friends-root=friends \
+            --version="${{ inputs.version }}"
+
+      - name: Validate synchronized versions
+        run: |
+          node music/scripts/ci/sync-version.mjs \
+            --check \
+            --music-root=music \
+            --friends-root=friends
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check music/service-worker.js
+          node --check music/scripts/app/friends/friends-block.js
+          node --check friends/friends-core.js
+          node --check friends/friends-ui.js
+          node --check friends/chat-text-ui.js
+          node --check friends/voice-call-ui.js
+
+      - name: Commit Friends version
+        working-directory: friends
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html friends-ui.js
+
+          if git diff --cached --quiet; then
+            echo "Friends repository already synchronized"
+          else
+            git commit -m "Release: sync Friends build v${{ inputs.version }}"
+            git push origin HEAD:main
+          fi
+
+      - name: Commit music version
+        working-directory: music
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .release/version.json \
+            scripts/core/config.js \
+            service-worker.js \
+            index.html \
+            scripts/app/friends/friends-block.js
+
+          if git diff --cached --quiet; then
+            echo "Music repository already synchronized"
+          else
+            git commit -m "Release: v${{ inputs.version }}"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
 
 //=================================================
 // FILE: /.github/workflows/validate.yml

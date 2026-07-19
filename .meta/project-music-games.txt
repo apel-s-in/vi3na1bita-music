@@ -95,7 +95,7 @@ F всегда относится к playing-context, а не к просто о
 СТРУКТУРА ПРОЕКТА (компактная):
 [/] .gitignore, albums.json, generate-context.js, index.html, manifest.json, oauth-callback.html, service-worker.js
 [/.git/] (пусто)
-[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-lyrics-index.yml, validate.yml
+[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-lyrics-index.yml, release-version.yml, validate.yml
 [/.meta/] (пусто)
 [/.release/] version.json
 [/albums/] .gitkeep
@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 17:24:12 UTC
+Сгенерировано: 2026-07-19 17:24:58 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
