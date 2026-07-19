@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 10:44:25 UTC
+Сгенерировано: 2026-07-19 10:49:16 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1995,6 +1995,118 @@ let _pushBusy = false;
 let _pushFails = 0;
 let _heartbeatBusy = false;
 let _heartbeatFails = 0;
+const FRIENDS_KEY = '__friends__';
+
+const isFriendsSectionActive = () =>
+  W.AlbumsManager?.getCurrentAlbum?.() ===
+  (W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || FRIENDS_KEY);
+
+const stopFriendsBackgroundTasks = () => {
+  clearTimeout(_pushTimer);
+  clearInterval(_pushTimer);
+  clearTimeout(_heartbeatTimer);
+  clearInterval(_heartbeatTimer);
+  _pushTimer = 0;
+  _heartbeatTimer = 0;
+};
+
+const resumeFriendsBackgroundTasks = () => {
+  if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.()) {
+    stopFriendsBackgroundTasks();
+    return;
+  }
+
+  startPresenceHeartbeat();
+  startPushPolling();
+};
+
+const friendsFeatureCards = () => `
+  <div class="friends-feature-grid">
+    <div class="friends-feature-card"><span>💬</span><div><b>Личные сообщения</b><small>Чаты, ответы, реакции и отметки доставки.</small></div></div>
+    <div class="friends-feature-card"><span>📞</span><div><b>Голосовые звонки</b><small>Прямое общение через WebRTC прямо в приложении.</small></div></div>
+    <div class="friends-feature-card"><span>🔔</span><div><b>Push-уведомления</b><small>Сообщения и звонки не потеряются, даже если приложение свёрнуто.</small></div></div>
+    <div class="friends-feature-card"><span>🎮</span><div><b>Игровые приглашения</b><small>Приглашайте друзей в «Войну Сердец» одним нажатием.</small></div></div>
+    <div class="friends-feature-card"><span>🔗</span><div><b>Добавление по ссылке</b><small>Отправьте приглашение через мессенджер, почту или QR-код.</small></div></div>
+    <div class="friends-feature-card"><span>📍</span><div><b>Друг рядом</b><small>Добавляйте знакомых коротким временным кодом.</small></div></div>
+  </div>
+`;
+
+const renderUnauthorizedExperience = () => {
+  if (!_container) return;
+
+  _container.classList.add('is-unauth');
+  let box = _container.querySelector('.custom-ya-unauth');
+
+  if (!box) {
+    box = D.createElement('section');
+    box.className = 'custom-ya-unauth';
+    _container.appendChild(box);
+  }
+
+  box.innerHTML = `
+    <div class="friends-hero-icon">👥</div>
+    <div class="friends-hero-kicker">Витрина · социальный раздел</div>
+    <h3>Музыка становится ближе с друзьями</h3>
+    <p class="friends-hero-text">Общайтесь, получайте уведомления и приглашайте друзей играть вместе.</p>
+    ${friendsFeatureCards()}
+    <div class="friends-privacy-note">🔐 Вход выполняется через Яндекс. Пароль не передаётся приложению.</div>
+    <button class="yandex-auth-mainbtn friends-login-btn" type="button" data-friends-login>
+      <span class="friends-ya-letter">Я</span>
+      <span>Войти через Яндекс</span>
+    </button>
+    <small class="friends-login-note">Один Яндекс-аккаунт — один постоянный профиль друга.</small>
+  `;
+
+  box.querySelector('[data-friends-login]')?.addEventListener('click', () =>
+    W.YandexAuth?.login?.()
+  );
+};
+
+const renderAuthorizedExperience = () => {
+  if (!_container) return;
+
+  _container.classList.remove('is-unauth');
+  _container.querySelector('.custom-ya-unauth')?.remove();
+
+  let guide = _container.querySelector('.friends-authorized-guide');
+  if (!guide) {
+    guide = D.createElement('section');
+    guide.className = 'friends-authorized-guide';
+    _container.prepend(guide);
+  }
+
+  guide.innerHTML = `
+    <div class="friends-guide-head">
+      <div>
+        <span>👋 Вы в разделе друзей</span>
+        <small>Добавьте знакомого и начните общение.</small>
+      </div>
+      <span class="friends-guide-status">онлайн</span>
+    </div>
+    <div class="friends-guide-actions">
+      <button type="button" data-friends-add>➕ Добавить друга</button>
+      <button type="button" data-friends-notify>🔔 Уведомления</button>
+      <button type="button" data-friends-refresh>↻ Обновить</button>
+    </div>
+    <details class="friends-guide-details">
+      <summary>✨ Что здесь можно делать</summary>
+      ${friendsFeatureCards()}
+    </details>
+    <div class="friends-guide-tip">💡 Нажмите на друга, чтобы открыть чат, позвонить или пригласить его в игру.</div>
+  `;
+
+  guide.querySelector('[data-friends-add]')?.addEventListener('click', () =>
+    _container.querySelector('.vf-wrap [data-act="add"]')?.click()
+  );
+
+  guide.querySelector('[data-friends-notify]')?.addEventListener('click', () =>
+    enableWebPushFromUi()
+  );
+
+  guide.querySelector('[data-friends-refresh]')?.addEventListener('click', () =>
+    _ui?.refresh?.({ force: true })
+  );
+};
 
 const loadUnread = () => {
   try { _unread = JSON.parse(localStorage.getItem('vf_unread') || '{}') || {}; } catch { _unread = {}; }
@@ -2204,9 +2316,10 @@ const handlePushes = async (items) => {
 
 const startPresenceHeartbeat = () => {
   clearInterval(_heartbeatTimer);
+  clearTimeout(_heartbeatTimer);
 
   const beat = async () => {
-    if (!_core?.isReady?.() || _heartbeatBusy) return;
+    if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.() || _heartbeatBusy) return;
     if (_heartbeatFails >= 3 && Date.now() % 3 !== 0) return;
     _heartbeatBusy = true;
     try {
@@ -2245,10 +2358,11 @@ const syncWebPushIfAllowed = async () => {
 };
 
 const startPushPolling = () => {
+  clearTimeout(_pushTimer);
   clearInterval(_pushTimer);
 
   const poll = async () => {
-    if (!_core?.isReady?.() || _pushBusy) return;
+    if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.() || _pushBusy) return;
     _pushBusy = true;
     try {
       const items = await _core.getPushes();
@@ -2262,6 +2376,11 @@ const startPushPolling = () => {
   };
 
   const loop = async () => {
+    if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.()) {
+      stopFriendsBackgroundTasks();
+      return;
+    }
+
     await poll();
     clearTimeout(_pushTimer);
     _pushTimer = setTimeout(loop, Math.min(60000, 15000 + _pushFails * 10000));
@@ -2281,23 +2400,9 @@ const applyIdentity = async () => {
     _core.setIdentity({ friendId: '', yandexLinked: false });
     W.__vfIdentity = null;
     _lastFriendId = '';
-    clearInterval(_pushTimer);
-    clearInterval(_heartbeatTimer);
+    stopFriendsBackgroundTasks();
     _ui?.refresh?.();
-
-    if (_container) {
-      _container.classList.add('is-unauth');
-      let box = _container.querySelector('.custom-ya-unauth');
-      if (!box) {
-        box = D.createElement('div');
-        box.className = 'custom-ya-unauth';
-        box.innerHTML = `<div style="font-size:28px;margin-bottom:12px">🔒</div><button class="yandex-auth-mainbtn" id="vf-ya-login-btn" style="width:100%;max-width:260px;margin-bottom:12px;min-height:46px;font-size:15px;font-weight:900;border-radius:12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;background:linear-gradient(135deg,#d50000,#8f0000);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 22px rgba(213,0,0,.25);transition:opacity .2s,transform .15s"><span style="font-size:20px;line-height:1">Я</span><span>Войти через Яндекс</span></button><div style="font-size:12px;color:#9db7dd;line-height:1.4;text-align:center">Друзья доступны после входа в основном приложении.</div>`;
-        box.querySelector('#vf-ya-login-btn').onclick = () => W.YandexAuth?.login?.();
-        box.style.cssText = 'padding:30px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;';
-        _container.appendChild(box);
-      }
-      box.style.display = 'flex';
-    }
+    renderUnauthorizedExperience();
     
     // Если есть инвайт, но юзер не авторизован - показываем окно и ждём входа
     if (addId && addKey && !W.sessionStorage.getItem('pending_friend_id')) {
@@ -2334,11 +2439,7 @@ const applyIdentity = async () => {
   
   W.__vfIdentity = id;
 
-  if (_container) {
-    _container.classList.remove('is-unauth');
-    const box = _container.querySelector('.custom-ya-unauth');
-    if (box) box.style.display = 'none';
-  }
+  renderAuthorizedExperience();
 
   if (id?.friendId && id.friendId !== _lastFriendId) {
     _lastFriendId = id.friendId;
@@ -2361,8 +2462,7 @@ const applyIdentity = async () => {
     }
 
     _ui?.refresh?.({ force: true });
-    startPresenceHeartbeat();
-    startPushPolling();
+    resumeFriendsBackgroundTasks();
     syncWebPushIfAllowed();
     W.Vi3WebPush = {
       enable: () => import('../push/web-push.js').then(m => m.enableWebPush(_core))
