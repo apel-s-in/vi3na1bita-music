@@ -77,3 +77,19 @@ test('album gallery visibility persists and special navigation clears album high
   expect(state.navActive).toBe(1);
   expect(state.center).toBe('ne-vse-ravno');
 });
+test('desktop mouse click opens carousel album and toggles its gallery',async({page})=>{
+  await loginByPromo(page);
+  await page.waitForSelector('#album-icons-albums.album-carousel',{timeout:1e4});
+
+  const side=page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]');
+  await side.click();
+  await expect(side).toHaveAttribute('data-carousel-center','1');
+  await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');
+
+  const center=page.locator('#album-icons-albums [data-carousel-center="1"]');
+  await center.click();
+  await expect(page.locator('#cover-wrap')).toBeHidden();
+
+  await center.click();
+  await expect(page.locator('#cover-wrap')).toBeVisible();
+});
