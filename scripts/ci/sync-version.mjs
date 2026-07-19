@@ -132,6 +132,13 @@ const updateMusic = () => {
 
 const updateFriends = () => {
   replaceOne(
+    friendsFile('friends-core.js'),
+    /\.\/friends-crypto\.js\?v=[^"']+/g,
+    `./friends-crypto.js?v=${friendsBuild}`,
+    'Friends crypto module'
+  );
+
+  replaceOne(
     friendsFile('index.html'),
     /\.\/styles\.css\?v=[^"']+/g,
     `./styles.css?v=${friendsBuild}`,
