@@ -5,6 +5,39 @@ body.games-view #track-list,body.friends-view #track-list{max-width:395px;width:
 .vf-host-in-friends{display:block;width:100%;max-width:320px;margin:0 auto 24px;border-radius:18px;overflow:hidden;background:rgba(8,11,26,.5);border:1px solid rgba(132,145,255,.18);box-sizing:border-box}
 .vf-host-in-friends.is-unauth>*:not(.custom-ya-unauth){display:none!important}
 .vf-host-in-friends .vf-app{position:static!important;inset:auto!important;max-width:none!important;height:auto!important;overflow:visible!important;background:transparent!important;padding:14px!important}
+.vf-host-in-friends.is-unauth>.vf-wrap,.vf-host-in-friends.is-unauth>.friends-authorized-guide{display:none!important}
+.custom-ya-unauth,.friends-authorized-guide{width:100%;padding:18px 14px;color:#eaf2ff;box-sizing:border-box}
+.custom-ya-unauth{display:flex;flex-direction:column;align-items:center;text-align:center}
+.friends-hero-icon{width:68px;height:68px;display:grid;place-items:center;margin-bottom:10px;border-radius:22px;background:linear-gradient(135deg,rgba(124,77,255,.24),rgba(77,170,255,.16));border:1px solid rgba(182,168,255,.32);font-size:36px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+.friends-hero-kicker{font-size:10px;font-weight:900;color:#b6a8ff;text-transform:uppercase;letter-spacing:1px}
+.custom-ya-unauth h3{margin:7px 0 6px;font-size:19px;line-height:1.2;color:#fff}
+.friends-hero-text{margin:0 0 14px;color:#9db7dd;font-size:12px;line-height:1.45}
+.friends-feature-grid{display:grid;grid-template-columns:1fr;gap:7px;width:100%;margin:4px 0 14px}
+.friends-feature-card{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:13px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);text-align:left}
+.friends-feature-card>span{width:28px;flex:0 0 28px;font-size:21px;text-align:center}
+.friends-feature-card div{min-width:0}
+.friends-feature-card b{display:block;color:#fff;font-size:12px;line-height:1.2}
+.friends-feature-card small{display:block;margin-top:3px;color:#8ea8cc;font-size:10.5px;line-height:1.35}
+.friends-privacy-note{width:100%;margin-bottom:12px;padding:9px 10px;border-radius:11px;background:rgba(70,230,165,.07);border:1px solid rgba(70,230,165,.18);color:#adffdf;font-size:10.5px;line-height:1.35}
+.friends-login-btn{max-width:280px!important;margin:0 auto!important}
+.friends-ya-letter{font-size:20px;line-height:1}
+.friends-login-note{margin-top:9px;color:#7287aa;font-size:10px;line-height:1.35}
+.friends-authorized-guide{padding-bottom:8px}
+.friends-guide-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:14px;background:linear-gradient(135deg,rgba(124,77,255,.13),rgba(77,170,255,.08));border:1px solid rgba(182,168,255,.2)}
+.friends-guide-head div{display:flex;flex-direction:column;min-width:0}
+.friends-guide-head div>span{font-size:13px;font-weight:900;color:#fff}
+.friends-guide-head small{margin-top:3px;color:#9db7dd;font-size:10.5px}
+.friends-guide-status{flex-shrink:0;padding:4px 8px;border-radius:999px;background:rgba(70,230,165,.12);border:1px solid rgba(70,230,165,.28);color:#adffdf;font-size:9px;font-weight:900;text-transform:uppercase}
+.friends-guide-actions{display:grid;grid-template-columns:1.25fr 1.25fr .7fr;gap:6px;margin-top:8px}
+.friends-guide-actions button{min-height:38px;padding:6px;border-radius:11px;border:1px solid rgba(132,145,255,.22);background:rgba(255,255,255,.05);color:#eaf2ff;font-size:10.5px;font-weight:900;cursor:pointer}
+.friends-guide-actions button:first-child{background:linear-gradient(135deg,rgba(255,49,89,.82),rgba(124,77,255,.82));border-color:transparent}
+.friends-guide-details{margin-top:8px;border-radius:13px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.06);overflow:hidden}
+.friends-guide-details summary{padding:10px 12px;cursor:pointer;color:#b6a8ff;font-size:11px;font-weight:900;list-style:none}
+.friends-guide-details summary::-webkit-details-marker{display:none}
+.friends-guide-details summary::after{content:'▼';float:right;font-size:9px;color:#7287aa}
+.friends-guide-details[open] summary::after{transform:rotate(180deg)}
+.friends-guide-details .friends-feature-grid{padding:0 8px 8px;margin:0}
+.friends-guide-tip{margin-top:8px;padding:9px 10px;border-radius:11px;background:rgba(36,232,255,.055);border:1px solid rgba(36,232,255,.13);color:#9db7dd;font-size:10.5px;line-height:1.4}
 body.games-view #active-album-title.active-album-title.games{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#8ab8fd!important;letter-spacing:.05em;text-align:center}
 body.friends-view #active-album-title.active-album-title.friends{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#b6a8ff!important;letter-spacing:.05em;text-align:center}
 .gc-host{width:100%;margin:0 auto 32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:fadeInUp .25s ease-out}
