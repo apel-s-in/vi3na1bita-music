@@ -1,5 +1,5 @@
+import { getAlbumPlaybackTracks } from '../albums/album-playback-builder.js';
 const W = window, FAV = W.SPECIAL_FAVORITES_KEY || '__favorites__', SHOW = W.SPECIAL_SHOWCASE_KEY || '__showcase__', LOGO = 'img/logo.png', s = v => String(v || '').trim();
-const mapAlbumTrack = (albumKey, albumData, cover, t) => ({ src: t.src, sources: t.sources, title: t.title, artist: albumData.artist, album: albumData.title, cover: cover || LOGO, uid: t.uid, lyrics: t.lyrics, fulltext: t.fulltext, hasLyrics: t.hasLyrics, sourceAlbum: albumKey });
 
 export const getFavoritesSourcePlaylist = () => (W.playerCore?.getFavoritesState?.()?.active || []).map(i => {
   const tr = W.TrackRegistry?.getTrackByUid?.(i.uid) || {}, sAlb = i.sourceAlbum || tr.sourceAlbum || null;
@@ -11,8 +11,7 @@ export const getAlbumSourcePlaylist = albumKey => {
   if (key === FAV) return getFavoritesSourcePlaylist();
   if (String(key).startsWith(SHOW)) return W.ShowcaseManager?.getContextSourcePlaylist?.(key) || [];
   const am = W.AlbumsManager, d = am?.cache?.get?.(key); if (!d) return [];
-  if (!d._pTracks) d._pTracks = (d.tracks || []).filter(t => t.src).map(t => mapAlbumTrack(key, d, am?.covers?.get?.(key) || LOGO, t));
-  return d._pTracks || [];
+  return getAlbumPlaybackTracks({ albumKey:key, album:d, cover:am?.covers?.get?.(key), logo:LOGO });
 };
 
 export const getSourcePlaylistForContext = albumKey => getAlbumSourcePlaylist(albumKey);
