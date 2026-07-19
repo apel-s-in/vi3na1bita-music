@@ -324,7 +324,9 @@ const handlePushes = async (items) => {
         if (prof?.displayName) name = prof.displayName;
       } catch {}
 
-      const text = String(push.text || '').slice(0, 180);
+      const text = Number(push.cryptoVersion || 0) === 2
+        ? 'Новое защищённое сообщение'
+        : String(push.text || '').slice(0, 180);
       addUnread(push.fromFriendId, { name, text });
       showMailOverlay({ friendId: push.fromFriendId, name });
       await _core.markChatDelivered?.({ friendId: push.fromFriendId, msgId: push.msgId }).catch(() => null);
