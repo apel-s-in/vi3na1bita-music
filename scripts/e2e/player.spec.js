@@ -108,3 +108,68 @@ test('special navigation has six items and Friends is separated from Game Center
   await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');
   await expect(page.locator('.gc-host')).toHaveCount(0);
 });
+test('Game Center title is visible and Friends timers stop after leaving section',async({page})=>{
+  await loginByPromo(page);
+
+  await page.locator('[data-album="__games__"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__games__');
+
+  const gameTitle=page.locator('#active-album-title');
+  await expect(gameTitle).toBeVisible();
+  await expect(gameTitle).toContainText('ЗАЛ ВИТРИНЫ');
+
+  const gameTitleStyle=await gameTitle.evaluate(el=>({
+    display:getComputedStyle(el).display,
+    visibility:getComputedStyle(el).visibility,
+    opacity:getComputedStyle(el).opacity
+  }));
+  expect(gameTitleStyle.display).not.toBe('none');
+  expect(gameTitleStyle.visibility).toBe('visible');
+  expect(Number(gameTitleStyle.opacity)).toBeGreaterThan(0);
+
+  await page.locator('[data-album="__friends__"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');
+  await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');
+
+  await page.locator('[data-album="__showcase__"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__showcase__');
+
+  expect(await page.evaluate(()=>!!window.playerCore)).toBeTruthy();
+});
+test('quality switch forces one reload and preserves playback uid',async({page})=>{
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track',{timeout:1e4});
+
+  const row=page.locator('#track-list .track').filter({has:page.locator('.track-title')}).first();
+  await row.click();
+
+  const before=await page.evaluate(()=>({
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    playing:!!window.playerCore?.isPlaying?.(),
+    quality:String(window.playerCore?.qMode||'')
+  }));
+
+  const result=await page.evaluate(()=>{
+    const pc=window.playerCore;
+    const original=pc.load.bind(pc);
+    let calls=0;
+    pc.load=(...args)=>{
+      calls++;
+      return original(...args);
+    };
+    const next=pc.qMode==='hi'?'lo':'hi';
+    pc.switchQuality(next);
+    return {calls,next};
+  });
+
+  expect(result.calls).toBe(1);
+
+  await page.waitForTimeout(500);
+  const after=await page.evaluate(()=>({
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    quality:String(window.playerCore?.qMode||'')
+  }));
+
+  expect(after.uid).toBe(before.uid);
+  expect(after.quality).toBe(result.next);
+});
