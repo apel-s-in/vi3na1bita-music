@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 15:20:45 UTC
+Сгенерировано: 2026-07-19 15:42:34 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1966,6 +1966,7 @@ const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js`;
 const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js`;
 const SIGNALING_URL = 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
 let _socialSession = null;
+let _socialSessionRetryAt = 0;
 
 let _core = null;
 let _ui = null;
@@ -2002,6 +2003,11 @@ const resumeFriendsBackgroundTasks = async () => {
   }
 
   if (!_core?.isReady?.()) {
+    if (Date.now() < _socialSessionRetryAt) {
+      stopFriendsBackgroundTasks();
+      return false;
+    }
+
     try {
       await applyIdentity();
     } catch {
@@ -2060,6 +2066,45 @@ const renderUnauthorizedExperience = () => {
   box.querySelector('[data-friends-login]')?.addEventListener('click', () =>
     W.YandexAuth?.login?.()
   );
+};
+
+const renderFriendsServiceError = error => {
+  if (!_container) return;
+
+  _container.classList.add('is-unauth');
+  let box = _container.querySelector('.custom-ya-unauth');
+
+  if (!box) {
+    box = D.createElement('section');
+    box.className = 'custom-ya-unauth';
+    _container.appendChild(box);
+  }
+
+  const message = String(error?.message || 'social_service_unavailable');
+
+  box.innerHTML = `
+    <div class="friends-hero-icon">⚠️</div>
+    <div class="friends-hero-kicker">Временная ошибка соединения</div>
+    <h3>Раздел друзей сейчас недоступен</h3>
+    <p class="friends-hero-text">Не удалось создать защищённую социальную сессию. Музыка продолжает работать.</p>
+    <div class="friends-privacy-note">${W.Utils?.escapeHtml?.(message) || message}</div>
+    <button class="yandex-auth-mainbtn friends-login-btn" type="button" data-friends-retry>
+      <span>Повторить подключение</span>
+    </button>
+  `;
+
+  box.querySelector('[data-friends-retry]')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = 'Подключаемся...';
+    _socialSessionRetryAt = 0;
+
+    try {
+      await applyIdentity();
+    } catch (retryError) {
+      renderFriendsServiceError(retryError);
+    }
+  });
 };
 
 const renderAuthorizedExperience = () => {
@@ -2439,6 +2484,7 @@ const issueSocialSession = async ({ force = false } = {}) => {
   }
 
   _socialSession = result;
+  _socialSessionRetryAt = 0;
   return result;
 };
 
@@ -2485,7 +2531,21 @@ const applyIdentity = async () => {
     return;
   }
 
-  const session = await issueSocialSession();
+  let session;
+
+  try {
+    session = await issueSocialSession();
+  } catch (error) {
+    _socialSession = null;
+    _socialSessionRetryAt = Date.now() + 30000;
+    _core.setIdentity({ friendId: '', yandexLinked: false });
+    W.__vfIdentity = null;
+    stopFriendsBackgroundTasks();
+    console.error('[Friends] social session failed:', error);
+    renderFriendsServiceError(error);
+    return false;
+  }
+
   const id = _core.setIdentity({
     friendId: session.friendId,
     displayName: session.profile?.displayName || prof.displayName,
