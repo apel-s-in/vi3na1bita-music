@@ -76,8 +76,20 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
         return this._updMedia();
       }
 
-      if (wasPlay) this.load(this.currentIndex, { autoPlay: true, resumePosition: opts.preservePosition ? prevPos : 0 });
-      else { this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex); this._updMedia(); }
+      if (opts.deferLoad) {
+        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+        this._updMedia();
+        return;
+      }
+
+      if (wasPlay) this.load(this.currentIndex, {
+        autoPlay: true,
+        resumePosition: opts.preservePosition ? prevPos : 0
+      });
+      else {
+        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
+        this._updMedia();
+      }
     }
 
     playExactFromPlaylist(tracks, targetUid, opts = {}) {
@@ -93,10 +105,13 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       this.setPlaylist(list, idx, null, {
         preservePosition: isSame,
         preserveOriginalPlaylist: !!opts.preserveOriginalPlaylist,
-        preserveShuffleMode: false
+        preserveShuffleMode: false,
+        deferLoad: !isSame
       });
-      
-      if (!isSame) this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 });
+
+      if (!isSame) {
+        this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 });
+      }
       else emitG('playlist:changed', { reason: 'seamless_switch' });
       return true;
     }
@@ -316,10 +331,32 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
 
     canToggleQualityForCurrentTrack() { return !!this.getCurrentTrack() && !!(getTrackByUid(this.getCurrentTrackUid())?.audio_low || this.getCurrentTrack()?.sources?.audio?.lo); }
     switchQuality(m) {
-      const nq = qNorm(m); if (this.qMode === nq) return;
-      this.qMode = nq; ls.setItem(LS_PQ, nq); markDeviceSettingsDirty(); emitG('quality:changed', { quality: nq }); emitG('offline:uiChanged');
-      if (this.currentIndex >= 0 && this.sound) this.load(this.currentIndex, { autoPlay: this.isPlaying(), resumePosition: this.getPosition(), dir: 1 });
-      W.NotificationSystem?.show?.(`Качество переключено на ${nq === 'hi' ? 'Hi' : 'Lo'}`, 'info');
+      const nq = qNorm(m);
+      if (this.qMode === nq) return false;
+
+      const wasPlaying = this.isPlaying();
+      const position = this.getPosition();
+
+      this.qMode = nq;
+      ls.setItem(LS_PQ, nq);
+      markDeviceSettingsDirty();
+      emitG('quality:changed', { quality: nq });
+      emitG('offline:uiChanged');
+
+      if (this.currentIndex >= 0 && this.sound) {
+        this.load(this.currentIndex, {
+          autoPlay: wasPlaying,
+          resumePosition: position,
+          dir: 1,
+          _forceReload: true
+        });
+      }
+
+      W.NotificationSystem?.show?.(
+        `Качество переключено на ${nq === 'hi' ? 'Hi' : 'Lo'}`,
+        'info'
+      );
+      return true;
     }
 
     isFavorite(uid) { return Favorites.isLiked(sUid(uid)); }
