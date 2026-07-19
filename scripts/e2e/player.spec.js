@@ -251,3 +251,51 @@ test('active Yandex session requests signed social session without legacy creden
   expect(result.hasSession).toBeTruthy();
   expect(result.expiresAt).toBeGreaterThan(Date.now());
 });
+test('playerStateV2 restores uid without autoplay until trusted gesture',async({page})=>{
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track',{timeout:1e4});
+  await page.locator('#track-list .track').first().click();
+
+  const saved=await page.evaluate(()=>{
+    const pc=window.playerCore;
+    const state={
+      album:window.AlbumsManager?.getPlayingAlbum?.(),
+      currentAlbum:window.AlbumsManager?.getCurrentAlbum?.(),
+      trackUid:pc?.getCurrentTrackUid?.(),
+      sourceAlbum:pc?.getCurrentTrack?.()?.sourceAlbum||'',
+      trackIndex:pc?.getIndex?.()||0,
+      position:3,
+      volume:pc?.getVolume?.()??100,
+      muted:false,
+      wasPlaying:true,
+      repeat:false,
+      shuffle:false,
+      quality:pc?.qMode||'hi',
+      ts:Date.now()
+    };
+    localStorage.setItem('playerStateV2',JSON.stringify(state));
+    localStorage.setItem('promocode','VITRINA2025');
+    return state;
+  });
+
+  await page.reload({waitUntil:'load'});
+  await page.waitForSelector('#main-block:not(.hidden)',{timeout:1e4});
+
+  await expect.poll(()=>page.evaluate(()=>
+    String(window.playerCore?.getCurrentTrackUid?.()||'')
+  )).toBe(saved.trackUid);
+
+  expect(await page.evaluate(()=>
+    !!window.playerCore?.isPlaying?.()
+  )).toBeFalsy();
+
+  await page.locator('#active-album-title').click();
+
+  await expect.poll(()=>page.evaluate(()=>
+    !!window.playerCore?.isPlaying?.()
+  )).toBeTruthy();
+
+  expect(await page.evaluate(()=>
+    String(window.playerCore?.getCurrentTrackUid?.()||'')
+  )).toBe(saved.trackUid);
+});
