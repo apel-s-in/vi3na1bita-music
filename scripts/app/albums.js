@@ -6,21 +6,17 @@
 // UID.096_(Helper-first anti-duplication policy)_(рендер иконок вынесен в album-icons-renderer)_(AlbumsManager хранит только навигацию и загрузку контента)
 
 import { setFavoriteStarState } from '../ui/icon-utils.js';
-import {
-  makeFavoritesOnlyAfterPlay,
-  playWithFavoritesOnlyResolution
-} from './player/favorites-only-actions.js';
 import { mountAlbumCarousel } from './albums/album-carousel.js';
 import { renderAlbumIconRows } from './albums/album-icons-renderer.js';
 import { renderAlbumTracks } from './albums/album-track-renderer.js';
-import { clearAlbumPlaybackTracks, getAlbumPlaybackTracks } from './albums/album-playback-builder.js';
+import { clearAlbumPlaybackTracks } from './albums/album-playback-builder.js';
+import { bindAlbumTrackActions } from './albums/album-track-actions.js';
 
 const W = window;
 const D = document;
 const C = W.APP_CONFIG || {};
 const {
   $ = id => D.getElementById(id),
-  toStr = value => value == null ? '' : String(value),
   escHtml = value => String(value || ''),
   isMobileUA = () => false
 } = W.AppUtils || {};
@@ -106,7 +102,15 @@ class AlbumsManager {
     this._eventsBound = true;
 
     this._bindAlbumIconEvents();
-    this._bindTrackListEvents();
+    bindAlbumTrackActions({
+      root: $('track-list'),
+      getCurrentAlbum: () => this.curr,
+      getAlbum: key => this.cache.get(key),
+      getCover: key => this.covers.get(key),
+      setPlayingAlbum: key => { this.playing = key; },
+      highlightCurrentTrack: (index, meta) => this.highlightCurrentTrack(index, meta),
+      logo: LOGO
+    });
 
     W.playerCore?.onFavoritesChanged(detail => {
       const uid = String(detail?.uid || '').trim();
@@ -194,62 +198,6 @@ class AlbumsManager {
     W.NotificationSystem?.info(
       this.galVis ? '🖼️ Галерея показана' : '🚫 Галерея скрыта'
     );
-  }
-
-  _bindTrackListEvents() {
-    $('track-list')?.addEventListener('click', event => {
-      W.playerCore?.prepareContext?.();
-
-      if (this.curr === FAV || event.target.closest('.offline-ind')) return;
-
-      const row = event.target.closest('.track');
-      if (!row) return;
-
-      const albumKey = toStr(row.dataset.album).trim();
-      const uid = toStr(row.dataset.uid).trim();
-      const player = W.playerCore;
-
-      if (!albumKey || albumKey.startsWith('__')) return;
-
-      const star = event.target.closest('.like-star');
-      if (star && uid && player) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        setFavoriteStarState(star, !player.isFavorite(uid));
-        star.classList.add('animating');
-        setTimeout(() => star.classList.remove('animating'), 320);
-        player.toggleFavorite(uid, { fromAlbum: true, albumKey });
-        return;
-      }
-
-      const album = this.cache.get(albumKey);
-      if (!album || !player) return;
-
-      this.playing = albumKey;
-      const playlist = getAlbumPlaybackTracks({ albumKey, album, cover: this.covers.get(albumKey), logo: LOGO });
-      const index = playlist.findIndex(track => track.uid === uid);
-      if (index < 0) return;
-
-      const afterPlay = makeFavoritesOnlyAfterPlay({
-        highlight: (trackIndex, meta) => this.highlightCurrentTrack(trackIndex, meta),
-        ensureBlock: (trackIndex, options) =>
-          W.PlayerUI?.ensurePlayerBlock?.(trackIndex, options)
-      });
-
-      return playWithFavoritesOnlyResolution({
-        list: playlist,
-        uid,
-        albumKey,
-        track: playlist[index],
-        play: (list, trackUid) =>
-          player.playExactFromPlaylist?.(list, trackUid, { dir: 1 }),
-        addFavorite: trackUid =>
-          player.toggleFavorite(trackUid, { fromAlbum: true, albumKey }),
-        disableMode: () => localStorage.setItem('favoritesOnlyMode', '0'),
-        afterPlay: () => afterPlay({ index, uid, albumKey })
-      });
-    });
   }
 
   async loadAlbum(key) {
