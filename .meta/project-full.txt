@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 13:19:58 UTC
+Сгенерировано: 2026-07-19 13:36:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4693,6 +4693,8 @@ const D = document;
 const BASE_FRIENDS = 'https://vi3na1bita.website.yandexcloud.net/Friends';
 const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js`;
 const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js`;
+const SIGNALING_URL = 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
+let _socialSession = null;
 
 let _core = null;
 let _ui = null;
@@ -5143,13 +5145,23 @@ const applyIdentity = async () => {
     return;
   }
 
-  const id = await _core.setIdentityFromYandex({
-    yandexId: prof.yandexId,
-    displayName: prof.displayName,
-    avatar: prof.avatar
+  const session = await issueSocialSession();
+  const id = _core.setIdentity({
+    friendId: session.friendId,
+    displayName: session.profile?.displayName || prof.displayName,
+    avatar: session.profile?.avatarUrl || prof.avatar,
+    yandexLinked: true,
+    socialSession: session.socialSession,
+    sessionExpiresAt: session.expiresAt,
+    deviceStableId: localStorage.getItem('deviceStableId') || ''
   });
-  
-  W.__vfIdentity = id;
+
+  W.__vfIdentity = {
+    friendId: id.friendId,
+    displayName: id.displayName,
+    avatar: id.avatar,
+    yandexLinked: true
+  };
 
   renderAuthorizedExperience();
 
@@ -5244,6 +5256,47 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     }
   });
 
+const issueSocialSession = async ({ force = false } = {}) => {
+  const token = W.YandexAuth?.getToken?.();
+  if (!token || !W.YandexAuth?.isTokenAlive?.()) {
+    _socialSession = null;
+    throw new Error('yandex_oauth_required');
+  }
+
+  if (
+    !force &&
+    _socialSession?.socialSession &&
+    Number(_socialSession.expiresAt || 0) > Date.now() + 120000
+  ) {
+    return _socialSession;
+  }
+
+  const profile = readYandexProfile();
+  const response = await fetch(SIGNALING_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Yandex-OAuth': token
+    },
+    credentials: 'omit',
+    mode: 'cors',
+    body: JSON.stringify({
+      action: 'social_session_issue',
+      displayName: profile.displayName,
+      avatarUrl: profile.avatar
+    })
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false || !result.socialSession) {
+    throw new Error(result.error || result.reason || 'social_session_issue_failed');
+  }
+
+  _socialSession = result;
+  return result;
+};
+  
   await applyIdentity();
 
   const url = new URL(W.location.href);
