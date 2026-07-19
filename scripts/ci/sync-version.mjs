@@ -139,6 +139,13 @@ const updateFriends = () => {
   );
 
   replaceOne(
+    friendsFile('chat-text-ui.js'),
+    /\.\/crypto-devices-ui\.js\?v=[^"']+/g,
+    `./crypto-devices-ui.js?v=${friendsBuild}`,
+    'Friends crypto devices UI'
+  );
+  
+  replaceOne(
     friendsFile('index.html'),
     /\.\/styles\.css\?v=[^"']+/g,
     `./styles.css?v=${friendsBuild}`,
