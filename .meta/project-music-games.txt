@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 15:49:20 UTC
+Сгенерировано: 2026-07-19 16:13:57 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1962,8 +1962,9 @@ export default normalizeGameCenterSwitch(GAME_CENTER_SWITCH);
 const W = window;
 const D = document;
 const BASE_FRIENDS = 'https://vi3na1bita.website.yandexcloud.net/Friends';
-const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js`;
-const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js`;
+const FRIENDS_BUILD = '8.8.2';
+const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
+const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js?v=${FRIENDS_BUILD}`;
 const SIGNALING_URL = 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
 let _socialSession = null;
 let _socialSessionRetryAt = 0;
