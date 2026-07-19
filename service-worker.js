@@ -57,8 +57,12 @@ self.addEventListener('install', e => e.waitUntil((async () => {
 self.addEventListener('activate', e => e.waitUntil((async () => {
   const keep = new Set([CORE_CACHE, RUNTIME_CACHE, MEDIA_CACHE, OFFLINE_CACHE, META_CACHE]);
   const keys = await caches.keys();
-  // Безопасно удаляем только старые версии кэшей кода, текущие остаются
-  await Promise.all(keys.map(n => keep.has(n) ? Promise.resolve() : caches.delete(n)));
+  // Удаляем только старые кэши этого приложения; чужие Cache Storage не затрагиваем.
+  await Promise.all(keys.map(name =>
+    name.startsWith('vitrina-') && !keep.has(name)
+      ? caches.delete(name)
+      : Promise.resolve(false)
+  ));
   await self.clients.claim(); // Мгновенно берём контроль над текущей вкладкой
   (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).forEach(c => c.postMessage({ type: 'SW_VERSION', version: SW_VERSION }));
 })()));
@@ -201,7 +205,11 @@ self.addEventListener('message', e => {
   if (d.type === 'SYNC_AIRPLANE_MODE') isAirplaneMode = !!d.payload;
   else if (d.type === 'GET_SW_VERSION' && p) p.postMessage({ version: SW_VERSION });
   else if (d.type === 'SKIP_WAITING') self.skipWaiting();
-  else if (d.type === 'CLEAR_CACHE') e.waitUntil(caches.keys().then(k => Promise.all(k.map(n => caches.delete(n)))));
+  else if (d.type === 'CLEAR_CACHE') e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(name => name.startsWith('vitrina-')).map(name => caches.delete(name)))
+    )
+  );
   else if (d.type === 'GET_CACHE_SIZE' && p) e.waitUntil((async () => {
     let s = 0, n = 0;
     try { for (const k of await caches.keys()) { const c = await caches.open(k), reqs = await c.keys(); n += reqs.length; for (const r of reqs) { const res = await c.match(r); if (res) s += parseInt(res.headers.get('content-length') || 0, 10); } } } catch {}
