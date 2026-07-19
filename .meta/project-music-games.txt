@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 10:49:16 UTC
+Сгенерировано: 2026-07-19 10:50:06 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1338,8 +1338,12 @@ class AlbumsManager {
   }
 
   _commitLoadedAlbum(key, trackList) {
+    const previousKey = this.curr;
     this.curr = key;
     localStorage.setItem('currentAlbum', key);
+    W.dispatchEvent(new CustomEvent('album:changed', {
+      detail: { key, previousKey }
+    }));
     D.body.classList.toggle('news-view', key === NEWS);
 
     D.querySelectorAll('.album-icon').forEach(element => {
