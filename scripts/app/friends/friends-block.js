@@ -396,7 +396,10 @@ const startPushPolling = () => {
     try {
       const items = await _core.getPushes();
       _pushFails = 0;
-      if (items.length) handlePushes(items);
+      if (items.length) {
+        await handlePushes(items);
+        await _core.ackPushes(items.map(x => x.pushId).filter(Boolean));
+      }
     } catch {
       _pushFails++;
     } finally {
