@@ -188,7 +188,6 @@ export const mountAlbumCarousel = ({
     horizontalDrag = false;
 
     root.classList.add('album-carousel-dragging');
-    root.setPointerCapture?.(pointerId);
   };
 
   const onPointerMove = event => {
@@ -199,6 +198,9 @@ export const mountAlbumCarousel = ({
 
     if (!horizontalDrag && Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) + 5) {
       horizontalDrag = true;
+      try {
+        root.setPointerCapture?.(event.pointerId);
+      } catch {}
     }
 
     if (!horizontalDrag) return;
