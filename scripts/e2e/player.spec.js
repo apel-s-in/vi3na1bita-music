@@ -173,3 +173,81 @@ test('quality switch forces one reload and preserves playback uid',async({page})
   expect(after.uid).toBe(before.uid);
   expect(after.quality).toBe(result.next);
 });
+test('active Yandex session requests signed social session without legacy credentials', async ({ page }) => {
+  let requestSnapshot = null;
+
+  await page.route(
+    'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av',
+    async route => {
+      const request = route.request();
+      const body = request.postDataJSON();
+
+      requestSnapshot = {
+        method: request.method(),
+        action: body?.action || '',
+        playerId: body?.playerId || '',
+        clientSecret: body?.clientSecret || '',
+        oauth: request.headers()['x-yandex-oauth'] || ''
+      };
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Accept, X-Yandex-OAuth'
+        },
+        body: JSON.stringify({
+          ok: true,
+          friendId: 'ya_e2e_signed_user',
+          socialSession: 'e2e.header.signature',
+          expiresAt: Date.now() + 20 * 60 * 1000,
+          profile: {
+            friendId: 'ya_e2e_signed_user',
+            displayName: 'E2E Друг',
+            avatarUrl: ''
+          }
+        })
+      });
+    }
+  );
+
+  await loginByPromo(page);
+
+  const result = await page.evaluate(async () => {
+    Object.assign(window.YandexAuth, {
+      getToken: () => 'e2e-yandex-oauth-token',
+      isTokenAlive: () => true,
+      getSessionStatus: () => 'active',
+      getProfile: () => ({
+        yandexId: 'e2e-yandex-id',
+        displayName: 'E2E Друг',
+        avatar: ''
+      })
+    });
+
+    const module = await import(
+      `./scripts/app/friends/friends-block.js?e2e=${Date.now()}`
+    );
+
+    const session = await module.issueSocialSession({ force: true });
+
+    return {
+      friendId: session.friendId,
+      hasSession: !!session.socialSession,
+      expiresAt: Number(session.expiresAt || 0)
+    };
+  });
+
+  expect(requestSnapshot).toEqual({
+    method: 'POST',
+    action: 'social_session_issue',
+    playerId: '',
+    clientSecret: '',
+    oauth: 'e2e-yandex-oauth-token'
+  });
+
+  expect(result.friendId).toBe('ya_e2e_signed_user');
+  expect(result.hasSession).toBeTruthy();
+  expect(result.expiresAt).toBeGreaterThan(Date.now());
+});
