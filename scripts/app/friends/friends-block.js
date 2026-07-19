@@ -39,14 +39,29 @@ const stopFriendsBackgroundTasks = () => {
   _heartbeatTimer = 0;
 };
 
-const resumeFriendsBackgroundTasks = () => {
-  if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.()) {
+const resumeFriendsBackgroundTasks = async () => {
+  if (D.hidden || !isFriendsSectionActive()) {
     stopFriendsBackgroundTasks();
-    return;
+    return false;
+  }
+
+  if (!_core?.isReady?.()) {
+    try {
+      await applyIdentity();
+    } catch {
+      stopFriendsBackgroundTasks();
+      return false;
+    }
+  }
+
+  if (!_core?.isReady?.()) {
+    stopFriendsBackgroundTasks();
+    return false;
   }
 
   startPresenceHeartbeat();
   startPushPolling();
+  return true;
 };
 
 const friendsFeatureCards = () => `
@@ -287,7 +302,9 @@ const handlePushes = async (items) => {
             text: 'Ответить',
             primary: true,
             onClick: async () => {
-              const room = await _core.getRoom(push.roomId).catch(() => null);
+              const room = await _core
+                .getRoom(push.roomId, push.roomSecret)
+                .catch(() => null);
               if (!room?.room || room.room.status === 'closed') {
                 W.NotificationSystem?.warning?.('Звонок уже завершён');
                 return;
@@ -321,7 +338,9 @@ const handlePushes = async (items) => {
             text: 'Принять',
             primary: true,
             onClick: async () => {
-              const room = await _core.getRoom(push.roomId).catch(() => null);
+              const room = await _core
+                .getRoom(push.roomId, push.roomSecret)
+                .catch(() => null);
               if (!room?.room || room.room.status === 'closed') {
                 W.NotificationSystem?.warning?.('Игровое приглашение уже устарело');
                 return;
@@ -418,6 +437,53 @@ const startPushPolling = () => {
     _pushTimer = setTimeout(loop, Math.min(60000, 15000 + _pushFails * 10000));
   };
   loop();
+};
+
+const issueSocialSession = async ({ force = false } = {}) => {
+  const token = W.YandexAuth?.getToken?.();
+
+  if (!token || !W.YandexAuth?.isTokenAlive?.()) {
+    _socialSession = null;
+    throw new Error('yandex_oauth_required');
+  }
+
+  if (
+    !force &&
+    _socialSession?.socialSession &&
+    Number(_socialSession.expiresAt || 0) > Date.now() + 120000
+  ) {
+    return _socialSession;
+  }
+
+  const profile = readYandexProfile();
+  const response = await fetch(SIGNALING_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Yandex-OAuth': token
+    },
+    credentials: 'omit',
+    mode: 'cors',
+    body: JSON.stringify({
+      action: 'social_session_issue',
+      displayName: profile.displayName,
+      avatarUrl: profile.avatar
+    })
+  });
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok || result.ok === false || !result.socialSession) {
+    throw new Error(
+      result.error ||
+      result.reason ||
+      'social_session_issue_failed'
+    );
+  }
+
+  _socialSession = result;
+  return result;
 };
 
 const applyIdentity = async () => {
@@ -574,47 +640,6 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     }
   });
 
-const issueSocialSession = async ({ force = false } = {}) => {
-  const token = W.YandexAuth?.getToken?.();
-  if (!token || !W.YandexAuth?.isTokenAlive?.()) {
-    _socialSession = null;
-    throw new Error('yandex_oauth_required');
-  }
-
-  if (
-    !force &&
-    _socialSession?.socialSession &&
-    Number(_socialSession.expiresAt || 0) > Date.now() + 120000
-  ) {
-    return _socialSession;
-  }
-
-  const profile = readYandexProfile();
-  const response = await fetch(SIGNALING_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-Yandex-OAuth': token
-    },
-    credentials: 'omit',
-    mode: 'cors',
-    body: JSON.stringify({
-      action: 'social_session_issue',
-      displayName: profile.displayName,
-      avatarUrl: profile.avatar
-    })
-  });
-
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || result.ok === false || !result.socialSession) {
-    throw new Error(result.error || result.reason || 'social_session_issue_failed');
-  }
-
-  _socialSession = result;
-  return result;
-};
-  
   await applyIdentity();
 
   const url = new URL(W.location.href);
