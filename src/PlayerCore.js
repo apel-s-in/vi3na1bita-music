@@ -204,7 +204,18 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       
       if (!url) {
         if (this._skips >= this.playlist.length) { W.NotificationSystem?.error('Нет доступных треков'); return this._emit('onPlaybackError', { reason: 'no_source' }); }
-        return setTimeout(sf(() => { this._skips++; this.load((idx + dir + this.playlist.length) % this.playlist.length, { ...opts, autoPlay: true, isAutoSkip: true, dir }); }), 80);
+        return setTimeout(sf(() => {
+          this._skips++;
+          this.load(
+            (idx + dir + this.playlist.length) % this.playlist.length,
+            {
+              ...opts,
+              autoPlay: opts.autoPlay !== false,
+              isAutoSkip: true,
+              dir
+            }
+          );
+        }), 80);
       }
 
       const pos = Number(opts.resumePosition) || 0, retry = Number(opts._retryN) || 0;
@@ -250,9 +261,43 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
 
     _err(idx, r, o, d) {
       const tok = this._tok;
+      const autoPlay = o.autoPlay !== false;
+
       this._emit('onPlaybackError', { reason: 'error' });
-      if ((W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) && r < 2) setTimeout(() => tok === this._tok && this.load(idx, { ...o, autoPlay: true, _retryN: r + 1, dir: d }), 250 + r * 500);
-      else { this._skips = Math.min(this.playlist.length, this._skips + 1); setTimeout(() => tok === this._tok && this.load((idx + d + this.playlist.length) % this.playlist.length, { ...o, autoPlay: true, isAutoSkip: true, dir: d }), 120); }
+
+      if (
+        (W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) &&
+        r < 2
+      ) {
+        setTimeout(() => {
+          if (tok !== this._tok) return;
+          this.load(idx, {
+            ...o,
+            autoPlay,
+            _retryN: r + 1,
+            dir: d
+          });
+        }, 250 + r * 500);
+        return;
+      }
+
+      this._skips = Math.min(
+        this.playlist.length,
+        this._skips + 1
+      );
+
+      setTimeout(() => {
+        if (tok !== this._tok) return;
+        this.load(
+          (idx + d + this.playlist.length) % this.playlist.length,
+          {
+            ...o,
+            autoPlay,
+            isAutoSkip: true,
+            dir: d
+          }
+        );
+      }, 120);
     }
 
     _unload(silent) {
