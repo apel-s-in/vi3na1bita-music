@@ -32,23 +32,15 @@ export async function loadShowcaseAlbum(ctx) { ctx.renderAlbumTitle('Витри�
 export async function loadNewsAlbum(ctx) { ctx.renderAlbumTitle('📰 НОВОСТИ 📰', 'news'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none'; window.GalleryManager?.clear?.(); const s = document.getElementById('social-links'); if (s) s.innerHTML = `<a href="https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/" target="_blank" rel="noopener noreferrer">YouTube</a><a href="https://t.me/vitrina_razbita" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://vk.com/apelsinov" target="_blank" rel="noopener noreferrer">VK</a><a href="https://www.tiktok.com/@vi3na1bita" target="_blank" rel="noopener noreferrer">TikTok</a>`; const c = document.getElementById('track-list'); if (c) await loadAndRenderNewsInline(c); }
 export async function loadProfileAlbum(ctx) { return loadProfileView(ctx); }
 export async function loadGamesAlbum(ctx) {
-  ctx.renderAlbumTitle('🎮 ЗАЛ ВИТРИНЫ 🎮', 'games');
-  const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
-  window.GalleryManager?.clear?.();
-  const c = document.getElementById('track-list'); if (!c) return;
-
-  const friendsHost = document.createElement('div');
-  friendsHost.className = 'vf-host-in-games';
-  c.appendChild(friendsHost);
-  try {
-    const { mountFriendsBlock } = await import('../friends/friends-block.js');
-    await mountFriendsBlock({ container: friendsHost });
-  } catch (e) {
-    console.warn('[Friends] mount failed:', e?.message || e);
-  }
-
-  const gcHost = document.createElement('div');
-  c.appendChild(gcHost);
-  const { renderGameCenterHost } = await import('../games/host.js');
-  await renderGameCenterHost({ ctx, container: gcHost });
+  ctx.renderAlbumTitle('🎮 ЗАЛ ВИТРИНЫ 🎮', 'games'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
+  window.GalleryManager?.clear?.(); const c = document.getElementById('track-list'); if (!c) return;
+  const host = document.createElement('div'); c.appendChild(host);
+  const { renderGameCenterHost } = await import('../games/host.js'); await renderGameCenterHost({ ctx, container: host });
+}
+export async function loadFriendsAlbum(ctx) {
+  ctx.renderAlbumTitle('👥 ДРУЗЬЯ 👥', 'friends'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none';
+  window.GalleryManager?.clear?.(); const c = document.getElementById('track-list'); if (!c) return;
+  const host = document.createElement('div'); host.className = 'vf-host-in-friends'; c.appendChild(host);
+  try { const { mountFriendsBlock } = await import('../friends/friends-block.js'); await mountFriendsBlock({ container: host }); }
+  catch (e) { console.warn('[Friends] mount failed:', e?.message || e); c.innerHTML = '<div class="fav-empty">Не удалось загрузить раздел «Друзья»</div>'; }
 }
