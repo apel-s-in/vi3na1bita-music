@@ -614,8 +614,23 @@ const applyIdentity = async () => {
 
   if (id?.friendId && id.friendId !== _lastFriendId) {
     _lastFriendId = id.friendId;
-    try { await _core.register(); } catch {}
-    
+    try {
+      await _core.register();
+    } catch (error) {
+      const message = String(error?.message || 'crypto_register_failed');
+      console.error('[Friends] registration failed:', error);
+
+      if (message.includes('chat_e2ee_disabled')) {
+        W.NotificationSystem?.warning?.(
+          'Защищённый чат временно отключён на сервере'
+        );
+      } else if (message.includes('crypto_')) {
+        W.NotificationSystem?.warning?.(
+          'Не удалось зарегистрировать устройство шифрования. Откройте настройки Friends'
+        );
+      }
+    }
+
     // Если есть отложенный или URL инвайт — принимаем
     if (addId && addKey) {
       try {
