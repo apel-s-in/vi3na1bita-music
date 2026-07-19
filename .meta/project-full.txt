@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 20:38:17 UTC
+Сгенерировано: 2026-07-19 20:41:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10366,7 +10366,39 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
   const getCfg = () => { const b = PRESETS[st.preset] || PRESETS.balanced; return isLowPow() ? { ...b, fftSize: 256, gain: b.gain * 0.82 } : b; };
   const uiSusp = () => !!W.PlaybackClock?.getPlaybackClock?.()?.uiBackgroundSuspend;
   const updDbg = (r, p) => { if (!st.debug) { st.debugEl?.remove(); st.debugEl = null; return; } if (!st.debugEl?.isConnected) { st.debugEl = Object.assign(D.createElement('div'), { className: 'logo-pulse-debug' }); D.body.appendChild(st.debugEl); } st.debugEl.textContent = `preset: ${st.preset}\nraw: ${r.toFixed(3)}\npulse: ${p.toFixed(3)}\nint: ${st.intensity.toFixed(2)}\nfft: ${st.analyser?.fftSize || 0}\nctx: ${W.Howler?.ctx?.state || 'na'}\nconn: ${st.connected ? '1' : '0'}\nsrc: ${st.sourceKind}\nuiSuspend: ${uiSusp() ? '1' : '0'}`; };
-  const setAud = () => { const c = getCfg(), cx = W.Howler?.ctx; if (!cx || !W.Howler?.masterGain) return (st.connected = false, st.sourceKind = 'none', false); try { if (cx.state === 'suspended') cx.resume().catch(()=>{}); if (!st.analyser || st.analyser.fftSize !== c.fftSize) { if (st.analyser) try { W.Howler.masterGain.disconnect(st.analyser); } catch {} st.analyser = cx.createAnalyser(); st.analyser.fftSize = c.fftSize; st.analyser.smoothingTimeConstant = 0; W.Howler.masterGain.connect(st.analyser); st.data = new Uint8Array(st.analyser.frequencyBinCount); } return (st.connected = true, st.sourceKind = 'masterGain', true); } catch { return (st.connected = false, st.sourceKind = 'none', false); } };
+  const setAud = ({ resume = false } = {}) => {
+    const c = getCfg(), cx = W.Howler?.ctx;
+    if (!cx || !W.Howler?.masterGain) {
+      st.connected = false;
+      st.sourceKind = 'none';
+      return false;
+    }
+
+    try {
+      if (resume && cx.state === 'suspended') {
+        cx.resume().catch(() => {});
+      }
+
+      if (!st.analyser || st.analyser.fftSize !== c.fftSize) {
+        if (st.analyser) {
+          try { W.Howler.masterGain.disconnect(st.analyser); } catch {}
+        }
+        st.analyser = cx.createAnalyser();
+        st.analyser.fftSize = c.fftSize;
+        st.analyser.smoothingTimeConstant = 0;
+        W.Howler.masterGain.connect(st.analyser);
+        st.data = new Uint8Array(st.analyser.frequencyBinCount);
+      }
+
+      st.connected = true;
+      st.sourceKind = 'masterGain';
+      return true;
+    } catch {
+      st.connected = false;
+      st.sourceKind = 'none';
+      return false;
+    }
+  };
   const smpl = (fP) => { if (!st.active && !fP) { st.pulse = 0; return { raw: 0, pulse: 0 }; } if (!st.analyser || !st.data || !st.connected) return { raw: 0, pulse: fP ? 0.28 : 0 }; const c = getCfg(); if (st.analyser.fftSize !== c.fftSize && !setAud()) return { raw: 0, pulse: 0 }; st.analyser.getByteFrequencyData(st.data); let s = 0, cnt = 0; for (let i = c.binStart; i <= c.binEnd && i < st.data.length; i++) { s += st.data[i]; cnt++; } let r = cnt ? (s / cnt) / 255 : 0; r = clamp(Math.max(0, (r - st.noiseGate) / (1 - st.noiseGate)) * c.gain, 0, 1); if (W.playerCore?.isPlaying?.() && r <= 0.005) { r = Math.pow(Math.abs(Math.sin((W.playerCore?.getPosition?.() || 0) * Math.PI * 2)), 6) * 0.8; st.sourceKind = 'mathFallback'; } else if (r > 0.005) st.sourceKind = 'analyser'; st.pulse += (r - st.pulse) * (r > st.pulse ? c.attack : c.release); return { raw: r, pulse: clamp(st.pulse, 0, 1) }; };
   const rndr = (p, fP) => st.targets.forEach(el => {
     const isPreview = el.id === 'lp-preview-logo';
@@ -10397,7 +10429,7 @@ window.IconUtils = { renderIcon, setIconUse, renderFavoriteStar, setFavoriteStar
         el.style.removeProperty('--p');
       });
     }
-    W.addEventListener('player:play', setAud);
+    W.addEventListener('player:play', () => setAud({ resume: true }));
     W.addEventListener('player:trackChanged', () => { st.pulse = 0; setAud(); });
     W.addEventListener('player:stop', () => { st.pulse = 0; });
   };
