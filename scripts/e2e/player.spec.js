@@ -299,3 +299,74 @@ test('playerStateV2 restores uid without autoplay until trusted gesture',async({
     String(window.playerCore?.getCurrentTrackUid?.()||'')
   )).toBe(saved.trackUid);
 });
+test('E2EE device key is non-extractable and AES payload roundtrip works',async({page})=>{
+  await loginByPromo(page);
+
+  const result=await page.evaluate(async()=>{
+    const module=await import(
+      `https://vi3na1bita.website.yandexcloud.net/Friends/friends-crypto.js?v=8.8.5&e2e=${Date.now()}`
+    );
+
+    const requests=[];
+    const devices=[];
+    const request=async(action,data)=>{
+      requests.push({action,data});
+      if(action==='crypto_device_register'){
+        devices.splice(0,devices.length,{
+          ownerId:'ya_e2e_a',
+          deviceId:data.deviceId,
+          publicJwk:data.publicJwk,
+          fingerprint:data.fingerprint
+        },{
+          ownerId:'ya_e2e_b',
+          deviceId:data.deviceId,
+          publicJwk:data.publicJwk,
+          fingerprint:data.fingerprint
+        });
+        return{ok:true};
+      }
+      if(action==='crypto_device_list')return{ok:true,items:devices};
+      return{ok:true};
+    };
+
+    const cryptoApi=new module.FriendsCrypto({request});
+    cryptoApi.setIdentity({
+      friendId:'ya_e2e_a',
+      displayName:'E2E',
+      deviceStableId:'device-e2e'
+    });
+
+    const device=await cryptoApi.ensureDevice();
+    const pack=await cryptoApi.encryptPayload({
+      friendId:'ya_e2e_b',
+      clientMsgId:'e2e-message',
+      payload:{type:'message',text:'секрет',reactions:{}}
+    });
+
+    const message=await cryptoApi.decryptMessage({
+      cryptoVersion:2,
+      crypto:pack
+    });
+
+    let exportBlocked=false;
+    try{
+      await crypto.subtle.exportKey('jwk',device.privateKey);
+    }catch{
+      exportBlocked=true;
+    }
+
+    return{
+      extractable:device.privateKey.extractable,
+      exportBlocked,
+      text:message.text,
+      envelopes:pack.envelopes.length,
+      hasPlaintext:JSON.stringify(pack).includes('секрет')
+    };
+  });
+
+  expect(result.extractable).toBeFalsy();
+  expect(result.exportBlocked).toBeTruthy();
+  expect(result.text).toBe('секрет');
+  expect(result.envelopes).toBe(2);
+  expect(result.hasPlaintext).toBeFalsy();
+});
