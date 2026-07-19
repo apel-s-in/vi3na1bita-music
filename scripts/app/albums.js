@@ -5,14 +5,15 @@
 // UID.094_(No-paralysis rule)_(обычные альбомы обязаны работать без intel-слоя)_(любой semantic enhancement на строке трека только optional)
 // UID.096_(Helper-first anti-duplication policy)_(рендер иконок вынесен в album-icons-renderer)_(AlbumsManager хранит только навигацию и загрузку контента)
 
-import { injectIndicator } from '../ui/offline-indicators.js';
-import { renderFavoriteStar, setFavoriteStarState } from '../ui/icon-utils.js';
+import { setFavoriteStarState } from '../ui/icon-utils.js';
 import {
   makeFavoritesOnlyAfterPlay,
   playWithFavoritesOnlyResolution
 } from './player/favorites-only-actions.js';
 import { mountAlbumCarousel } from './albums/album-carousel.js';
 import { renderAlbumIconRows } from './albums/album-icons-renderer.js';
+import { renderAlbumTracks } from './albums/album-track-renderer.js';
+import { clearAlbumPlaybackTracks, getAlbumPlaybackTracks } from './albums/album-playback-builder.js';
 
 const W = window;
 const D = document;
@@ -226,7 +227,7 @@ class AlbumsManager {
       if (!album || !player) return;
 
       this.playing = albumKey;
-      const playlist = this._getAlbumPlaybackTracks(albumKey, album);
+      const playlist = getAlbumPlaybackTracks({ albumKey, album, cover: this.covers.get(albumKey), logo: LOGO });
       const index = playlist.findIndex(track => track.uid === uid);
       if (index < 0) return;
 
@@ -249,22 +250,6 @@ class AlbumsManager {
         afterPlay: () => afterPlay({ index, uid, albumKey })
       });
     });
-  }
-
-  _getAlbumPlaybackTracks(albumKey, album) {
-    if (!album._pTracks) {
-      album._pTracks = (album.tracks || [])
-        .filter(track => track.src)
-        .map(track => ({
-          ...track,
-          artist: album.artist,
-          album: album.title,
-          cover: this.covers.get(albumKey) || LOGO,
-          sourceAlbum: albumKey
-        }));
-    }
-
-    return album._pTracks;
   }
 
   async loadAlbum(key) {
@@ -341,9 +326,7 @@ class AlbumsManager {
   }
 
   async _loadRegularAlbum(key, trackList, socialLinks) {
-    if (this.cache.has(key)) {
-      delete this.cache.get(key)._pTracks;
-    }
+    if (this.cache.has(key)) clearAlbumPlaybackTracks(this.cache.get(key));
 
     await W.TrackRegistry?.ensurePopulated?.();
 
@@ -369,7 +352,7 @@ class AlbumsManager {
     this._applyGalleryVisibility();
     this.renderAlbumTitle(album.title || '—');
     this._renderSocialLinks(album, socialLinks);
-    this._renderTracks(key, album, trackList);
+    renderAlbumTracks({ root: trackList, albumKey: key, tracks: album.tracks, escapeHtml: escHtml, isFavorite: uid => W.playerCore?.isFavorite?.(uid) });
     this.highlightCurrentTrack();
     W.PlayerUI?.updateMiniHeader?.();
   }
@@ -395,23 +378,6 @@ class AlbumsManager {
         `<a href="${escHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escHtml(link.label)}</a>`
       )
       .join('');
-  }
-
-  _renderTracks(key, album, root) {
-    if (!root) return;
-
-    root.innerHTML = (Array.isArray(album.tracks) ? album.tracks : [])
-      .map((track, index) => {
-        const uid = escHtml(track?.uid);
-        const liked = !!(track?.uid && W.playerCore?.isFavorite?.(track.uid));
-
-        return `<div class="track" id="trk${index}" data-index="${index}" data-album="${escHtml(key)}" data-uid="${uid}"><div class="tnum">${String(track?.num ?? index + 1).padStart(2, '0')}.</div><div class="track-title">${escHtml(track?.title || 'Без названия')}</div>${renderFavoriteStar(liked, `data-album="${escHtml(key)}" data-uid="${uid}"`)}</div>`;
-      })
-      .join('');
-
-    root.querySelectorAll('.track[data-uid]').forEach(element =>
-      injectIndicator(element)
-    );
   }
 
   _commitLoadedAlbum(key, trackList) {
