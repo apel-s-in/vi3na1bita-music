@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 22:46:05 UTC
+Сгенерировано: 2026-07-19 22:47:25 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -400,6 +400,7 @@ jobs:
           node --check music/scripts/app/friends/friends-block.js
           node --check friends/friends-core.js
           node --check friends/friends-crypto.js
+          node --check friends/crypto-devices-ui.js
           node --check friends/friends-ui.js
           node --check friends/chat-text-ui.js
           node --check friends/voice-call-ui.js
@@ -409,7 +410,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html friends-core.js friends-ui.js
+          git add index.html friends-core.js friends-ui.js chat-text-ui.js
 
           if git diff --cached --quiet; then
             echo "Friends repository already synchronized"
