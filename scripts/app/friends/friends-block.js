@@ -91,10 +91,8 @@ const showMailOverlay = ({ friendId, name = 'Друг' } = {}) => {
 const openFriendsVoiceCall = async (friendId, incoming = null) => {
   if (!friendId) return false;
   try {
-    const gamesKey = W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__';
-    if (W.AlbumsManager?.getCurrentAlbum?.() !== gamesKey) {
-      await W.AlbumsManager?.loadAlbum?.(gamesKey);
-    }
+    const friendsKey = W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || '__friends__';
+    if (W.AlbumsManager?.getCurrentAlbum?.() !== friendsKey) await W.AlbumsManager?.loadAlbum?.(friendsKey);
     return !!(await _ui?.openVoiceCall?.(friendId, incoming));
   } catch {
     return false;
@@ -104,10 +102,8 @@ const openFriendsVoiceCall = async (friendId, incoming = null) => {
 const openFriendsChat = async friendId => {
   if (!friendId) return false;
   try {
-    const gamesKey = W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__';
-    if (W.AlbumsManager?.getCurrentAlbum?.() !== gamesKey) {
-      await W.AlbumsManager?.loadAlbum?.(gamesKey);
-    }
+    const friendsKey = W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || '__friends__';
+    if (W.AlbumsManager?.getCurrentAlbum?.() !== friendsKey) await W.AlbumsManager?.loadAlbum?.(friendsKey);
     return !!(await _ui?.openChat?.(friendId));
   } catch {
     return false;
