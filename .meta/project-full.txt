@@ -117,7 +117,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/] app.js
 [/scripts/analytics/] achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorites-storage-merge.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js, verified-achievement-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, track-registry.js
-[/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-track-renderer.js, specials.js
+[/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
 [/scripts/app/player/] favorites-only-actions.js, favorites-only-resolver.js, playback-clock.js, playback-context-source.js
@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-19 09:40:11 UTC
+Сгенерировано: 2026-07-19 09:40:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4555,6 +4555,24 @@ export default {
   renderAlbumIcon,
   renderAlbumIconRows
 };
+
+//=================================================
+// FILE: /scripts/app/albums/album-playback-builder.js
+// UID.001_(Playback safety invariant)_(builder только формирует playlist data)_(не запускает и не останавливает звук)
+// UID.002_(UID-first core)_(playback tracks сохраняют uid/sourceAlbum)_(единая сборка для AlbumsManager и PlaybackContextSource)
+// UID.096_(Helper-first anti-duplication policy)_(устраняет повторный mapping album tracks)
+
+export const buildAlbumPlaybackTracks = ({ albumKey, album, cover = '', logo = 'img/logo.png' } = {}) =>
+  (album?.tracks || []).filter(t => t?.src).map(t => ({ ...t, artist: album?.artist, album: album?.title, cover: cover || logo, sourceAlbum: albumKey }));
+
+export const getAlbumPlaybackTracks = ({ albumKey, album, cover = '', logo = 'img/logo.png' } = {}) => {
+  if (!album) return [];
+  return album._pTracks || (album._pTracks = buildAlbumPlaybackTracks({ albumKey, album, cover, logo }));
+};
+
+export const clearAlbumPlaybackTracks = album => { if (album) delete album._pTracks; };
+
+export default { buildAlbumPlaybackTracks, getAlbumPlaybackTracks, clearAlbumPlaybackTracks };
 
 //=================================================
 // FILE: /scripts/app/albums/album-track-renderer.js
