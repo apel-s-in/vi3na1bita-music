@@ -13,6 +13,7 @@ jobs:
       - run: node scripts/ci/validate-manifest.mjs
       - run: node scripts/ci/lint-sw.mjs
       - run: node scripts/ci/validate-content.mjs
+      - run: node scripts/ci/sync-version.mjs --check --music-root=.
   remote-validate:
     name: Remote content validate (informational)
     runs-on: ubuntu-latest
