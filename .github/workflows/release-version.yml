@@ -58,13 +58,14 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check music/service-worker.js
-          node --check music/scripts/app/friends/friends-block.js
-          node --check friends/friends-core.js
-          node --check friends/friends-crypto.js
-          node --check friends/crypto-devices-ui.js
-          node --check friends/friends-ui.js
-          node --check friends/chat-text-ui.js
-          node --check friends/voice-call-ui.js
+          node --input-type=module --check < music/scripts/app/friends/friends-block.js
+          node --input-type=module --check < friends/friends-core.js
+          node --input-type=module --check < friends/friends-crypto.js
+          node --input-type=module --check < friends/crypto-devices-ui.js
+          node --input-type=module --check < friends/friends-ui.js
+          node --input-type=module --check < friends/chat-text-ui.js
+          node --input-type=module --check < friends/voice-call-ui.js
+          node --input-type=module --check < friends/games-registry.js
 
       - name: Commit Friends version
         working-directory: friends
