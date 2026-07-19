@@ -485,7 +485,7 @@ const startPushPolling = () => {
   loop();
 };
 
-const issueSocialSession = async ({ force = false } = {}) => {
+export const issueSocialSession = async ({ force = false } = {}) => {
   const token = W.YandexAuth?.getToken?.();
 
   if (!token || !W.YandexAuth?.isTokenAlive?.()) {
