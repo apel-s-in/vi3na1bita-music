@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 18:20:18 UTC
+Сгенерировано: 2026-07-20 18:37:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9461,6 +9461,73 @@ test('E2EE device key is non-extractable and AES payload roundtrip works',async(
   expect(result.text).toBe('секрет');
   expect(result.envelopes).toBe(2);
   expect(result.hasPlaintext).toBeFalsy();
+});
+test('Friends navigation and encrypted push click never interrupt playback', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await page.locator('#track-list .track').first().click();
+
+  const before = await page.evaluate(() => ({
+    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
+    playing: !!window.playerCore?.isPlaying?.()
+  }));
+
+  await page.locator('[data-album="__friends__"]').click();
+  await expect.poll(() => page.evaluate(() =>
+    window.AlbumsManager?.getCurrentAlbum?.()
+  )).toBe('__friends__');
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new MessageEvent('message', {
+      data: {
+        type: 'PUSH_NOTIFICATION_CLICK',
+        kind: 'VOICE_CALL',
+        fromFriendId: 'ya_e2e_friend',
+        callId: 'voice_e2e',
+        url: './?openFriends=1&voiceWith=ya_e2e_friend'
+      }
+    }));
+  });
+
+  await page.waitForTimeout(250);
+
+  const after = await page.evaluate(() => ({
+    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
+    playing: !!window.playerCore?.isPlaying?.()
+  }));
+
+  expect(after.uid).toBe(before.uid);
+  expect(after.playing).toBeTruthy();
+});
+test('Friends client exposes only E2EE V2 chat transport', async ({ page }) => {
+  await loginByPromo(page);
+
+  const result = await page.evaluate(async () => {
+    const build = String(window.APP_CONFIG?.APP_VERSION || 'dev');
+    const source = await fetch(
+      `https://vi3na1bita.website.yandexcloud.net/Friends/friends-core.js?v=${encodeURIComponent(build)}`
+    ).then(response => response.text());
+
+    return {
+      hasSendV2: source.includes("'chat_send_v2'"),
+      hasUpdateV2: source.includes("'chat_update_v2'"),
+      hasDeleteV2: source.includes("'chat_delete_v2'"),
+      hasPlainSend: /['"]chat_send['"]/.test(source),
+      hasPlainDelete: /['"]chat_delete['"]/.test(source),
+      hasPlainReact: /['"]chat_react['"]/.test(source),
+      hasLegacySecret: /clientSecret|X-Vi3-Player|X-Vi3-Secret/.test(source)
+    };
+  });
+
+  expect(result).toEqual({
+    hasSendV2: true,
+    hasUpdateV2: true,
+    hasDeleteV2: true,
+    hasPlainSend: false,
+    hasPlainDelete: false,
+    hasPlainReact: false,
+    hasLegacySecret: false
+  });
 });
 
 //=================================================
