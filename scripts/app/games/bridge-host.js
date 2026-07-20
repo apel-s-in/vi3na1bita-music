@@ -80,6 +80,12 @@ const buildSnapshot = ({ config = {} } = {}) => {
       streak: n(live.projectedStreak || live.streak || 0),
       totalListenSec: n(live.projectedTotalSec || 0)
     },
+    wallet: {
+      available: false,
+      shards: 0,
+      locked: 0,
+      version: 0
+    },
     player: {
       playing: !!W.playerCore?.isPlaying?.(),
       uid: safe(t?.uid || ''),
