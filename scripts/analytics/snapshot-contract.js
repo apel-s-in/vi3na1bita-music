@@ -3,7 +3,8 @@ export const DEVICE_STORAGE_KEYS = ['sourcePref', 'favoritesOnlyMode', 'qualityM
 export const TRANSIENT_STORAGE_KEYS = ['yandex:last_backup_check', 'yandex:last_backup_meta', 'yandex:last_backup_local_ts', 'backup:autosync:enabled', 'backup:restore_or_skip_done'];
 export const ALL_SNAPSHOT_STORAGE_KEYS = [...SHARED_STORAGE_KEYS, ...DEVICE_STORAGE_KEYS];
 export const SHARED_STORAGE_KEY_SET = new Set(SHARED_STORAGE_KEYS), DEVICE_STORAGE_KEY_SET = new Set(DEVICE_STORAGE_KEYS), TRANSIENT_STORAGE_KEY_SET = new Set(TRANSIENT_STORAGE_KEYS), ALL_SNAPSHOT_STORAGE_KEY_SET = new Set(ALL_SNAPSHOT_STORAGE_KEYS), PLAYBACK_SENSITIVE_DEVICE_KEYS = new Set(['playerStateV2', 'favoritesOnlyMode', 'sourcePref', 'qualityMode:v1']);
-const isDynKey = k => { const s = String(k || ''); return s.startsWith('gc_data_') || s.startsWith('vf_'); };
+const isDynKey = key =>
+  String(key || '').startsWith('gc_data_');
 export const shouldStoreInSnapshot = key => ALL_SNAPSHOT_STORAGE_KEY_SET.has(String(key || '')) || isDynKey(key);
 export const isSharedStorageKey = key => SHARED_STORAGE_KEY_SET.has(String(key || '')) || isDynKey(key);
 export const isDeviceStorageKey = key => DEVICE_STORAGE_KEY_SET.has(String(key || ''));
