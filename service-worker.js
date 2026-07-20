@@ -140,7 +140,6 @@ self.addEventListener('push', e => {
       kind,
       fromFriendId: String(data.fromFriendId || ''),
       gameId: String(data.gameId || ''),
-      roomId: String(data.roomId || ''),
       msgId: String(data.msgId || ''),
       callId: String(data.callId || '')
     },
@@ -186,7 +185,6 @@ self.addEventListener('notificationclick', e => {
         url: targetUrl,
         kind: data.kind || '',
         fromFriendId: data.fromFriendId || '',
-        roomId: data.roomId || '',
         msgId: data.msgId || '',
         callId: data.callId || ''
       });
