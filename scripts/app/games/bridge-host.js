@@ -3,6 +3,9 @@
 // UID.094_(No-paralysis rule)_(ошибка iframe не ломает приложение)_(bridge можно уничтожить без влияния на музыку)
 // UID.095_(Ownership boundary)_(parent остаётся владельцем профиля/stat/auth/backup/player)_(game-app только читает snapshot)
 import { requestSocialAction } from '../../core/social-session.js';
+import {
+  getEmbeddedFriendsRpcMethod
+} from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=8.9.4';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -30,50 +33,6 @@ const GAME_SIGNALING_ACTIONS = new Set([
   'leaderboard_get'
 ]);
 
-const FRIENDS_RPC_METHODS = new Set([
-  'getEmbeddedIdentity',
-  'getEmbeddedWebPushEnabled',
-  'enableEmbeddedWebPush',
-  'setEmbeddedFriendsActive',
-  'register',
-  'getFriendList',
-  'getPresence',
-  'getProfile',
-  'removeFriend',
-  'createInvite',
-  'acceptInvite',
-  'createNearbyFriendCode',
-  'joinNearbyFriendCode',
-  'sendPush',
-  'sendChatMessage',
-  'reactChatMessage',
-  'deleteChatMessage',
-  'getChatMessages',
-  'getChatMessage',
-  'clearChat',
-  'getChatSettings',
-  'setChatRetention',
-  'purgeChatForBoth',
-  'markChatDelivered',
-  'markChatRead',
-  'getOwnCryptoDevices',
-  'getCryptoDevices',
-  'getLocalCryptoDevice',
-  'revokeCryptoDevice',
-  'resetCryptoDevices',
-  'getSafetyNumber',
-  'getSafetyVerification',
-  'setSafetyVerified',
-  'getRtcConfig',
-  'getVoiceHistory',
-  'createVoiceCall',
-  'joinVoiceCall',
-  'endVoiceCall',
-  'getRoom',
-  'sendVoiceSignal',
-  'pollVoiceSignals',
-  'ackVoiceSignals'
-]);
 const GAME_SAVE_LIMITS = Object.freeze({
   war_hearts: Object.freeze({
     matchDraft: 192 * 1024,
@@ -116,7 +75,45 @@ const normalizeRpcPayload = payload => {
 
   return JSON.parse(text);
 };
+const confirmEmbeddedFriendsAction = descriptor =>
+  new Promise(resolve => {
+    const confirmation = descriptor?.confirmation;
 
+    if (!descriptor?.dangerous || !confirmation) {
+      resolve(true);
+      return;
+    }
+
+    if (!W.Modals?.confirm) {
+      resolve(false);
+      return;
+    }
+
+    let settled = false;
+    const finish = value => {
+      if (settled) return;
+      settled = true;
+      resolve(!!value);
+    };
+
+    W.Modals.confirm({
+      title: safe(confirmation.title || 'Подтвердите действие'),
+      textHtml:
+        W.Utils?.escapeHtml?.(
+          confirmation.text ||
+          'Это действие изменит данные Friends.'
+        ) ||
+        safe(confirmation.text),
+      confirmText: safe(
+        confirmation.confirmText ||
+        'Продолжить'
+      ),
+      cancelText: 'Отмена',
+      onConfirm: () => finish(true),
+      onCancel: () => finish(false),
+      onClose: () => finish(false)
+    });
+  });
 const buildSnapshot = ({ config = {} } = {}) => {
   const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
   const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
@@ -172,6 +169,7 @@ const buildSnapshot = ({ config = {} } = {}) => {
 
 export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   const bridgeId = crypto.randomUUID();
+  const activeFriendsRequests = new Set();
   let alive = true;
 
   const send = (type, payload = {}) => {
@@ -186,8 +184,9 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   const handleFriendsRequest = async payload => {
     const requestId = safe(payload?.requestId);
     const method = safe(payload?.method);
+    const descriptor = getEmbeddedFriendsRpcMethod(method);
 
-    if (!requestId || !FRIENDS_RPC_METHODS.has(method)) {
+    if (!requestId || !descriptor) {
       send('GC_FRIENDS_RESPONSE', {
         requestId,
         ok: false,
@@ -196,6 +195,18 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       });
       return;
     }
+
+    if (activeFriendsRequests.has(requestId)) {
+      send('GC_FRIENDS_RESPONSE', {
+        requestId,
+        ok: false,
+        status: 409,
+        error: 'friends_rpc_request_duplicate'
+      });
+      return;
+    }
+
+    activeFriendsRequests.add(requestId);
 
     try {
       const args = normalizeRpcPayload(
@@ -213,12 +224,28 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
         throw new Error('friends_identity_required');
       }
 
+      if (
+        descriptor.dangerous &&
+        !(await confirmEmbeddedFriendsAction(descriptor))
+      ) {
+        send('GC_FRIENDS_RESPONSE', {
+          requestId,
+          ok: false,
+          status: 409,
+          error: 'friends_rpc_confirmation_cancelled'
+        });
+        return;
+      }
+
       let result;
 
       if (method === 'getEmbeddedIdentity') {
         result = {
           friendId: safe(core.identity?.friendId),
-          displayName: safe(core.identity?.displayName || 'Слушатель'),
+          displayName: safe(
+            core.identity?.displayName ||
+            'Слушатель'
+          ),
           avatar: safe(core.identity?.avatar),
           yandexLinked: true
         };
@@ -227,11 +254,16 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       } else if (method === 'enableEmbeddedWebPush') {
         result = await module.enableFriendsWebPush();
       } else if (method === 'setEmbeddedFriendsActive') {
-        result = await module.setFriendsEmbeddedActive(args[0] || {});
+        result = await module.setFriendsEmbeddedActive(
+          args[0] || {}
+        );
       } else {
         const fn = core[method];
 
-        if (typeof fn !== 'function') {
+        if (
+          descriptor.route !== 'core' ||
+          typeof fn !== 'function'
+        ) {
           throw new Error('friends_rpc_method_missing');
         }
 
@@ -249,8 +281,13 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
         requestId,
         ok: false,
         status: Number(error?.status || 500),
-        error: safe(error?.message || 'friends_rpc_failed')
+        error: safe(
+          error?.message ||
+          'friends_rpc_failed'
+        )
       });
+    } finally {
+      activeFriendsRequests.delete(requestId);
     }
   };
   const handleSignalingRequest = async payload => {
@@ -504,6 +541,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     sendSnapshot,
     destroy() {
       alive = false;
+      activeFriendsRequests.clear();
       W.removeEventListener('message', onMessage);
       ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.removeEventListener(x, onHostUpdate));
     }
