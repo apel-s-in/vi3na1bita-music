@@ -34,8 +34,6 @@ const isFriendsSectionActive = () =>
 
 const stopFriendsBackgroundTasks = () => {
   clearTimeout(_pushTimer);
-  clearInterval(_pushTimer);
-  clearTimeout(_heartbeatTimer);
   clearInterval(_heartbeatTimer);
   _pushTimer = 0;
   _heartbeatTimer = 0;
@@ -324,10 +322,10 @@ const handlePushes = async (items) => {
         if (prof?.displayName) name = prof.displayName;
       } catch {}
 
-      const text = Number(push.cryptoVersion || 0) === 2
-        ? 'Новое защищённое сообщение'
-        : String(push.text || '').slice(0, 180);
-      addUnread(push.fromFriendId, { name, text });
+      addUnread(push.fromFriendId, {
+        name,
+        text: 'Новое защищённое сообщение'
+      });
       showMailOverlay({ friendId: push.fromFriendId, name });
       await _core.markChatDelivered?.({ friendId: push.fromFriendId, msgId: push.msgId }).catch(() => null);
       W.NotificationSystem?.info?.(`💬 Новое сообщение от ${name}`, 6000);
@@ -412,11 +410,15 @@ const handlePushes = async (items) => {
 
 const startPresenceHeartbeat = () => {
   clearInterval(_heartbeatTimer);
-  clearTimeout(_heartbeatTimer);
 
   const beat = async () => {
-    if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.() || _heartbeatBusy) return;
-    if (_heartbeatFails >= 3 && Date.now() % 3 !== 0) return;
+    if (
+      D.hidden ||
+      !isFriendsSectionActive() ||
+      !_core?.isReady?.() ||
+      _heartbeatBusy
+    ) return;
+
     _heartbeatBusy = true;
     try {
       await _core.heartbeat({ gameId: '', roomId: '' });
@@ -455,7 +457,6 @@ const syncWebPushIfAllowed = async () => {
 
 const startPushPolling = () => {
   clearTimeout(_pushTimer);
-  clearInterval(_pushTimer);
 
   const poll = async () => {
     if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.() || _pushBusy) return;
@@ -613,22 +614,18 @@ const applyIdentity = async () => {
   renderAuthorizedExperience();
 
   if (id?.friendId && id.friendId !== _lastFriendId) {
-    _lastFriendId = id.friendId;
     try {
       await _core.register();
+      _lastFriendId = id.friendId;
     } catch (error) {
       const message = String(error?.message || 'crypto_register_failed');
       console.error('[Friends] registration failed:', error);
 
-      if (message.includes('chat_e2ee_disabled')) {
-        W.NotificationSystem?.warning?.(
-          'Защищённый чат временно отключён на сервере'
-        );
-      } else if (message.includes('crypto_')) {
-        W.NotificationSystem?.warning?.(
-          'Не удалось зарегистрировать устройство шифрования. Откройте настройки Friends'
-        );
-      }
+      W.NotificationSystem?.warning?.(
+        message.includes('chat_e2ee_disabled')
+          ? 'Защищённый чат временно отключён на сервере'
+          : 'Не удалось зарегистрировать устройство шифрования. Повторим при следующем открытии Friends'
+      );
     }
 
     // Если есть отложенный или URL инвайт — принимаем
@@ -723,9 +720,6 @@ export const mountFriendsBlock = async ({ container } = {}) => {
   const url = new URL(W.location.href);
   const chatWith = url.searchParams.get('chatWith');
   const voiceWith = url.searchParams.get('voiceWith');
-  const voiceRoom = url.searchParams.get('voiceRoom');
-  const voiceKey = url.searchParams.get('key');
-  const callId = url.searchParams.get('callId');
 
   if (chatWith && _core?.isReady?.()) {
     setTimeout(() => openFriendsChat(chatWith), 350);
@@ -734,13 +728,10 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     W.history.replaceState(null, '', url.toString());
   }
 
-  if (voiceWith && voiceRoom && voiceKey && _core?.isReady?.()) {
-    setTimeout(() => openFriendsVoiceCall(voiceWith, {
-      callId,
-      roomId: voiceRoom,
-      roomSecret: voiceKey
-    }), 450);
-    ['voiceWith', 'voiceRoom', 'key', 'callId', 'openFriends'].forEach(k => url.searchParams.delete(k));
+  if (voiceWith && _core?.isReady?.()) {
+    resumeFriendsBackgroundTasks();
+    ['voiceWith', 'callId', 'openFriends']
+      .forEach(key => url.searchParams.delete(key));
     W.history.replaceState(null, '', url.toString());
   }
 
@@ -770,21 +761,38 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       _ui?.refresh?.();
     });
 
-    const onSwPushClick = e => {
-      if (e.data?.type !== 'PUSH_NOTIFICATION_CLICK') return;
+    const onSwPushClick = async event => {
+      const data = event.data || {};
+      if (data.type !== 'PUSH_NOTIFICATION_CLICK') return;
+
       try {
-        const u = new URL(e.data.url || W.location.href, W.location.href);
-        const voiceWith = u.searchParams.get('voiceWith') || e.data.fromFriendId || '';
-        const voiceRoom = u.searchParams.get('voiceRoom') || e.data.roomId || '';
-        const voiceKey = u.searchParams.get('key') || e.data.roomSecret || '';
-        const callId = u.searchParams.get('callId') || e.data.callId || '';
-        if (voiceWith && voiceRoom && voiceKey) {
-          openFriendsVoiceCall(voiceWith, { callId, roomId: voiceRoom, roomSecret: voiceKey });
+        const url = new URL(
+          data.url || W.location.href,
+          W.location.href
+        );
+        const kind = String(data.kind || '');
+
+        if (kind === 'CHAT_MESSAGE') {
+          const friendId =
+            url.searchParams.get('chatWith') ||
+            data.fromFriendId ||
+            '';
+
+          if (friendId) await openFriendsChat(friendId);
           return;
         }
 
-        const chatWith = u.searchParams.get('chatWith') || e.data.fromFriendId || '';
-        if (chatWith) openFriendsChat(chatWith);
+        if (kind === 'VOICE_CALL' || kind === 'GAME_INVITE') {
+          const friendsKey =
+            W.APP_CONFIG?.SPECIAL_FRIENDS_KEY ||
+            FRIENDS_KEY;
+
+          if (!isFriendsSectionActive()) {
+            await W.AlbumsManager?.loadAlbum?.(friendsKey);
+          }
+
+          await resumeFriendsBackgroundTasks();
+        }
       } catch {}
     };
 
