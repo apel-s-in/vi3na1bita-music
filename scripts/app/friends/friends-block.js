@@ -462,7 +462,10 @@ const startPushPolling = () => {
 
     await poll();
     clearTimeout(_pushTimer);
-    _pushTimer = setTimeout(loop, Math.min(60000, 15000 + _pushFails * 10000));
+    _pushTimer = setTimeout(
+      loop,
+      Math.min(90000, 30000 + _pushFails * 15000)
+    );
   };
   loop();
 };
