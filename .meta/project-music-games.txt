@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 21:28:54 UTC
+Сгенерировано: 2026-07-20 21:29:36 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -2912,6 +2912,30 @@ const onGameInvite = async ({ friendId, gameId }) => {
   
   W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
   W.NotificationSystem?.success?.('Запускаем игру...');
+};
+export const getFriendsCoreService = async () => {
+  if (!_core) {
+    const { FriendsCore } = await import(FRIENDS_CORE_URL);
+    _core = new FriendsCore();
+  }
+
+  if (!_core.isReady()) {
+    await applyIdentity();
+  }
+
+  if (!_core.isReady()) {
+    throw new Error('friends_identity_required');
+  }
+
+  if (
+    _core.identity?.friendId &&
+    _core.identity.friendId !== _lastFriendId
+  ) {
+    await _core.register();
+    _lastFriendId = _core.identity.friendId;
+  }
+
+  return _core;
 };
 
 export const mountFriendsBlock = async ({ container } = {}) => {
