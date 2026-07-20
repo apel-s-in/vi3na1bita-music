@@ -23,22 +23,6 @@ body.games-view #track-list,body.friends-view #track-list{max-width:395px;width:
 .friends-login-btn{max-width:280px!important;margin:0 auto!important}
 .friends-ya-letter{font-size:20px;line-height:1}
 .friends-login-note{margin-top:9px;color:#7287aa;font-size:10px;line-height:1.35}
-.friends-authorized-guide{padding-bottom:8px}
-.friends-guide-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:14px;background:linear-gradient(135deg,rgba(124,77,255,.13),rgba(77,170,255,.08));border:1px solid rgba(182,168,255,.2)}
-.friends-guide-head div{display:flex;flex-direction:column;min-width:0}
-.friends-guide-head div>span{font-size:13px;font-weight:900;color:#fff}
-.friends-guide-head small{margin-top:3px;color:#9db7dd;font-size:10.5px}
-.friends-guide-status{flex-shrink:0;padding:4px 8px;border-radius:999px;background:rgba(70,230,165,.12);border:1px solid rgba(70,230,165,.28);color:#adffdf;font-size:9px;font-weight:900;text-transform:uppercase}
-.friends-guide-actions{display:grid;grid-template-columns:1.25fr 1.25fr .7fr;gap:6px;margin-top:8px}
-.friends-guide-actions button{min-height:38px;padding:6px;border-radius:11px;border:1px solid rgba(132,145,255,.22);background:rgba(255,255,255,.05);color:#eaf2ff;font-size:10.5px;font-weight:900;cursor:pointer}
-.friends-guide-actions button:first-child{background:linear-gradient(135deg,rgba(255,49,89,.82),rgba(124,77,255,.82));border-color:transparent}
-.friends-guide-details{margin-top:8px;border-radius:13px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.06);overflow:hidden}
-.friends-guide-details summary{padding:10px 12px;cursor:pointer;color:#b6a8ff;font-size:11px;font-weight:900;list-style:none}
-.friends-guide-details summary::-webkit-details-marker{display:none}
-.friends-guide-details summary::after{content:'▼';float:right;font-size:9px;color:#7287aa}
-.friends-guide-details[open] summary::after{transform:rotate(180deg)}
-.friends-guide-details .friends-feature-grid{padding:0 8px 8px;margin:0}
-.friends-guide-tip{margin-top:8px;padding:9px 10px;border-radius:11px;background:rgba(36,232,255,.055);border:1px solid rgba(36,232,255,.13);color:#9db7dd;font-size:10.5px;line-height:1.4}
 body.games-view #active-album-title.active-album-title.games{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#8ab8fd!important;letter-spacing:.05em;text-align:center}
 body.friends-view #active-album-title.active-album-title.friends{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#b6a8ff!important;letter-spacing:.05em;text-align:center}
 .gc-host{width:100%;margin:0 auto 32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:fadeInUp .25s ease-out}
