@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 22:15:44 UTC
+Сгенерировано: 2026-07-20 22:16:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5737,6 +5737,10 @@ const GAME_SIGNALING_ACTIONS = new Set([
 ]);
 
 const FRIENDS_RPC_METHODS = new Set([
+  'getEmbeddedIdentity',
+  'getEmbeddedWebPushEnabled',
+  'enableEmbeddedWebPush',
+  'setEmbeddedFriendsActive',
   'register',
   'getFriendList',
   'getPresence',
@@ -5915,12 +5919,30 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
         throw new Error('friends_identity_required');
       }
 
-      const fn = core[method];
-      if (typeof fn !== 'function') {
-        throw new Error('friends_rpc_method_missing');
-      }
+      let result;
 
-      const result = await fn.apply(core, args);
+      if (method === 'getEmbeddedIdentity') {
+        result = {
+          friendId: safe(core.identity?.friendId),
+          displayName: safe(core.identity?.displayName || 'Слушатель'),
+          avatar: safe(core.identity?.avatar),
+          yandexLinked: true
+        };
+      } else if (method === 'getEmbeddedWebPushEnabled') {
+        result = module.getFriendsWebPushEnabled();
+      } else if (method === 'enableEmbeddedWebPush') {
+        result = await module.enableFriendsWebPush();
+      } else if (method === 'setEmbeddedFriendsActive') {
+        result = await module.setFriendsEmbeddedActive(args[0] || {});
+      } else {
+        const fn = core[method];
+
+        if (typeof fn !== 'function') {
+          throw new Error('friends_rpc_method_missing');
+        }
+
+        result = await fn.apply(core, args);
+      }
 
       send('GC_FRIENDS_RESPONSE', {
         requestId,
