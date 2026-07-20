@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 21:30:28 UTC
+Сгенерировано: 2026-07-20 21:37:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5809,7 +5809,36 @@ const FRIENDS_RPC_METHODS = new Set([
   'pollVoiceSignals',
   'ackVoiceSignals'
 ]);
+const GAME_SAVE_LIMITS = Object.freeze({
+  war_hearts: Object.freeze({
+    matchDraft: 192 * 1024,
+    matchHistory: 96 * 1024,
+    presets: 48 * 1024,
+    uiSettings: 16 * 1024
+  })
+});
 
+const validateGameSave = payload => {
+  const gameId = safe(payload?.gameId);
+  const key = safe(payload?.key);
+  const limit = GAME_SAVE_LIMITS[gameId]?.[key];
+
+  if (!limit) {
+    throw new Error('game_save_key_forbidden');
+  }
+
+  const text = JSON.stringify(payload?.data ?? null);
+
+  if (text.length > limit) {
+    throw new Error('game_save_payload_too_large');
+  }
+
+  return {
+    gameId,
+    key,
+    data: JSON.parse(text)
+  };
+};
 const normalizeRpcPayload = payload => {
   const data = payload && typeof payload === 'object'
     ? payload
@@ -5998,15 +6027,41 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     }
 
     if (d.type === 'GC_SAVE_DATA') {
-      if (d.payload?.gameId && d.payload?.key) {
-        const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
-        try {
-          const root = JSON.parse(localStorage.getItem(`gc_data_${gcId}`) || '{}');
-          root[`${d.payload.gameId}_${d.payload.key}`] = d.payload.data;
-          localStorage.setItem(`gc_data_${gcId}`, JSON.stringify(root));
-          sendSnapshot(); // Рассылаем всем клиентам обновление
-          W.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'profile', immediate: true } }));
-        } catch {}
+      try {
+        const save = validateGameSave(d.payload);
+        const gcId =
+          localStorage.getItem('intel:internal-user-id') ||
+          localStorage.getItem('deviceHash') ||
+          'local';
+
+        const storageKey = `gc_data_${gcId}`;
+        const root = JSON.parse(
+          localStorage.getItem(storageKey) || '{}'
+        );
+
+        root[`${save.gameId}_${save.key}`] = save.data;
+
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify(root)
+        );
+
+        sendSnapshot();
+
+        W.dispatchEvent(new CustomEvent(
+          'backup:domain-dirty',
+          {
+            detail: {
+              domain: 'profile',
+              immediate: true
+            }
+          }
+        ));
+      } catch (error) {
+        console.warn(
+          '[GameBridge] save rejected:',
+          error?.message || error
+        );
       }
       return;
     }
