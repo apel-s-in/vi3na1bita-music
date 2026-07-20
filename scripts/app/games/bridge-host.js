@@ -30,6 +30,47 @@ const GAME_SIGNALING_ACTIONS = new Set([
   'leaderboard_get'
 ]);
 
+const FRIENDS_RPC_METHODS = new Set([
+  'register',
+  'getFriendList',
+  'getPresence',
+  'getProfile',
+  'removeFriend',
+  'createInvite',
+  'acceptInvite',
+  'createNearbyFriendCode',
+  'joinNearbyFriendCode',
+  'sendPush',
+  'sendChatMessage',
+  'reactChatMessage',
+  'deleteChatMessage',
+  'getChatMessages',
+  'getChatMessage',
+  'clearChat',
+  'getChatSettings',
+  'setChatRetention',
+  'purgeChatForBoth',
+  'markChatDelivered',
+  'markChatRead',
+  'getOwnCryptoDevices',
+  'getCryptoDevices',
+  'getLocalCryptoDevice',
+  'revokeCryptoDevice',
+  'resetCryptoDevices',
+  'getSafetyNumber',
+  'getSafetyVerification',
+  'setSafetyVerified',
+  'getRtcConfig',
+  'getVoiceHistory',
+  'createVoiceCall',
+  'joinVoiceCall',
+  'endVoiceCall',
+  'getRoom',
+  'sendVoiceSignal',
+  'pollVoiceSignals',
+  'ackVoiceSignals'
+]);
+
 const normalizeRpcPayload = payload => {
   const data = payload && typeof payload === 'object'
     ? payload
@@ -109,6 +150,58 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   };
 
   const sendSnapshot = () => send('GC_SNAPSHOT', buildSnapshot({ config }));
+  const handleFriendsRequest = async payload => {
+    const requestId = safe(payload?.requestId);
+    const method = safe(payload?.method);
+
+    if (!requestId || !FRIENDS_RPC_METHODS.has(method)) {
+      send('GC_FRIENDS_RESPONSE', {
+        requestId,
+        ok: false,
+        status: 403,
+        error: 'friends_rpc_method_forbidden'
+      });
+      return;
+    }
+
+    try {
+      const args = normalizeRpcPayload(
+        Array.isArray(payload?.args)
+          ? payload.args
+          : []
+      );
+
+      const module = await import(
+        '../friends/friends-block.js'
+      );
+      const core = await module.getFriendsCoreService();
+
+      if (!core?.isReady?.()) {
+        throw new Error('friends_identity_required');
+      }
+
+      const fn = core[method];
+      if (typeof fn !== 'function') {
+        throw new Error('friends_rpc_method_missing');
+      }
+
+      const result = await fn.apply(core, args);
+
+      send('GC_FRIENDS_RESPONSE', {
+        requestId,
+        ok: true,
+        status: 200,
+        result: result === undefined ? null : result
+      });
+    } catch (error) {
+      send('GC_FRIENDS_RESPONSE', {
+        requestId,
+        ok: false,
+        status: Number(error?.status || 500),
+        error: safe(error?.message || 'friends_rpc_failed')
+      });
+    }
+  };
   const handleSignalingRequest = async payload => {
     const requestId = safe(payload?.requestId);
     const action = safe(payload?.action);
@@ -147,8 +240,13 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     if (!alive || e.source !== iframe?.contentWindow) return;
     const d = e.data || {};
     if (d.kind !== 'vitrina:game' || d.bridgeId !== bridgeId) return;
-        if (d.type === 'GC_SIGNALING_REQUEST') {
+    if (d.type === 'GC_SIGNALING_REQUEST') {
       handleSignalingRequest(d.payload || {});
+      return;
+    }
+
+    if (d.type === 'GC_FRIENDS_REQUEST') {
+      handleFriendsRequest(d.payload || {});
       return;
     }
     if (d.type === 'GC_READY' || d.type === 'GC_REQUEST_SNAPSHOT') sendSnapshot();
