@@ -34,10 +34,15 @@ let _pushFails = 0;
 let _heartbeatBusy = false;
 let _heartbeatFails = 0;
 const FRIENDS_KEY = '__friends__';
+const _embeddedFriendsContexts = new Set();
 
 const isFriendsSectionActive = () =>
   W.AlbumsManager?.getCurrentAlbum?.() ===
   (W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || FRIENDS_KEY);
+
+const isFriendsRuntimeActive = () =>
+  isFriendsSectionActive() ||
+  _embeddedFriendsContexts.size > 0;
 
 const stopFriendsBackgroundTasks = () => {
   clearTimeout(_pushTimer);
@@ -47,7 +52,7 @@ const stopFriendsBackgroundTasks = () => {
 };
 
 const resumeFriendsBackgroundTasks = async () => {
-  if (D.hidden || !isFriendsSectionActive()) {
+  if (D.hidden || !isFriendsRuntimeActive()) {
     stopFriendsBackgroundTasks();
     return false;
   }
@@ -388,7 +393,7 @@ const startPresenceHeartbeat = () => {
   const beat = async () => {
     if (
       D.hidden ||
-      !isFriendsSectionActive() ||
+      !isFriendsRuntimeActive() ||
       !_core?.isReady?.() ||
       _heartbeatBusy
     ) return;
@@ -433,7 +438,7 @@ const startPushPolling = () => {
   clearTimeout(_pushTimer);
 
   const poll = async () => {
-    if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.() || _pushBusy) return;
+    if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.() || _pushBusy) return;
     _pushBusy = true;
     try {
       const items = await _core.getPushes();
@@ -450,7 +455,7 @@ const startPushPolling = () => {
   };
 
   const loop = async () => {
-    if (D.hidden || !isFriendsSectionActive() || !_core?.isReady?.()) {
+    if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.()) {
       stopFriendsBackgroundTasks();
       return;
     }
@@ -617,6 +622,37 @@ const onGameInvite = async ({ friendId, gameId }) => {
   W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
   W.NotificationSystem?.success?.('Запускаем игру...');
 };
+export const getFriendsWebPushEnabled = () =>
+  !!_webPushReady;
+
+export const enableFriendsWebPush = () =>
+  enableWebPushFromUi();
+
+export const setFriendsEmbeddedActive = async ({
+  contextId = '',
+  active = false
+} = {}) => {
+  const id = String(contextId || '').trim();
+  if (!id) throw new Error('friends_embed_context_required');
+
+  if (active) {
+    _embeddedFriendsContexts.add(id);
+    await resumeFriendsBackgroundTasks();
+  } else {
+    _embeddedFriendsContexts.delete(id);
+
+    if (!isFriendsRuntimeActive()) {
+      stopFriendsBackgroundTasks();
+    }
+  }
+
+  return {
+    ok: true,
+    active: _embeddedFriendsContexts.has(id),
+    contexts: _embeddedFriendsContexts.size
+  };
+};
+
 export const getFriendsCoreService = async () => {
   if (!_core) {
     const { FriendsCore } = await import(FRIENDS_CORE_URL);
@@ -705,7 +741,7 @@ export const mountFriendsBlock = async ({ container } = {}) => {
         return;
       }
 
-      if (isFriendsSectionActive() && _core?.isReady?.()) {
+      if (isFriendsRuntimeActive() && _core?.isReady?.()) {
         resumeFriendsBackgroundTasks();
         _ui?.refresh?.();
       }
@@ -713,13 +749,19 @@ export const mountFriendsBlock = async ({ container } = {}) => {
 
     W.addEventListener('album:changed', event => {
       const friendsKey = W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || FRIENDS_KEY;
-      if (event.detail?.key !== friendsKey) {
+      if (
+        event.detail?.key !== friendsKey &&
+        !_embeddedFriendsContexts.size
+      ) {
         stopFriendsBackgroundTasks();
         return;
       }
 
       resumeFriendsBackgroundTasks();
-      _ui?.refresh?.();
+
+      if (event.detail?.key === friendsKey) {
+        _ui?.refresh?.();
+      }
     });
 
     const onSwPushClick = async event => {
