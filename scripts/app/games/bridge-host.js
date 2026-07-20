@@ -31,6 +31,10 @@ const GAME_SIGNALING_ACTIONS = new Set([
 ]);
 
 const FRIENDS_RPC_METHODS = new Set([
+  'getEmbeddedIdentity',
+  'getEmbeddedWebPushEnabled',
+  'enableEmbeddedWebPush',
+  'setEmbeddedFriendsActive',
   'register',
   'getFriendList',
   'getPresence',
@@ -209,12 +213,30 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
         throw new Error('friends_identity_required');
       }
 
-      const fn = core[method];
-      if (typeof fn !== 'function') {
-        throw new Error('friends_rpc_method_missing');
-      }
+      let result;
 
-      const result = await fn.apply(core, args);
+      if (method === 'getEmbeddedIdentity') {
+        result = {
+          friendId: safe(core.identity?.friendId),
+          displayName: safe(core.identity?.displayName || 'Слушатель'),
+          avatar: safe(core.identity?.avatar),
+          yandexLinked: true
+        };
+      } else if (method === 'getEmbeddedWebPushEnabled') {
+        result = module.getFriendsWebPushEnabled();
+      } else if (method === 'enableEmbeddedWebPush') {
+        result = await module.enableFriendsWebPush();
+      } else if (method === 'setEmbeddedFriendsActive') {
+        result = await module.setFriendsEmbeddedActive(args[0] || {});
+      } else {
+        const fn = core[method];
+
+        if (typeof fn !== 'function') {
+          throw new Error('friends_rpc_method_missing');
+        }
+
+        result = await fn.apply(core, args);
+      }
 
       send('GC_FRIENDS_RESPONSE', {
         requestId,
