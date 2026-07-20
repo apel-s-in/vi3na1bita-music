@@ -650,6 +650,30 @@ const onGameInvite = async ({ friendId, gameId }) => {
   W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
   W.NotificationSystem?.success?.('Запускаем игру...');
 };
+export const getFriendsCoreService = async () => {
+  if (!_core) {
+    const { FriendsCore } = await import(FRIENDS_CORE_URL);
+    _core = new FriendsCore();
+  }
+
+  if (!_core.isReady()) {
+    await applyIdentity();
+  }
+
+  if (!_core.isReady()) {
+    throw new Error('friends_identity_required');
+  }
+
+  if (
+    _core.identity?.friendId &&
+    _core.identity.friendId !== _lastFriendId
+  ) {
+    await _core.register();
+    _lastFriendId = _core.identity.friendId;
+  }
+
+  return _core;
+};
 
 export const mountFriendsBlock = async ({ container } = {}) => {
   if (!container) return false;
