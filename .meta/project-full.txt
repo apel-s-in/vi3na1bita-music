@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 20:34:51 UTC
+Сгенерировано: 2026-07-20 20:37:18 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4919,14 +4919,21 @@ export async function loadFriendsAlbum(ctx) {
 // UID.094 (No-paralysis rule)_(сбой Друзей не влияет на плеер/Game Center)
 // Тонкий адаптер: основное приложение -> внешний модуль /Friends/
 
+import {
+  getSocialSession,
+  invalidateSocialSession
+} from '../../core/social-session.js';
+
 const W = window;
 const D = document;
-const BASE_FRIENDS = 'https://vi3na1bita.website.yandexcloud.net/Friends';
+const BASE_FRIENDS =
+  'https://vi3na1bita.website.yandexcloud.net/Friends';
 const FRIENDS_BUILD = '8.9.0';
-const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
-const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js?v=${FRIENDS_BUILD}`;
-const SIGNALING_URL = 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
-let _socialSession = null;
+const FRIENDS_CORE_URL =
+  `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
+const FRIENDS_UI_URL =
+  `${BASE_FRIENDS}/friends-ui.js?v=${FRIENDS_BUILD}`;
+
 let _socialSessionRetryAt = 0;
 
 let _core = null;
@@ -5404,50 +5411,10 @@ const startPushPolling = () => {
   loop();
 };
 
-export const issueSocialSession = async ({ force = false } = {}) => {
-  const token = W.YandexAuth?.getToken?.();
-
-  if (!token || !W.YandexAuth?.isTokenAlive?.()) {
-    _socialSession = null;
-    throw new Error('yandex_oauth_required');
-  }
-
-  if (
-    !force &&
-    _socialSession?.socialSession &&
-    Number(_socialSession.expiresAt || 0) > Date.now() + 120000
-  ) {
-    return _socialSession;
-  }
-
-  const profile = readYandexProfile();
-  const response = await fetch(SIGNALING_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-Yandex-OAuth': token
-    },
-    credentials: 'omit',
-    mode: 'cors',
-    body: JSON.stringify({
-      action: 'social_session_issue',
-      displayName: profile.displayName,
-      avatarUrl: profile.avatar
-    })
-  });
-
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok || result.ok === false || !result.socialSession) {
-    throw new Error(
-      result.error ||
-      result.reason ||
-      'social_session_issue_failed'
-    );
-  }
-
-  _socialSession = result;
+export const issueSocialSession = async ({
+  force = false
+} = {}) => {
+  const result = await getSocialSession({ force });
   _socialSessionRetryAt = 0;
   return result;
 };
@@ -5500,7 +5467,7 @@ const applyIdentity = async () => {
   try {
     session = await issueSocialSession();
   } catch (error) {
-    _socialSession = null;
+    invalidateSocialSession();
     _socialSessionRetryAt = Date.now() + 30000;
     _core.setIdentity({ friendId: '', yandexLinked: false });
     W.__vfIdentity = null;
@@ -5653,7 +5620,10 @@ export const mountFriendsBlock = async ({ container } = {}) => {
 
   if (!_bound) {
     _bound = true;
-    W.addEventListener('yandex:auth:changed', () => applyIdentity().catch(() => {}));
+    W.addEventListener('yandex:auth:changed', () => {
+      invalidateSocialSession();
+      applyIdentity().catch(() => {});
+    });
     D.addEventListener('visibilitychange', () => {
       if (D.hidden) {
         stopFriendsBackgroundTasks();
