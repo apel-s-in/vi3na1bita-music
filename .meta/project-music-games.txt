@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 20:40:01 UTC
+Сгенерировано: 2026-07-20 20:40:32 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1706,7 +1706,7 @@ const makeRoomUrl = cfg => {
           <b>${invite.hasInvite ? 'Подключаемся к вызову' : invite.isSendingInvite ? 'Готовим приглашение' : 'Открываем Зал Витрины'}</b>
           <span>Соединение будет настроено автоматически...</span>
         </div>
-        <iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>
+        <iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>
       `;
       const iframe = frameWrap.querySelector('iframe');
 
