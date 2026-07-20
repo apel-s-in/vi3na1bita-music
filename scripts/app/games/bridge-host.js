@@ -302,14 +302,8 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
 
       const pc = W.playerCore;
       const am = W.AlbumsManager;
-      const targetAlbum = safe(d.payload?.targetAlbum);
 
-      if (am && targetAlbum === '__friends__') {
-        am.loadAlbum(
-          W.APP_CONFIG?.SPECIAL_FRIENDS_KEY ||
-          '__friends__'
-        );
-      } else if (pc && am) {
+      if (pc && am) {
         const track = pc.getCurrentTrack();
 
         if (track?.sourceAlbum) {
