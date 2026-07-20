@@ -413,3 +413,33 @@ test('Friends navigation and encrypted push click never interrupt playback', asy
   expect(after.uid).toBe(before.uid);
   expect(after.playing).toBeTruthy();
 });
+test('Friends client exposes only E2EE V2 chat transport', async ({ page }) => {
+  await loginByPromo(page);
+
+  const result = await page.evaluate(async () => {
+    const build = String(window.APP_CONFIG?.APP_VERSION || 'dev');
+    const source = await fetch(
+      `https://vi3na1bita.website.yandexcloud.net/Friends/friends-core.js?v=${encodeURIComponent(build)}`
+    ).then(response => response.text());
+
+    return {
+      hasSendV2: source.includes("'chat_send_v2'"),
+      hasUpdateV2: source.includes("'chat_update_v2'"),
+      hasDeleteV2: source.includes("'chat_delete_v2'"),
+      hasPlainSend: /['"]chat_send['"]/.test(source),
+      hasPlainDelete: /['"]chat_delete['"]/.test(source),
+      hasPlainReact: /['"]chat_react['"]/.test(source),
+      hasLegacySecret: /clientSecret|X-Vi3-Player|X-Vi3-Secret/.test(source)
+    };
+  });
+
+  expect(result).toEqual({
+    hasSendV2: true,
+    hasUpdateV2: true,
+    hasDeleteV2: true,
+    hasPlainSend: false,
+    hasPlainDelete: false,
+    hasPlainReact: false,
+    hasLegacySecret: false
+  });
+});
