@@ -324,11 +324,11 @@ const handlePushes = async (items) => {
 
       addUnread(push.fromFriendId, {
         name,
-        text: 'Новое защищённое сообщение'
+        text: 'Новое сообщение'
       });
       showMailOverlay({ friendId: push.fromFriendId, name });
       await _core.markChatDelivered?.({ friendId: push.fromFriendId, msgId: push.msgId }).catch(() => null);
-      W.NotificationSystem?.info?.(`💬 Новое сообщение от ${name}`, 6000);
+      W.NotificationSystem?.info?.(`💬 ${name}: новое сообщение`, 5000);
       continue;
     }
 
