@@ -376,3 +376,40 @@ test('E2EE device key is non-extractable and AES payload roundtrip works',async(
   expect(result.envelopes).toBe(2);
   expect(result.hasPlaintext).toBeFalsy();
 });
+test('Friends navigation and encrypted push click never interrupt playback', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+  await page.locator('#track-list .track').first().click();
+
+  const before = await page.evaluate(() => ({
+    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
+    playing: !!window.playerCore?.isPlaying?.()
+  }));
+
+  await page.locator('[data-album="__friends__"]').click();
+  await expect.poll(() => page.evaluate(() =>
+    window.AlbumsManager?.getCurrentAlbum?.()
+  )).toBe('__friends__');
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new MessageEvent('message', {
+      data: {
+        type: 'PUSH_NOTIFICATION_CLICK',
+        kind: 'VOICE_CALL',
+        fromFriendId: 'ya_e2e_friend',
+        callId: 'voice_e2e',
+        url: './?openFriends=1&voiceWith=ya_e2e_friend'
+      }
+    }));
+  });
+
+  await page.waitForTimeout(250);
+
+  const after = await page.evaluate(() => ({
+    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
+    playing: !!window.playerCore?.isPlaying?.()
+  }));
+
+  expect(after.uid).toBe(before.uid);
+  expect(after.playing).toBeTruthy();
+});
