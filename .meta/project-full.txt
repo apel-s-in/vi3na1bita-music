@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 20:37:18 UTC
+Сгенерировано: 2026-07-20 20:40:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5717,10 +5717,46 @@ W.GalleryManager = new GalleryManager(); export default W.GalleryManager;
 // UID.082_(Local truth vs external telemetry split)_(iframe получает только safe snapshot)_(OAuth token/raw event log/localStorage не передаются)
 // UID.094_(No-paralysis rule)_(ошибка iframe не ломает приложение)_(bridge можно уничтожить без влияния на музыку)
 // UID.095_(Ownership boundary)_(parent остаётся владельцем профиля/stat/auth/backup/player)_(game-app только читает snapshot)
-
+import { requestSocialAction } from '../../core/social-session.js';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+const GAME_SIGNALING_ACTIONS = new Set([
+  'player_register',
+  'presence_heartbeat',
+  'friend_status_check',
+  'presence_batch',
+  'friend_list',
+  'profile_get',
+  'rtc_config',
+  'room_create',
+  'room_join',
+  'room_get',
+  'room_close',
+  'room_set_mode',
+  'signal_send',
+  'signal_poll',
+  'signal_ack',
+  'push_send',
+  'nearby_game_create',
+  'nearby_game_join',
+  'lan_code_register',
+  'lan_code_resolve',
+  'leaderboard_get'
+]);
+
+const normalizeRpcPayload = payload => {
+  const data = payload && typeof payload === 'object'
+    ? payload
+    : {};
+
+  const text = JSON.stringify(data);
+  if (text.length > 65536) {
+    throw new Error('game_rpc_payload_too_large');
+  }
+
+  return JSON.parse(text);
+};
 
 const buildSnapshot = ({ config = {} } = {}) => {
   const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
@@ -5782,11 +5818,48 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   };
 
   const sendSnapshot = () => send('GC_SNAPSHOT', buildSnapshot({ config }));
+  const handleSignalingRequest = async payload => {
+    const requestId = safe(payload?.requestId);
+    const action = safe(payload?.action);
+
+    if (!requestId || !GAME_SIGNALING_ACTIONS.has(action)) {
+      send('GC_SIGNALING_RESPONSE', {
+        requestId,
+        ok: false,
+        status: 403,
+        error: 'game_rpc_action_forbidden'
+      });
+      return;
+    }
+
+    try {
+      const data = normalizeRpcPayload(payload?.data);
+      const result = await requestSocialAction(action, data);
+
+      send('GC_SIGNALING_RESPONSE', {
+        requestId,
+        ok: true,
+        status: 200,
+        result
+      });
+    } catch (error) {
+      send('GC_SIGNALING_RESPONSE', {
+        requestId,
+        ok: false,
+        status: Number(error?.status || 500),
+        error: safe(error?.message || 'game_rpc_failed')
+      });
+    }
+  };
 
   const onMessage = e => {
     if (!alive || e.source !== iframe?.contentWindow) return;
     const d = e.data || {};
     if (d.kind !== 'vitrina:game' || d.bridgeId !== bridgeId) return;
+        if (d.type === 'GC_SIGNALING_REQUEST') {
+      handleSignalingRequest(d.payload || {});
+      return;
+    }
     if (d.type === 'GC_READY' || d.type === 'GC_REQUEST_SNAPSHOT') sendSnapshot();
 
     if (d.type === 'GC_AUTH_LOGIN') {
@@ -5840,13 +5913,26 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
 
       const pc = W.playerCore;
       const am = W.AlbumsManager;
-      if (pc && am) {
+      const targetAlbum = safe(d.payload?.targetAlbum);
+
+      if (am && targetAlbum === '__friends__') {
+        am.loadAlbum(
+          W.APP_CONFIG?.SPECIAL_FRIENDS_KEY ||
+          '__friends__'
+        );
+      } else if (pc && am) {
         const track = pc.getCurrentTrack();
-        if (track && track.sourceAlbum) {
+
+        if (track?.sourceAlbum) {
           am.loadAlbum(track.sourceAlbum).then(() => {
             setTimeout(() => {
-              const el = document.querySelector(`.track[data-uid="${CSS.escape(track.uid)}"]`);
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              const el = document.querySelector(
+                `.track[data-uid="${CSS.escape(track.uid)}"]`
+              );
+              el?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+              });
             }, 300);
           });
         }
