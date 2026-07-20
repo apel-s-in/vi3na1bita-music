@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 22:59:31 UTC
+Сгенерировано: 2026-07-20 23:12:04 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8847,6 +8847,12 @@ const musicRoot = path.resolve(args['music-root'] || process.cwd());
 const friendsRoot = args['friends-root']
   ? path.resolve(args['friends-root'])
   : null;
+const gamesRoot = args['games-root']
+  ? path.resolve(args['games-root'])
+  : null;
+const warHeartsRoot = args['war-hearts-root']
+  ? path.resolve(args['war-hearts-root'])
+  : null;
 const manifestPath = path.join(musicRoot, '.release/version.json');
 const checkOnly = args.check === true || args.check === 'true';
 
@@ -8879,7 +8885,18 @@ const buildDate = String(
   args.date ||
   (checkOnly ? currentManifest.buildDate : new Date().toISOString().slice(0, 10))
 ).trim();
-const friendsBuild = String(args['friends-build'] || version).trim();
+const friendsBuild = String(
+  args['friends-build'] ||
+  version
+).trim();
+const gamesBuild = String(
+  args['games-build'] ||
+  version
+).trim();
+const warHeartsBuild = String(
+  args['war-hearts-build'] ||
+  version
+).trim();
 
 if (!/^\d+\.\d+\.\d+$/.test(version)) {
   fail(`Версия должна иметь формат X.Y.Z, получено: ${version}`);
@@ -8889,9 +8906,17 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(buildDate)) {
   fail(`Дата должна иметь формат YYYY-MM-DD, получено: ${buildDate}`);
 }
 
-if (!/^\d+\.\d+\.\d+$/.test(friendsBuild)) {
-  fail(`Friends build должен иметь формат X.Y.Z, получено: ${friendsBuild}`);
-}
+[
+  ['Friends', friendsBuild],
+  ['Games', gamesBuild],
+  ['War Hearts', warHeartsBuild]
+].forEach(([label, value]) => {
+  if (!/^\d+\.\d+\.\d+$/.test(value)) {
+    fail(
+      `${label} build должен иметь формат X.Y.Z, получено: ${value}`
+    );
+  }
+});
 
 const replaceOne = (file, pattern, replacement, label) => {
   const source = read(file);
@@ -8915,8 +8940,24 @@ const replaceOne = (file, pattern, replacement, label) => {
 
 const musicFile = relative => path.join(musicRoot, relative);
 const friendsFile = relative => {
-  if (!friendsRoot) fail(`Для Friends-файла требуется --friends-root`);
+  if (!friendsRoot) {
+    fail('Для Friends-файла требуется --friends-root');
+  }
   return path.join(friendsRoot, relative);
+};
+
+const gamesFile = relative => {
+  if (!gamesRoot) {
+    fail('Для Games-файла требуется --games-root');
+  }
+  return path.join(gamesRoot, relative);
+};
+
+const warHeartsFile = relative => {
+  if (!warHeartsRoot) {
+    fail('Для War Hearts-файла требуется --war-hearts-root');
+  }
+  return path.join(warHeartsRoot, relative);
 };
 
 const updateMusic = () => {
@@ -8960,6 +9001,12 @@ const updateMusic = () => {
     /const FRIENDS_BUILD = '[^']+';/g,
     `const FRIENDS_BUILD = '${friendsBuild}';`,
     'FRIENDS_BUILD'
+  );
+  replaceOne(
+    musicFile('scripts/app/games/bridge-host.js'),
+    /Friends\/embedded-rpc-contract\.js\?v=[^"']+/g,
+    `Friends/embedded-rpc-contract.js?v=${friendsBuild}`,
+    'Music embedded Friends RPC contract'
   );
 };
 
@@ -9023,6 +9070,54 @@ const updateFriends = () => {
 
 updateMusic();
 if (friendsRoot) updateFriends();
+if (gamesRoot) updateGames();
+if (warHeartsRoot) updateWarHearts();
+
+const updateGames = () => {
+  replaceOne(
+    gamesFile('common/friends-embed.js'),
+    /Friends\/embedded-rpc-contract\.js\?v=[^"']+/g,
+    `Friends/embedded-rpc-contract.js?v=${friendsBuild}`,
+    'Games embedded Friends RPC contract'
+  );
+
+  replaceOne(
+    gamesFile('common/friends-embed.js'),
+    /const DEFAULT_BUILD = '[^']+';/g,
+    `const DEFAULT_BUILD = '${friendsBuild}';`,
+    'Games default Friends build'
+  );
+
+  replaceOne(
+    gamesFile('src/app.js'),
+    /common\/friends-embed\.js\?v=[^"']+/g,
+    `common/friends-embed.js?v=${gamesBuild}`,
+    'Games Friends embed module'
+  );
+
+  replaceOne(
+    gamesFile('src/app.js'),
+    /build: '\d+\.\d+\.\d+',/g,
+    `build: '${friendsBuild}',`,
+    'Games embedded Friends UI build'
+  );
+};
+
+const updateWarHearts = () => {
+  replaceOne(
+    warHeartsFile('src/app.js'),
+    /\/Games\/common\/friends-embed\.js\?v=[^"']+/g,
+    `/Games/common/friends-embed.js?v=${gamesBuild}`,
+    'War Hearts Friends embed module'
+  );
+
+  replaceOne(
+    warHeartsFile('src/app.js'),
+    /build: '\d+\.\d+\.\d+',/g,
+    `build: '${friendsBuild}',`,
+    'War Hearts embedded Friends UI build'
+  );
+};
 
 if (!checkOnly) {
   write(
@@ -9030,15 +9125,17 @@ if (!checkOnly) {
     `${JSON.stringify({
       appVersion: version,
       buildDate,
-      friendsBuild
+      friendsBuild,
+      gamesBuild,
+      warHeartsBuild
     }, null, 2)}\n`
   );
 }
 
 console.log(
   checkOnly
-    ? `✅ Версии согласованы: app=${version}, friends=${friendsBuild}, date=${buildDate}`
-    : `✅ Версии обновлены: app=${version}, friends=${friendsBuild}, date=${buildDate}`
+    ? `✅ Версии согласованы: app=${version}, friends=${friendsBuild}, games=${gamesBuild}, warHearts=${warHeartsBuild}, date=${buildDate}`
+    : `✅ Версии обновлены: app=${version}, friends=${friendsBuild}, games=${gamesBuild}, warHearts=${warHeartsBuild}, date=${buildDate}`
 );
 
 //=================================================
