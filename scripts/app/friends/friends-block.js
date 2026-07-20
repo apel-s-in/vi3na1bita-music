@@ -75,7 +75,7 @@ const friendsFeatureCards = () => `
     <div class="friends-feature-card"><span>📞</span><div><b>Голосовые звонки</b><small>Прямое общение через WebRTC прямо в приложении.</small></div></div>
     <div class="friends-feature-card"><span>🔔</span><div><b>Push-уведомления</b><small>Сообщения и звонки не потеряются, даже если приложение свёрнуто.</small></div></div>
     <div class="friends-feature-card"><span>🎮</span><div><b>Игровые приглашения</b><small>Приглашайте друзей в «Войну Сердец» одним нажатием.</small></div></div>
-    <div class="friends-feature-card"><span>🔗</span><div><b>Добавление по ссылке</b><small>Отправьте приглашение через мессенджер, почту или QR-код.</small></div></div>
+    <div class="friends-feature-card"><span>🔗</span><div><b>Добавление по ссылке</b><small>Отправьте защищённое приглашение через мессенджер или почту.</small></div></div>
     <div class="friends-feature-card"><span>📍</span><div><b>Друг рядом</b><small>Добавляйте знакомых коротким временным кодом.</small></div></div>
   </div>
 `;
