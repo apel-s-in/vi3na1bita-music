@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 18:18:58 UTC
+Сгенерировано: 2026-07-20 18:19:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -856,7 +856,6 @@ self.addEventListener('push', e => {
       kind,
       fromFriendId: String(data.fromFriendId || ''),
       gameId: String(data.gameId || ''),
-      roomId: String(data.roomId || ''),
       msgId: String(data.msgId || ''),
       callId: String(data.callId || '')
     },
@@ -902,7 +901,6 @@ self.addEventListener('notificationclick', e => {
         url: targetUrl,
         kind: data.kind || '',
         fromFriendId: data.fromFriendId || '',
-        roomId: data.roomId || '',
         msgId: data.msgId || '',
         callId: data.callId || ''
       });
