@@ -127,7 +127,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] web-push.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
 [/scripts/ci/] generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-manifest.mjs
-[/scripts/core/] bootstrap.js, config.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-verified-disk.js
+[/scripts/core/] bootstrap.js, config.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-verified-disk.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 19:42:27 UTC
+Сгенерировано: 2026-07-20 20:34:51 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8854,6 +8854,177 @@ export default{normalizeDevicePlatform,normalizeDeviceClass,detectBrowserName,de
 const KEY='__favorites_v2__',sUid=v=>String(v||'').trim();
 export class FavoritesManager{constructor(){this._m=new Map();this._s=new Set();try{JSON.parse(localStorage.getItem(KEY)||'[]').forEach(i=>i?.uid&&this._m.set(sUid(i.uid),i));}catch{}}isLiked(u){const i=this._m.get(sUid(u));return!!(i&&!i.inactiveAt&&!i.deletedAt);}getSnapshot(){return Array.from(this._m.values());}readLikedSet(){return new Set([...this._m.values()].filter(i=>!i.inactiveAt&&!i.deletedAt).map(i=>i.uid));}_save(){try{localStorage.setItem(KEY,JSON.stringify(Array.from(this._m.values())));}catch{}}_emit(d){this._s.forEach(c=>{try{c(d);}catch{}});}toggle(uid,{source:s='album',albumKey:aK}={}){const u=sUid(uid);if(!u)return false;const i=this._m.get(u),act=i&&!i.inactiveAt&&!i.deletedAt,n=Date.now();let L=false;if(act){this._m.set(u,{...i,uid:u,inactiveAt:s==='favorites'?n:0,deletedAt:s==='favorites'?0:n,updatedAt:n});}else{this._m.set(u,{uid:u,addedAt:i?.addedAt||n,updatedAt:n,albumKey:aK||i?.albumKey||null,sourceAlbum:aK||i?.albumKey||i?.sourceAlbum||null,inactiveAt:0,deletedAt:0});L=true;}this._save();try{window.eventLogger?.log?.('FAVORITE_CHANGED',u,{liked:L,source:s,albumKey:aK||i?.albumKey||i?.sourceAlbum||null,inactive:!!(!L&&s==='favorites'),deleted:!!(!L&&s!=='favorites')});window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'favorites'}}));}catch{}this._emit({uid:u,liked:L});return L;}remove(uid){const u=sUid(uid),i=this._m.get(u);if(!u||!i)return false;this._m.set(u,{...i,uid:u,inactiveAt:0,deletedAt:Date.now(),updatedAt:Date.now()});this._save();this._emit({uid:u,liked:false,removed:true});try{window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'favorites'}}));}catch{}return true;}purge(uid){const u=sUid(uid);if(!u||!this._m.delete(u))return false;this._save();this._emit({uid:u,liked:false,purged:true});try{window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'favorites'}}));}catch{}return true;}subscribe(c){this._s.add(c);return()=>this._s.delete(c);}}
 export const Favorites=new FavoritesManager();window.FavoritesManager=Favorites;
+
+//=================================================
+// FILE: /scripts/core/social-session.js
+// Общая signed social session для Friends и Game Center.
+// OAuth остаётся только в основном приложении и никогда не передаётся iframe.
+
+const SIGNALING_URL =
+  'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
+
+let cachedSession = null;
+let pendingSession = null;
+
+const safe = value => String(value == null ? '' : value).trim();
+
+const readProfile = () => {
+  const auth = window.YandexAuth;
+  const active =
+    auth?.getSessionStatus?.() === 'active' &&
+    auth?.isTokenAlive?.();
+
+  const profile = active
+    ? auth?.getProfile?.() || null
+    : null;
+
+  return {
+    active: !!active,
+    displayName: safe(
+      profile?.displayName ||
+      profile?.realName ||
+      profile?.login ||
+      'Слушатель'
+    ),
+    avatar: safe(profile?.avatar || '')
+  };
+};
+
+const readJson = async response => {
+  const text = await response.text();
+  try {
+    return JSON.parse(text || '{}') || {};
+  } catch {
+    return {};
+  }
+};
+
+export const invalidateSocialSession = () => {
+  cachedSession = null;
+  pendingSession = null;
+};
+
+export const getSocialSession = async ({ force = false } = {}) => {
+  const auth = window.YandexAuth;
+  const token = auth?.getToken?.();
+
+  if (!token || !auth?.isTokenAlive?.()) {
+    invalidateSocialSession();
+    throw new Error('yandex_oauth_required');
+  }
+
+  if (
+    !force &&
+    cachedSession?.socialSession &&
+    Number(cachedSession.expiresAt || 0) > Date.now() + 120000
+  ) {
+    return cachedSession;
+  }
+
+  if (!force && pendingSession) return pendingSession;
+
+  pendingSession = (async () => {
+    const profile = readProfile();
+    const response = await fetch(SIGNALING_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Yandex-OAuth': token
+      },
+      credentials: 'omit',
+      mode: 'cors',
+      body: JSON.stringify({
+        action: 'social_session_issue',
+        displayName: profile.displayName,
+        avatarUrl: profile.avatar
+      })
+    });
+
+    const result = await readJson(response);
+
+    if (
+      !response.ok ||
+      result.ok === false ||
+      !result.socialSession
+    ) {
+      throw new Error(
+        result.error ||
+        result.reason ||
+        'social_session_issue_failed'
+      );
+    }
+
+    cachedSession = result;
+    return result;
+  })();
+
+  try {
+    return await pendingSession;
+  } finally {
+    pendingSession = null;
+  }
+};
+
+export const requestSocialAction = async (
+  action,
+  data = {},
+  { retryAuth = true } = {}
+) => {
+  const session = await getSocialSession();
+
+  const request = async currentSession => {
+    const response = await fetch(SIGNALING_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Vi3-Session': currentSession.socialSession
+      },
+      credentials: 'omit',
+      mode: 'cors',
+      body: JSON.stringify({
+        action: safe(action),
+        ...data
+      })
+    });
+
+    const result = await readJson(response);
+
+    if (!response.ok || result.ok === false) {
+      const error = new Error(
+        result.error ||
+        result.reason ||
+        `http_${response.status}`
+      );
+      error.status = response.status;
+      error.action = action;
+      throw error;
+    }
+
+    return result;
+  };
+
+  try {
+    return await request(session);
+  } catch (error) {
+    if (
+      retryAuth &&
+      Number(error?.status) === 401
+    ) {
+      const renewed = await getSocialSession({ force: true });
+      return request(renewed);
+    }
+
+    throw error;
+  }
+};
+
+export default {
+  getSocialSession,
+  invalidateSocialSession,
+  requestSocialAction
+};
 
 //=================================================
 // FILE: /scripts/core/utils.js
