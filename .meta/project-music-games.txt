@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 22:24:56 UTC
+Сгенерировано: 2026-07-20 22:28:19 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -325,7 +325,7 @@ jobs:
 <link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
 <link rel="stylesheet" href="styles/album-carousel.css"><link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
 <link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/games.css">
-<link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=8.9.2">
+<link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=8.9.3">
 <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -413,7 +413,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.9.2'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-07-20');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '8.9.3'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-07-20');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -425,7 +425,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '8.9.2';
+const SW_VERSION = '8.9.3';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 let isAirplaneMode = false;
 
@@ -2346,7 +2346,7 @@ const W = window;
 const D = document;
 const BASE_FRIENDS =
   'https://vi3na1bita.website.yandexcloud.net/Friends';
-const FRIENDS_BUILD = '8.9.2';
+const FRIENDS_BUILD = '8.9.3';
 const FRIENDS_CORE_URL =
   `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
 const FRIENDS_UI_URL =
@@ -3260,7 +3260,7 @@ export default { syncWebPushSubscription, enableWebPush };
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '8.9.2',
+  APP_VERSION: '8.9.3',
   BUILD_DATE: '2026-07-20',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -3461,22 +3461,6 @@ body.games-view #track-list,body.friends-view #track-list{max-width:395px;width:
 .friends-login-btn{max-width:280px!important;margin:0 auto!important}
 .friends-ya-letter{font-size:20px;line-height:1}
 .friends-login-note{margin-top:9px;color:#7287aa;font-size:10px;line-height:1.35}
-.friends-authorized-guide{padding-bottom:8px}
-.friends-guide-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:14px;background:linear-gradient(135deg,rgba(124,77,255,.13),rgba(77,170,255,.08));border:1px solid rgba(182,168,255,.2)}
-.friends-guide-head div{display:flex;flex-direction:column;min-width:0}
-.friends-guide-head div>span{font-size:13px;font-weight:900;color:#fff}
-.friends-guide-head small{margin-top:3px;color:#9db7dd;font-size:10.5px}
-.friends-guide-status{flex-shrink:0;padding:4px 8px;border-radius:999px;background:rgba(70,230,165,.12);border:1px solid rgba(70,230,165,.28);color:#adffdf;font-size:9px;font-weight:900;text-transform:uppercase}
-.friends-guide-actions{display:grid;grid-template-columns:1.25fr 1.25fr .7fr;gap:6px;margin-top:8px}
-.friends-guide-actions button{min-height:38px;padding:6px;border-radius:11px;border:1px solid rgba(132,145,255,.22);background:rgba(255,255,255,.05);color:#eaf2ff;font-size:10.5px;font-weight:900;cursor:pointer}
-.friends-guide-actions button:first-child{background:linear-gradient(135deg,rgba(255,49,89,.82),rgba(124,77,255,.82));border-color:transparent}
-.friends-guide-details{margin-top:8px;border-radius:13px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.06);overflow:hidden}
-.friends-guide-details summary{padding:10px 12px;cursor:pointer;color:#b6a8ff;font-size:11px;font-weight:900;list-style:none}
-.friends-guide-details summary::-webkit-details-marker{display:none}
-.friends-guide-details summary::after{content:'▼';float:right;font-size:9px;color:#7287aa}
-.friends-guide-details[open] summary::after{transform:rotate(180deg)}
-.friends-guide-details .friends-feature-grid{padding:0 8px 8px;margin:0}
-.friends-guide-tip{margin-top:8px;padding:9px 10px;border-radius:11px;background:rgba(36,232,255,.055);border:1px solid rgba(36,232,255,.13);color:#9db7dd;font-size:10.5px;line-height:1.4}
 body.games-view #active-album-title.active-album-title.games{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#8ab8fd!important;letter-spacing:.05em;text-align:center}
 body.friends-view #active-album-title.active-album-title.friends{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#b6a8ff!important;letter-spacing:.05em;text-align:center}
 .gc-host{width:100%;margin:0 auto 32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:fadeInUp .25s ease-out}
