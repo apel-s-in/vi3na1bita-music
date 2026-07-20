@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 19:32:42 UTC
+Сгенерировано: 2026-07-20 19:36:28 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -312,6 +312,7 @@ jobs:
 // FILE: /index.html
 <!DOCTYPE html><html lang="ru"><head>
 <meta charset="UTF-8"><title>Витрина Разбита</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://vi3na1bita.website.yandexcloud.net; style-src 'self' 'unsafe-inline' https://vi3na1bita.website.yandexcloud.net; img-src 'self' data: blob: https://storage.yandexcloud.net https://apel-s-in.github.io https://avatars.yandex.net https://vi3na1bita.website.yandexcloud.net; media-src 'self' blob: https://storage.yandexcloud.net https://apel-s-in.github.io; connect-src 'self' https://functions.yandexcloud.net https://login.yandex.ru https://cloud-api.yandex.net https://storage.yandexcloud.net https://apel-s-in.github.io https://vi3na1bita.website.yandexcloud.net; frame-src 'self' https://vi3na1bita.website.yandexcloud.net; worker-src 'self'; manifest-src 'self'; font-src 'self' data:; form-action 'self'; upgrade-insecure-requests">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#181818">
