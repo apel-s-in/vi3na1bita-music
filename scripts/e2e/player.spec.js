@@ -443,3 +443,48 @@ test('Friends client exposes only E2EE V2 chat transport', async ({ page }) => {
     hasLegacySecret: false
   });
 });
+test('Game Center Friends RPC never receives social session or playback access', async ({ page }) => {
+  await loginByPromo(page);
+
+  const source = await page.evaluate(async () =>
+    fetch('./scripts/app/games/bridge-host.js')
+      .then(response => response.text())
+  );
+
+  expect(source).toContain('GC_FRIENDS_REQUEST');
+  expect(source).toContain('FRIENDS_RPC_METHODS');
+  expect(source).not.toMatch(
+    /playerCore\?\.(play|pause|stop|setVolume|setMuted|seek|next|prev)/
+  );
+  expect(source).not.toMatch(
+    /socialSession\s*[:,]|X-Yandex-OAuth/
+  );
+});
+
+test('opening embedded Friends request does not stop current track', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', {
+    timeout: 10000
+  });
+
+  await page.locator('#track-list .track').first().click();
+
+  const before = await page.evaluate(() => ({
+    uid: String(
+      window.playerCore?.getCurrentTrackUid?.() || ''
+    ),
+    playing: !!window.playerCore?.isPlaying?.()
+  }));
+
+  await page.locator('[data-album="__games__"]').click();
+
+  const after = await page.evaluate(() => ({
+    uid: String(
+      window.playerCore?.getCurrentTrackUid?.() || ''
+    ),
+    playing: !!window.playerCore?.isPlaying?.()
+  }));
+
+  expect(after.uid).toBe(before.uid);
+  expect(after.playing).toBeTruthy();
+});
