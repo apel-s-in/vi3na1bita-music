@@ -163,44 +163,11 @@ const renderAuthorizedExperience = () => {
   _container.classList.remove('is-unauth');
   _container.querySelector('.custom-ya-unauth')?.remove();
 
-  let guide = _container.querySelector('.friends-authorized-guide');
-  if (!guide) {
-    guide = D.createElement('section');
-    guide.className = 'friends-authorized-guide';
-    _container.prepend(guide);
-  }
-
-  guide.innerHTML = `
-    <div class="friends-guide-head">
-      <div>
-        <span>👋 Вы в разделе друзей</span>
-        <small>Добавьте знакомого и начните общение.</small>
-      </div>
-      <span class="friends-guide-status">онлайн</span>
-    </div>
-    <div class="friends-guide-actions">
-      <button type="button" data-friends-add>➕ Добавить друга</button>
-      <button type="button" data-friends-notify>🔔 Уведомления</button>
-      <button type="button" data-friends-refresh>↻ Обновить</button>
-    </div>
-    <details class="friends-guide-details">
-      <summary>✨ Что здесь можно делать</summary>
-      ${friendsFeatureCards()}
-    </details>
-    <div class="friends-guide-tip">💡 Нажмите на друга, чтобы открыть чат, позвонить или пригласить его в игру.</div>
-  `;
-
-  guide.querySelector('[data-friends-add]')?.addEventListener('click', () =>
-    _container.querySelector('.vf-wrap [data-act="add"]')?.click()
-  );
-
-  guide.querySelector('[data-friends-notify]')?.addEventListener('click', () =>
-    enableWebPushFromUi()
-  );
-
-  guide.querySelector('[data-friends-refresh]')?.addEventListener('click', () =>
-    _ui?.refresh?.({ force: true })
-  );
+  // Панель авторизованного Friends теперь принадлежит
+  // каноническому /Friends/friends-ui.js.
+  _container
+    .querySelector(':scope > .friends-authorized-guide')
+    ?.remove();
 };
 
 const loadUnread = () => {
