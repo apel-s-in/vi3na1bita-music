@@ -9,29 +9,40 @@ import {
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
-const GAME_SIGNALING_ACTIONS = new Set([
-  'player_register',
-  'presence_heartbeat',
-  'friend_status_check',
-  'presence_batch',
-  'friend_list',
-  'profile_get',
-  'rtc_config',
-  'room_create',
-  'room_join',
-  'room_get',
-  'room_close',
-  'room_set_mode',
-  'signal_send',
-  'signal_poll',
-  'signal_ack',
-  'push_send',
-  'nearby_game_create',
-  'nearby_game_join',
-  'lan_code_register',
-  'lan_code_resolve',
-  'leaderboard_get'
-]);
+const GAME_SIGNALING_SCOPES = Object.freeze({
+  tower: new Set([
+    'player_register',
+    'presence_heartbeat',
+    'friend_status_check',
+    'presence_batch',
+    'friend_list',
+    'profile_get',
+    'rtc_config',
+    'leaderboard_get'
+  ]),
+  war_hearts: new Set([
+    'player_register',
+    'presence_heartbeat',
+    'friend_status_check',
+    'profile_get',
+    'rtc_config',
+    'room_create',
+    'room_join',
+    'room_join_token_create',
+    'room_join_token_redeem',
+    'room_get',
+    'room_close',
+    'room_set_mode',
+    'signal_send',
+    'signal_poll',
+    'signal_ack',
+    'push_send',
+    'nearby_game_create',
+    'nearby_game_join',
+    'lan_code_register',
+    'lan_code_resolve'
+  ])
+});
 
 const GAME_SAVE_LIMITS = Object.freeze({
   war_hearts: Object.freeze({
@@ -170,7 +181,53 @@ const buildSnapshot = ({ config = {} } = {}) => {
 export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   const bridgeId = crypto.randomUUID();
   const activeFriendsRequests = new Set();
+
+  const capabilities = Object.freeze({
+    tower: crypto.randomUUID(),
+    war_hearts: crypto.randomUUID()
+  });
+
+  const capabilityScopes = new Map([
+    [capabilities.tower, 'tower'],
+    [capabilities.war_hearts, 'war_hearts']
+  ]);
+
   let alive = true;
+
+  const getCapabilityScope = payload =>
+    capabilityScopes.get(
+      safe(payload?.capabilityToken)
+    ) || '';
+
+  const requireCapability = (
+    payload,
+    allowedScopes
+  ) => {
+    const scope = getCapabilityScope(payload);
+
+    if (
+      !scope ||
+      !allowedScopes.includes(scope)
+    ) {
+      const error = new Error('game_capability_forbidden');
+      error.status = 403;
+      throw error;
+    }
+
+    return scope;
+  };
+
+  const makeInitPayload = (extra = {}) => ({
+    bridgeId,
+    snapshot: buildSnapshot({ config }),
+    capabilities: {
+      tower: capabilities.tower,
+      games: {
+        war_hearts: capabilities.war_hearts
+      }
+    },
+    ...extra
+  });
 
   const send = (type, payload = {}) => {
     if (!alive || !iframe?.contentWindow) return false;
@@ -185,8 +242,13 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     const requestId = safe(payload?.requestId);
     const method = safe(payload?.method);
     const descriptor = getEmbeddedFriendsRpcMethod(method);
+    const capabilityScope = getCapabilityScope(payload);
 
-    if (!requestId || !descriptor) {
+    if (
+      !requestId ||
+      !descriptor ||
+      !['tower', 'war_hearts'].includes(capabilityScope)
+    ) {
       send('GC_FRIENDS_RESPONSE', {
         requestId,
         ok: false,
@@ -293,8 +355,13 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   const handleSignalingRequest = async payload => {
     const requestId = safe(payload?.requestId);
     const action = safe(payload?.action);
+    const scope = getCapabilityScope(payload);
+    const allowed = GAME_SIGNALING_SCOPES[scope];
 
-    if (!requestId || !GAME_SIGNALING_ACTIONS.has(action)) {
+    if (
+      !requestId ||
+      !allowed?.has(action)
+    ) {
       send('GC_SIGNALING_RESPONSE', {
         requestId,
         ok: false,
@@ -348,6 +415,11 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
 
     if (d.type === 'GC_SAVE_DATA') {
       try {
+        requireCapability(
+          d.payload,
+          ['war_hearts']
+        );
+
         const save = validateGameSave(d.payload);
         const gcId =
           localStorage.getItem('intel:internal-user-id') ||
@@ -480,13 +552,23 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
           };
 
           // Re-handshake: если Safari/iOS выгрузил JS-state Башни, она заново получит bridgeId и gameId.
-          post('GC_INIT', { bridgeId, snapshot: buildSnapshot({ config }) });
-          post('GC_RESTORE_GAME', { gameId, at: Date.now() });
+          post('GC_INIT', makeInitPayload({
+            gameId
+          }));
+          post('GC_RESTORE_GAME', {
+            gameId,
+            at: Date.now()
+          });
           post('GC_SNAPSHOT', buildSnapshot({ config }));
 
           setTimeout(() => {
-            post('GC_INIT', { bridgeId, snapshot: buildSnapshot({ config }) });
-            post('GC_RESTORE_GAME', { gameId, at: Date.now() });
+            post('GC_INIT', makeInitPayload({
+              gameId
+            }));
+            post('GC_RESTORE_GAME', {
+              gameId,
+              at: Date.now()
+            });
             post('GC_SNAPSHOT', buildSnapshot({ config }));
           }, 160);
         };
@@ -532,7 +614,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.addEventListener(x, onHostUpdate));
 
   iframe.addEventListener('load', () => {
-    send('GC_INIT', { bridgeId, snapshot: buildSnapshot({ config }) });
+    send('GC_INIT', makeInitPayload());
     sendSnapshot();
   }, { once: true });
 
