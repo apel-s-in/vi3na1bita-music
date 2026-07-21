@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 15:14:22 UTC
+Сгенерировано: 2026-07-21 15:14:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8110,7 +8110,7 @@ export const openRestorePreviewModal = (d, oC) => {
   const m = window.Modals?.open?.({
     title: 'Предпросмотр восстановления',
     maxWidth: 420,
-    bodyHtml: `${renderStatusPill({ text: c.state || 'compare', tone: c.state === 'conflict' ? 'warn' : 'info' })}<div class="modal-confirm-text" style="font-size:13px;margin-top:10px"><b>Дата backup:</b> ${fmtDateTime(s.timestamp)}<br><b>Версия приложения:</b> ${esc(s.appVersion)}<br><b>Событий:</b> ${esc(s.eventCount || 0)}<br>${tH}<span style="color:#9db7dd">Сравнение: ${esc(cL)}. Restore объединяет данные через event log и безопасный merge.</span></div><div id="manual-restore-diff">${renderRestoreDiffHtml({ backup: d, localSummary: lI, cloudSummary: s })}</div>${renderModalNote('<b>Выберите режим восстановления:</b>', { style: 'font-size:13px' })}${renderActionGrid([{ text:'Восстановить всё', primary:true, attrs:'data-restore-mode="all"' }, { text:'Профиль, избранное, плейлисты', attrs:'data-restore-mode="profile"' }, { text:'Статистику и достижения', attrs:'data-restore-mode="stats"' }])}`
+    bodyHtml: `${renderStatusPill({ text: c.state || 'compare', tone: c.state === 'conflict' ? 'warn' : 'info' })}<div class="modal-confirm-text" style="font-size:13px;margin-top:10px"><b>Дата backup:</b> ${fmtDateTime(s.timestamp)}<br><b>Версия приложения:</b> ${esc(s.appVersion)}<br><b>Событий:</b> ${esc(s.eventCount || 0)}<br>${tH}<span style="color:#9db7dd">Сравнение: ${esc(cL)}. Restore объединяет данные через event log и безопасный merge.</span></div><div id="manual-restore-diff">${renderRestoreDiffHtml({ backup: d, localSummary: lI, cloudSummary: s })}</div>${renderModalNote({ html: '<b>Выберите режим восстановления:</b>', style: 'font-size:13px' })}${renderActionGrid([{ text:'Восстановить всё', primary:true, attrs:'data-restore-mode="all"' }, { text:'Профиль, избранное, плейлисты', attrs:'data-restore-mode="profile"' }, { text:'Статистику и достижения', attrs:'data-restore-mode="stats"' }])}`
   });
   if (!m) return;
   compareBackupBranches({ backup: d }).then(br => {
