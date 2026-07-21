@@ -34,6 +34,8 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'room_close',
     'room_set_mode',
     'ranked_match_prepare',
+    'ranked_rps_commit',
+    'ranked_rps_reveal',
     'ranked_match_submit',
     'ranked_match_status',
     'ranked_match_abort',
