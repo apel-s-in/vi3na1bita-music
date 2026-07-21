@@ -44,7 +44,8 @@ jobs:
           grep -q "prepareRankedMatch" war_hearts/src/game/ranked-v2.js
           grep -q "waitForRankedSettlement" war_hearts/src/game/ranked-v2.js
           grep -q "crypto.randomUUID" war_hearts/src/game/network-combat.js
-          grep -q "serverStatus !== 'settled'" war_hearts/src/game/match-persistence.js
+          grep -q "isRankedTerminal" war_hearts/src/game/match-persistence.js
+          grep -q "isRankedEconomyFinal" war_hearts/src/game/match-persistence.js
           grep -q "ranked_match_prepare" games/common/network-bridge.js
           grep -q "ranked_stake_prepare" games/common/network-bridge.js
           grep -q "ranked_rps_commit" games/common/network-bridge.js
