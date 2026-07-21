@@ -89,6 +89,7 @@ jobs:
           node --input-type=module --check < friends/voice-call-ui.js
           node --input-type=module --check < friends/games-registry.js
           node --input-type=module --check < friends/embedded-rpc-contract.js
+          node --input-type=module --check < friends/modal-adapter.js
           node --check games/src/app.js
           node --input-type=module --check < games/common/friends-embed.js
           node --input-type=module --check < games/common/network-bridge.js
@@ -107,7 +108,10 @@ jobs:
             friends-core.js \
             friends-ui.js \
             chat-text-ui.js \
-            embedded-rpc-contract.js
+            voice-call-ui.js \
+            crypto-devices-ui.js \
+            embedded-rpc-contract.js \
+            modal-adapter.js
 
           if git diff --cached --quiet; then
             echo "Friends repository already synchronized"
