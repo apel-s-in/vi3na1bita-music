@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 10:15:58 UTC
+Сгенерировано: 2026-07-21 11:08:59 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5831,7 +5831,7 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'friend_list',
     'profile_get',
     'rtc_config',
-    'leaderboard_get'
+    'leaderboard_v2_get'
   ]),
   war_hearts: new Set([
     'player_register',
@@ -5846,6 +5846,10 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'room_get',
     'room_close',
     'room_set_mode',
+    'ranked_match_prepare',
+    'ranked_match_submit',
+    'ranked_match_status',
+    'leaderboard_v2_get',
     'signal_send',
     'signal_poll',
     'signal_ack',
