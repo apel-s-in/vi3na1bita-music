@@ -235,11 +235,6 @@ const updateFriends = () => {
   );
 };
 
-updateMusic();
-if (friendsRoot) updateFriends();
-if (gamesRoot) updateGames();
-if (warHeartsRoot) updateWarHearts();
-
 const updateGames = () => {
   replaceOne(
     gamesFile('common/friends-embed.js'),
@@ -285,6 +280,20 @@ const updateWarHearts = () => {
     'War Hearts embedded Friends UI build'
   );
 };
+
+updateMusic();
+
+if (friendsRoot) {
+  updateFriends();
+}
+
+if (gamesRoot) {
+  updateGames();
+}
+
+if (warHeartsRoot) {
+  updateWarHearts();
+}
 
 if (!checkOnly) {
   write(
