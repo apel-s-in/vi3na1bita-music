@@ -24,12 +24,12 @@ const renderAuthHistory = d => {
 const openDeviceModal = async ({ stableId = '', rerender } = {}) => {
   const all = rows(), d = all.find(x => x.deviceStableId === stableId || x.deviceHash === stableId) || all[0];
   if (!d || !window.Modals?.open) return;
-  let deviceMetaHtml = renderModalNote('Device-settings в облаке: проверяется при необходимости', { tone: 'muted', style: 'margin:0' });
+  let deviceMetaHtml = renderModalNote({ text: 'Device-settings в облаке: проверяется при необходимости', tone: 'muted', style: 'margin:0' });
   try {
     const ya = window.YandexAuth, disk = window.YandexDisk, t = ya?.getToken?.();
     if (t && ya?.isTokenAlive?.() && d.deviceStableId) {
       const idx = disk?.getDeviceSettingsIndex ? await disk.getDeviceSettingsIndex(t).catch(() => null) : null, fromIdx = (idx?.items || []).find(x => String(x?.deviceStableId || '') === String(d.deviceStableId)), m = fromIdx || (disk?.getDeviceSettingsMeta ? await disk.getDeviceSettingsMeta(t, d.deviceStableId).catch(() => null) : null);
-      deviceMetaHtml = renderModalNote(`Device-settings в облаке: ${m ? `${renderStatusPill({ text:'есть', tone:'ok' })} · ${fmt(m.timestamp)}${m.keysCount ? ` · ключей: <b>${m.keysCount}</b>` : ''}` : renderStatusPill({ text:'не найдено', tone:'muted' })}`, { style: 'margin:0' });
+      deviceMetaHtml = renderModalNote({ html: `Device-settings в облаке: ${m ? `${renderStatusPill({ text:'есть', tone:'ok' })} · ${fmt(m.timestamp)}${m.keysCount ? ` · ключей: <b>${m.keysCount}</b>` : ''}` : renderStatusPill({ text:'не найдено', tone:'muted' })}`, style: 'margin:0' });
     }
   } catch {}
 
