@@ -99,7 +99,7 @@
 .om-track-list::-webkit-scrollbar{width:4px}
 .om-track-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
 .om-list-empty{text-align:center;padding:20px 12px;font-size:13px;color:rgba(255,255,255,.35)}
-.om-list-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;transition:background .12s;transition:opacity .2s,transform .2s}
+.om-list-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;transition:background .12s,opacity .2s,transform .2s}
 .om-list-item:hover{background:rgba(255,255,255,.04)}
 .om-list-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
 .om-list-title{flex:1;font-size:13px;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
