@@ -14,6 +14,15 @@ jobs:
       - run: node scripts/ci/lint-sw.mjs
       - run: node scripts/ci/validate-content.mjs
       - run: node scripts/ci/sync-version.mjs --check --music-root=.
+
+      - name: Reject native dialogs
+        run: |
+          if grep -REn "\b(confirm|alert|prompt)\s*\(" \
+            scripts/app/player-ui.js \
+            scripts/ui/offline-modal.js; then
+            echo "Native dialog found"
+            exit 2
+          fi
   remote-validate:
     name: Remote content validate (informational)
     runs-on: ubuntu-latest
