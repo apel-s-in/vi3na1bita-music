@@ -1,5 +1,7 @@
 {
-  "appVersion": "8.9.3",
-  "buildDate": "2026-07-20",
-  "friendsBuild": "8.9.3"
+  "appVersion": "8.9.4",
+  "buildDate": "2026-07-21",
+  "friendsBuild": "8.9.4",
+  "gamesBuild": "8.9.4",
+  "warHeartsBuild": "8.9.4"
 }
