@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 08:14:27 UTC
+Сгенерировано: 2026-07-21 08:17:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -10200,6 +10200,7 @@ test('Game Center Friends RPC never receives social session or playback access',
 
   expect(source).toContain('GC_FRIENDS_REQUEST');
   expect(source).toContain('getEmbeddedFriendsRpcMethod');
+  expect(source).toContain('embedded-rpc-contract.js?v=');
   expect(source).not.toContain('FRIENDS_RPC_METHODS');
   expect(source).not.toMatch(
     /playerCore\?\.(play|pause|stop|setVolume|setMuted|seek|next|prev)/
