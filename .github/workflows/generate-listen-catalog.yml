@@ -1,0 +1,43 @@
+name: Generate listening track catalog
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ffprobe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Generate exact media catalog
+        run: node scripts/ci/generate-listen-catalog.mjs
+
+      - name: Validate generated catalog
+        run: |
+          test -s data/listen-track-catalog.json
+          test -s data/listen-track-catalog.env.json
+          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('data/listen-track-catalog.env.json','utf8'));if(!Object.keys(x).length)process.exit(2);console.log('tracks:',Object.keys(x).length)"
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "CI: update listening track catalog"
+          branch: ${{ github.ref_name }}
+          file_pattern: "data/listen-track-catalog.json data/listen-track-catalog.env.json"
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
