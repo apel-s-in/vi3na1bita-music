@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 15:00:14 UTC
+Сгенерировано: 2026-07-21 15:07:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7322,7 +7322,7 @@ import { createTrashActionHandlers } from './actions-trash.js';
 import { createResetActionHandlers } from './actions-reset.js';
 import { bindTabStripPhysics } from './tab-strip-physics.js';
 
-export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, tokens: tk, reloadProfile: rP }) => {
+export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, reloadProfile: rP }) => {
   if (!c || ctx._pB) return;
   ctx._pB = true; bindTabStripPhysics(c);
 
@@ -7824,7 +7824,7 @@ export default { renderProfileLogs };
 // FILE: /scripts/app/profile/model.js
 // UID.044_(ListenerProfile core)_(profile model должен стать местом мягкой сборки user portrait)_(future сюда можно подмешивать listener profile summary без ломки legacy stats model) UID.070_(Linked providers)_(model должен уметь принимать provider identity snapshot)_(но truth linked accounts хранится не здесь, а в intel/providers/provider-identity.js) UID.072_(Provider consents)_(model сможет отдавать consent snapshot для profile UI)_(но хранение consent state вынесено в intel/providers/provider-consents.js) UID.073_(Hybrid sync orchestrator)_(model должен принять sync state как optional extension)_(но orchestration logic не должна появляться в этом файле) UID.094_(No-paralysis rule)_(legacy profile model остаётся валидным fallback)_(если intel слой недоступен, этот model продолжает работать сам)
 import { getStatsSummary } from '../../analytics/stats-state.js';
-export const loadProfileModel = async () => { let d=null, al=[], ac={}, s=0, p={name:'Слушатель',avatar:'😎'}; try { const m=await import('../../analytics/meta-db.js'); d=m.metaDB; const [rs,ra,rsd,rpd]=await Promise.all([d.getAllStats().catch(()=>[]), d.getGlobal('unlocked_achievements').catch(()=>null), d.getGlobal('global_streak').catch(()=>null), d.getGlobal('user_profile').catch(()=>null)]); al=rs||[]; ac=ra?.value||{}; s=rsd?.value?.current||0; p=rpd?.value||p; } catch(e){} const sum=getStatsSummary(al); return { metaDB:d, all:al, ach:ac, streak:s, profile:p, totalFull:sum.totalFull, totalSec:sum.totalSec, tokens:{} }; };
+export const loadProfileModel = async () => { let d=null, al=[], ac={}, s=0, p={name:'Слушатель',avatar:'😎'}; try { const m=await import('../../analytics/meta-db.js'); d=m.metaDB; const [rs,ra,rsd,rpd]=await Promise.all([d.getAllStats().catch(()=>[]), d.getGlobal('unlocked_achievements').catch(()=>null), d.getGlobal('global_streak').catch(()=>null), d.getGlobal('user_profile').catch(()=>null)]); al=rs||[]; ac=ra?.value||{}; s=rsd?.value?.current||0; p=rpd?.value||p; } catch(e){} const sum=getStatsSummary(al); return { metaDB:d, all:al, ach:ac, streak:s, profile:p, totalFull:sum.totalFull, totalSec:sum.totalSec }; };
 export default { loadProfileModel };
 
 //=================================================
