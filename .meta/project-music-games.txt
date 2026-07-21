@@ -148,7 +148,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 15:14:57 UTC
+Сгенерировано: 2026-07-21 15:16:39 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1614,6 +1614,35 @@ const fallbackConfig = {
   bridgeVersion: 1
 };
 
+const GAME_URL_PARAMS = Object.freeze([
+  'gcGame',
+  'game',
+  'inviteFriend',
+  'join',
+  'room',
+  'key',
+  'secret'
+]);
+
+const clearGameUrlParams = ({
+  replace = true
+} = {}) => {
+  const url = new URL(W.location.href);
+  let changed = false;
+
+  GAME_URL_PARAMS.forEach(key => {
+    if (!url.searchParams.has(key)) return;
+    url.searchParams.delete(key);
+    changed = true;
+  });
+
+  if (changed && replace) {
+    W.history.replaceState(null, '', url.toString());
+  }
+
+  return changed;
+};
+
 const loadConfig = async () => {
   try {
     const m = await import(`./config.js?gc-hard=${Date.now()}`);
@@ -1702,15 +1731,7 @@ const makeRoomUrl = cfg => {
     const frameWrap = container.querySelector('#gc-frame-wrap');
 
     declineBtn?.addEventListener('click', () => {
-      const url = new URL(W.location.href);
-      url.searchParams.delete('gcGame');
-      url.searchParams.delete('game');
-      url.searchParams.delete('room');
-      url.searchParams.delete('key');
-      url.searchParams.delete('secret');
-      url.searchParams.delete('inviteFriend');
-      url.searchParams.delete('join');
-      W.history.replaceState(null, '', url.toString());
+      clearGameUrlParams();
       renderGameCenterHost({ container });
     });
 
@@ -1740,11 +1761,9 @@ const makeRoomUrl = cfg => {
       const iframe = frameWrap.querySelector('iframe');
 
       // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
-      const u = new URL(W.location.href);
-      ['gcGame', 'game', 'inviteFriend', 'join', 'room', 'key', 'secret'].forEach(k => {
-        if (u.searchParams.has(k)) u.searchParams.delete(k);
-      });
-      if (invite.hasInvite || invite.isSendingInvite) W.history.replaceState(null, '', u.toString());
+      if (invite.hasInvite || invite.isSendingInvite) {
+        clearGameUrlParams();
+      }
 
       iframe?.addEventListener('load', () => {
         frameWrap.querySelector('.gc-launch-cover')?.remove();
@@ -1757,9 +1776,7 @@ const makeRoomUrl = cfg => {
       onState: st => {
         if (st?.state === 'closed_by_game') {
           try {
-            const u = new URL(W.location.href);
-            ['gcGame', 'game', 'inviteFriend', 'join', 'room', 'key', 'secret'].forEach(k => u.searchParams.delete(k));
-            W.history.replaceState(null, '', u.toString());
+            clearGameUrlParams();
           } catch {}
 
           try {
