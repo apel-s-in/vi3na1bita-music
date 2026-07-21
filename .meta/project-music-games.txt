@@ -148,7 +148,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 14:18:22 UTC
+Сгенерировано: 2026-07-21 14:18:58 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -325,7 +325,7 @@ jobs:
 <link rel="preload" href="img/logo.png" as="image">
 <link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
 <link rel="stylesheet" href="styles/album-carousel.css"><link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
-<link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/games.css">
+<link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/shards.css"><link rel="stylesheet" href="styles/games.css">
 <link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=8.9.6">
 <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
