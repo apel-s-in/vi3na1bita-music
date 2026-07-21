@@ -18,7 +18,7 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'friend_list',
     'profile_get',
     'rtc_config',
-    'leaderboard_get'
+    'leaderboard_v2_get'
   ]),
   war_hearts: new Set([
     'player_register',
@@ -33,6 +33,10 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'room_get',
     'room_close',
     'room_set_mode',
+    'ranked_match_prepare',
+    'ranked_match_submit',
+    'ranked_match_status',
+    'leaderboard_v2_get',
     'signal_send',
     'signal_poll',
     'signal_ack',
