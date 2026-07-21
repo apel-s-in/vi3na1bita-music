@@ -23,8 +23,14 @@ const resolveIconSources = ({ icon, mobile, logo }) => {
 
 export const getRenderableAlbumIcons = ({ config = {}, albumsIndex = [] } = {}) => {
   const albumKeys = new Set((Array.isArray(albumsIndex) ? albumsIndex : []).map(item => String(item?.key || '')));
+  const authorized =
+    window.YandexAuth?.getSessionStatus?.() === 'active' &&
+    window.YandexAuth?.isTokenAlive?.();
+
   const items = (config.ICON_ALBUMS_ORDER || []).filter(item =>
-    item?.key && (isSpecialKey(item.key) || albumKeys.has(String(item.key)))
+    item?.key &&
+    (!item.authOnly || authorized) &&
+    (isSpecialKey(item.key) || albumKeys.has(String(item.key)))
   );
 
   return {
