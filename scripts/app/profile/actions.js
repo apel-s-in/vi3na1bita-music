@@ -4,7 +4,7 @@ import { createTrashActionHandlers } from './actions-trash.js';
 import { createResetActionHandlers } from './actions-reset.js';
 import { bindTabStripPhysics } from './tab-strip-physics.js';
 
-export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, tokens: tk, reloadProfile: rP }) => {
+export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, reloadProfile: rP }) => {
   if (!c || ctx._pB) return;
   ctx._pB = true; bindTabStripPhysics(c);
 
