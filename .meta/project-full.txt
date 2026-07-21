@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 22:42:16 UTC
+Сгенерировано: 2026-07-21 22:43:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8921,7 +8921,10 @@ const renderAchievements = () => {
           )}%"></i>
         </div>
       </div>
-      <strong>Ожидает проверки</strong>
+      <strong>
+        +${Number(item.xpReward || 0)} ♦
+        <small>после проверки</small>
+      </strong>
     </div>
   `).join('');
 };
@@ -8996,9 +8999,11 @@ export const loadShardsView = async ctx => {
         <div class="shards-note">
           За регистрацию через Яндекс начисляется
           <b>100 Осколков</b>.
-          Музыкальные награды зачисляются только после
-          серверной проверки достижения и не могут быть
-          повторно получены через restore или другое устройство.
+          Для музыкальных достижений действует правило
+          <b>1 XP = 1 Осколок</b>.
+          Награда зачисляется после серверной проверки
+          и не может быть повторно получена через restore
+          или другое устройство.
         </div>
 
         <h2 class="shards-section-title">
@@ -14738,7 +14743,8 @@ body:has(.shards-view) #cover-wrap{display:none!important}
 .shards-achievement-info{min-width:0}
 .shards-achievement-info b{display:block;color:#fff;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .shards-achievement-info small{display:block;margin-top:2px;color:#8ea8cc;font-size:10px;line-height:1.25}
-.shards-achievement>strong{color:#ffd45a;font-size:12px;white-space:nowrap}
+.shards-achievement>strong{display:flex;flex-direction:column;align-items:flex-end;color:#ffd45a;font-size:12px;white-space:nowrap}
+.shards-achievement>strong small{margin-top:2px;color:#7f93b5;font-size:8px;font-weight:700}
 .shards-achievement-progress{height:4px;margin-top:7px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.07)}
 .shards-achievement-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ff3159,#ffd45a)}
 .shards-empty,.shards-loading{display:grid;gap:8px;padding:28px 18px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);color:#9db7dd;text-align:center;font-size:13px;line-height:1.45}
