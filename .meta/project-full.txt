@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 14:08:28 UTC
+Сгенерировано: 2026-07-21 14:09:17 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4749,8 +4749,14 @@ const resolveIconSources = ({ icon, mobile, logo }) => {
 
 export const getRenderableAlbumIcons = ({ config = {}, albumsIndex = [] } = {}) => {
   const albumKeys = new Set((Array.isArray(albumsIndex) ? albumsIndex : []).map(item => String(item?.key || '')));
+  const authorized =
+    window.YandexAuth?.getSessionStatus?.() === 'active' &&
+    window.YandexAuth?.isTokenAlive?.();
+
   const items = (config.ICON_ALBUMS_ORDER || []).filter(item =>
-    item?.key && (isSpecialKey(item.key) || albumKeys.has(String(item.key)))
+    item?.key &&
+    (!item.authOnly || authorized) &&
+    (isSpecialKey(item.key) || albumKeys.has(String(item.key)))
   );
 
   return {
