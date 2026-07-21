@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 13:20:43 UTC
+Сгенерировано: 2026-07-21 13:26:07 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -14610,11 +14610,8 @@ body.news-view #cover-wrap{display:none!important}
 .sc-status-toggles{display:flex;gap:12px;align-items:center}
 .sc-status-toggle{cursor:pointer}
 .sc-status-toggle--icon{font-size:18px}
-.sc-status-toggle--text{font-size:14px}
-.sc-status-toggle--dim{opacity:.72}
 .sc-sort-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sc-sort-grid-full{grid-column:1/-1}
-.sc-unified-create-accent{background:#4daaff!important;color:#fff!important}
 .sc-shared-warn{color:#ff9800}
 .showcase-status-bar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:#9db7dd;padding:0 10px 10px;border-bottom:1px solid var(--border-color);align-items:center}
 .showcase-status-bar > span:first-child{flex:1 1 220px;min-width:0;white-space:normal;line-height:1.35}
@@ -14637,20 +14634,13 @@ body.news-view #cover-wrap{display:none!important}
 .sc-arrow-up:hover,.sc-arrow-down:hover{color:#fff;background:rgba(255,255,255,.1);border-radius:4px}
 .showcase-drag-handle{cursor:grab;padding:0 10px;color:#666;font-size:22px;display:flex;align-items:center;height:100%;touch-action:none}
 .showcase-drag-handle:active{cursor:grabbing;color:#fff}
-.showcase-hide-btn{all:unset;cursor:pointer;margin-right:10px;font-size:18px;opacity:.6;padding:4px}
-.showcase-hide-btn:hover{opacity:1}
 .showcase-track-menu-btn{all:unset;cursor:pointer;padding:8px 0;width:24px;text-align:right;color:#888;font-weight:900;font-size:16px;margin-left:0;letter-spacing:1px}
 .showcase-track-menu-btn:hover{color:#fff}
-.showcase-checkbox{width:20px;height:20px;border:2px solid #666;border-radius:4px;margin-right:10px;display:flex;align-items:center;justify-content:center}
 .showcase-track.selected,.sc-edit-row.selected,.sc-search-result.selected{background:rgba(76,175,80,.18)!important;box-shadow:inset 0 0 0 1px rgba(76,175,80,.34)}
 .showcase-track.selected .track-title,.sc-edit-row.selected .track-title,.sc-search-result.selected .track-title{color:#dff7e5}
 .showcase-track.selected .showcase-track-meta,.sc-edit-row.selected .showcase-track-meta,.sc-search-result.selected .showcase-track-meta{color:#bfe8c9}
-.showcase-track.selected .showcase-checkbox{background:var(--secondary-color);border-color:var(--secondary-color)}
-.showcase-track.selected .showcase-checkbox::after{content:'✓';color:#fff;font-size:14px;font-weight:700}
 .showcase-edit-banner{background:rgba(255,152,0,.15);color:#ff9800;padding:12px;text-align:center;font-weight:900;border-radius:8px;margin-bottom:10px;border:1px solid rgba(255,152,0,.3)}
 
-.showcase-multi-panel{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#1e222d;padding:10px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.8);z-index:1000;display:flex;gap:8px;align-items:center;border:1px solid var(--secondary-color);width:max-content;max-width:95vw;flex-wrap:nowrap;overflow-x:auto}
-.showcase-color-picker{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;justify-content:center}
 .showcase-color-dot{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s;box-shadow:0 2px 8px rgba(0,0,0,.5)}
 .showcase-color-dot:hover{transform:scale(1.15)}
 
