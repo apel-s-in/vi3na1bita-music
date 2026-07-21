@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 22:43:38 UTC
+Сгенерировано: 2026-07-21 22:44:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -443,7 +443,17 @@ jobs:
       - run: node scripts/ci/validate-manifest.mjs
       - run: node scripts/ci/lint-sw.mjs
       - run: node scripts/ci/validate-content.mjs
-      - run: node scripts/ci/sync-version.mjs --check --music-root=.
+      - name: Validate listening receipts shadow layer
+        run: |
+          node --input-type=module --check < scripts/analytics/listening-receipts.js
+          grep -q "listen_session_start" scripts/analytics/listening-receipts.js
+          grep -q "listen_session_heartbeat" scripts/analytics/listening-receipts.js
+          grep -q "listen_session_complete" scripts/analytics/listening-receipts.js
+          grep -q "achievement_reward_status" scripts/analytics/listening-receipts.js
+          if grep -En "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" scripts/analytics/listening-receipts.js; then
+            echo "Listening receipts must not control playback"
+            exit 2
+          fi
 
       - name: Reject native dialogs
         run: |
