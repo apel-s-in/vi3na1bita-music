@@ -12,7 +12,7 @@ export const normalizeEventList = (events = [], { limit = WARM_EVENT_LIMIT, drop
   return limit > 0 && out.length > limit ? out.slice(-limit) : out;
 };
 
-export const cleanupWarmEventsStore = async (metaDB, { limit = WARM_EVENT_LIMIT, migrationLabel = 'EventCleanup' } = {}) => {
+export const cleanupWarmEventsStore = async (metaDB, { limit = WARM_EVENT_LIMIT } = {}) => {
   if (!metaDB) return { changed: false, before: 0, after: 0 };
   const b = await metaDB.getEvents('events_warm').catch(() => []), c = normalizeEventList(b, { limit });
   if (!Array.isArray(b) || b.length === c.length) return { changed: false, before: b?.length || 0, after: c.length };
