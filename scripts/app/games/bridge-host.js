@@ -166,10 +166,11 @@ const buildSnapshot = ({ config = {} } = {}) => {
       streak: n(live.projectedStreak || live.streak || 0),
       totalListenSec: n(live.projectedTotalSec || 0)
     },
-    wallet: {
+    wallet: W.ShardWallet?.getSnapshot?.() || {
       available: false,
       shards: 0,
       locked: 0,
+      spendable: 0,
       version: 0
     },
     player: {
@@ -615,7 +616,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   const onHostUpdate = () => send('GC_HOST_STATE', buildSnapshot({ config }));
 
   W.addEventListener('message', onMessage);
-  ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.addEventListener(x, onHostUpdate));
+  ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'shards:wallet-updated', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.addEventListener(x, onHostUpdate));
 
   iframe.addEventListener('load', () => {
     send('GC_INIT', makeInitPayload());
@@ -629,7 +630,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       alive = false;
       activeFriendsRequests.clear();
       W.removeEventListener('message', onMessage);
-      ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.removeEventListener(x, onHostUpdate));
+      ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'shards:wallet-updated', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.removeEventListener(x, onHostUpdate));
     }
   };
 };
