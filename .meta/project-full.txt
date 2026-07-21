@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-20 23:20:45 UTC
+Сгенерировано: 2026-07-21 08:03:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9135,11 +9135,6 @@ const updateFriends = () => {
   );
 };
 
-updateMusic();
-if (friendsRoot) updateFriends();
-if (gamesRoot) updateGames();
-if (warHeartsRoot) updateWarHearts();
-
 const updateGames = () => {
   replaceOne(
     gamesFile('common/friends-embed.js'),
@@ -9185,6 +9180,20 @@ const updateWarHearts = () => {
     'War Hearts embedded Friends UI build'
   );
 };
+
+updateMusic();
+
+if (friendsRoot) {
+  updateFriends();
+}
+
+if (gamesRoot) {
+  updateGames();
+}
+
+if (warHeartsRoot) {
+  updateWarHearts();
+}
 
 if (!checkOnly) {
   write(
