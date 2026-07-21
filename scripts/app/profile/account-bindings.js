@@ -22,8 +22,21 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
 
   pencilBtn?.addEventListener('click', () => { if (!nInp) return; nInp.classList.remove('name-inactive'); requestAnimationFrame(() => { nInp.focus(); nInp.setSelectionRange(nInp.value.length, nInp.value.length); }); });
 
-  if (avatarBtn) avatarBtn.onclick = () => window.Utils?.profileModals?.avatarPicker?.({
-    title: 'Аватар профиля', items: ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎','🎵','🌟','🦁','🐯','🦊','🎮','🎤','🎹','🥁','🎺','🔄'],
+  if (avatarBtn) avatarBtn.onclick = () => {
+    const purchased = window.ShardWallet
+      ?.getSnapshot?.()
+      ?.purchasedAvatars || [];
+
+    const items = [
+      '😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼',
+      '🔥','💎','🎵','🌟','🦁','🐯','🎮','🎤','🎹','🥁',
+      '🎺',
+      ...purchased.map(item => item.avatar),
+      '🔄'
+    ];
+
+    return window.Utils?.profileModals?.avatarPicker?.({
+    title: 'Аватар профиля', items: [...new Set(items)],
     onPick: async (v, m) => {
       const isReset = v === '🔄'; profile.avatar = isReset ? '😎' : v; avatarBtn.textContent = profile.avatar;
       await metaDB?.setGlobal?.('user_profile', profile).catch(() => {});
@@ -31,6 +44,7 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
       m?.remove?.(); onProfileChanged?.(); if (isReset) window.NotificationSystem?.info?.('Аватар сброшен');
     }
   });
+  };
 
   syncLevelMeta(); window.addEventListener('achievements:updated', syncLevelMeta);
   return () => window.removeEventListener('achievements:updated', syncLevelMeta);
