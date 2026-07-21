@@ -37,9 +37,27 @@ export const renderDeviceTitle = d => {
   return `${ic} ${esc(d?.label || d?.sourceDeviceLabel || d?.class || d?.sourceDeviceClass || 'Устройство')}`;
 };
 
-export const renderModalNote = (text = '', { tone = 'info', style = '' } = {}) => {
-  const c = { info:'#9db7dd', warn:'#ffb74d', ok:'#81c784', bad:'#ff6b6b', muted:'#7f93b5' }[tone] || '#9db7dd';
-  return `<div style="font-size:12px;color:${esc(c)};line-height:1.45;margin-top:10px;${esc(style)}">${text}</div>`;
+export const renderModalNote = ({
+  text = '',
+  html = '',
+  tone = 'info',
+  style = ''
+} = {}) => {
+  if (text && html) {
+    throw new Error('render_modal_note_content_conflict');
+  }
+
+  const color = {
+    info: '#9db7dd',
+    warn: '#ffb74d',
+    ok: '#81c784',
+    bad: '#ff6b6b',
+    muted: '#7f93b5'
+  }[tone] || '#9db7dd';
+
+  const content = html || esc(text);
+
+  return `<div style="font-size:12px;color:${esc(color)};line-height:1.45;margin-top:10px;${esc(style)}">${content}</div>`;
 };
 
 export const renderActionGrid = actions =>
