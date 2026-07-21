@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 13:18:14 UTC
+Сгенерировано: 2026-07-21 13:19:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7591,10 +7591,19 @@ export default { renderCloudStatusHeader, renderCloudMetaPair, renderYandexActio
 
 //=================================================
 // FILE: /scripts/app/profile/cloud-ui-helpers.js
-import { safeNum, compareLocalVsCloud, getBackupCompareLabel } from '../../analytics/backup-summary.js';
+import {
+  safeNum,
+  compareLocalVsCloud,
+  getBackupCompareLabel
+} from '../../analytics/backup-summary.js';
 
-export const formatCloudDateTime = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleString('ru-RU') : '—';
-export const formatCloudTimeOnly = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+export const formatCloudTimeOnly = ts =>
+  safeNum(ts) > 0
+    ? new Date(safeNum(ts)).toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    : '—';
 
 export const getCloudCompareViewModel = (l, c) => {
   if (!c) return { state: 'unknown', uiState: 'unknown', label: 'Нет данных о копии', compare: null };
@@ -7603,7 +7612,10 @@ export const getCloudCompareViewModel = (l, c) => {
   return { state: cm.state, uiState: uiS[cm.state] || 'mixed', label: getBackupCompareLabel(l || {}, c || {}), compare: cm };
 };
 
-export default { formatCloudDateTime, formatCloudTimeOnly, getCloudCompareViewModel };
+export default {
+  formatCloudTimeOnly,
+  getCloudCompareViewModel
+};
 
 //=================================================
 // FILE: /scripts/app/profile/fresh-restore-modal.js
