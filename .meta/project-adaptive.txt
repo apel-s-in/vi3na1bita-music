@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 13:02:04 UTC
+Сгенерировано: 2026-07-21 13:16:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6760,7 +6760,23 @@ window.PlaybackCache = window.PlaybackCache || {}; window.PlaybackCache.getWindo
     if (!r.netOk) return U.ui.toast('Нет доступа к сети', 'warning');
     if (!r.canToggleByTrack) return U.ui.toast('Низкое качество недоступно', 'warning');
     const nq = r.mode === 'hi' ? 'lo' : 'hi', nds = m ? await m.countNeedsReCache(nq) : 0, apply = () => { c.switchQuality(nq); syncUI(); };
-    nds > 5 ? (W.Modals?.confirm?.({ title: 'Смена качества', textHtml: `Затронет ${nds} файлов. Перекачать?`, confirmText: 'Перекачать', onConfirm: apply }) || (confirm(`Затронет ${nds} файлов. Перекачать?`) && apply())) : apply();
+    if (nds <= 5) {
+      apply();
+      return;
+    }
+
+    if (!W.Modals?.confirm) {
+      U.ui.toast('Система подтверждений недоступна', 'error');
+      return;
+    }
+
+    W.Modals.confirm({
+      title: 'Смена качества',
+      textHtml: `Затронет ${nds} файлов. Перекачать?`,
+      confirmText: 'Перекачать',
+      cancelText: 'Отмена',
+      onConfirm: apply
+    });
   };
 
   const ensureBlock = (idx, uInit) => {
