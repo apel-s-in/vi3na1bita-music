@@ -2,7 +2,7 @@
 export function ensureMediaSession(h = {}) {
   const ms = navigator.mediaSession;
   if (!ms) return null;
-  let l = 0, _lastArt = '';
+  let l = 0;
 
   if (!ms.__bound) {
     ms.__bound = true;
@@ -29,7 +29,6 @@ export function ensureMediaSession(h = {}) {
           : [];
         ms.metadata = new MediaMetadata({ title, artist, album, artwork });
         ms.playbackState = playing ? 'playing' : 'paused';
-        _lastArt = artSrc;
       } catch {}
     },
     updatePositionState({ force = false } = {}) {
