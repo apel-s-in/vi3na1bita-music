@@ -222,6 +222,13 @@ const updateFriends = () => {
 
   replaceOne(
     friendsFile('friends-ui.js'),
+    /\.\/modal-adapter\.js\?v=[^"']+/g,
+    `./modal-adapter.js?v=${friendsBuild}`,
+    'Friends modal adapter'
+  );
+
+  replaceOne(
+    friendsFile('friends-ui.js'),
     /\.\/chat-text-ui\.js\?v=[^"']+/g,
     `./chat-text-ui.js?v=${friendsBuild}`,
     'Friends chat UI'
