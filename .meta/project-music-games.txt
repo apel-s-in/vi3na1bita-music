@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 09:29:54 UTC
+Сгенерировано: 2026-07-21 09:41:23 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -3155,10 +3155,6 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     getUnread: friendId => {
       const v = _unread[friendId];
       return Number(typeof v === 'object' ? v.count : v || 0);
-    },
-    getUnreadMeta: friendId => {
-      const v = _unread[friendId];
-      return typeof v === 'object' ? v : null;
     },
     onUnreadClick: friendId => openFriendsChat(friendId),
     onVoiceOpened: friendId => {},
