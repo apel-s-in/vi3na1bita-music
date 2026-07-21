@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 15:17:13 UTC
+Сгенерировано: 2026-07-21 19:06:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5890,6 +5890,8 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'room_close',
     'room_set_mode',
     'ranked_match_prepare',
+    'ranked_rps_commit',
+    'ranked_rps_reveal',
     'ranked_match_submit',
     'ranked_match_status',
     'ranked_match_abort',
