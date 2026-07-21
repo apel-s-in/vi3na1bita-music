@@ -36,6 +36,7 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'ranked_match_prepare',
     'ranked_match_submit',
     'ranked_match_status',
+    'ranked_match_abort',
     'leaderboard_v2_get',
     'signal_send',
     'signal_poll',
