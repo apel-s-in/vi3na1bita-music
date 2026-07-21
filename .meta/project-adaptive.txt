@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 14:13:28 UTC
+Сгенерировано: 2026-07-21 14:14:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7136,8 +7136,21 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
 
   pencilBtn?.addEventListener('click', () => { if (!nInp) return; nInp.classList.remove('name-inactive'); requestAnimationFrame(() => { nInp.focus(); nInp.setSelectionRange(nInp.value.length, nInp.value.length); }); });
 
-  if (avatarBtn) avatarBtn.onclick = () => window.Utils?.profileModals?.avatarPicker?.({
-    title: 'Аватар профиля', items: ['😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼','🔥','💎','🎵','🌟','🦁','🐯','🦊','🎮','🎤','🎹','🥁','🎺','🔄'],
+  if (avatarBtn) avatarBtn.onclick = () => {
+    const purchased = window.ShardWallet
+      ?.getSnapshot?.()
+      ?.purchasedAvatars || [];
+
+    const items = [
+      '😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼',
+      '🔥','💎','🎵','🌟','🦁','🐯','🎮','🎤','🎹','🥁',
+      '🎺',
+      ...purchased.map(item => item.avatar),
+      '🔄'
+    ];
+
+    return window.Utils?.profileModals?.avatarPicker?.({
+    title: 'Аватар профиля', items: [...new Set(items)],
     onPick: async (v, m) => {
       const isReset = v === '🔄'; profile.avatar = isReset ? '😎' : v; avatarBtn.textContent = profile.avatar;
       await metaDB?.setGlobal?.('user_profile', profile).catch(() => {});
@@ -7145,6 +7158,7 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
       m?.remove?.(); onProfileChanged?.(); if (isReset) window.NotificationSystem?.info?.('Аватар сброшен');
     }
   });
+  };
 
   syncLevelMeta(); window.addEventListener('achievements:updated', syncLevelMeta);
   return () => window.removeEventListener('achievements:updated', syncLevelMeta);
