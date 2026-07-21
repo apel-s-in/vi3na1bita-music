@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 19:06:20 UTC
+Сгенерировано: 2026-07-21 19:20:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -7607,7 +7607,7 @@ export const openBackupInfoModal = () => window.Modals?.open?.({
 
 export const openBackupFoundModal = m => {
   const lI = getLocalBackupUiSnapshot({ name: 'Слушатель' }), c = compareLocalVsCloud(lI, m || {}), cL = getBackupCompareLabel(lI, m || {}), dev = [m?.sourceDeviceLabel, m?.sourceDeviceClass, m?.sourcePlatform].filter(Boolean).join(' · ');
-  window.Modals?.open?.({ title: 'Облачная копия найдена', maxWidth: 400, bodyHtml: `${renderCloudSectionCard({ title: 'Облачная копия', body: `<div class="modal-confirm-text" style="margin:0">${renderStatusPill({ text: 'копия доступна', tone: 'ok' })}<br><br><b>Дата:</b> ${fmtDateTime(m?.timestamp)}<br><b>Профиль:</b> ${esc(m?.profileName || 'Слушатель')}<br><b>Устройство:</b> ${esc(dev || 'не указано')}<br><b>Версия приложения:</b> ${esc(m?.appVersion || 'unknown')}<br><b>Размер:</b> ${esc(m?.sizeHuman || 'unknown')}<br><b>Событий:</b> ${esc(m?.eventCount || 0)}<br><b>Сравнение:</b> ${esc(cL)}<br><b>Тип:</b> ${esc(c.state)}<br>${m?.historyPath ? `<b>История:</b> версионированный backup сохранён<br>` : ''}</div>` })}${renderModalNote('Копия хранится в личной папке приложения на Яндекс Диске и привязана к аккаунту владельца.')}` });
+  window.Modals?.open?.({ title: 'Облачная копия найдена', maxWidth: 400, bodyHtml: `${renderCloudSectionCard({ title: 'Облачная копия', body: `<div class="modal-confirm-text" style="margin:0">${renderStatusPill({ text: 'копия доступна', tone: 'ok' })}<br><br><b>Дата:</b> ${fmtDateTime(m?.timestamp)}<br><b>Профиль:</b> ${esc(m?.profileName || 'Слушатель')}<br><b>Устройство:</b> ${esc(dev || 'не указано')}<br><b>Версия приложения:</b> ${esc(m?.appVersion || 'unknown')}<br><b>Размер:</b> ${esc(m?.sizeHuman || 'unknown')}<br><b>Событий:</b> ${esc(m?.eventCount || 0)}<br><b>Сравнение:</b> ${esc(cL)}<br><b>Тип:</b> ${esc(c.state)}<br>${m?.historyPath ? `<b>История:</b> версионированный backup сохранён<br>` : ''}</div>` })}${renderModalNote({ text: 'Копия хранится в личной папке приложения на Яндекс Диске и привязана к аккаунту владельца.' })}` });
 };
 
 export default { openBackupInfoModal, openBackupFoundModal };
