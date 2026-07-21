@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 10:00:19 UTC
+Сгенерировано: 2026-07-21 10:08:27 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -2491,7 +2491,6 @@ let _unread = {};
 let _pushBusy = false;
 let _pushFails = 0;
 let _heartbeatBusy = false;
-let _heartbeatFails = 0;
 const FRIENDS_KEY = '__friends__';
 const _embeddedFriendsContexts = new Set();
 
@@ -2858,9 +2857,8 @@ const startPresenceHeartbeat = () => {
     _heartbeatBusy = true;
     try {
       await _core.heartbeat({ gameId: '', roomId: '' });
-      _heartbeatFails = 0;
     } catch {
-      _heartbeatFails++;
+      // Presence heartbeat является best-effort.
     } finally {
       _heartbeatBusy = false;
     }
@@ -3158,7 +3156,6 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       return Number(typeof v === 'object' ? v.count : v || 0);
     },
     onUnreadClick: friendId => openFriendsChat(friendId),
-    onVoiceOpened: friendId => {},
     onChatOpened: async friendId => {
       await _core.markChatRead?.({ friendId }).catch(() => null);
       clearUnread(friendId, { refresh: false });
