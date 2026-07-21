@@ -34,6 +34,7 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'room_close',
     'room_set_mode',
     'ranked_match_prepare',
+    'ranked_stake_prepare',
     'ranked_rps_commit',
     'ranked_rps_reveal',
     'ranked_match_submit',
@@ -382,6 +383,19 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     try {
       const data = normalizeRpcPayload(payload?.data);
       const result = await requestSocialAction(action, data);
+
+      if (
+        action === 'ranked_stake_prepare' ||
+        (
+          action === 'ranked_match_status' &&
+          ['paid', 'refunded'].includes(
+            result?.match?.economy?.status
+          )
+        )
+      ) {
+        W.ShardWallet?.refresh?.({ force: true })
+          .catch(() => null);
+      }
 
       send('GC_SIGNALING_RESPONSE', {
         requestId,
