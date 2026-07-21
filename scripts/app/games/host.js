@@ -95,6 +95,12 @@ const makeRoomUrl = cfg => {
   export const renderGameCenterHost = async ({ container } = {}) => {
     if (!container) return false;
     const cfg = await loadConfig();
+
+    try {
+      const { shardWallet } = await import('../shards/wallet-service.js');
+      await shardWallet.refresh();
+    } catch {}
+
     let bridge = null;
     container.innerHTML = render({ cfg });
 
