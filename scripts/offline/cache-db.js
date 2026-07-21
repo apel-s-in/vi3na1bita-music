@@ -8,9 +8,18 @@ export const setAudioBlob = (uid, q, blob) => write('audio', s => s.put({ uid, q
 export const getAudioBlob = async (uid, q) => (await read('audio', s => s.get([uid, q])))?.blob || null;
 export const deleteAudio = uid => write('audio', s => { s.delete([uid, 'hi']); s.delete([uid, 'lo']); });
 export const deleteAudioVariant = (uid, q) => write('audio', s => s.delete([uid, q]));
-export const hasAudioForUid = async uid => !!(await read('audio', s => s.count([uid, 'hi']))) || !!(await read('audio', s => s.count([uid, 'lo'])));
-export const getStoredVariant = async uid => (await read('audio', s => s.count([uid, 'hi']))) ? 'hi' : ((await read('audio', s => s.count([uid, 'lo']))) ? 'lo' : null);
-export const setTrackMeta = (uid, meta) => write('trackMeta', s => s.put({ ...meta, uid }));
+export const hasAudioForUid = async uid =>
+  !!(await read('audio', store =>
+    store.count([uid, 'hi'])
+  )) ||
+  !!(await read('audio', store =>
+    store.count([uid, 'lo'])
+  ));
+
+export const setTrackMeta = (uid, meta) =>
+  write('trackMeta', store =>
+    store.put({ ...meta, uid })
+  );
 export const getTrackMeta = uid => read('trackMeta', s => s.get(uid));
 export const updateTrackMeta = async (uid, u) => setTrackMeta(uid, { ...((await getTrackMeta(uid)) || {}), ...u, uid });
 export const deleteTrackMeta = uid => write('trackMeta', s => s.delete(uid));
