@@ -110,6 +110,7 @@ const makeRoomUrl = cfg => {
       url.searchParams.delete('key');
       url.searchParams.delete('secret');
       url.searchParams.delete('inviteFriend');
+      url.searchParams.delete('join');
       W.history.replaceState(null, '', url.toString());
       renderGameCenterHost({ container });
     });
