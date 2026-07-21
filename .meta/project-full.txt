@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 12:54:02 UTC
+Сгенерировано: 2026-07-21 12:54:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2151,7 +2151,7 @@ export const normalizeEventList = (events = [], { limit = WARM_EVENT_LIMIT, drop
   return limit > 0 && out.length > limit ? out.slice(-limit) : out;
 };
 
-export const cleanupWarmEventsStore = async (metaDB, { limit = WARM_EVENT_LIMIT, migrationLabel = 'EventCleanup' } = {}) => {
+export const cleanupWarmEventsStore = async (metaDB, { limit = WARM_EVENT_LIMIT } = {}) => {
   if (!metaDB) return { changed: false, before: 0, after: 0 };
   const b = await metaDB.getEvents('events_warm').catch(() => []), c = normalizeEventList(b, { limit });
   if (!Array.isArray(b) || b.length === c.length) return { changed: false, before: b?.length || 0, after: c.length };
