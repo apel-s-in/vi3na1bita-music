@@ -148,7 +148,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 19:47:09 UTC
+Сгенерировано: 2026-07-21 20:47:04 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -1857,6 +1857,7 @@ const GAME_SIGNALING_SCOPES = Object.freeze({
     'room_close',
     'room_set_mode',
     'ranked_match_prepare',
+    'ranked_stake_prepare',
     'ranked_rps_commit',
     'ranked_rps_reveal',
     'ranked_match_submit',
@@ -2205,6 +2206,19 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     try {
       const data = normalizeRpcPayload(payload?.data);
       const result = await requestSocialAction(action, data);
+
+      if (
+        action === 'ranked_stake_prepare' ||
+        (
+          action === 'ranked_match_status' &&
+          ['paid', 'refunded'].includes(
+            result?.match?.economy?.status
+          )
+        )
+      ) {
+        W.ShardWallet?.refresh?.({ force: true })
+          .catch(() => null);
+      }
 
       send('GC_SIGNALING_RESPONSE', {
         requestId,
