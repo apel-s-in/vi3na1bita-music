@@ -490,3 +490,25 @@ test('opening embedded Friends request does not stop current track', async ({ pa
   expect(after.uid).toBe(before.uid);
   expect(after.playing).toBeTruthy();
 });
+test('Game capability and join-token contract is parent controlled', async ({ page }) => {
+  await loginByPromo(page);
+
+  const sources = await page.evaluate(async () => {
+    const [bridge, host] = await Promise.all([
+      fetch('./scripts/app/games/bridge-host.js').then(r => r.text()),
+      fetch('./scripts/app/games/host.js').then(r => r.text())
+    ]);
+
+    return { bridge, host };
+  });
+
+  expect(sources.bridge).toContain('capabilities.tower');
+  expect(sources.bridge).toContain('capabilities.war_hearts');
+  expect(sources.bridge).toContain('room_join_token_create');
+  expect(sources.bridge).toContain('room_join_token_redeem');
+
+  expect(sources.host).toContain("url.searchParams.set('join'");
+  expect(sources.host).not.toContain("url.searchParams.set('room'");
+  expect(sources.host).not.toContain("url.searchParams.set('secret'");
+  expect(sources.host).not.toContain("url.searchParams.set('key'");
+});
