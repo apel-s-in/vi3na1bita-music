@@ -46,6 +46,9 @@ jobs:
           grep -q "crypto.randomUUID" war_hearts/src/game/network-combat.js
           grep -q "serverStatus !== 'settled'" war_hearts/src/game/match-persistence.js
           grep -q "ranked_match_prepare" games/common/network-bridge.js
+          grep -q "ranked_stake_prepare" games/common/network-bridge.js
+          grep -q "ranked_rps_commit" games/common/network-bridge.js
+          grep -q "ranked_rps_reveal" games/common/network-bridge.js
           grep -q "ranked_match_submit" games/common/network-bridge.js
           grep -q "ranked_match_status" games/common/network-bridge.js
           grep -q "leaderboard_v2_get" music/scripts/app/games/bridge-host.js
