@@ -95,8 +95,13 @@ jobs:
           node --input-type=module --check < games/common/network-bridge.js
 
           while IFS= read -r file; do
+            echo "CHECK $file"
             node --input-type=module --check < "$file"
           done < <(find war_hearts/src -type f -name '*.js' | sort)
+
+          grep -q "prepareRankedMatch" war_hearts/src/game/ranked-v2.js
+          grep -q "ranked_match_prepare" games/common/network-bridge.js
+          grep -q "leaderboard_v2_get" music/scripts/app/games/bridge-host.js
 
       - name: Commit Friends version
         working-directory: friends
