@@ -363,18 +363,16 @@ const handlePushes = async (items) => {
             text: 'Принять',
             primary: true,
             onClick: async () => {
-              const room = await _core
-                .getRoom(push.roomId, push.roomSecret)
-                .catch(() => null);
-              if (!room?.room || room.room.status === 'closed') {
-                W.NotificationSystem?.warning?.('Игровое приглашение уже устарело');
+              if (!push.joinToken) {
+                W.NotificationSystem?.warning?.(
+                  'Игровое приглашение уже устарело'
+                );
                 return;
               }
 
               const u = new URL(W.location.href);
               u.searchParams.set('gcGame', push.gameId);
-              u.searchParams.set('room', push.roomId);
-              u.searchParams.set('key', push.roomSecret);
+              u.searchParams.set('join', push.joinToken);
               W.history.pushState(null, '', u.toString());
               W.AlbumsManager?.loadAlbum?.(W.APP_CONFIG?.SPECIAL_GAMES_KEY || '__games__');
               W.NotificationSystem?.success?.('Подключаемся к бою...');
