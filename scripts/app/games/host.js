@@ -31,18 +31,23 @@ const loadConfig = async () => {
 };
 
 const getInviteParams = () => {
-  const p = new URLSearchParams(W.location.search);
-  const gcGame = p.get('gcGame') || p.get('game') || '';
-  const room = p.get('room') || '';
-  const key = p.get('key') || p.get('secret') || '';
-  const inviteFriend = p.get('inviteFriend') || '';
+  const params = new URLSearchParams(W.location.search);
+  const gcGame =
+    params.get('gcGame') ||
+    params.get('game') ||
+    '';
+  const joinToken = params.get('join') || '';
+  const inviteFriend = params.get('inviteFriend') || '';
 
   return {
-    hasInvite: gcGame === 'war_hearts' && !!room && !!key,
-    isSendingInvite: gcGame === 'war_hearts' && !!inviteFriend,
+    hasInvite:
+      gcGame === 'war_hearts' &&
+      !!joinToken,
+    isSendingInvite:
+      gcGame === 'war_hearts' &&
+      !!inviteFriend,
     gcGame,
-    room,
-    key,
+    joinToken,
     inviteFriend
   };
 };
@@ -56,8 +61,7 @@ const makeRoomUrl = cfg => {
 
   if (invite.hasInvite) {
     url.searchParams.set('gcGame', invite.gcGame);
-    url.searchParams.set('room', invite.room);
-    url.searchParams.set('key', invite.key);
+    url.searchParams.set('join', invite.joinToken);
   } else if (invite.isSendingInvite) {
     url.searchParams.set('gcGame', invite.gcGame);
     url.searchParams.set('inviteFriend', invite.inviteFriend);
@@ -137,7 +141,7 @@ const makeRoomUrl = cfg => {
 
       // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
       const u = new URL(W.location.href);
-      ['gcGame', 'game', 'inviteFriend', 'room', 'key', 'secret'].forEach(k => {
+      ['gcGame', 'game', 'inviteFriend', 'join', 'room', 'key', 'secret'].forEach(k => {
         if (u.searchParams.has(k)) u.searchParams.delete(k);
       });
       if (invite.hasInvite || invite.isSendingInvite) W.history.replaceState(null, '', u.toString());
@@ -154,7 +158,7 @@ const makeRoomUrl = cfg => {
         if (st?.state === 'closed_by_game') {
           try {
             const u = new URL(W.location.href);
-            ['gcGame', 'game', 'inviteFriend', 'room', 'key', 'secret'].forEach(k => u.searchParams.delete(k));
+            ['gcGame', 'game', 'inviteFriend', 'join', 'room', 'key', 'secret'].forEach(k => u.searchParams.delete(k));
             W.history.replaceState(null, '', u.toString());
           } catch {}
 
