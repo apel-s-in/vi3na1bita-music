@@ -698,10 +698,6 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       const v = _unread[friendId];
       return Number(typeof v === 'object' ? v.count : v || 0);
     },
-    getUnreadMeta: friendId => {
-      const v = _unread[friendId];
-      return typeof v === 'object' ? v : null;
-    },
     onUnreadClick: friendId => openFriendsChat(friendId),
     onVoiceOpened: friendId => {},
     onChatOpened: async friendId => {
