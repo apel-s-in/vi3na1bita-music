@@ -453,6 +453,7 @@ test('Game Center Friends RPC never receives social session or playback access',
 
   expect(source).toContain('GC_FRIENDS_REQUEST');
   expect(source).toContain('getEmbeddedFriendsRpcMethod');
+  expect(source).toContain('embedded-rpc-contract.js?v=');
   expect(source).not.toContain('FRIENDS_RPC_METHODS');
   expect(source).not.toMatch(
     /playerCore\?\.(play|pause|stop|setVolume|setMuted|seek|next|prev)/
