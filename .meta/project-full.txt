@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 08:05:25 UTC
+Сгенерировано: 2026-07-21 08:14:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -428,6 +428,7 @@ jobs:
           node --input-type=module --check < friends/voice-call-ui.js
           node --input-type=module --check < friends/games-registry.js
           node --input-type=module --check < friends/embedded-rpc-contract.js
+          node --input-type=module --check < friends/modal-adapter.js
           node --check games/src/app.js
           node --input-type=module --check < games/common/friends-embed.js
           node --input-type=module --check < games/common/network-bridge.js
@@ -446,7 +447,10 @@ jobs:
             friends-core.js \
             friends-ui.js \
             chat-text-ui.js \
-            embedded-rpc-contract.js
+            voice-call-ui.js \
+            crypto-devices-ui.js \
+            embedded-rpc-contract.js \
+            modal-adapter.js
 
           if git diff --cached --quiet; then
             echo "Friends repository already synchronized"
