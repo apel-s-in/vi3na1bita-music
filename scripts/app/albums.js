@@ -24,6 +24,7 @@ const {
 const FAV = W.SPECIAL_FAVORITES_KEY || '__favorites__';
 const NEWS = W.SPECIAL_RELIZ_KEY || '__reliz__';
 const SHOWCASE = W.SPECIAL_SHOWCASE_KEY || '__showcase__';
+const SHARDS = C.SPECIAL_SHARDS_KEY || W.SPECIAL_SHARDS_KEY || '__shards__';
 const PROFILE = C.SPECIAL_PROFILE_KEY || '__profile__';
 const GAMES = C.SPECIAL_GAMES_KEY || W.SPECIAL_GAMES_KEY || '__games__';
 const FRIENDS = C.SPECIAL_FRIENDS_KEY || W.SPECIAL_FRIENDS_KEY || '__friends__';
@@ -34,6 +35,7 @@ const SPECIAL_LOADERS = {
   [FAV]: 'loadFavoritesAlbum',
   [NEWS]: 'loadNewsAlbum',
   [SHOWCASE]: 'loadShowcaseAlbum',
+  [SHARDS]: 'loadShardsAlbum',
   [PROFILE]: 'loadProfileAlbum',
   [GAMES]: 'loadGamesAlbum',
   [FRIENDS]: 'loadFriendsAlbum'
@@ -59,6 +61,17 @@ class AlbumsManager {
 
     this._renderIcons();
     this._bindEvents();
+
+    W.addEventListener('yandex:auth:changed', event => {
+      this._renderIcons();
+
+      if (
+        event.detail?.status !== 'active' &&
+        this.curr === SHARDS
+      ) {
+        this.loadAlbum(SHOWCASE);
+      }
+    });
 
     const defaultKey =
       C.ICON_ALBUMS_ORDER?.find(item => !item.key.startsWith('__'))?.key ||
