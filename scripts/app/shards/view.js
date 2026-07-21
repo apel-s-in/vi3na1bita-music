@@ -43,7 +43,7 @@ const renderAchievements = () => {
           )}%"></i>
         </div>
       </div>
-      <strong>+${Number(item.xpReward || 0)} ♦</strong>
+      <strong>Ожидает проверки</strong>
     </div>
   `).join('');
 };
@@ -57,7 +57,8 @@ const openInsufficientModal = (item, wallet) => {
         Для покупки «<b>${esc(item.title)}</b>» требуется
         <b>${Number(item.price || 0)} ♦</b>.<br><br>
         Доступно: <b>${Number(wallet.spendable || 0)} ♦</b>.
-        Выполните одно из ближайших музыкальных достижений.
+        Новые музыкальные награды появятся после
+        серверного подтверждения достижения.
       </div>
       <div class="shards-achievements">
         ${renderAchievements()}
