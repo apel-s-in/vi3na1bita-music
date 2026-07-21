@@ -9,7 +9,17 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const esc = s => window.Utils?.escapeHtml?.(String(s ?? '')) ?? String(s ?? '');
 const fMB = b => ((b || 0) / 1048576 < 0.1 && b > 0) ? '< 0.1 МБ' : `${((b || 0) / 1048576).toFixed(1)} МБ`;
 const fB = b => b >= 1048576 ? `${(b / 1048576).toFixed(1)} МБ` : (b >= 1024 ? `${(b / 1024).toFixed(0)} КБ` : `${b} Б`);
-const confirmBox = o => window.Modals?.confirm ? window.Modals.confirm(o) : (confirm(`${o.title}\n\n${String(o.textHtml || '').replace(/<[^>]+>/g, '')}`) ? o.onConfirm?.() : o.onCancel?.());
+const confirmBox = options => {
+  if (!window.Modals?.confirm) {
+    window.NotificationSystem?.error?.(
+      'Система подтверждений недоступна'
+    );
+    options?.onCancel?.();
+    return null;
+  }
+
+  return window.Modals.confirm(options);
+};
 const tplSect = (ic, tit, html, lst = false) => `<section class="om-section ${lst ? 'om-section--last' : ''}"><h3 class="om-section__title"><span class="om-section__icon">${ic}</span> ${tit}</h3>${html}</section>`;
 const tplTog = (act, on, lbl, sm = false) => `<button class="${sm ? 'om-toggle-small' : 'om-toggle'} ${on ? (sm ? 'om-toggle-small--on' : 'om-toggle--on') : (sm ? '' : 'om-toggle--off')}" data-action="${act}">${sm ? '' : '<span class="om-toggle__dot"></span>'}<span class="${sm ? '' : 'om-toggle__label'}">${lbl}</span></button>`;
 
