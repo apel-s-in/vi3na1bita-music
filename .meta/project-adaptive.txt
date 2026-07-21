@@ -127,7 +127,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] web-push.js
 [/scripts/app/shards/] view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-manifest.mjs
 [/scripts/core/] bootstrap.js, config.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-verified-disk.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 22:48:13 UTC
+Сгенерировано: 2026-07-21 23:14:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9679,6 +9679,231 @@ export const ensurePopulated=async()=>window.Utils.func.memoAsyncOnce('app:track
 export const resetSourceCache=()=>{_pHlth.clear();_tr.clear();_alb.clear();_cfg.clear();_albTr.clear();try{Object.keys(sessionStorage).filter(k=>k.startsWith('tr:cfg:')).forEach(k=>sessionStorage.removeItem(k));}catch{}};
 window.TrackRegistry={registerTrack,getTrackByUid,getAllUids,getAlbumTitle,ensurePopulated,getAlbumConfig,getTracksForAlbum,getSmartUrlInfo,resetSourceCache,hasTrackProfile,getTrackProfilePreview,getTrackProfile};
 export default window.TrackRegistry;
+
+//=================================================
+// FILE: /scripts/ci/generate-listen-catalog.mjs
+#!/usr/bin/env node
+
+import fs from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
+const albums = JSON.parse(
+  fs.readFileSync('albums.json', 'utf8')
+)?.albums || [];
+
+const FULL_PATH = 'data/listen-track-catalog.json';
+const ENV_PATH = 'data/listen-track-catalog.env.json';
+const CONCURRENCY = 4;
+
+const safe = value =>
+  String(value == null ? '' : value).trim();
+
+const probe = async url => {
+  const { stdout } = await execFileAsync(
+    'ffprobe',
+    [
+      '-v',
+      'error',
+      '-show_entries',
+      'format=duration,size',
+      '-of',
+      'json',
+      url
+    ],
+    {
+      maxBuffer: 1024 * 1024,
+      timeout: 120000
+    }
+  );
+
+  const format = JSON.parse(stdout || '{}')?.format || {};
+  const duration = Number(format.duration);
+  const bytes = Number(format.size);
+
+  if (
+    !Number.isFinite(duration) ||
+    duration < 10 ||
+    !Number.isFinite(bytes) ||
+    bytes <= 0
+  ) {
+    throw new Error(`invalid_media_metadata:${url}`);
+  }
+
+  return {
+    duration: Math.round(duration * 1000) / 1000,
+    bytes: Math.floor(bytes)
+  };
+};
+
+const mapLimit = async (items, limit, worker) => {
+  const results = new Array(items.length);
+  let cursor = 0;
+
+  const run = async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await worker(items[index], index);
+    }
+  };
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(limit, items.length) },
+      run
+    )
+  );
+
+  return results;
+};
+
+const readAlbum = async album => {
+  const base = safe(
+    album.yandex_base ||
+    album.github_base ||
+    album.base
+  );
+
+  if (!base) {
+    throw new Error(`album_base_missing:${album.key}`);
+  }
+
+  const baseUrl = base.endsWith('/') ? base : `${base}/`;
+  const configUrl = new URL('config.json', baseUrl);
+  const response = await fetch(configUrl);
+
+  if (!response.ok) {
+    throw new Error(
+      `config_fetch_failed:${album.key}:${response.status}`
+    );
+  }
+
+  const config = await response.json();
+  const tracks = Array.isArray(config?.tracks)
+    ? config.tracks
+    : [];
+
+  return tracks.map(track => ({
+    uid: safe(track.uid),
+    title: safe(track.title),
+    album: safe(album.key),
+    albumTitle: safe(config.albumName || album.title),
+    hiUrl: new URL(track.audio, baseUrl).toString(),
+    loUrl: new URL(track.audio_low, baseUrl).toString()
+  }));
+};
+
+const main = async () => {
+  const albumTracks = await Promise.all(
+    albums.map(readAlbum)
+  );
+
+  const tracks = albumTracks.flat();
+
+  if (!tracks.length) {
+    throw new Error('listen_catalog_empty');
+  }
+
+  const duplicate = tracks.find(
+    (track, index) =>
+      tracks.findIndex(item => item.uid === track.uid) !== index
+  );
+
+  if (duplicate) {
+    throw new Error(`duplicate_track_uid:${duplicate.uid}`);
+  }
+
+  const rows = await mapLimit(
+    tracks,
+    CONCURRENCY,
+    async track => {
+      if (!track.uid || !track.hiUrl || !track.loUrl) {
+        throw new Error(
+          `track_metadata_missing:${track.album}:${track.title}`
+        );
+      }
+
+      console.log(`PROBE ${track.uid} · ${track.title}`);
+
+      const [hi, lo] = await Promise.all([
+        probe(track.hiUrl),
+        probe(track.loUrl)
+      ]);
+
+      const durationDifference = Math.abs(
+        hi.duration - lo.duration
+      );
+
+      if (durationDifference > 1) {
+        throw new Error(
+          `duration_mismatch:${track.uid}:` +
+          `${hi.duration}:${lo.duration}`
+        );
+      }
+
+      return {
+        uid: track.uid,
+        title: track.title,
+        album: track.album,
+        albumTitle: track.albumTitle,
+        duration: Math.max(hi.duration, lo.duration),
+        hi: {
+          duration: hi.duration,
+          bytes: hi.bytes,
+          url: track.hiUrl
+        },
+        lo: {
+          duration: lo.duration,
+          bytes: lo.bytes,
+          url: track.loUrl
+        }
+      };
+    }
+  );
+
+  rows.sort((a, b) =>
+    a.album.localeCompare(b.album) ||
+    a.uid.localeCompare(b.uid)
+  );
+
+  const compact = Object.fromEntries(
+    rows.map(track => [
+      track.uid,
+      [
+        track.duration,
+        track.album
+      ]
+    ])
+  );
+
+  fs.mkdirSync('data', { recursive: true });
+
+  fs.writeFileSync(
+    FULL_PATH,
+    `${JSON.stringify({
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      tracks: rows
+    }, null, 2)}\n`,
+    'utf8'
+  );
+
+  fs.writeFileSync(
+    ENV_PATH,
+    JSON.stringify(compact),
+    'utf8'
+  );
+
+  console.log(`Generated ${rows.length} tracks`);
+  console.log(`Full: ${FULL_PATH}`);
+  console.log(`Environment: ${ENV_PATH}`);
+};
+
+main().catch(error => {
+  console.error(error);
+  process.exit(2);
+});
 
 //=================================================
 // FILE: /scripts/ci/generate-lyrics-index.mjs
