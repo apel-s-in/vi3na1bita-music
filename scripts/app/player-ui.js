@@ -32,7 +32,23 @@
     if (!r.netOk) return U.ui.toast('Нет доступа к сети', 'warning');
     if (!r.canToggleByTrack) return U.ui.toast('Низкое качество недоступно', 'warning');
     const nq = r.mode === 'hi' ? 'lo' : 'hi', nds = m ? await m.countNeedsReCache(nq) : 0, apply = () => { c.switchQuality(nq); syncUI(); };
-    nds > 5 ? (W.Modals?.confirm?.({ title: 'Смена качества', textHtml: `Затронет ${nds} файлов. Перекачать?`, confirmText: 'Перекачать', onConfirm: apply }) || (confirm(`Затронет ${nds} файлов. Перекачать?`) && apply())) : apply();
+    if (nds <= 5) {
+      apply();
+      return;
+    }
+
+    if (!W.Modals?.confirm) {
+      U.ui.toast('Система подтверждений недоступна', 'error');
+      return;
+    }
+
+    W.Modals.confirm({
+      title: 'Смена качества',
+      textHtml: `Затронет ${nds} файлов. Перекачать?`,
+      confirmText: 'Перекачать',
+      cancelText: 'Отмена',
+      onConfirm: apply
+    });
   };
 
   const ensureBlock = (idx, uInit) => {
