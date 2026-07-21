@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-21 19:38:01 UTC
+Сгенерировано: 2026-07-21 19:47:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -343,79 +343,26 @@ name: Release version across repositories
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Новая версия приложения, например 8.8.3'
-        required: true
-        type: string
+      version: {description: "Новая версия приложения, например 8.8.3", required: true, type: string}
 
-permissions:
-  contents: write
-
-concurrency:
-  group: cross-repo-release
-  cancel-in-progress: false
+permissions: {contents: write}
+concurrency: {group: cross-repo-release, cancel-in-progress: false}
 
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout music repository
-        uses: actions/checkout@v4
-        with:
-          path: music
-          fetch-depth: 0
-          token: ${{ github.token }}
-
-      - name: Checkout Friends repository
-        uses: actions/checkout@v4
-        with:
-          repository: apel-s-in/vi3na1bita-friends
-          ref: main
-          path: friends
-          fetch-depth: 0
-          token: ${{ secrets.CROSS_REPO_RELEASE_TOKEN }}
-
-      - name: Checkout Game Center repository
-        uses: actions/checkout@v4
-        with:
-          repository: apel-s-in/vi3na1bita-games
-          ref: main
-          path: games
-          fetch-depth: 0
-          token: ${{ secrets.CROSS_REPO_RELEASE_TOKEN }}
-
-      - name: Checkout War Hearts repository
-        uses: actions/checkout@v4
-        with:
-          repository: apel-s-in/vi3na1bita_war_hearts
-          ref: main
-          path: war_hearts
-          fetch-depth: 0
-          token: ${{ secrets.CROSS_REPO_RELEASE_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - {name: Checkout music repository, uses: actions/checkout@v4, with: {path: music, fetch-depth: 0, token: "${{ github.token }}"}}
+      - {name: Checkout Friends repository, uses: actions/checkout@v4, with: {repository: apel-s-in/vi3na1bita-friends, ref: main, path: friends, fetch-depth: 0, token: "${{ secrets.CROSS_REPO_RELEASE_TOKEN }}"}}
+      - {name: Checkout Game Center repository, uses: actions/checkout@v4, with: {repository: apel-s-in/vi3na1bita-games, ref: main, path: games, fetch-depth: 0, token: "${{ secrets.CROSS_REPO_RELEASE_TOKEN }}"}}
+      - {name: Checkout War Hearts repository, uses: actions/checkout@v4, with: {repository: apel-s-in/vi3na1bita_war_hearts, ref: main, path: war_hearts, fetch-depth: 0, token: "${{ secrets.CROSS_REPO_RELEASE_TOKEN }}"}}
+      - {name: Setup Node.js, uses: actions/setup-node@v4, with: {node-version: "20"}}
 
       - name: Synchronize release version
-        run: |
-          node music/scripts/ci/sync-version.mjs \
-            --music-root=music \
-            --friends-root=friends \
-            --games-root=games \
-            --war-hearts-root=war_hearts \
-            --version="${{ inputs.version }}"
+        run: node music/scripts/ci/sync-version.mjs --music-root=music --friends-root=friends --games-root=games --war-hearts-root=war_hearts --version="${{ inputs.version }}"
 
       - name: Validate synchronized versions
-        run: |
-          node music/scripts/ci/sync-version.mjs \
-            --check \
-            --music-root=music \
-            --friends-root=friends \
-            --games-root=games \
-            --war-hearts-root=war_hearts
+        run: node music/scripts/ci/sync-version.mjs --check --music-root=music --friends-root=friends --games-root=games --war-hearts-root=war_hearts
 
       - name: Validate JavaScript syntax
         run: |
@@ -433,12 +380,7 @@ jobs:
           node --check games/src/app.js
           node --input-type=module --check < games/common/friends-embed.js
           node --input-type=module --check < games/common/network-bridge.js
-
-          while IFS= read -r file; do
-            echo "CHECK $file"
-            node --input-type=module --check < "$file"
-          done < <(find war_hearts/src -type f -name '*.js' | sort)
-
+          while IFS= read -r file; do echo "CHECK $file"; node --input-type=module --check < "$file"; done < <(find war_hearts/src -type f -name '*.js' | sort)
           grep -q "prepareRankedMatch" war_hearts/src/game/ranked-v2.js
           grep -q "waitForRankedSettlement" war_hearts/src/game/ranked-v2.js
           grep -q "crypto.randomUUID" war_hearts/src/game/network-combat.js
@@ -453,73 +395,32 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            index.html \
-            friends-core.js \
-            friends-ui.js \
-            chat-text-ui.js \
-            voice-call-ui.js \
-            crypto-devices-ui.js \
-            embedded-rpc-contract.js \
-            modal-adapter.js
+          git add index.html friends-core.js friends-ui.js chat-text-ui.js voice-call-ui.js crypto-devices-ui.js embedded-rpc-contract.js modal-adapter.js
+          if git diff --cached --quiet; then echo "Friends repository already synchronized"; else git commit -m "Release: sync Friends build v${{ inputs.version }}"; git push origin HEAD:main; fi
 
-          if git diff --cached --quiet; then
-            echo "Friends repository already synchronized"
-          else
-            git commit -m "Release: sync Friends build v${{ inputs.version }}"
-            git push origin HEAD:main
-          fi
       - name: Commit Game Center version
         working-directory: games
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add \
-            common/friends-embed.js \
-            src/app.js
-
-          if git diff --cached --quiet; then
-            echo "Game Center repository already synchronized"
-          else
-            git commit -m "Release: sync Game Center build v${{ inputs.version }}"
-            git push origin HEAD:main
-          fi
+          git add common/friends-embed.js src/app.js
+          if git diff --cached --quiet; then echo "Game Center repository already synchronized"; else git commit -m "Release: sync Game Center build v${{ inputs.version }}"; git push origin HEAD:main; fi
 
       - name: Commit War Hearts version
         working-directory: war_hearts
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add src/app.js
-
-          if git diff --cached --quiet; then
-            echo "War Hearts repository already synchronized"
-          else
-            git commit -m "Release: sync War Hearts build v${{ inputs.version }}"
-            git push origin HEAD:main
-          fi
+          if git diff --cached --quiet; then echo "War Hearts repository already synchronized"; else git commit -m "Release: sync War Hearts build v${{ inputs.version }}"; git push origin HEAD:main; fi
 
       - name: Commit music version
         working-directory: music
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            .release/version.json \
-            scripts/core/config.js \
-            service-worker.js \
-            index.html \
-            scripts/app/friends/friends-block.js \
-            scripts/app/games/bridge-host.js
-
-          if git diff --cached --quiet; then
-            echo "Music repository already synchronized"
-          else
-            git commit -m "Release: v${{ inputs.version }}"
-            git push origin HEAD:${{ github.ref_name }}
-          fi
+          git add .release/version.json scripts/core/config.js service-worker.js index.html scripts/app/friends/friends-block.js scripts/app/games/bridge-host.js
+          if git diff --cached --quiet; then echo "Music repository already synchronized"; else git commit -m "Release: v${{ inputs.version }}"; git push origin HEAD:${{ github.ref_name }}; fi
 
 //=================================================
 // FILE: /.github/workflows/validate.yml
