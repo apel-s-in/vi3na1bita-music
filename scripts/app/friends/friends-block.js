@@ -32,7 +32,6 @@ let _unread = {};
 let _pushBusy = false;
 let _pushFails = 0;
 let _heartbeatBusy = false;
-let _heartbeatFails = 0;
 const FRIENDS_KEY = '__friends__';
 const _embeddedFriendsContexts = new Set();
 
@@ -399,9 +398,8 @@ const startPresenceHeartbeat = () => {
     _heartbeatBusy = true;
     try {
       await _core.heartbeat({ gameId: '', roomId: '' });
-      _heartbeatFails = 0;
     } catch {
-      _heartbeatFails++;
+      // Presence heartbeat является best-effort.
     } finally {
       _heartbeatBusy = false;
     }
@@ -699,7 +697,6 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       return Number(typeof v === 'object' ? v.count : v || 0);
     },
     onUnreadClick: friendId => openFriendsChat(friendId),
-    onVoiceOpened: friendId => {},
     onChatOpened: async friendId => {
       await _core.markChatRead?.({ friendId }).catch(() => null);
       clearUnread(friendId, { refresh: false });
