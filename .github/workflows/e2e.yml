@@ -26,14 +26,16 @@ jobs:
         with: { node-version: '20' }
       - name: Validate application syntax
         run: node --input-type=module --check < scripts/app.js
+      - name: Install test dependencies
+        run: npm install --no-save @playwright/test@1.48.2 http-server@14.1.1
       - name: Install Chromium
-        run: npx -y playwright@1.48.2 install --with-deps chromium
+        run: npx playwright install --with-deps chromium
       - name: Start local server
-        run: npx -y http-server@14.1.1 -p 4173 -c-1 . > /tmp/vi3-http.log 2>&1 & echo $! > server.pid
+        run: npx http-server -p 4173 -c-1 . > /tmp/vi3-http.log 2>&1 & echo $! > server.pid
       - name: Wait for local server
         run: for i in {1..30}; do curl -fsS "$BASE_URL/index.html" >/dev/null && exit 0; sleep 1; done; cat /tmp/vi3-http.log; exit 1
       - name: Run Playwright tests
-        run: npx -y @playwright/test@1.48.2 test scripts/e2e --reporter=line --workers=1 --retries=1
+        run: npx playwright test scripts/e2e --reporter=line --workers=1 --retries=1
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
