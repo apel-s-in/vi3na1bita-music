@@ -35,6 +35,7 @@ const EXACT_STORAGE_KEYS = new Set([
   'intel:provider-identity:v1',
   'intel:provider-consents:v1',
   'intel:hybrid-sync:v1',
+  'eventLedger:chainId:v1',
   'vf_unread'
 ]);
 
@@ -319,7 +320,6 @@ const reloadAccountRuntime = async reason => {
 let initialized = false;
 let activeOwner = '';
 let switchPromise = Promise.resolve();
-let requestedOwner = '';
 
 const getStoredOwner = () =>
   safe(localStorage.getItem(OWNER_KEY));
@@ -329,27 +329,35 @@ const setStoredOwner = owner => {
   localStorage.setItem(OWNER_KEY, activeOwner);
 };
 
-const flushAnalytics = async () => {
+const flushAnalytics = async ({ from, to }) => {
   window.dispatchEvent(new CustomEvent(
     'account:data-switching',
     {
-      detail: {
-        from: activeOwner,
-        to: requestedOwner
-      }
+      detail: { from, to }
     }
   ));
 
-  window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
-  await new Promise(resolve => setTimeout(resolve, 180));
+  await window.eventLogger?.flush?.().catch(() => null);
+  await window.statsAggregator
+    ?.waitForIdle?.()
+    .catch(() => null);
 };
 
-const performSwitch = async targetOwner => {
+const performSwitch = async (
+  targetOwner,
+  {
+    adoptLocalData = null
+  } = {}
+) => {
   const target = safe(targetOwner) || LOCAL_OWNER;
-  const current = activeOwner || getStoredOwner() || LOCAL_OWNER;
+  const current =
+    activeOwner ||
+    getStoredOwner() ||
+    LOCAL_OWNER;
 
   if (current === target) {
     setStoredOwner(target);
+
     return {
       ok: true,
       switched: false,
@@ -357,8 +365,10 @@ const performSwitch = async targetOwner => {
     };
   }
 
+  const previousRestoring =
+    window._isRestoring === true;
+
   window.__accountDataSwitching = true;
-  window._isRestoring = true;
 
   try {
     await import('./backup-sync-engine.js')
@@ -367,13 +377,21 @@ const performSwitch = async targetOwner => {
       )
       .catch(() => null);
 
-    await flushAnalytics();
+    await flushAnalytics({
+      from: current,
+      to: target
+    });
 
-    const currentSnapshot = await captureCurrentSnapshot();
+    window._isRestoring = true;
+
+    const currentSnapshot =
+      await captureCurrentSnapshot();
+
     await vaultPut(current, currentSnapshot);
 
-    let targetRow = await vaultGet(target);
-    let targetSnapshot = targetRow?.snapshot || null;
+    const targetRow = await vaultGet(target);
+    let targetSnapshot =
+      targetRow?.snapshot || null;
 
     if (
       !targetSnapshot &&
@@ -381,7 +399,9 @@ const performSwitch = async targetOwner => {
       target !== LOCAL_OWNER &&
       await hasMeaningfulCurrentData()
     ) {
-      const adopt = await askToAdoptLocalData(target);
+      const adopt = adoptLocalData == null
+        ? await askToAdoptLocalData(target)
+        : adoptLocalData === true;
 
       if (adopt) {
         targetSnapshot = currentSnapshot;
@@ -389,7 +409,10 @@ const performSwitch = async targetOwner => {
       }
     }
 
-    await applySnapshot(targetSnapshot || emptySnapshot());
+    await applySnapshot(
+      targetSnapshot || emptySnapshot()
+    );
+
     setStoredOwner(target);
 
     await reloadAccountRuntime(
@@ -414,17 +437,31 @@ const performSwitch = async targetOwner => {
       ownerYandexId: target
     };
   } finally {
-    window._isRestoring = false;
+    window._isRestoring = previousRestoring;
     window.__accountDataSwitching = false;
+
+    queueMicrotask(() => {
+      window.dispatchEvent(new CustomEvent(
+        'analytics:logUpdated',
+        {
+          detail: {
+            reason: 'account_switch_complete'
+          }
+        }
+      ));
+    });
   }
 };
 
-const switchTo = owner => {
-  requestedOwner = safe(owner) || LOCAL_OWNER;
+const switchTo = (owner, options = {}) => {
+  const requestedOwner =
+    safe(owner) || LOCAL_OWNER;
 
   switchPromise = switchPromise
     .catch(() => null)
-    .then(() => performSwitch(requestedOwner));
+    .then(() =>
+      performSwitch(requestedOwner, options)
+    );
 
   return switchPromise;
 };
@@ -438,14 +475,21 @@ export const AccountDataContext = {
     return !!window.__accountDataSwitching;
   },
 
-  async switchToYandexAccount(yandexId) {
+  async switchToYandexAccount(
+    yandexId,
+    options = {}
+  ) {
     const owner = safe(yandexId);
-    if (!owner) throw new Error('account_owner_required');
-    return switchTo(owner);
+
+    if (!owner) {
+      throw new Error('account_owner_required');
+    }
+
+    return switchTo(owner, options);
   },
 
-  async switchToLocal() {
-    return switchTo(LOCAL_OWNER);
+  async switchToLocal(options = {}) {
+    return switchTo(LOCAL_OWNER, options);
   },
 
   async requireCurrentOwner() {
@@ -478,19 +522,6 @@ export const AccountDataContext = {
     return true;
   }
 };
-
-export const getLocalDataOwner = () =>
-  AccountDataContext.getCurrentOwner();
-
-export const bindLocalDataOwner = yandexId => {
-  const owner = safe(yandexId);
-  if (!owner) throw new Error('local_data_owner_required');
-  setStoredOwner(owner);
-  return owner;
-};
-
-export const assertLocalDataOwner = options =>
-  AccountDataContext.requireCurrentOwner(options);
 
 export const initAccountDataBoundary = async () => {
   if (initialized) return switchPromise;
