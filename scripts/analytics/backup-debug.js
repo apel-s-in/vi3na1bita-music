@@ -30,7 +30,7 @@ export const estimateCompactBackup = async (backup, { tailLimit = TAIL } = {}) =
 };
 
 export const inspectLocal = async ({ buildBackup = true } = {}) => {
-  window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 140));
+  window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await window.eventLogger?.flush?.(); await window.statsAggregator?.waitForIdle?.();
   const [hotRaw, warmRaw, ledger, br] = await Promise.all([metaDB.getEvents('events_hot').catch(() => []), metaDB.getEvents('events_warm').catch(() => []), readLedgerCheckpoint(metaDB).catch(() => null), getCurrentEventArchiveBranch({ db: metaDB }).catch(() => ({}))]);
   const all = normalizeEventList([...(warmRaw || []), ...(hotRaw || [])], { limit: 10000, sort: true, dedupeAchievementUnlocks: false }), curEvents = all.filter(e => s(e?.deviceStableId) === s(br.deviceStableId) && (!br.chainId || s(e?.chainId) === s(br.chainId)));
   const wm = getLocalEventArchiveWatermark(br.branchId || ''), maxSeq = await getLocalDeviceMaxSeq({ db: metaDB, deviceStableId: br.deviceStableId, chainId: br.chainId }).catch(() => 0);
