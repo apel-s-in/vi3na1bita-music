@@ -24,6 +24,77 @@ export const getTrackMeta = uid => read('trackMeta', s => s.get(uid));
 export const updateTrackMeta = async (uid, u) => setTrackMeta(uid, { ...((await getTrackMeta(uid)) || {}), ...u, uid });
 export const deleteTrackMeta = uid => write('trackMeta', s => s.delete(uid));
 export const getAllTrackMetas = async () => (await read('trackMeta', s => s.getAll())) || [];
+const ACCOUNT_CACHE_POLICY_FIELDS = Object.freeze([
+  'type',
+  'cloud',
+  'cloudOrigin',
+  'cloudFullListenCount',
+  'lastFullListenAt',
+  'cloudAddedAt',
+  'cloudExpiresAt',
+  'pinnedAt'
+]);
+
+const pickAccountCachePolicy = meta =>
+  Object.fromEntries(
+    ACCOUNT_CACHE_POLICY_FIELDS
+      .filter(key => meta?.[key] != null)
+      .map(key => [key, meta[key]])
+  );
+
+export const exportAccountCachePolicies = async () =>
+  Object.fromEntries(
+    (await getAllTrackMetas())
+      .filter(meta =>
+        meta?.uid &&
+        (
+          ['pinned', 'cloud'].includes(meta.type) ||
+          Number(meta.cloudFullListenCount || 0) > 0
+        )
+      )
+      .map(meta => [
+        String(meta.uid),
+        pickAccountCachePolicy(meta)
+      ])
+  );
+
+export const applyAccountCachePolicies = async (
+  policies = {}
+) => {
+  const rows = await getAllTrackMetas();
+
+  for (const meta of rows) {
+    const policy = policies?.[meta.uid] || null;
+    const next = { ...meta };
+
+    ACCOUNT_CACHE_POLICY_FIELDS.forEach(key => {
+      delete next[key];
+    });
+
+    if (policy && typeof policy === 'object') {
+      Object.assign(next, pickAccountCachePolicy(policy));
+    } else {
+      next.type = meta.cachedComplete
+        ? 'playbackCache'
+        : null;
+      next.cloud = false;
+      next.cloudFullListenCount = 0;
+    }
+
+    await setTrackMeta(meta.uid, next);
+  }
+
+  window.dispatchEvent(new CustomEvent(
+    'offline:stateChanged',
+    {
+      detail: {
+        reason: 'account_cache_policy_switched'
+      }
+    }
+  ));
+
+  return true;
+};
 export const deleteTrackCache = async uid => { await deleteAudio(uid); await deleteTrackMeta(uid); };
 export const getGlobal = k => read('global', s => s.get(String(k)));
 export const setGlobal = (k, v) => write('global', s => s.put({ key: String(k), value: v }));
