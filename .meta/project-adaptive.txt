@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 14:53:01 UTC
+Сгенерировано: 2026-07-22 14:54:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -513,13 +513,27 @@ jobs:
             exit 2
           fi
 
-      - name: Validate account data boundary
+      - name: Validate account-local vault
         run: |
           node --input-type=module --check < scripts/analytics/account-data-boundary.js
+          node --input-type=module --check < scripts/analytics/meta-db.js
+          node --input-type=module --check < scripts/offline/cache-db.js
           grep -q "cachedYandexId" scripts/core/social-session.js
-          grep -q "assertLocalDataOwner" scripts/analytics/backup-builders.js
-          grep -q "assertLocalDataOwner" scripts/analytics/backup-upload-runner.js
+          grep -q "Vi3AccountVault_v1" scripts/analytics/account-data-boundary.js
+          grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-builders.js
+          grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-upload-runner.js
+          grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-importers.js
+          grep -q "exportAccountCachePolicies" scripts/offline/cache-db.js
+          grep -q "applyAccountCachePolicies" scripts/offline/cache-db.js
           grep -q "account-data-boundary.js" service-worker.js
+
+          if grep -REn "assertLocalDataOwner" \
+            scripts/analytics/backup-builders.js \
+            scripts/analytics/backup-upload-runner.js \
+            scripts/analytics/backup-importers.js; then
+            echo "Legacy manual owner checks found"
+            exit 2
+          fi
           
       - name: Reject removed backup claim contour
         run: |
