@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 20:32:33 UTC
+Сгенерировано: 2026-07-22 20:34:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -300,7 +300,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - name: Validate application syntax
-        run: node --input-type=module --check < scripts/app.js
+        run: |
+          node --check service-worker.js
+          while IFS= read -r file; do
+            echo "CHECK $file"
+            node --input-type=module --check < "$file"
+          done < <(
+            find scripts src \
+              -type f \
+              -name '*.js' \
+              ! -path 'scripts/vendor/*' \
+              | sort
+          )
       - name: Install test dependencies
         run: npm install --no-save @playwright/test@1.48.2 http-server@14.1.1
       - name: Install Chromium
@@ -615,7 +626,8 @@ jobs:
           grep -q "favorite-mirror.js" service-worker.js
           grep -q "fav_total_" scripts/app/shards/view.js
 
-          if grep -q "signature(item)" \
+          if grep -En \
+            '(^|[^[:alnum:]_])signature\(item\)' \
             scripts/analytics/favorite-mirror.js; then
             echo "Legacy favorite signature helper found"
             exit 2
@@ -650,9 +662,10 @@ jobs:
           
       - name: Validate E2E workflow contract
         run: |
-          grep -Eq "@playwright/test@[^ ]+ test scripts/e2e" .github/workflows/e2e.yml
+          grep -q "npm install --no-save @playwright/test@1.48.2" .github/workflows/e2e.yml
+          grep -q "npx playwright test scripts/e2e" .github/workflows/e2e.yml
           grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
-          grep -q "node --input-type=module --check < scripts/app.js" .github/workflows/e2e.yml
+          grep -q "find scripts src" .github/workflows/e2e.yml
           
       - name: Reject native dialogs
         run: |
