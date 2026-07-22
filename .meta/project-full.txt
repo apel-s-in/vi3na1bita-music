@@ -116,14 +116,14 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js, verified-achievement-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
 [/scripts/app/player/] favorites-only-actions.js, favorites-only-resolver.js, playback-clock.js, playback-context-source.js
 [/scripts/app/player-ui/] lyrics.js
-[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-devices-view.js, achievements-view.js, actions-reset.js, actions-trash.js, actions.js, archive-maintenance-modal.js, archive-render-kit.js, auth-onboarding-orchestrator.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, cloud-ui-helpers.js, fresh-restore-modal.js, ledger-health-modal.js, live-bindings.js, logs-formatters.js, logs-view.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, restore-backup-runner.js, restore-card-render-kit.js, restore-decision.js, restore-diff.js, restore-preview-modal.js, settings-conflict-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, verified-achievements-view.js, view.js, yandex-actions.js, yandex-auth-view.js, yandex-auto-sync.js, yandex-preload-cache.js, yandex-runtime-refresh.js
+[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-devices-view.js, achievements-view.js, actions-reset.js, actions-trash.js, actions.js, archive-maintenance-modal.js, archive-render-kit.js, auth-onboarding-orchestrator.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, cloud-ui-helpers.js, fresh-restore-modal.js, ledger-health-modal.js, live-bindings.js, logs-formatters.js, logs-view.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, restore-backup-runner.js, restore-card-render-kit.js, restore-decision.js, restore-diff.js, restore-preview-modal.js, settings-conflict-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, view.js, yandex-actions.js, yandex-auth-view.js, yandex-auto-sync.js, yandex-preload-cache.js, yandex-runtime-refresh.js
 [/scripts/app/push/] web-push.js
 [/scripts/app/shards/] view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 13:11:03 UTC
+Сгенерировано: 2026-07-22 13:12:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4391,73 +4391,6 @@ export const readTrustState = async ({ db = defaultMetaDB, maxAgeMs = 300000 } =
 };
 
 export default { TRUST_STATE_KEY, computeTrustState, refreshTrustState, readTrustState };
-
-//=================================================
-// FILE: /scripts/analytics/verified-achievement-state.js
-// UID.104_(Trust and eligibility state)_(verified achievement state читает local unlock + server status)_(ничего не блокирует)
-// UID.111_(Prize/global achievements distinction)_(localUnlocked/synced/verified/claimable/suspicious)_(локальные достижения остаются локальными)
-// UID.112_(Profile command center)_(профиль показывает claim readiness)_(server validation нужна только для внешних призов)
-
-import { metaDB as defaultMetaDB } from './meta-db.js';
-import { readTrustState } from './trust-state.js';
-
-export const VERIFIED_ACHIEVEMENT_STATE_KEY = 'verified_achievement_state_v1';
-const s = v => String(v == null ? '' : v).trim();
-const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
-
-const localRows = async (db = defaultMetaDB) => {
-  const eng = window.achievementEngine, u = eng?.unlocked || (await db.getGlobal('unlocked_achievements').catch(() => null))?.value || {}, meta = eng?.unlockMeta || (await db.getGlobal('achievement_unlock_meta').catch(() => null))?.value || {};
-  return Object.keys(u || {}).map(id => ({ id, localUnlocked: true, unlockedAt: n(u[id]), localEventId: s(meta?.[id]?.eventId || ''), localDeviceStableId: s(meta?.[id]?.deviceStableId || '') }));
-};
-
-export const normalizeVerifiedAchievementRow = raw => ({
-  id: s(raw?.id),
-  localUnlocked: !!raw?.localUnlocked,
-  synced: !!raw?.synced,
-  verified: !!raw?.verified,
-  claimable: !!raw?.claimable,
-  suspicious: !!raw?.suspicious,
-  status: s(raw?.status || (raw?.claimable ? 'claimable' : raw?.verified ? 'verified' : raw?.synced ? 'synced' : raw?.localUnlocked ? 'localUnlocked' : 'unknown')),
-  reason: s(raw?.reason || ''),
-  unlockedAt: n(raw?.unlockedAt),
-  eventId: s(raw?.eventId || raw?.localEventId || ''),
-  claimId: s(raw?.claimId || '')
-});
-
-export const buildVerifiedAchievementState = async ({ db = defaultMetaDB, disk = window.YandexDisk, token = window.YandexAuth?.getToken?.() } = {}) => {
-  const [local, trust] = await Promise.all([localRows(db), readTrustState({ db }).catch(() => null)]);
-  let remote = null;
-  if (disk?.verifyAchievements && token && window.YandexAuth?.isTokenAlive?.()) remote = await disk.verifyAchievements(token, 'all').catch(e => ({ ok: false, error: e?.message || 'verify_failed', items: [] }));
-
-  const byId = new Map(local.map(x => [x.id, x]));
-  (remote?.items || []).forEach(x => byId.set(x.id, { ...(byId.get(x.id) || { id: x.id }), ...x }));
-  const trustSuspicious = trust?.status === 'suspicious';
-  const items = [...byId.values()].map(x => normalizeVerifiedAchievementRow({ ...x, suspicious: !!x.suspicious || trustSuspicious, claimable: !!x.claimable && !trustSuspicious }));
-  const summary = {
-    totalLocalUnlocked: local.length,
-    synced: items.filter(x => x.synced).length,
-    verified: items.filter(x => x.verified).length,
-    claimable: items.filter(x => x.claimable).length,
-    suspicious: items.filter(x => x.suspicious).length,
-    needsSync: items.filter(x => x.localUnlocked && !x.synced).length
-  };
-  return { version: 'verified-achievements-v1', updatedAt: Date.now(), trustStatus: trust?.status || 'unknown', serverOk: !!remote?.ok, serverStatus: s(remote?.status || ''), serverError: s(remote?.error || ''), summary, items: items.sort((a, b) => Number(b.claimable) - Number(a.claimable) || Number(b.verified) - Number(a.verified) || n(b.unlockedAt) - n(a.unlockedAt)) };
-};
-
-export const refreshVerifiedAchievementState = async (opts = {}) => {
-  const st = await buildVerifiedAchievementState(opts);
-  await (opts.db || defaultMetaDB).setGlobal(VERIFIED_ACHIEVEMENT_STATE_KEY, st).catch(() => {});
-  try { window.dispatchEvent(new CustomEvent('verified-achievements:updated', { detail: st })); } catch {}
-  return st;
-};
-
-export const readVerifiedAchievementState = async ({ db = defaultMetaDB, maxAgeMs = 300000, ...opts } = {}) => {
-  const row = (await db.getGlobal(VERIFIED_ACHIEVEMENT_STATE_KEY).catch(() => null))?.value;
-  if (row?.updatedAt && Date.now() - n(row.updatedAt) <= maxAgeMs) return row;
-  return refreshVerifiedAchievementState({ db, ...opts });
-};
-
-export default { VERIFIED_ACHIEVEMENT_STATE_KEY, normalizeVerifiedAchievementRow, buildVerifiedAchievementState, refreshVerifiedAchievementState, readVerifiedAchievementState };
 
 //=================================================
 // FILE: /scripts/app.js
@@ -8936,59 +8869,6 @@ export const openTrustCheckModal = async () => {
 };
 
 export default { openTrustCheckModal };
-
-//=================================================
-// FILE: /scripts/app/profile/verified-achievements-view.js
-// UID.111_(Prize/global achievements distinction)_(показывать verified слой отдельно от локальных ачивок)_(local не блокируется)
-// UID.112_(Profile command center)_(Проверенные достижения / Готово к claim / Нужна проверка)_(центр внешней валидности)
-// UID.094_(No-paralysis rule)_(verified UI не влияет на playback)_(только render + Cloud Function calls)
-
-import { readVerifiedAchievementState, refreshVerifiedAchievementState } from '../../analytics/verified-achievement-state.js';
-import { metaDB } from '../../analytics/meta-db.js';
-import { esc, fmtDateTime, renderCloudSectionCard, renderKeyValueRow, renderStatusPill } from './profile-render-kit.js';
-
-const tone = r => r.suspicious ? 'warn' : (r.claimable ? 'ok' : (r.verified ? 'info' : 'muted'));
-const label = r => r.claimable ? 'Готово к claim' : r.suspicious ? 'Нужна проверка' : r.verified ? 'Проверено' : r.synced ? 'Синхронизировано' : 'Локально';
-const row = r => `<div class="profile-list-item"><div style="font-size:20px">${r.claimable?'🎁':r.verified?'✅':r.suspicious?'⚠️':'🏆'}</div><div class="log-info"><div class="log-title">${esc(window.achievementEngine?.dict?.[r.id]?.ui?.name || r.id)} ${renderStatusPill({ text: label(r), tone: tone(r) })}</div><div class="log-desc">${esc(r.reason || r.status || '')}${r.unlockedAt ? ` · ${fmtDateTime(r.unlockedAt)}` : ''}</div></div>${r.claimable ? `<button class="om-btn om-btn--primary" data-claim-prepare="${esc(r.id)}">Claim</button>` : ''}</div>`;
-
-const renderSummary = st => [['Локально открыто', st?.summary?.totalLocalUnlocked || 0], ['Синхронизировано', st?.summary?.synced || 0], ['Проверено сервером', st?.summary?.verified || 0], ['Готово к claim', st?.summary?.claimable || 0, '#81c784'], ['Нужна проверка', st?.summary?.suspicious || 0, st?.summary?.suspicious ? '#ffb74d' : '#9db7dd'], ['Статус сервера', st?.serverOk ? 'доступен' : (st?.serverError || 'нет проверки')]].map(([label, value, valueColor]) => renderKeyValueRow({ label, value, valueColor, wordBreak:false })).join('');
-const render = st => {
-  const items = st?.items || [], claim = items.filter(x => x.claimable), susp = items.filter(x => x.suspicious), ver = items.filter(x => x.verified && !x.claimable && !x.suspicious);
-  return `${renderCloudSectionCard({ title:'Проверенные достижения', body: renderSummary(st) })}${renderCloudSectionCard({ title:'Готово к claim', style:'margin-top:10px', body: claim.length ? claim.map(row).join('') : '<div class="fav-empty">Пока нет claimable достижений</div>' })}${renderCloudSectionCard({ title:'Нужна проверка', style:'margin-top:10px', body: susp.length ? susp.map(row).join('') : '<div style="font-size:12px;color:#81c784">Подозрительных verified-флагов нет</div>' })}${renderCloudSectionCard({ title:'Проверено', style:'margin-top:10px', body: ver.length ? ver.slice(0, 8).map(row).join('') : '<div class="fav-empty">Проверенных достижений пока нет</div>' })}<div class="profile-inline-actions"><button class="modal-action-btn online" data-verified-refresh="1">Обновить verified</button></div><div style="margin-top:10px;color:#7f93b5;font-size:11px;line-height:1.45">Локальные достижения не блокируются. Server validation нужна только для внешних призов/claim.</div>`;
-};
-
-export const renderVerifiedAchievementsSection = async ({ container } = {}) => {
-  const root = container?.querySelector?.('#prof-verified-achievements');
-  if (!root) return false;
-  const load = async (force = false) => force ? refreshVerifiedAchievementState({ db: metaDB }) : readVerifiedAchievementState({ db: metaDB });
-  root.innerHTML = render(await load(false).catch(() => ({ summary:{}, items:[], serverOk:false, serverError:'verify_unavailable' })));
-  if (root._verifiedBound) return true;
-  root._verifiedBound = true;
-  root.addEventListener('click', async e => {
-    if (e.target.closest('[data-verified-refresh]')) {
-      root.innerHTML = render(await load(true).catch(err => ({ summary:{}, items:[], serverOk:false, serverError:String(err?.message || '') })));
-      window.NotificationSystem?.success?.('Verified обновлён ✅');
-      return;
-    }
-    const id = e.target.closest('[data-claim-prepare]')?.dataset.claimPrepare;
-    if (!id) return;
-    try {
-      const token = window.YandexAuth?.getToken?.();
-      const r = await window.YandexDisk?.prepareClaim?.(token, id);
-      window.Modals?.open?.({ title:'Claim', maxWidth:390, bodyHtml:`${renderCloudSectionCard({ title:'Claim request', body: `
-        ${renderKeyValueRow({ label:'Achievement', value:id })}
-        ${renderKeyValueRow({ label:'Claim ID', value:r?.claimId || '—' })}
-        ${renderKeyValueRow({ label:'Status', value:r?.status || '—' })}
-        ${renderKeyValueRow({ label:'Result', value:r?.result || '—' })}
-      ` })}<div style="margin-top:10px;color:#7f93b5;font-size:11px;line-height:1.45">Это подготовка claim. Финальная выдача приза позже будет отдельным серверным процессом.</div>` });
-    } catch (err) {
-      window.NotificationSystem?.error?.('Claim prepare не удался: ' + String(err?.message || ''));
-    }
-  });
-  return true;
-};
-
-export default { renderVerifiedAchievementsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/view.js
