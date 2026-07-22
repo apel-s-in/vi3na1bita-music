@@ -68,9 +68,23 @@ jobs:
             echo "Account vault must not control playback"
             exit 2
           fi
-      - name: Validate favorite server mirror
+      - name: Validate favorite state contract and server mirror
         run: |
+          node --input-type=module --check < scripts/analytics/favorite-state-contract.js
           node --input-type=module --check < scripts/analytics/favorite-mirror.js
+          node --input-type=module --check < scripts/analytics/favorites-storage-merge.js
+          node --input-type=module --check < scripts/core/favorites-manager.js
+          grep -q "normalizeFavoriteItem" scripts/analytics/favorite-state-contract.js
+          grep -q "favoriteClock" scripts/analytics/favorite-state-contract.js
+          grep -q "favoriteStatus" scripts/analytics/favorite-state-contract.js
+          grep -q "mergeFavoritePair" scripts/analytics/favorite-state-contract.js
+          grep -q "remoteToLocal" scripts/analytics/favorite-state-contract.js
+          grep -q "localToRemote" scripts/analytics/favorite-state-contract.js
+          grep -q "favorite-state-contract.js" scripts/core/favorites-manager.js
+          grep -q "favorite-state-contract.js" scripts/analytics/favorite-mirror.js
+          grep -q "favorite-state-contract.js" scripts/analytics/favorites-storage-merge.js
+          grep -q "favorite-state-contract.js" service-worker.js
+          grep -q "favorite_state_get" scripts/analytics/favorite-mirror.js
           grep -q "favorite_state_get" scripts/analytics/favorite-mirror.js
           grep -q "favorite_state_mutate" scripts/analytics/favorite-mirror.js
           grep -q "favorite_state_reconcile" scripts/analytics/favorite-mirror.js
@@ -80,8 +94,16 @@ jobs:
 
           if grep -En \
             "\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(" \
+            scripts/analytics/favorite-state-contract.js \
             scripts/analytics/favorite-mirror.js; then
-            echo "Favorite mirror must not control playback"
+            echo "Favorite contract/mirror must not control playback"
+            exit 2
+          fi
+
+          if grep -REn "FavoritesManager\?\?\?\._m|FavoritesManager\._m|manager\?\?\?\._m|manager\._m" \
+            scripts/analytics/account-data-boundary.js \
+            scripts/app/profile/yandex-runtime-refresh.js; then
+            echo "Private FavoritesManager storage access found"
             exit 2
           fi
       - name: Reject removed backup claim contour
