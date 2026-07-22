@@ -267,19 +267,14 @@ const askToAdoptLocalData = owner =>
 
 const reloadAccountRuntime = async reason => {
   try {
-    const manager = window.FavoritesManager;
+    const rows = JSON.parse(
+      localStorage.getItem('__favorites_v2__') || '[]'
+    );
 
-    if (manager?._m) {
-      manager._m.clear();
-
-      JSON.parse(
-        localStorage.getItem('__favorites_v2__') || '[]'
-      ).forEach(item => {
-        if (item?.uid) {
-          manager._m.set(String(item.uid).trim(), item);
-        }
-      });
-    }
+    window.FavoritesManager?.replaceSnapshot?.(
+      rows,
+      { reason }
+    );
   } catch {}
 
   await window.achievementEngine
