@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 18:30:26 UTC
+Сгенерировано: 2026-07-22 18:31:05 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -542,6 +542,22 @@ jobs:
             "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" \
             scripts/analytics/account-data-boundary.js; then
             echo "Account vault must not control playback"
+            exit 2
+          fi
+      - name: Validate favorite server mirror
+        run: |
+          node --input-type=module --check < scripts/analytics/favorite-mirror.js
+          grep -q "favorite_state_get" scripts/analytics/favorite-mirror.js
+          grep -q "favorite_state_mutate" scripts/analytics/favorite-mirror.js
+          grep -q "favorite_state_reconcile" scripts/analytics/favorite-mirror.js
+          grep -q "favoriteMirror:outbox:v1" scripts/analytics/account-data-boundary.js
+          grep -q "favorite-mirror.js" service-worker.js
+          grep -q "fav_total_" scripts/app/shards/view.js
+
+          if grep -En \
+            "\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(" \
+            scripts/analytics/favorite-mirror.js; then
+            echo "Favorite mirror must not control playback"
             exit 2
           fi
       - name: Reject removed backup claim contour
