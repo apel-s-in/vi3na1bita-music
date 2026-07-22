@@ -7,6 +7,7 @@ import { normalizeEventList } from './backup-event-cleanup.js';
 import { buildAchievementBackupState, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
 import { readLedgerCheckpoint } from './event-integrity.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
+import { assertLocalDataOwner } from './account-data-boundary.js';
 
 const sortObj = v => Array.isArray(v) ? v.map(sortObj) : (!v || typeof v !== 'object') ? v : Object.keys(v).sort().reduce((a, k) => (a[k] = sortObj(v[k]), a), {});
 export const stableStringify = v => JSON.stringify(sortObj(v));
@@ -146,6 +147,12 @@ export const buildDeviceSettingsObject = async ({ identity: id, currentDevice: c
 };
 
 export const buildFullBackupObject = async () => {
+  if (
+    window.YandexAuth?.getSessionStatus?.() === 'active'
+  ) {
+    await assertLocalDataOwner();
+  }
+
   const [identity, devices, data] = await Promise.all([
     readBackupOwnerIdentity(),
     readDeviceRegistryForBackup(),
