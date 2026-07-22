@@ -1,4 +1,258 @@
-// UID.001_(Playback safety invariant)_(не допустить побочных stop/reset сценариев)_(FavoritesManager хранит truth о лайках, но не управляет playback напрямую) UID.002_(UID-first core)_(избранное строго uid-based)_(никаких filename/title/index ключей) UID.003_(Event log truth)_(favorite tombstones для merge/restore)_(удаление сохраняет историю, но не участвует в playback) UID.099_(Multi-device sync model)_(удаления избранного merge-safe)_(deletedAt не даёт старому backup воскресить трек)
-const KEY='__favorites_v2__',sUid=v=>String(v||'').trim();
-export class FavoritesManager{constructor(){this._m=new Map();this._s=new Set();try{JSON.parse(localStorage.getItem(KEY)||'[]').forEach(i=>i?.uid&&this._m.set(sUid(i.uid),i));}catch{}}isLiked(u){const i=this._m.get(sUid(u));return!!(i&&!i.inactiveAt&&!i.deletedAt);}getSnapshot(){return Array.from(this._m.values());}getItem(uid){return this._m.get(sUid(uid))||null;}replaceSnapshot(rows,{reason='remote_sync'}={}){const next=new Map();(Array.isArray(rows)?rows:[]).forEach(raw=>{const uid=sUid(raw?.uid);if(!uid)return;const old=this._m.get(uid)||{};next.set(uid,{...old,...raw,uid,addedAt:Number(raw?.addedAt||old.addedAt||Date.now()),updatedAt:Number(raw?.updatedAt||Date.now()),inactiveAt:Number(raw?.inactiveAt||0),deletedAt:Number(raw?.deletedAt||0),sourceAlbum:raw?.sourceAlbum||raw?.albumKey||raw?.album||old.sourceAlbum||old.albumKey||null,albumKey:raw?.albumKey||raw?.sourceAlbum||raw?.album||old.albumKey||old.sourceAlbum||null});});this._m=next;this._save();try{window.dispatchEvent(new CustomEvent('favorites:mirror-applied',{detail:{reason,count:next.size}}));}catch{}return this.getSnapshot();}readLikedSet(){return new Set([...this._m.values()].filter(i=>!i.inactiveAt&&!i.deletedAt).map(i=>i.uid));}_save(){try{localStorage.setItem(KEY,JSON.stringify(Array.from(this._m.values())));}catch{}}_emit(d){this._s.forEach(c=>{try{c(d);}catch{}});}toggle(uid,{source:s='album',albumKey:aK}={}){const u=sUid(uid);if(!u)return false;const i=this._m.get(u),act=i&&!i.inactiveAt&&!i.deletedAt,n=Date.now();let L=false;if(act){this._m.set(u,{...i,uid:u,inactiveAt:s==='favorites'?n:0,deletedAt:s==='favorites'?0:n,updatedAt:n});}else{this._m.set(u,{uid:u,addedAt:i?.addedAt||n,updatedAt:n,albumKey:aK||i?.albumKey||null,sourceAlbum:aK||i?.albumKey||i?.sourceAlbum||null,inactiveAt:0,deletedAt:0});L=true;}this._save();try{window.eventLogger?.log?.('FAVORITE_CHANGED',u,{liked:L,source:s,albumKey:aK||i?.albumKey||i?.sourceAlbum||null,inactive:!!(!L&&s==='favorites'),deleted:!!(!L&&s!=='favorites')});window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'favorites'}}));}catch{}this._emit({uid:u,liked:L});return L;}remove(uid){const u=sUid(uid),i=this._m.get(u);if(!u||!i)return false;this._m.set(u,{...i,uid:u,inactiveAt:0,deletedAt:Date.now(),updatedAt:Date.now()});this._save();this._emit({uid:u,liked:false,removed:true});try{window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'favorites'}}));}catch{}return true;}purge(uid){const u=sUid(uid);if(!u||!this._m.delete(u))return false;this._save();this._emit({uid:u,liked:false,purged:true});try{window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'favorites'}}));}catch{}return true;}subscribe(c){this._s.add(c);return()=>this._s.delete(c);}}
-export const Favorites=new FavoritesManager();window.FavoritesManager=Favorites;
+// UID.001_(Playback safety invariant)_(FavoritesManager не управляет playback)
+// UID.002_(UID-first core)_(избранное строго uid-based)
+// UID.003_(Event log truth)_(favorite tombstones для merge/restore)
+// UID.099_(Multi-device sync model)_(единый favorite-state contract)
+
+import {
+  favoriteStatus,
+  normalizeFavoriteItem,
+  normalizeFavoriteList
+} from '../analytics/favorite-state-contract.js';
+
+const KEY = '__favorites_v2__';
+const uidOf = value => String(value || '').trim();
+
+export class FavoritesManager {
+  constructor() {
+    this._m = new Map();
+    this._s = new Set();
+
+    try {
+      const rows = JSON.parse(
+        localStorage.getItem(KEY) || '[]'
+      );
+
+      normalizeFavoriteList(rows).forEach(item =>
+        this._m.set(item.uid, item)
+      );
+    } catch {}
+  }
+
+  isLiked(uid) {
+    return favoriteStatus(this._m.get(uidOf(uid))) === 'active';
+  }
+
+  getSnapshot() {
+    return [...this._m.values()];
+  }
+
+  getItem(uid) {
+    return this._m.get(uidOf(uid)) || null;
+  }
+
+  replaceSnapshot(rows, {
+    reason = 'snapshot_replace'
+  } = {}) {
+    this._m = new Map(
+      normalizeFavoriteList(rows)
+        .map(item => [item.uid, item])
+    );
+
+    this._save();
+
+    try {
+      window.dispatchEvent(new CustomEvent(
+        'favorites:snapshot-applied',
+        {
+          detail: {
+            reason,
+            count: this._m.size
+          }
+        }
+      ));
+    } catch {}
+
+    return this.getSnapshot();
+  }
+
+  readLikedSet() {
+    return new Set(
+      [...this._m.values()]
+        .filter(item => favoriteStatus(item) === 'active')
+        .map(item => item.uid)
+    );
+  }
+
+  _save() {
+    try {
+      localStorage.setItem(
+        KEY,
+        JSON.stringify(this.getSnapshot())
+      );
+    } catch {}
+  }
+
+  _emit(detail) {
+    this._s.forEach(callback => {
+      try {
+        callback(detail);
+      } catch {}
+    });
+  }
+
+  toggle(uid, {
+    source = 'album',
+    albumKey
+  } = {}) {
+    const cleanUid = uidOf(uid);
+    if (!cleanUid) return false;
+
+    const old = this._m.get(cleanUid);
+    const active = favoriteStatus(old) === 'active';
+    const at = Date.now();
+    const liked = !active;
+
+    const next = active
+      ? normalizeFavoriteItem({
+          ...old,
+          uid: cleanUid,
+          status:
+            source === 'favorites'
+              ? 'inactive'
+              : 'deleted',
+          updatedAt: at,
+          inactiveAt:
+            source === 'favorites'
+              ? at
+              : 0,
+          deletedAt:
+            source === 'favorites'
+              ? 0
+              : at
+        })
+      : normalizeFavoriteItem({
+          ...old,
+          uid: cleanUid,
+          status: 'active',
+          addedAt: old?.addedAt || at,
+          updatedAt: at,
+          sourceAlbum:
+            albumKey ||
+            old?.sourceAlbum ||
+            old?.albumKey ||
+            null,
+          albumKey:
+            albumKey ||
+            old?.albumKey ||
+            old?.sourceAlbum ||
+            null,
+          inactiveAt: 0,
+          deletedAt: 0
+        });
+
+    this._m.set(cleanUid, next);
+    this._save();
+
+    try {
+      window.eventLogger?.log?.(
+        'FAVORITE_CHANGED',
+        cleanUid,
+        {
+          liked,
+          source,
+          albumKey:
+            albumKey ||
+            old?.albumKey ||
+            old?.sourceAlbum ||
+            null,
+          inactive:
+            !liked && source === 'favorites',
+          deleted:
+            !liked && source !== 'favorites'
+        }
+      );
+
+      window.dispatchEvent(new CustomEvent(
+        'backup:domain-dirty',
+        {
+          detail: {
+            domain: 'favorites'
+          }
+        }
+      ));
+    } catch {}
+
+    this._emit({
+      uid: cleanUid,
+      liked
+    });
+
+    return liked;
+  }
+
+  remove(uid) {
+    const cleanUid = uidOf(uid);
+    const old = this._m.get(cleanUid);
+    if (!cleanUid || !old) return false;
+
+    const at = Date.now();
+
+    this._m.set(
+      cleanUid,
+      normalizeFavoriteItem({
+        ...old,
+        uid: cleanUid,
+        status: 'deleted',
+        inactiveAt: 0,
+        deletedAt: at,
+        updatedAt: at
+      })
+    );
+
+    this._save();
+    this._emit({
+      uid: cleanUid,
+      liked: false,
+      removed: true
+    });
+
+    try {
+      window.dispatchEvent(new CustomEvent(
+        'backup:domain-dirty',
+        {
+          detail: {
+            domain: 'favorites'
+          }
+        }
+      ));
+    } catch {}
+
+    return true;
+  }
+
+  purge(uid) {
+    const cleanUid = uidOf(uid);
+
+    if (!cleanUid || !this._m.delete(cleanUid)) {
+      return false;
+    }
+
+    this._save();
+    this._emit({
+      uid: cleanUid,
+      liked: false,
+      purged: true
+    });
+
+    try {
+      window.dispatchEvent(new CustomEvent(
+        'backup:domain-dirty',
+        {
+          detail: {
+            domain: 'favorites'
+          }
+        }
+      ));
+    } catch {}
+
+    return true;
+  }
+
+  subscribe(callback) {
+    this._s.add(callback);
+    return () => this._s.delete(callback);
+  }
+}
+
+export const Favorites = new FavoritesManager();
+window.FavoritesManager = Favorites;
