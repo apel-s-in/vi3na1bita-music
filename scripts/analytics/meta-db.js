@@ -1,4 +1,17 @@
 // UID.003_(Event log truth)_(сохранять локальную правду пользователя)_(не ломать старые stores и добавлять только новые) UID.044_(ListenerProfile core)_(подготовить persistent кэш профиля слушателя)_(добавить отдельный store listener_profile) UID.069_(Internal user identity)_(подготовить локальное хранение identity и sync state)_(добавить provider_identity и hybrid_sync) UID.062_(Recommendation memory and feedback)_(подготовить кэш взаимодействий с рекомендациями)_(добавить recommendation_state) UID.051_(Collection state)_(подготовить коллекционный слой)_(добавить collection_state) UID.089_(Future MetaDB stores)_(дать intel-слою устойчивый persistence contour)_(повысить схему только additively)
+export const META_DB_STORES = Object.freeze([
+  'events_hot',
+  'events_warm',
+  'stats',
+  'global',
+  'listener_profile',
+  'provider_identity',
+  'hybrid_sync',
+  'recommendation_state',
+  'collection_state',
+  'intel_runtime'
+]);
+
 export class MetaDB {
   constructor() { this.dbName = 'MetaDB_v4'; this.version = 2; this.db = null; }
   async init() {
@@ -36,6 +49,66 @@ export class MetaDB {
   getStoreValue(store, key) { return this._exec(store, 'readonly', s => s.get(String(key))); }
   setStoreValue(store, key, value) { return this._exec(store, 'readwrite', s => s.put({ key: String(key), value })); }
   getStoreAll(store) { return this._exec(store, 'readonly', s => s.getAll()); }
+
+  async exportSnapshot() {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(
+        META_DB_STORES,
+        'readonly'
+      );
+      const snapshot = {};
+      let pending = META_DB_STORES.length;
+
+      META_DB_STORES.forEach(name => {
+        const request = tx.objectStore(name).getAll();
+
+        request.onsuccess = () => {
+          snapshot[name] = request.result || [];
+          pending--;
+
+          if (!pending) resolve(snapshot);
+        };
+
+        request.onerror = () =>
+          reject(request.error);
+      });
+
+      tx.onerror = () =>
+        reject(tx.error);
+      tx.onabort = () =>
+        reject(tx.error || new Error('meta_snapshot_aborted'));
+    });
+  }
+
+  async replaceSnapshot(snapshot = {}) {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(
+        META_DB_STORES,
+        'readwrite'
+      );
+
+      META_DB_STORES.forEach(name => {
+        const store = tx.objectStore(name);
+        store.clear();
+
+        const rows = Array.isArray(snapshot[name])
+          ? snapshot[name]
+          : [];
+
+        rows.forEach(row => store.put(row));
+      });
+
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () =>
+        reject(tx.error || new Error('meta_replace_aborted'));
+    });
+  }
+
   tx(sName, mode, fn) { return this._exec(sName, mode, (s, tx) => { fn(s, tx); tx.onabort = () => { throw tx.error || new Error(`Abort: ${sName}`); }; }); }
 }
 export const metaDB = new MetaDB();
