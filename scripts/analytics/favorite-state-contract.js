@@ -21,7 +21,15 @@ const minPositive = (...values) => {
 };
 
 export const favoriteStatus = item => {
-  const explicit = safe(item?.status);
+  if (
+    !item ||
+    typeof item !== 'object' ||
+    Array.isArray(item)
+  ) {
+    return '';
+  }
+
+  const explicit = safe(item.status);
 
   if (FAVORITE_STATUSES.includes(explicit)) {
     return explicit;
