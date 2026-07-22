@@ -6,7 +6,7 @@ import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybac
 import { normalizeEventList } from './backup-event-cleanup.js';
 import { readLocalEventLog, mergeEventLogs, rebuildStatsFromEvents } from './stats-state.js';
 import { buildAchievementBackupState, normalizeAchievementState, mergeAchievementStates, applyAchievementStateToMetaDB, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
-import { assertLocalDataOwner } from './account-data-boundary.js';
+import { AccountDataContext } from './account-data-boundary.js';
 
 export const rebuildStatsFromWarmEvents = async () => rebuildStatsFromEvents(metaDB, normalizeEventList(await metaDB.getEvents('events_warm').catch(() => []), { limit: 10000 }), { reason: 'legacy_warm_rebuild' }).catch(() => false);
 
@@ -19,7 +19,8 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
     if (!cY) throw new Error('restore_requires_yandex_login');
     if (!oY || oY !== cY) throw new Error('restore_owner_mismatch');
 
-    const boundary = await assertLocalDataOwner();
+    const boundary =
+      await AccountDataContext.requireCurrentOwner();
 
     if (boundary.ownerYandexId !== cY) {
       throw new Error('local_data_owner_mismatch');
