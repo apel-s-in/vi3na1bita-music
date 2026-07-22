@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 15:23:02 UTC
+Сгенерировано: 2026-07-22 15:24:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -525,6 +525,10 @@ jobs:
           grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-importers.js
           grep -q "exportAccountCachePolicies" scripts/offline/cache-db.js
           grep -q "applyAccountCachePolicies" scripts/offline/cache-db.js
+          grep -q "eventLedger:chainId:v1" scripts/analytics/account-data-boundary.js
+          grep -q "waitForIdle" scripts/analytics/stats-aggregator.js
+          grep -q "W.statsAggregator" scripts/app.js
+          grep -q "adoptLocalData" scripts/analytics/account-data-boundary.js
           grep -q "account-data-boundary.js" service-worker.js
 
           if grep -REn "assertLocalDataOwner" \
@@ -534,7 +538,12 @@ jobs:
             echo "Legacy manual owner checks found"
             exit 2
           fi
-          
+          if grep -En \
+            "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" \
+            scripts/analytics/account-data-boundary.js; then
+            echo "Account vault must not control playback"
+            exit 2
+          fi
       - name: Reject removed backup claim contour
         run: |
           if grep -REn \
