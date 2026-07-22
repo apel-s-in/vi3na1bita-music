@@ -2,6 +2,11 @@
 // Не управляет playback и не перестраивает playing playlist.
 
 import { requestSocialAction } from '../core/social-session.js';
+import {
+  favoriteSignature,
+  localToRemote,
+  remoteToLocal
+} from './favorite-state-contract.js';
 
 const OUTBOX_KEY = 'favoriteMirror:outbox:v1';
 const REVISION_KEY = 'favoriteMirror:revision:v1';
@@ -22,43 +27,10 @@ const networkAllowed = () =>
   window.NetPolicy?.isNetworkAllowed?.() ??
   navigator.onLine;
 
-const localState = item =>
-  Number(item?.deletedAt || 0) > 0
-    ? 'deleted'
-    : Number(item?.inactiveAt || 0) > 0
-      ? 'inactive'
-      : 'active';
-
-const normalizeLocalItem = item => ({
-  uid: safe(item?.uid),
-  album:
-    safe(
-      item?.sourceAlbum ||
-      item?.albumKey ||
-      item?.album
-    ),
-  status: localState(item),
-  addedAt: Number(item?.addedAt || 0),
-  updatedAt: Number(
-    item?.updatedAt ||
-    item?.deletedAt ||
-    item?.inactiveAt ||
-    0
-  ),
-  inactiveAt: Number(item?.inactiveAt || 0),
-  deletedAt: Number(item?.deletedAt || 0)
-});
-
 const localSnapshot = () =>
   (window.FavoritesManager?.getSnapshot?.() || [])
-    .map(normalizeLocalItem)
-    .filter(item => item.uid);
-
-const signature = item => JSON.stringify({
-  uid: item.uid,
-  status: item.status,
-  album: item.album
-});
+    .map(localToRemote)
+    .filter(Boolean);
 
 const readOutbox = () => {
   const rows = parse(
@@ -85,35 +57,6 @@ const writeOutbox = rows => {
     );
   } catch {}
 };
-
-const remoteToLocal = state =>
-  (Array.isArray(state?.items)
-    ? state.items
-    : [])
-    .map(item => ({
-      uid: safe(item.uid),
-      sourceAlbum: safe(item.album) || null,
-      albumKey: safe(item.album) || null,
-      addedAt: Number(item.addedAt || Date.now()),
-      updatedAt: Number(item.updatedAt || Date.now()),
-      inactiveAt:
-        item.status === 'inactive'
-          ? Number(
-              item.inactiveAt ||
-              item.updatedAt ||
-              Date.now()
-            )
-          : 0,
-      deletedAt:
-        item.status === 'deleted'
-          ? Number(
-              item.deletedAt ||
-              item.updatedAt ||
-              Date.now()
-            )
-          : 0
-    }))
-    .filter(item => item.uid);
 
 class FavoriteMirrorService {
   constructor() {
@@ -212,7 +155,7 @@ class FavoriteMirrorService {
     this.lastLocal = new Map(
       localSnapshot().map(item => [
         item.uid,
-        signature(item)
+        favoriteSignature(item)
       ])
     );
   }
@@ -225,7 +168,7 @@ class FavoriteMirrorService {
 
     const changed = current.filter(item =>
       this.lastLocal.get(item.uid) !==
-      signature(item)
+      favoriteSignature(item)
     );
 
     for (const uid of this.lastLocal.keys()) {
