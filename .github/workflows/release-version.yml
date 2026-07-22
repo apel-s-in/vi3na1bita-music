@@ -27,6 +27,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check music/service-worker.js
+          node --input-type=module --check < music/scripts/app.js
           node --input-type=module --check < music/scripts/app/friends/friends-block.js
           node --input-type=module --check < friends/friends-core.js
           node --input-type=module --check < friends/friends-crypto.js
