@@ -26,6 +26,17 @@ export async function loadFavoritesAlbum(ctx) {
     });
     window.playerCore?.onFavoritesChanged(() => { if (ctx.getCurrentAlbum() === FAV) { rb(); const pc = window.playerCore; if (pc && ctx.getPlayingAlbum?.() === FAV) { const aT = window.PlaybackContextSource?.getSourcePlaylistForContext?.(FAV) || []; if (aT.length) pc.originalPlaylist = aT; } window.FavoritesOnlyActions?.syncFavoritesOnlyPlayback?.({ player: pc, autoPlayIfNeeded: true, forceReload: false, syncUi: () => window.PlayerUI?.applyFavoritesOnlyDomFilter?.() }); window.FavoritesOnlyActions?.syncFavoritesOnlyUiFrame?.(); } });
   }
+  if (!ctx._favMirrorBound) {
+    ctx._favMirrorBound = true;
+
+    window.addEventListener(
+      'favorites:mirror-applied',
+      () => {
+        if (ctx.getCurrentAlbum?.() === FAV) rb();
+      }
+    );
+  }
+
   rb();
 }
 export async function loadShowcaseAlbum(ctx) { ctx.renderAlbumTitle('Витрина Разбита', 'showcase'); const cw = document.getElementById('cover-wrap'); if (cw) cw.style.display = 'none'; if (window.ShowcaseManager) await window.ShowcaseManager.renderTab(); }
