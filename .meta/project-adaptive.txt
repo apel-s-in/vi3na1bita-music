@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 13:29:15 UTC
+Сгенерировано: 2026-07-22 13:32:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -489,6 +489,18 @@ jobs:
       - run: node scripts/ci/validate-manifest.mjs
       - run: node scripts/ci/lint-sw.mjs
       - run: node scripts/ci/validate-content.mjs
+
+      - name: Validate critical JavaScript modules
+        run: |
+          node --check service-worker.js
+          node --input-type=module --check < scripts/core/social-session.js
+          node --input-type=module --check < scripts/core/yandex-disk.js
+          node --input-type=module --check < scripts/core/yandex-ledger-disk.js
+          node --input-type=module --check < scripts/analytics/account-data-boundary.js
+          node --input-type=module --check < scripts/analytics/backup-importers.js
+          node --input-type=module --check < scripts/analytics/backup-builders.js
+          node --input-type=module --check < scripts/analytics/backup-upload-runner.js
+
       - name: Validate listening receipts shadow layer
         run: |
           node --input-type=module --check < scripts/analytics/listening-receipts.js
@@ -508,6 +520,19 @@ jobs:
           grep -q "assertLocalDataOwner" scripts/analytics/backup-builders.js
           grep -q "assertLocalDataOwner" scripts/analytics/backup-upload-runner.js
           grep -q "account-data-boundary.js" service-worker.js
+          
+      - name: Reject removed backup claim contour
+        run: |
+          if grep -REn \
+            "verified-achievement-state|verified-achievements-view|claim_prepare|claim_validate|claim_index|achievement_verify" \
+            scripts service-worker.js; then
+            echo "Removed backup-based achievement claim contour found"
+            exit 2
+          fi
+
+          test -f scripts/core/yandex-ledger-disk.js
+          test ! -f scripts/core/yandex-verified-disk.js
+          grep -q "YandexLedgerDisk" scripts/core/yandex-disk.js
           
       - name: Reject native dialogs
         run: |
