@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 14:48:46 UTC
+Сгенерировано: 2026-07-22 14:50:33 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4433,8 +4433,21 @@ export class StatsAggregator {
     this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
     this._processing = false; this._rerun = false;
     if (bindEvents) window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
+
+    window.addEventListener('account:data-switched', () => {
+      this.lastFullListens.clear();
+      this.session = {
+        favOrderedRun: 0,
+        favOrderedLastUid: null,
+        favShuffleEvents: new Set(),
+        midnightTripleTrack: null,
+        midnightTripleCount: 0,
+        lastFullUid: null
+      };
+    });
   }
   async processHotEvents() {
+    if (window.__accountDataSwitching) return;
     if (this._processing) return void (this._rerun = true);
     this._processing = true;
     try {
