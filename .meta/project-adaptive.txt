@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 19:45:21 UTC
+Сгенерировано: 2026-07-22 19:46:27 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5388,7 +5388,7 @@ import { normalizeEventList } from './backup-event-cleanup.js';
 
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 export const readLocalEventLog = async (db = defaultMetaDB, { forceFlush = true } = {}) => {
-  if (forceFlush) try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 120)); } catch {}
+  if (forceFlush) try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await window.eventLogger?.flush?.(); await window.statsAggregator?.waitForIdle?.(); } catch {}
   const [hot, warm] = await Promise.all([db.getEvents('events_hot').catch(() => []), db.getEvents('events_warm').catch(() => [])]);
   return normalizeEventList([...(Array.isArray(warm) ? warm : []), ...(Array.isArray(hot) ? hot : [])], { limit: 10000 });
 };
