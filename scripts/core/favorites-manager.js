@@ -29,7 +29,10 @@ export class FavoritesManager {
   }
 
   isLiked(uid) {
-    return favoriteStatus(this._m.get(uidOf(uid))) === 'active';
+    const item = this._m.get(uidOf(uid));
+
+    return !!item &&
+      favoriteStatus(item) === 'active';
   }
 
   getSnapshot() {
