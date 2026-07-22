@@ -40,25 +40,27 @@ class ListeningReceiptService {
       )
     );
 
+    const finish = reason => {
+      const snapshot = this.snapshot();
+
+      this.enqueue(() =>
+        this.complete(reason, snapshot)
+      );
+    };
+
     window.addEventListener(
       'player:pause',
-      () => this.enqueue(() =>
-        this.complete('pause')
-      )
+      () => finish('pause')
     );
 
     window.addEventListener(
       'player:stop',
-      () => this.enqueue(() =>
-        this.complete('stop')
-      )
+      () => finish('stop')
     );
 
     window.addEventListener(
       'player:ended',
-      () => this.enqueue(() =>
-        this.complete('ended')
-      )
+      () => finish('ended')
     );
 
     window.addEventListener(
@@ -71,8 +73,13 @@ class ListeningReceiptService {
           nextUid &&
           this.session.trackUid !== nextUid
         ) {
+          const snapshot = this.snapshot();
+
           this.enqueue(() =>
-            this.complete('track_changed')
+            this.complete(
+              'track_changed',
+              snapshot
+            )
           );
         }
       }
@@ -216,7 +223,10 @@ class ListeningReceiptService {
     return result;
   }
 
-  async complete(reason = 'unknown') {
+  async complete(
+    reason = 'unknown',
+    finalSnapshot = null
+  ) {
     const current = this.session;
 
     if (!current?.sessionId) {
@@ -235,6 +245,7 @@ class ListeningReceiptService {
     const result = await requestSocialAction(
       'listen_session_complete',
       this.snapshot({
+        ...(finalSnapshot || {}),
         sessionId: current.sessionId,
         reason: safe(reason)
       })
@@ -321,7 +332,7 @@ class ListeningReceiptService {
       {
         detail: {
           reason,
-          shadow: true,
+          shadow: result?.shadow !== false,
           session: this.session
             ? { ...this.session }
             : null,
