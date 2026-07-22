@@ -6,19 +6,13 @@ export class StatsAggregator {
     this.lastFullListens = new Map();
     this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
     this._processing = false; this._rerun = false;
-    if (bindEvents) window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
-
-    window.addEventListener('account:data-switched', () => {
-      this.lastFullListens.clear();
-      this.session = {
-        favOrderedRun: 0,
-        favOrderedLastUid: null,
-        favShuffleEvents: new Set(),
-        midnightTripleTrack: null,
-        midnightTripleCount: 0,
-        lastFullUid: null
-      };
-    });
+    if (bindEvents) {
+      window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
+      window.addEventListener('account:data-switched', () => {
+        this.lastFullListens.clear();
+        this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
+      });
+    }
   }
 
   async waitForIdle(timeoutMs = 5000) {
