@@ -56,7 +56,7 @@ const pickArchivableLedgerHead = events => {
 };
 
 export const buildBackupDataSnapshot = async () => {
-  try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 80)); } catch {}
+  try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await window.eventLogger?.flush?.(); await window.statsAggregator?.waitForIdle?.(); } catch {}
 
   const [st, h, w, a, aM, str, uP, uR, lP, pI, hS, rS, cS, iR, ledger] = await Promise.all([
     metaDB.getAllStats(),
