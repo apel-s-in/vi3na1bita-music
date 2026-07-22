@@ -1,7 +1,7 @@
 // scripts/analytics/backup-sync-engine.js
 // Умный автосейв: публичный фасад. State/scheduler/cloud guard вынесены в отдельные модули.
 import { isWatchedStorageKey, markStorageKeyDirty, DOMAIN_DEBOUNCE_MS } from './sync-domains.js';
-import { isSyncEnabled, isSyncReady, setSyncEnabledState, markSyncReady, markRestoreOrSkipDone, isRestoreOrSkipDone, shouldMarkStatsDirty } from './sync-state.js';
+import { isSyncEnabled, isSyncReady, setSyncEnabledState, markSyncReady, markRestoreOrSkipDone, isRestoreOrSkipDone, shouldMarkStatsDirty, suspendSyncForAccountSwitch as suspendSyncState } from './sync-state.js';
 import { cancelScheduledSync, scheduleSync } from './sync-scheduler.js';
 
 let _bound = false, _lastUnlockedSeen = -1;
@@ -18,5 +18,11 @@ export const initBackupSyncEngine = () => {
 };
 
 export const getSyncIntervalSec = () => Math.round(DOMAIN_DEBOUNCE_MS.favorites / 1000);
+
+export const suspendSyncForAccountSwitch = () => {
+  cancelScheduledSync();
+  return suspendSyncState();
+};
+
 export { isSyncReady, isSyncEnabled, markSyncReady, markRestoreOrSkipDone, isRestoreOrSkipDone };
-export default { initBackupSyncEngine, markSyncReady, isSyncReady, isSyncEnabled, setSyncEnabled, getSyncIntervalSec, markRestoreOrSkipDone, isRestoreOrSkipDone };
+export default { initBackupSyncEngine, markSyncReady, isSyncReady, isSyncEnabled, setSyncEnabled, getSyncIntervalSec, suspendSyncForAccountSwitch, markRestoreOrSkipDone, isRestoreOrSkipDone };
