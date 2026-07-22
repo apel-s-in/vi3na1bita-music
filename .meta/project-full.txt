@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 21:03:14 UTC
+Сгенерировано: 2026-07-22 21:03:57 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -322,6 +322,12 @@ jobs:
         run: for i in {1..30}; do curl -fsS "$BASE_URL/index.html" >/dev/null && exit 0; sleep 1; done; cat /tmp/vi3-http.log; exit 1
       - name: Run Playwright tests
         run: npx playwright test scripts/e2e --reporter=line --workers=1 --retries=1
+      - name: Collect Playwright diagnostics
+        if: failure()
+        run: |
+          mkdir -p test-results
+          cp /tmp/vi3-http.log test-results/http-server.log 2>/dev/null || true
+
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -330,7 +336,6 @@ jobs:
           path: |
             test-results/
             playwright-report/
-            /tmp/vi3-http.log
           if-no-files-found: ignore
           retention-days: 7
       - name: Stop local server
