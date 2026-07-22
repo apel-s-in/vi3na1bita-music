@@ -9,6 +9,26 @@ export const getLastUploadAt = () => _lastUploadAt;
 export const setLastUploadAt = ts => { _lastUploadAt = Number(ts || Date.now()) || Date.now(); };
 export const shouldMarkStatsDirty = (cd = 60000) => { if (Date.now() - _lastStatsDirtyAt < cd) return false; _lastStatsDirtyAt = Date.now(); return true; };
 export const emitSyncState = state => window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state } }));
+
+export const suspendSyncForAccountSwitch = () => {
+  _ready = false;
+  _lastUploadAt = 0;
+  _lastStatsDirtyAt = 0;
+
+  window.dispatchEvent(new CustomEvent(
+    'backup:sync:ready',
+    {
+      detail: {
+        reason: 'account_switch',
+        blocked: true
+      }
+    }
+  ));
+
+  emitSyncState('idle');
+  return true;
+};
+
 export const markRestoreOrSkipDone = r => { localStorage.setItem(LS_RESTORE, '1'); };
 export const setSyncEnabledState = v => { localStorage.setItem(LS_SYNC, v ? '1' : '0'); window.dispatchEvent(new CustomEvent('backup:sync:settings:changed')); };
 export const markSyncReady = raw => {
@@ -21,4 +41,4 @@ export const markSyncReady = raw => {
   _ready = true; if (done.includes(r)) markRestoreOrSkipDone(r);
   window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: r } }));
 };
-export default { isSyncEnabled, isSyncReady, isRestoreOrSkipDone, canUpload, getLastUploadAt, setLastUploadAt, shouldMarkStatsDirty, emitSyncState, markRestoreOrSkipDone, setSyncEnabledState, markSyncReady };
+export default { isSyncEnabled, isSyncReady, isRestoreOrSkipDone, canUpload, getLastUploadAt, setLastUploadAt, shouldMarkStatsDirty, emitSyncState, suspendSyncForAccountSwitch, markRestoreOrSkipDone, setSyncEnabledState, markSyncReady };
