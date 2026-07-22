@@ -49,6 +49,10 @@ jobs:
           grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-importers.js
           grep -q "exportAccountCachePolicies" scripts/offline/cache-db.js
           grep -q "applyAccountCachePolicies" scripts/offline/cache-db.js
+          grep -q "eventLedger:chainId:v1" scripts/analytics/account-data-boundary.js
+          grep -q "waitForIdle" scripts/analytics/stats-aggregator.js
+          grep -q "W.statsAggregator" scripts/app.js
+          grep -q "adoptLocalData" scripts/analytics/account-data-boundary.js
           grep -q "account-data-boundary.js" service-worker.js
 
           if grep -REn "assertLocalDataOwner" \
@@ -58,7 +62,12 @@ jobs:
             echo "Legacy manual owner checks found"
             exit 2
           fi
-          
+          if grep -En \
+            "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" \
+            scripts/analytics/account-data-boundary.js; then
+            echo "Account vault must not control playback"
+            exit 2
+          fi
       - name: Reject removed backup claim contour
         run: |
           if grep -REn \
