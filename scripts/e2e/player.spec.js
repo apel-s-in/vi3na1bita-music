@@ -42,7 +42,12 @@ test('account-local vault switches favorites and stats without stopping playback
       './scripts/analytics/account-data-boundary.js'
     );
 
-    await AccountDataContext.switchToYandexAccount('account-a');
+    await AccountDataContext.switchToYandexAccount(
+      'account-a',
+      {
+        adoptLocalData: true
+      }
+    );
     localStorage.setItem('__favorites_v2__', JSON.stringify([
       {
         uid: window.playerCore.getCurrentTrackUid(),
@@ -53,6 +58,11 @@ test('account-local vault switches favorites and stats without stopping playback
       }
     ]));
 
+    localStorage.setItem(
+      'eventLedger:chainId:v1',
+      'chain-account-a'
+    );
+
     await AccountDataContext.saveCurrent();
     await AccountDataContext.switchToYandexAccount('account-b');
   });
@@ -62,12 +72,16 @@ test('account-local vault switches favorites and stats without stopping playback
     uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
     favorites: JSON.parse(
       localStorage.getItem('__favorites_v2__') || '[]'
-    ).length
+    ).length,
+    chainId: localStorage.getItem(
+      'eventLedger:chainId:v1'
+    ) || ''
   }));
 
   expect(accountB.playing).toBeTruthy();
   expect(accountB.uid).toBe(uid);
   expect(accountB.favorites).toBe(0);
+  expect(accountB.chainId).toBe('');
 
   await page.evaluate(async () => {
     await window.AccountDataContext
@@ -79,12 +93,16 @@ test('account-local vault switches favorites and stats without stopping playback
     uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
     favorites: JSON.parse(
       localStorage.getItem('__favorites_v2__') || '[]'
-    ).length
+    ).length,
+    chainId: localStorage.getItem(
+      'eventLedger:chainId:v1'
+    ) || ''
   }));
 
   expect(accountA.playing).toBeTruthy();
   expect(accountA.uid).toBe(uid);
   expect(accountA.favorites).toBe(1);
+  expect(accountA.chainId).toBe('chain-account-a');
 });
 test('Game Center title is visible and Friends timers stop after leaving section',async({page})=>{await loginByPromo(page);await page.locator('[data-album="__games__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__games__');const gameTitle=page.locator('#active-album-title');await expect(gameTitle).toBeVisible();await expect(gameTitle).toContainText('ЗАЛ ВИТРИНЫ');const gameTitleStyle=await gameTitle.evaluate(el=>({display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility,opacity:getComputedStyle(el).opacity}));expect(gameTitleStyle.display).not.toBe('none');expect(gameTitleStyle.visibility).toBe('visible');expect(Number(gameTitleStyle.opacity)).toBeGreaterThan(0);await page.locator('[data-album="__friends__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');await page.locator('[data-album="__showcase__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__showcase__');expect(await page.evaluate(()=>!!window.playerCore)).toBeTruthy()});
 test('quality switch forces one reload and preserves playback uid',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});const row=page.locator('#track-list .track').filter({has:page.locator('.track-title')}).first();await row.click();const before=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.(),quality:String(window.playerCore?.qMode||'')}));const result=await page.evaluate(()=>{const pc=window.playerCore;const original=pc.load.bind(pc);let calls=0;pc.load=(...args)=>{calls++;return original(...args)};const next=pc.qMode==='hi'?'lo':'hi';pc.switchQuality(next);return{calls,next}});expect(result.calls).toBe(1);await page.waitForTimeout(500);const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),quality:String(window.playerCore?.qMode||'')}));expect(after.uid).toBe(before.uid);expect(after.quality).toBe(result.next)});
