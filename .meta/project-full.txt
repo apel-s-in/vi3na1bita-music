@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 14:43:57 UTC
+Сгенерировано: 2026-07-22 14:44:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2731,7 +2731,7 @@ import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybac
 import { normalizeEventList } from './backup-event-cleanup.js';
 import { readLocalEventLog, mergeEventLogs, rebuildStatsFromEvents } from './stats-state.js';
 import { buildAchievementBackupState, normalizeAchievementState, mergeAchievementStates, applyAchievementStateToMetaDB, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
-import { assertLocalDataOwner } from './account-data-boundary.js';
+import { AccountDataContext } from './account-data-boundary.js';
 
 export const rebuildStatsFromWarmEvents = async () => rebuildStatsFromEvents(metaDB, normalizeEventList(await metaDB.getEvents('events_warm').catch(() => []), { limit: 10000 }), { reason: 'legacy_warm_rebuild' }).catch(() => false);
 
@@ -2744,7 +2744,8 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
     if (!cY) throw new Error('restore_requires_yandex_login');
     if (!oY || oY !== cY) throw new Error('restore_owner_mismatch');
 
-    const boundary = await assertLocalDataOwner();
+    const boundary =
+      await AccountDataContext.requireCurrentOwner();
 
     if (boundary.ownerYandexId !== cY) {
       throw new Error('local_data_owner_mismatch');
