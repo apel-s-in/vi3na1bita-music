@@ -206,7 +206,7 @@ class FavoriteMirrorService {
     this.lastLocal = new Map(
       current.map(item => [
         item.uid,
-        signature(item)
+        favoriteSignature(item)
       ])
     );
   }
