@@ -7,8 +7,21 @@ export class StatsAggregator {
     this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
     this._processing = false; this._rerun = false;
     if (bindEvents) window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
+
+    window.addEventListener('account:data-switched', () => {
+      this.lastFullListens.clear();
+      this.session = {
+        favOrderedRun: 0,
+        favOrderedLastUid: null,
+        favShuffleEvents: new Set(),
+        midnightTripleTrack: null,
+        midnightTripleCount: 0,
+        lastFullUid: null
+      };
+    });
   }
   async processHotEvents() {
+    if (window.__accountDataSwitching) return;
     if (this._processing) return void (this._rerun = true);
     this._processing = true;
     try {
