@@ -25,7 +25,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - name: Validate application syntax
-        run: node --input-type=module --check < scripts/app.js
+        run: |
+          node --check service-worker.js
+          while IFS= read -r file; do
+            echo "CHECK $file"
+            node --input-type=module --check < "$file"
+          done < <(
+            find scripts src \
+              -type f \
+              -name '*.js' \
+              ! -path 'scripts/vendor/*' \
+              | sort
+          )
       - name: Install test dependencies
         run: npm install --no-save @playwright/test@1.48.2 http-server@14.1.1
       - name: Install Chromium
