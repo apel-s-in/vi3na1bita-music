@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 13:27:13 UTC
+Сгенерировано: 2026-07-22 13:29:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -16738,7 +16738,6 @@ body.news-view #cover-wrap{display:none!important}
 .sc-playlist-pick{display:flex;flex-direction:column;gap:10px}
 .sc-sheet-close{position:absolute;top:14px;right:14px;all:unset;cursor:pointer;font-size:22px;color:#888;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
 
-#sc-tg-numbers{min-width:42px;display:inline-flex!important;align-items:center;justify-content:center;white-space:nowrap;text-align:center;user-select:none}
 .showcase-sticky-bar{position:fixed;left:50%;bottom:85px;transform:translateX(-50%);z-index:10005;background:rgba(20,24,32,0.95);border:1px solid rgba(77,170,255,.3);padding:6px 8px;border-radius:12px;display:flex;gap:6px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,.8);width:calc(100% - 20px);max-width:380px;backdrop-filter:blur(8px)}
 .sc-action-popup{position:absolute;bottom:calc(100% + 10px);left:0;right:0;background:rgba(20,24,32,0.98);border:1px solid rgba(77,170,255,.4);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.8);opacity:0;transform:translateY(10px) scale(.95);pointer-events:none;transition:all .2s cubic-bezier(.1,.8,.2,1);transform-origin:bottom center;backdrop-filter:blur(8px);z-index:-1}
 .showcase-sticky-bar.menu-open .sc-action-popup{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;z-index:1}
@@ -16750,9 +16749,6 @@ body.news-view #cover-wrap{display:none!important}
 .sc-sel-btn{flex:1;background:rgba(255,255,255,.06);border:none;color:#eaf2ff;border-radius:8px;font-size:13px;font-weight:800;height:36px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:.15s}
 .sc-sel-btn:active{transform:scale(0.96);background:rgba(255,255,255,.1)}
 .sc-sel-btn.accent{background:linear-gradient(135deg,#4daaff,#357ac9);color:#fff}
-.sc-edit-row.sc-checked{background:rgba(77,170,255,.07)}
-.sc-edit-row.sc-will-remove{opacity:.72;background:rgba(255,107,107,.06)}
-.sc-edit-row.sc-will-remove .track-title > div:first-child{text-decoration:line-through;text-decoration-thickness:1px}
 .sc-chk{width:18px;height:18px;accent-color:var(--secondary-color);cursor:pointer;flex-shrink:0;margin-right:6px}
 .sc-eye-btn{all:unset;cursor:pointer;padding:6px 8px;font-size:17px;flex-shrink:0;opacity:.65}
 .sc-eye-btn:hover{opacity:1}
@@ -16761,12 +16757,10 @@ body.news-view #cover-wrap{display:none!important}
 .sc-search-info{font-size:13px;color:#9db7dd;padding:6px 10px 12px}
 .sc-search-result{cursor:pointer}
 .sc-search-result:hover{background:rgba(255,255,255,.04)}
-.sc-search-actions{display:flex;gap:10px;padding:12px 10px;border-top:1px solid var(--border-color)}
 .sc-badge{font-size:10px;padding:2px 7px;border-radius:999px;font-weight:800;white-space:nowrap}
 .sc-badge-active{background:rgba(76,175,80,.2);color:#81c784}
 .sc-badge-hidden{background:rgba(255,152,0,.2);color:#ffb74d}
 .sc-badge-missing{background:rgba(100,100,100,.2);color:#aaa}
-#sc-search-sticky .showcase-btn{flex:0 0 auto;min-width:max-content;padding:9px 12px}
 
 /* Showcase Settings Modal */
 .sc-set-prev{background:rgba(0,0,0,0.3);border-radius:10px;padding:8px 10px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.06);font-size:12px;min-height:120px;display:flex;flex-direction:column;gap:4px}
