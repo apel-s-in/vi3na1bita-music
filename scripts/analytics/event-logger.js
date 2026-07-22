@@ -10,7 +10,7 @@ import { buildLedgerEvents, writeLedgerCheckpoint } from './event-integrity.js';
 
 class EventLogger {
   constructor() {
-    this.queue = []; this.sessionId = crypto.randomUUID(); this.deviceHash = localStorage.getItem('deviceHash') || ('tmp_' + crypto.randomUUID()); this.deviceStableId = localStorage.getItem('deviceStableId') || ''; this._flushing = false; this._rerun = false;
+    this.queue = []; this.sessionId = crypto.randomUUID(); this.deviceHash = localStorage.getItem('deviceHash') || ('tmp_' + crypto.randomUUID()); this.deviceStableId = localStorage.getItem('deviceStableId') || ''; this._flushing = false; this._flushPromise = null; this._rerun = false;
   }
   async init() {
     await metaDB.init();
@@ -33,27 +33,28 @@ class EventLogger {
     if (this.queue.length > 20) this.flush();
     return ev;
   }
-  async flush() {
-    if (this._flushing) { this._rerun = true; return; }
+  flush() {
+    if (this._flushPromise) { this._rerun = true; return this._flushPromise; }
     this._flushing = true;
-    try {
+    this._flushPromise = (async () => {
       do {
         this._rerun = false;
         if (!this.queue.length) break;
-        const raw = [...this.queue]; this.queue = [];
+        const raw = this.queue.splice(0);
         try {
           const built = await buildLedgerEvents(raw, { db: metaDB });
           await metaDB.addEvents(built.events, 'events_hot');
           await writeLedgerCheckpoint(metaDB, built.checkpoint);
-          window.dispatchEvent(new CustomEvent('analytics:logUpdated', { detail: { count: built.events.length, domains: [...new Set(built.events.map(x => x.domain).filter(Boolean))] } }));
+          window.dispatchEvent(new CustomEvent('analytics:logUpdated', { detail: { count: built.events.length, domains: [...new Set(built.events.map(item => item.domain).filter(Boolean))] } }));
         } catch {
-          this.queue = [...raw, ...this.queue];
+          this.queue.unshift(...raw);
           break;
         }
-      } while (this._rerun);
-    } finally { this._flushing = false; }
+      } while (this._rerun || this.queue.length);
+      return true;
+    })().finally(() => { this._flushing = false; this._flushPromise = null; });
+    return this._flushPromise;
   }
-}
 
 export const eventLogger = new EventLogger();
 window.eventLogger = eventLogger;
