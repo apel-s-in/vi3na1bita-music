@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 19:21:24 UTC
+Сгенерировано: 2026-07-22 19:23:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -490,16 +490,20 @@ jobs:
       - run: node scripts/ci/lint-sw.mjs
       - run: node scripts/ci/validate-content.mjs
 
-      - name: Validate critical JavaScript modules
+      - name: Validate all first-party JavaScript
         run: |
           node --check service-worker.js
-          node --input-type=module --check < scripts/core/social-session.js
-          node --input-type=module --check < scripts/core/yandex-disk.js
-          node --input-type=module --check < scripts/core/yandex-ledger-disk.js
-          node --input-type=module --check < scripts/analytics/account-data-boundary.js
-          node --input-type=module --check < scripts/analytics/backup-importers.js
-          node --input-type=module --check < scripts/analytics/backup-builders.js
-          node --input-type=module --check < scripts/analytics/backup-upload-runner.js
+
+          while IFS= read -r file; do
+            echo "CHECK $file"
+            node --input-type=module --check < "$file"
+          done < <(
+            find scripts src \
+              -type f \
+              -name '*.js' \
+              ! -path 'scripts/vendor/*' \
+              | sort
+          )
 
       - name: Validate listening receipts shadow layer
         run: |
@@ -561,12 +565,17 @@ jobs:
           grep -q "favorite-state-contract.js" scripts/analytics/favorites-storage-merge.js
           grep -q "favorite-state-contract.js" service-worker.js
           grep -q "favorite_state_get" scripts/analytics/favorite-mirror.js
-          grep -q "favorite_state_get" scripts/analytics/favorite-mirror.js
           grep -q "favorite_state_mutate" scripts/analytics/favorite-mirror.js
           grep -q "favorite_state_reconcile" scripts/analytics/favorite-mirror.js
           grep -q "favoriteMirror:outbox:v1" scripts/analytics/account-data-boundary.js
           grep -q "favorite-mirror.js" service-worker.js
           grep -q "fav_total_" scripts/app/shards/view.js
+
+          if grep -q "signature(item)" \
+            scripts/analytics/favorite-mirror.js; then
+            echo "Legacy favorite signature helper found"
+            exit 2
+          fi
 
           if grep -En \
             "\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(" \
@@ -576,7 +585,7 @@ jobs:
             exit 2
           fi
 
-          if grep -REn "FavoritesManager\?\?\?\._m|FavoritesManager\._m|manager\?\?\?\._m|manager\._m" \
+          if grep -En "\._m(\.|\)|;|\?)" \
             scripts/analytics/account-data-boundary.js \
             scripts/app/profile/yandex-runtime-refresh.js; then
             echo "Private FavoritesManager storage access found"
