@@ -10,6 +10,28 @@ export class SessionTracker {
     window.addEventListener('player:pause', () => this._pause());
     window.addEventListener('player:tick', e => this._tick(e.detail));
     ['player:ended', 'player:stop', 'player:trackChanged'].forEach(ev => window.addEventListener(ev, () => { if (ev !== 'player:ended') this._speedRunnerMs = 0; this._end(ev === 'player:ended'); }));
+
+    window.addEventListener(
+      'account:data-switching',
+      () => {
+        this._speedRunnerMs = 0;
+        this._speedRunnerAwarded = false;
+        this._end(false);
+      }
+    );
+
+    window.addEventListener(
+      'account:data-switched',
+      () => {
+        if (!window.playerCore?.isPlaying?.()) return;
+
+        this._start({
+          uid: window.playerCore.getCurrentTrackUid?.(),
+          duration: window.playerCore.getDuration?.(),
+          type: 'audio'
+        });
+      }
+    );
   }
   _start({ uid, duration, type = 'audio' }) {
     if (this.s?.uid === uid && this.s?.variant === type) return void (this.s.lastUpdate = Date.now());
