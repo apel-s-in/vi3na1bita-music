@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 15:14:57 UTC
+Сгенерировано: 2026-07-22 15:15:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4491,6 +4491,22 @@ export class StatsAggregator {
       };
     });
   }
+
+  async waitForIdle(timeoutMs = 5000) {
+    const deadline = Date.now() + timeoutMs;
+
+    while (
+      this._processing &&
+      Date.now() < deadline
+    ) {
+      await new Promise(resolve =>
+        setTimeout(resolve, 20)
+      );
+    }
+
+    return !this._processing;
+  }
+
   async processHotEvents() {
     if (window.__accountDataSwitching) return;
     if (this._processing) return void (this._rerun = true);
