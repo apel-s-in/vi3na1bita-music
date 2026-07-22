@@ -5,7 +5,9 @@ const SIGNALING_URL =
   'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
 
 let cachedSession = null;
+let cachedYandexId = '';
 let pendingSession = null;
+let pendingYandexId = '';
 
 const safe = value => String(value == null ? '' : value).trim();
 
@@ -21,6 +23,11 @@ const readProfile = () => {
 
   return {
     active: !!active,
+    yandexId: safe(
+      profile?.yandexId ||
+      profile?.id ||
+      ''
+    ),
     displayName: safe(
       profile?.displayName ||
       profile?.realName ||
@@ -42,30 +49,54 @@ const readJson = async response => {
 
 export const invalidateSocialSession = () => {
   cachedSession = null;
+  cachedYandexId = '';
   pendingSession = null;
+  pendingYandexId = '';
 };
 
 export const getSocialSession = async ({ force = false } = {}) => {
   const auth = window.YandexAuth;
   const token = auth?.getToken?.();
+  const profile = readProfile();
+  const yandexId = profile.yandexId;
 
-  if (!token || !auth?.isTokenAlive?.()) {
+  if (
+    !token ||
+    !auth?.isTokenAlive?.() ||
+    !yandexId
+  ) {
     invalidateSocialSession();
     throw new Error('yandex_oauth_required');
   }
 
   if (
+    cachedYandexId &&
+    cachedYandexId !== yandexId
+  ) {
+    invalidateSocialSession();
+  }
+
+  if (
     !force &&
     cachedSession?.socialSession &&
-    Number(cachedSession.expiresAt || 0) > Date.now() + 120000
+    cachedYandexId === yandexId &&
+    Number(cachedSession.expiresAt || 0) >
+      Date.now() + 120000
   ) {
     return cachedSession;
   }
 
-  if (!force && pendingSession) return pendingSession;
+  if (
+    !force &&
+    pendingSession &&
+    pendingYandexId === yandexId
+  ) {
+    return pendingSession;
+  }
+
+  pendingYandexId = yandexId;
 
   pendingSession = (async () => {
-    const profile = readProfile();
     const response = await fetch(SIGNALING_URL, {
       method: 'POST',
       headers: {
@@ -96,7 +127,19 @@ export const getSocialSession = async ({ force = false } = {}) => {
       );
     }
 
+    const currentYandexId = readProfile().yandexId;
+
+    if (
+      !currentYandexId ||
+      currentYandexId !== yandexId
+    ) {
+      throw new Error(
+        'social_session_account_changed'
+      );
+    }
+
     cachedSession = result;
+    cachedYandexId = yandexId;
     return result;
   })();
 
@@ -104,6 +147,7 @@ export const getSocialSession = async ({ force = false } = {}) => {
     return await pendingSession;
   } finally {
     pendingSession = null;
+    pendingYandexId = '';
   }
 };
 
@@ -161,8 +205,11 @@ export const requestSocialAction = async (
   }
 };
 
-export default {
-  getSocialSession,
+window.addEventListener(
+  'yandex:auth:changed',
+  () => invalidateSocialSession()
+);
+
   invalidateSocialSession,
   requestSocialAction
 };
