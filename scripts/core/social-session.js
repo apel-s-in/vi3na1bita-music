@@ -1,3 +1,4 @@
+// FILE: /scripts/core/social-session.js
 // Общая signed social session для Friends и Game Center.
 // OAuth остаётся только в основном приложении и никогда не передаётся iframe.
 
@@ -204,12 +205,13 @@ export const requestSocialAction = async (
     throw error;
   }
 };
-
 window.addEventListener(
   'yandex:auth:changed',
   () => invalidateSocialSession()
 );
 
+export default {
+  getSocialSession,
   invalidateSocialSession,
   requestSocialAction
 };
