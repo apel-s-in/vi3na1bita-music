@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 12:34:50 UTC
+Сгенерировано: 2026-07-22 12:35:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -501,6 +501,14 @@ jobs:
             exit 2
           fi
 
+      - name: Validate account data boundary
+        run: |
+          node --input-type=module --check < scripts/analytics/account-data-boundary.js
+          grep -q "cachedYandexId" scripts/core/social-session.js
+          grep -q "assertLocalDataOwner" scripts/analytics/backup-builders.js
+          grep -q "assertLocalDataOwner" scripts/analytics/backup-upload-runner.js
+          grep -q "account-data-boundary.js" service-worker.js
+          
       - name: Reject native dialogs
         run: |
           if grep -REn "\b(confirm|alert|prompt)\s*\(" \
