@@ -19,6 +19,73 @@ test('album carousel is circular, auto-loads settled album and never stops playb
 test('album gallery visibility persists and special navigation clears album highlight',async({page})=>{await loginByPromo(page);await page.waitForSelector('#cover-wrap',{timeout:1e4});await page.locator('#album-icons-albums [data-carousel-center="1"]').click();await expect(page.locator('#cover-wrap')).toBeHidden();await page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]').click();await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');await expect(page.locator('#cover-wrap')).toBeHidden();await page.locator('.album-icon[data-album="__favorites__"]').click();await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('__favorites__');const state=await page.evaluate(()=>({albumActive:document.querySelectorAll('#album-icons-albums .album-icon.active').length,navActive:document.querySelectorAll('#album-icons-nav .album-icon.active').length,center:document.querySelector('#album-icons-albums [data-carousel-center="1"]')?.dataset.album||''}));expect(state.albumActive).toBe(0);expect(state.navActive).toBe(1);expect(state.center).toBe('ne-vse-ravno')});
 test('desktop mouse click opens carousel album and toggles its gallery',async({page})=>{await loginByPromo(page);await page.waitForSelector('#album-icons-albums.album-carousel',{timeout:1e4});const side=page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]');await side.click();await expect(side).toHaveAttribute('data-carousel-center','1');await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');const center=page.locator('#album-icons-albums [data-carousel-center="1"]');await center.click();await expect(page.locator('#cover-wrap')).toBeHidden();await center.click();await expect(page.locator('#cover-wrap')).toBeVisible()});
 test('special navigation has six items and Friends is separated from Game Center',async({page})=>{await loginByPromo(page);const keys=await page.locator('#album-icons-nav .album-icon').evaluateAll(a=>a.map(x=>x.dataset.album));expect(keys).toEqual(['__games__','__friends__','__showcase__','__favorites__','__reliz__','__profile__']);await page.locator('[data-album="__games__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__games__');await expect(page.locator('#active-album-title')).toContainText('ЗАЛ ВИТРИНЫ');await expect(page.locator('.vf-host-in-friends')).toHaveCount(0);await page.locator('[data-album="__friends__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');await expect(page.locator('.gc-host')).toHaveCount(0)});
+test('account-local vault switches favorites and stats without stopping playback', async ({ page }) => {
+  await loginByPromo(page);
+  await page.waitForSelector('#track-list .track', { timeout: 10000 });
+
+  const first = page.locator('#track-list .track').first();
+  await first.locator('.like-star').click();
+  await first.click();
+
+  const uid = await page.evaluate(() =>
+    String(window.playerCore?.getCurrentTrackUid?.() || '')
+  );
+
+  await page.evaluate(async () => {
+    Object.assign(window.YandexAuth, {
+      getSessionStatus: () => 'active',
+      isTokenAlive: () => true,
+      getProfile: () => ({ yandexId: 'account-a' })
+    });
+
+    const { AccountDataContext } = await import(
+      './scripts/analytics/account-data-boundary.js'
+    );
+
+    await AccountDataContext.switchToYandexAccount('account-a');
+    localStorage.setItem('__favorites_v2__', JSON.stringify([
+      {
+        uid: window.playerCore.getCurrentTrackUid(),
+        addedAt: Date.now(),
+        updatedAt: Date.now(),
+        inactiveAt: 0,
+        deletedAt: 0
+      }
+    ]));
+
+    await AccountDataContext.saveCurrent();
+    await AccountDataContext.switchToYandexAccount('account-b');
+  });
+
+  const accountB = await page.evaluate(() => ({
+    playing: !!window.playerCore?.isPlaying?.(),
+    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
+    favorites: JSON.parse(
+      localStorage.getItem('__favorites_v2__') || '[]'
+    ).length
+  }));
+
+  expect(accountB.playing).toBeTruthy();
+  expect(accountB.uid).toBe(uid);
+  expect(accountB.favorites).toBe(0);
+
+  await page.evaluate(async () => {
+    await window.AccountDataContext
+      .switchToYandexAccount('account-a');
+  });
+
+  const accountA = await page.evaluate(() => ({
+    playing: !!window.playerCore?.isPlaying?.(),
+    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
+    favorites: JSON.parse(
+      localStorage.getItem('__favorites_v2__') || '[]'
+    ).length
+  }));
+
+  expect(accountA.playing).toBeTruthy();
+  expect(accountA.uid).toBe(uid);
+  expect(accountA.favorites).toBe(1);
+});
 test('Game Center title is visible and Friends timers stop after leaving section',async({page})=>{await loginByPromo(page);await page.locator('[data-album="__games__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__games__');const gameTitle=page.locator('#active-album-title');await expect(gameTitle).toBeVisible();await expect(gameTitle).toContainText('ЗАЛ ВИТРИНЫ');const gameTitleStyle=await gameTitle.evaluate(el=>({display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility,opacity:getComputedStyle(el).opacity}));expect(gameTitleStyle.display).not.toBe('none');expect(gameTitleStyle.visibility).toBe('visible');expect(Number(gameTitleStyle.opacity)).toBeGreaterThan(0);await page.locator('[data-album="__friends__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');await page.locator('[data-album="__showcase__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__showcase__');expect(await page.evaluate(()=>!!window.playerCore)).toBeTruthy()});
 test('quality switch forces one reload and preserves playback uid',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});const row=page.locator('#track-list .track').filter({has:page.locator('.track-title')}).first();await row.click();const before=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.(),quality:String(window.playerCore?.qMode||'')}));const result=await page.evaluate(()=>{const pc=window.playerCore;const original=pc.load.bind(pc);let calls=0;pc.load=(...args)=>{calls++;return original(...args)};const next=pc.qMode==='hi'?'lo':'hi';pc.switchQuality(next);return{calls,next}});expect(result.calls).toBe(1);await page.waitForTimeout(500);const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),quality:String(window.playerCore?.qMode||'')}));expect(after.uid).toBe(before.uid);expect(after.quality).toBe(result.next)});
 test('active Yandex session requests signed social session without legacy credentials',async({page})=>{let requestSnapshot=null;await page.route('https://functions.yandexcloud.net/d4e2epg33mkshjoar6av',async route=>{const request=route.request();const body=request.postDataJSON();requestSnapshot={method:request.method(),action:body?.action||'',playerId:body?.playerId||'',clientSecret:body?.clientSecret||'',oauth:request.headers()['x-yandex-oauth']||''};await route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type, Accept, X-Yandex-OAuth'},body:JSON.stringify({ok:true,friendId:'ya_e2e_signed_user',socialSession:'e2e.header.signature',expiresAt:Date.now()+20*60*1000,profile:{friendId:'ya_e2e_signed_user',displayName:'E2E Друг',avatarUrl:''}})})});await loginByPromo(page);const result=await page.evaluate(async()=>{Object.assign(window.YandexAuth,{getToken:()=>'e2e-yandex-oauth-token',isTokenAlive:()=>true,getSessionStatus:()=>'active',getProfile:()=>({yandexId:'e2e-yandex-id',displayName:'E2E Друг',avatar:''})});const module=await import(`./scripts/app/friends/friends-block.js?e2e=${Date.now()}`);const session=await module.issueSocialSession({force:true});return{friendId:session.friendId,hasSession:!!session.socialSession,expiresAt:Number(session.expiresAt||0)}});expect(requestSnapshot).toEqual({method:'POST',action:'social_session_issue',playerId:'',clientSecret:'',oauth:'e2e-yandex-oauth-token'});expect(result.friendId).toBe('ya_e2e_signed_user');expect(result.hasSession).toBeTruthy();expect(result.expiresAt).toBeGreaterThan(Date.now())});
