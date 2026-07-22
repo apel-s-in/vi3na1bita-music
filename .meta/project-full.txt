@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 20:35:37 UTC
+Сгенерировано: 2026-07-22 20:58:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5898,7 +5898,7 @@ const rP=async()=>{
 };
 const rU=async({reason='runtime'}={})=>{try{if(W.playerCore?.getCurrentTrackUid?.()){W.PlayerUI?.switchAlbumInstantly?.();W.PlayerUI?.updateMiniHeader?.();W.PlayerUI?.updatePlaylistFiltering?.();return true;}}catch{}return false;};let _i=false;W.app={checkShowcaseShare:()=>{const p=new URLSearchParams(W.location.search).get('playlist');if(p&&W.ShowcaseManager){W.ShowcaseManager.handleSharedPlaylist(p);W.history.replaceState(null,'',W.location.pathname);}},initialize:async()=>{if(_i)return;_i=true;try{await iM();sH();sP();sS();W.app.checkShowcaseShare();const prms = new URLSearchParams(W.location.search);
 const hasGame=prms.get('gcGame')||prms.get('game')||prms.get('join'),hasFriends=prms.get('openFriends')||prms.get('addFriend')||prms.get('chatWith')||prms.get('voiceWith');
-if(hasGame||hasFriends){try{await W.AlbumsManager?.loadAlbum?.(hasGame?(W.APP_CONFIG?.SPECIAL_GAMES_KEY||W.SPECIAL_GAMES_KEY||'__games__'):(W.APP_CONFIG?.SPECIAL_FRIENDS_KEY||W.SPECIAL_FRIENDS_KEY||'__friends__'));}catch{}}await rP().catch(()=>{});W.addEventListener('backup:restore:applied',()=>setTimeout(()=>rU({reason:'backup_restore_applied'}).catch(()=>{}),180));}catch(e){console.error(e);W.NotificationSystem?.error('Ошибка инициализации');}}};})(window,document);
+if(hasGame||hasFriends){try{await W.AlbumsManager?.loadAlbum?.(hasGame?(W.APP_CONFIG?.SPECIAL_GAMES_KEY||W.SPECIAL_GAMES_KEY||'__games__'):(W.APP_CONFIG?.SPECIAL_FRIENDS_KEY||W.SPECIAL_FRIENDS_KEY||'__friends__'));}catch{}}await rP().catch(()=>{});W.addEventListener('backup:restore:applied',()=>setTimeout(()=>rU({reason:'backup_restore_applied'}).catch(()=>{}),180));W.__appReady=true;W.dispatchEvent(new CustomEvent('app:ready'));}catch(e){W.__appReady=false;console.error(e);W.NotificationSystem?.error('Ошибка инициализации');W.dispatchEvent(new CustomEvent('app:boot-error',{detail:{error:String(e?.message||e)}}));}}};})(window,document);
 
 //=================================================
 // FILE: /scripts/app/albums.js
