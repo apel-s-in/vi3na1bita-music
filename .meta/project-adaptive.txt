@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 19:19:27 UTC
+Сгенерировано: 2026-07-22 19:20:09 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12007,7 +12007,10 @@ export class FavoritesManager {
   }
 
   isLiked(uid) {
-    return favoriteStatus(this._m.get(uidOf(uid))) === 'active';
+    const item = this._m.get(uidOf(uid));
+
+    return !!item &&
+      favoriteStatus(item) === 'active';
   }
 
   getSnapshot() {
