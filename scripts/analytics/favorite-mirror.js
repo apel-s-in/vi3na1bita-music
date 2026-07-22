@@ -267,6 +267,19 @@ class FavoriteMirrorService {
       this.captureBaseline();
 
       window.dispatchEvent(new CustomEvent(
+        'favorites:mirror-applied',
+        {
+          detail: {
+            reason,
+            count: Array.isArray(state.items)
+              ? state.items.length
+              : 0,
+            revision: this.serverRevision
+          }
+        }
+      ));
+
+      window.dispatchEvent(new CustomEvent(
         'favorites:updated',
         {
           detail: {
