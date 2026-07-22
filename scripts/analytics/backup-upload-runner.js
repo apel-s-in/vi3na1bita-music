@@ -4,7 +4,7 @@ import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { getSharedSnapshotLocalEntries } from './snapshot-contract.js';
 import { recordSyncRevision } from './sync-revisions.js';
 import { getCurrentEventArchiveBranch, getLocalEventArchiveWatermark, uploadLocalEventArchiveUntilCaughtUp } from './event-archive-sync.js';
-import { assertLocalDataOwner } from './account-data-boundary.js';
+import { AccountDataContext } from './account-data-boundary.js';
 
 const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', HISTORY_MIN_INTERVAL_MS = 86400000, CLOUD_EVENT_TAIL_LIMIT = 500, HISTORY_MATERIAL_DOMAINS = new Set(['achievements','favorites','playlists','profile','devices','stats']);
 const sS = v => String(v == null ? '' : v).trim(), sN = v => Number.isFinite(Number(v)) ? Number(v) : 0, jP = (raw, fb = null) => { try { return JSON.parse(raw); } catch { return fb; } };
@@ -59,7 +59,8 @@ const compactBackupForCloud = async (b, { disk = null, token = '' } = {}) => {
 export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBackupVault, backup = null, force = false, uploadDevice = true, reason = 'autosave', syncLease = null } = {}) => {
   if (!disk || !token || !BackupVault) throw new Error('upload_runner_invalid_input');
 
-  const boundary = await assertLocalDataOwner();
+  const boundary =
+    await AccountDataContext.requireCurrentOwner();
   const b = backup || await BackupVault.buildBackupObject();
 
   if (
