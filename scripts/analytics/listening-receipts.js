@@ -244,6 +244,28 @@ class ListeningReceiptService {
       this.lastProgress = result.progress;
     }
 
+    const grants = Array.isArray(result?.rewards)
+      ? result.rewards
+      : [];
+
+    if (result?.wallet || grants.length) {
+      window.ShardWallet
+        ?.refresh?.({ force: true })
+        .catch(() => null);
+    }
+
+    if (grants.length) {
+      const amount = grants.reduce(
+        (sum, grant) =>
+          sum + Number(grant?.amount || 0),
+        0
+      );
+
+      window.NotificationSystem?.success?.(
+        `♦ Начислено ${amount} Осколков`
+      );
+    }
+
     this.emit('completed', result);
     return result;
   }
@@ -260,6 +282,17 @@ class ListeningReceiptService {
     );
 
     this.lastProgress = result?.progress || null;
+
+    if (
+      result?.wallet ||
+      (Array.isArray(result?.grants) &&
+        result.grants.length)
+    ) {
+      window.ShardWallet
+        ?.refresh?.({ force: true })
+        .catch(() => null);
+    }
+
     this.emit('status', result);
     return result;
   }
