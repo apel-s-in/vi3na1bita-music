@@ -65,6 +65,17 @@ export const applyAccountCachePolicies = async (
 
   for (const meta of rows) {
     const policy = policies?.[meta.uid] || null;
+    const transientType = [
+      'dynamic',
+      'playbackCache'
+    ].includes(meta.type)
+      ? meta.type
+      : (
+          meta.cachedComplete
+            ? 'playbackCache'
+            : null
+        );
+
     const next = { ...meta };
 
     ACCOUNT_CACHE_POLICY_FIELDS.forEach(key => {
@@ -72,11 +83,12 @@ export const applyAccountCachePolicies = async (
     });
 
     if (policy && typeof policy === 'object') {
-      Object.assign(next, pickAccountCachePolicy(policy));
+      Object.assign(
+        next,
+        pickAccountCachePolicy(policy)
+      );
     } else {
-      next.type = meta.cachedComplete
-        ? 'playbackCache'
-        : null;
+      next.type = transientType;
       next.cloud = false;
       next.cloudFullListenCount = 0;
     }
