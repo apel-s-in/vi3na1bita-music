@@ -68,6 +68,22 @@ jobs:
             echo "Account vault must not control playback"
             exit 2
           fi
+      - name: Validate favorite server mirror
+        run: |
+          node --input-type=module --check < scripts/analytics/favorite-mirror.js
+          grep -q "favorite_state_get" scripts/analytics/favorite-mirror.js
+          grep -q "favorite_state_mutate" scripts/analytics/favorite-mirror.js
+          grep -q "favorite_state_reconcile" scripts/analytics/favorite-mirror.js
+          grep -q "favoriteMirror:outbox:v1" scripts/analytics/account-data-boundary.js
+          grep -q "favorite-mirror.js" service-worker.js
+          grep -q "fav_total_" scripts/app/shards/view.js
+
+          if grep -En \
+            "\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(" \
+            scripts/analytics/favorite-mirror.js; then
+            echo "Favorite mirror must not control playback"
+            exit 2
+          fi
       - name: Reject removed backup claim contour
         run: |
           if grep -REn \
