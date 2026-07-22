@@ -128,6 +128,12 @@ jobs:
           test ! -f scripts/core/yandex-verified-disk.js
           grep -q "YandexLedgerDisk" scripts/core/yandex-disk.js
           
+      - name: Validate E2E workflow contract
+        run: |
+          grep -Eq "@playwright/test@[^ ]+ test scripts/e2e" .github/workflows/e2e.yml
+          grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
+          grep -q "node --input-type=module --check < scripts/app.js" .github/workflows/e2e.yml
+          
       - name: Reject native dialogs
         run: |
           if grep -REn "\b(confirm|alert|prompt)\s*\(" \
