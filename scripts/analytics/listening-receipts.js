@@ -1,5 +1,5 @@
 // Server-observed listening receipts.
-// Shadow mode: не начисляет Осколки и никогда не управляет playback.
+// Режим наград задаёт сервер; клиент никогда не управляет playback.
 
 import { requestSocialAction } from '../core/social-session.js';
 
