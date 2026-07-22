@@ -4,12 +4,28 @@ const esc = value =>
   window.Utils?.escapeHtml?.(String(value || '')) ||
   String(value || '');
 
+const SERVER_REWARD_PREFIXES = [
+  'play_total_',
+  'full_total_',
+  'time_total_',
+  'streak_base_',
+  'unique_tracks_',
+  'one_track_full_',
+  'album_complete_'
+];
+
+const hasServerReward = item =>
+  SERVER_REWARD_PREFIXES.some(prefix =>
+    String(item?.id || '').startsWith(prefix)
+  );
+
 const nearestAchievements = () =>
   (window.achievementEngine?.achievements || [])
     .filter(item =>
       !item.isUnlocked &&
       !item.isHidden &&
-      item.progress
+      item.progress &&
+      hasServerReward(item)
     )
     .sort((a, b) =>
       Number(b.progress?.pct || 0) -
