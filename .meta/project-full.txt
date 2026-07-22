@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 20:58:09 UTC
+Сгенерировано: 2026-07-22 20:58:49 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12946,15 +12946,36 @@ test('Game capability and join-token contract is parent controlled',async({page}
 // FILE: /scripts/e2e/utils.js
 // scripts/e2e/utils.js @ts-check
 export const BASE=process.env.BASE_URL||'http://127.0.0.1:4173';
-export const loginByPromo=async(p,pr='VITRINA2025')=>{await p.goto(`${BASE}/index.html`,{waitUntil:'load'});await p.fill('#promo-inp',pr);await p.click('#promo-btn');await p.waitForSelector('#main-block:not(.hidden)',{timeout:1e4})};
-export const waitTracks=async p=>p.waitForSelector('#track-list .track',{timeout:1e4});
-export const likeFirstTrack=async p=>{await waitTracks(p);const f=p.locator('#track-list .track').first();await f.hover();await f.locator('.like-star').click()};
-export const openFavorites=async p=>{await p.click('.album-icon[data-akey="__favorites__"]');await waitTracks(p)};
-export const playFirstTrack=async p=>{await waitTracks(p);await p.click('#track-list .track >> nth=0');await p.waitForSelector('#lyricsplayerblock',{timeout:1e4})};
-export const openSleepTimer=async p=>p.click('[data-testid="sleep-open"]');
-export const setSleepPreset=async(p,m)=>p.click(`[data-testid="sleep-preset-${m}"]`);
-export const resetSleepTimer=async p=>p.click('[data-testid="sleep-reset"]');
-export const seedPlayerStateV2FromCurrent=async(p,{position:ps=5,wasPlaying:wP=true}={})=>{await p.evaluate(({p,wP})=>{const pc=window.playerCore,t=pc?.getCurrentTrack?.()||null,aK=window.AlbumsManager?.getPlayingAlbum?.()||null;localStorage.setItem('playerStateV2',JSON.stringify({album:aK,currentAlbum:window.AlbumsManager?.getCurrentAlbum?.()||aK,trackUid:String(t?.uid||'').trim()||null,sourceAlbum:String(t?.sourceAlbum||'').trim()||null,trackIndex:pc?.getIndex?.()||0,position:Math.floor(p),volume:pc?.getVolume?.()??100,wasPlaying:!!wP}))},{p:ps,wP})};
+
+const HOWLER_MOCK=`(()=>{let globalVolume=1;class MockHowl{constructor(options={}){this.options=options;this._playing=false;this._position=0;this._duration=240;this._volume=Number(options.volume??1);this._events=new Map();queueMicrotask(()=>options.onload?.());if(options.autoplay)queueMicrotask(()=>this.play())}play(){if(this._playing)return 1;this._playing=true;queueMicrotask(()=>this.options.onplay?.());this._emit('play');return 1}pause(){if(!this._playing)return this;this._playing=false;queueMicrotask(()=>this.options.onpause?.());this._emit('pause');return this}stop(){const wasPlaying=this._playing;this._playing=false;this._position=0;if(wasPlaying){queueMicrotask(()=>this.options.onstop?.());this._emit('stop')}return this}unload(){this._playing=false;this._events.clear();return null}playing(){return this._playing}seek(value){if(value===undefined)return this._position;this._position=Math.max(0,Number(value)||0);this.options.onseek?.();this._emit('seek');return this}duration(){return this._duration}state(){return'loaded'}volume(value){if(value===undefined)return this._volume;this._volume=Number(value)||0;return this}mute(){return this}rate(){return 1}loop(){return false}on(name,fn){if(typeof fn==='function'){const rows=this._events.get(name)||[];rows.push(fn);this._events.set(name,rows)}return this}once(name,fn){const wrap=(...args)=>{this.off(name,wrap);fn(...args)};return this.on(name,wrap)}off(name,fn){if(!name){this._events.clear();return this}if(!fn){this._events.delete(name);return this}this._events.set(name,(this._events.get(name)||[]).filter(row=>row!==fn));return this}_emit(name,...args){(this._events.get(name)||[]).forEach(fn=>fn(...args))}}window.Howl=MockHowl;window.Howler={version:'e2e-mock',ctx:{state:'running',resume:()=>Promise.resolve(),addEventListener:()=>{}},masterGain:null,volume(value){if(value===undefined)return globalVolume;globalVolume=Number(value)||0;return this},mute(value){if(value)globalVolume=0;return this},stop(){return this},_howls:[]};})();`;
+
+const installAudioMock=async page=>{
+  if(page.__vi3AudioMockInstalled)return;
+  page.__vi3AudioMockInstalled=true;
+  await page.route('**/scripts/vendor/howler.min.js',route=>route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:HOWLER_MOCK}));
+};
+
+export const loginByPromo=async(page,promocode='VITRINA2025')=>{
+  await installAudioMock(page);
+  await page.goto(`${BASE}/index.html`,{waitUntil:'load'});
+  await page.fill('#promo-inp',promocode);
+  await page.click('#promo-btn');
+  await page.waitForSelector('#main-block:not(.hidden)',{timeout:10000});
+  await page.waitForFunction(()=>window.__appReady===true,{timeout:20000});
+  await page.waitForSelector('#album-icons-albums .album-icon',{timeout:10000});
+  await page.waitForSelector('#album-icons-nav .album-icon',{timeout:10000});
+  await page.waitForSelector('#track-list .track',{timeout:10000});
+};
+
+export const waitTracks=async page=>page.waitForSelector('#track-list .track',{timeout:10000});
+export const waitForPlayback=async page=>page.waitForFunction(()=>window.playerCore?.isPlaying?.()===true,{timeout:10000});
+export const likeFirstTrack=async page=>{await waitTracks(page);const first=page.locator('#track-list .track').first();await first.hover();await first.locator('.like-star').click();};
+export const openFavorites=async page=>{await page.click('.album-icon[data-akey="__favorites__"]');await waitTracks(page);};
+export const playFirstTrack=async page=>{await waitTracks(page);await page.locator('#track-list .track').first().click();await page.waitForSelector('#lyricsplayerblock',{timeout:10000});await waitForPlayback(page);};
+export const openSleepTimer=async page=>{await page.click('[data-testid="sleep-open"]');await page.waitForSelector('#sm-inp-min',{timeout:5000});};
+export const setSleepPreset=async(page,minutes)=>{await page.fill('#sm-inp-min',String(minutes));await page.click('#sm-btn-apply');};
+export const resetSleepTimer=async page=>{const toggle=page.locator('#sm-toggle');if(await toggle.count())await toggle.uncheck();else await page.evaluate(()=>window.SleepTimer?.stop?.(false));};
+export const seedPlayerStateV2FromCurrent=async(page,{position=5,wasPlaying=true}={})=>{await page.evaluate(({position,wasPlaying})=>{const pc=window.playerCore,track=pc?.getCurrentTrack?.()||null,album=window.AlbumsManager?.getPlayingAlbum?.()||null;localStorage.setItem('playerStateV2',JSON.stringify({album,currentAlbum:window.AlbumsManager?.getCurrentAlbum?.()||album,trackUid:String(track?.uid||'').trim()||null,sourceAlbum:String(track?.sourceAlbum||'').trim()||null,trackIndex:pc?.getIndex?.()||0,position:Math.floor(position),volume:pc?.getVolume?.()??100,wasPlaying:!!wasPlaying,ts:Date.now()}));},{position,wasPlaying});};
 
 //=================================================
 // FILE: /scripts/intel/bootstrap.js
