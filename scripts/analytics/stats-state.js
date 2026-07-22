@@ -4,7 +4,7 @@ import { normalizeEventList } from './backup-event-cleanup.js';
 
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 export const readLocalEventLog = async (db = defaultMetaDB, { forceFlush = true } = {}) => {
-  if (forceFlush) try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await new Promise(r => setTimeout(r, 120)); } catch {}
+  if (forceFlush) try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await window.eventLogger?.flush?.(); await window.statsAggregator?.waitForIdle?.(); } catch {}
   const [hot, warm] = await Promise.all([db.getEvents('events_hot').catch(() => []), db.getEvents('events_warm').catch(() => [])]);
   return normalizeEventList([...(Array.isArray(warm) ? warm : []), ...(Array.isArray(hot) ? hot : [])], { limit: 10000 });
 };
