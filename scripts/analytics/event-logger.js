@@ -55,6 +55,7 @@ class EventLogger {
     })().finally(() => { this._flushing = false; this._flushPromise = null; });
     return this._flushPromise;
   }
+}
 
 export const eventLogger = new EventLogger();
 window.eventLogger = eventLogger;
