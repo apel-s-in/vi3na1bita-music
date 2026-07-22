@@ -147,7 +147,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 15:17:15 UTC
+Сгенерировано: 2026-07-22 15:18:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12638,6 +12638,17 @@ export const applyAccountCachePolicies = async (
 
   for (const meta of rows) {
     const policy = policies?.[meta.uid] || null;
+    const transientType = [
+      'dynamic',
+      'playbackCache'
+    ].includes(meta.type)
+      ? meta.type
+      : (
+          meta.cachedComplete
+            ? 'playbackCache'
+            : null
+        );
+
     const next = { ...meta };
 
     ACCOUNT_CACHE_POLICY_FIELDS.forEach(key => {
@@ -12645,11 +12656,12 @@ export const applyAccountCachePolicies = async (
     });
 
     if (policy && typeof policy === 'object') {
-      Object.assign(next, pickAccountCachePolicy(policy));
+      Object.assign(
+        next,
+        pickAccountCachePolicy(policy)
+      );
     } else {
-      next.type = meta.cachedComplete
-        ? 'playbackCache'
-        : null;
+      next.type = transientType;
       next.cloud = false;
       next.cloudFullListenCount = 0;
     }
