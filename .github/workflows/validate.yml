@@ -134,7 +134,7 @@ jobs:
           grep -q "npm install --no-save @playwright/test@1.48.2" .github/workflows/e2e.yml
           grep -q "npx playwright test scripts/e2e" .github/workflows/e2e.yml
           grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
-          grep -q "node --input-type=module --check < scripts/app.js" .github/workflows/e2e.yml
+          grep -q "find scripts src" .github/workflows/e2e.yml
           
       - name: Reject native dialogs
         run: |
