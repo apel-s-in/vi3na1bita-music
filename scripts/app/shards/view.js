@@ -11,6 +11,7 @@ const SERVER_REWARD_PREFIXES = [
   'streak_base_',
   'unique_tracks_',
   'one_track_full_',
+  'fav_total_',
   'album_complete_'
 ];
 
