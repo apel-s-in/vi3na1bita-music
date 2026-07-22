@@ -95,12 +95,6 @@
 .yandex-auth-metabox{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px}
 .yandex-auth-metabox-label{font-size:10px;color:#7f93b5;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
 .yandex-auth-metabox-value{font-size:12px;color:#eaf2ff;font-weight:700;line-height:1.35;word-break:break-word}
-.auth-btn{padding:10px 0;border-radius:10px;border:none;font-weight:bold;font-size:13px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff}
-.auth-btn:active{transform:scale(.95)}
-.auth-btn.yandex{background:#E60000}
-.auth-btn.google{background:#4285F4}
-.auth-btn.vk{background:#0077FF}
-.auth-btn.connected{opacity:.5;border:2px solid #4caf50;background:#232b38}
 @media (max-width:380px){.yandex-auth-meta{grid-template-columns:1fr}}
 
 .profile-tabs{display:flex;background:rgba(255,255,255,.05);border-radius:10px;padding:4px;overflow-x:auto;scrollbar-width:none}
@@ -133,15 +127,6 @@
 .rec-play-btn{background:rgba(77,170,255,.15);color:var(--secondary-color);border:none;width:36px;height:36px;border-radius:50%;display:flex;justify-content:center;align-items:center;cursor:pointer;transition:.2s}
 .rec-play-btn:hover{background:var(--secondary-color);color:#fff;transform:scale(1.1)}
 .profile-section-title{font-size:14px;font-weight:900;color:#eaf2ff;letter-spacing:.06em;text-transform:uppercase;margin:4px 0 2px}
-
-.prof-src-box{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-.prof-src-title{font-size:13px;font-weight:bold;color:#fff}
-.prof-src-sub{font-size:11px;color:#888}
-.prof-src-switch{display:flex;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)}
-.prof-src-btn{all:unset;cursor:pointer;padding:6px 12px;font-size:12px;font-weight:bold;transition:.2s}
-.prof-src-btn--yandex.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#cc0000 0%,#880000 100%)}
-.prof-src-btn--github.prof-src-btn--active{color:#fff;background:radial-gradient(circle,#444 0%,#000 100%)}
-.prof-src-btn:not(.prof-src-btn--active){color:#666}
 
 .stat-sub{color:#888;font-size:12px;text-align:center}
 .stat-card--mb10{margin-bottom:10px}
@@ -291,8 +276,6 @@ button.fresh-version-card{appearance:none;font:inherit}
 .fresh-version-main,.fresh-device-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .fresh-version-main b,.fresh-device-main b{font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fresh-version-main small,.fresh-device-main small{font-size:10.5px;color:#8ea8cc;line-height:1.25}
-.fresh-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px}
-.fresh-actions .modal-action-btn{width:100%;min-height:48px;justify-content:center;text-align:center}
 
 /* Physics horizontal tabs */
 .physics-tabs{scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,transparent 0,#000 22px,#000 calc(100% - 22px),transparent 100%)}
