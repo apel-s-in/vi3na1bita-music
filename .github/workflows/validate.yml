@@ -95,7 +95,8 @@ jobs:
           grep -q "favorite-mirror.js" service-worker.js
           grep -q "fav_total_" scripts/app/shards/view.js
 
-          if grep -q "signature(item)" \
+          if grep -En \
+            '(^|[^[:alnum:]_])signature\(item\)' \
             scripts/analytics/favorite-mirror.js; then
             echo "Legacy favorite signature helper found"
             exit 2
@@ -130,7 +131,8 @@ jobs:
           
       - name: Validate E2E workflow contract
         run: |
-          grep -Eq "@playwright/test@[^ ]+ test scripts/e2e" .github/workflows/e2e.yml
+          grep -q "npm install --no-save @playwright/test@1.48.2" .github/workflows/e2e.yml
+          grep -q "npx playwright test scripts/e2e" .github/workflows/e2e.yml
           grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
           grep -q "node --input-type=module --check < scripts/app.js" .github/workflows/e2e.yml
           
