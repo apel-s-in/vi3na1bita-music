@@ -20,6 +20,22 @@ export class StatsAggregator {
       };
     });
   }
+
+  async waitForIdle(timeoutMs = 5000) {
+    const deadline = Date.now() + timeoutMs;
+
+    while (
+      this._processing &&
+      Date.now() < deadline
+    ) {
+      await new Promise(resolve =>
+        setTimeout(resolve, 20)
+      );
+    }
+
+    return !this._processing;
+  }
+
   async processHotEvents() {
     if (window.__accountDataSwitching) return;
     if (this._processing) return void (this._rerun = true);
