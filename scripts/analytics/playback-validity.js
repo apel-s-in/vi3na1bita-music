@@ -1,7 +1,68 @@
-// UID.003_(Event log truth)_(единое правило валидного playback delta)_(session/live analytics должны опираться на один helper, а не дублировать условия) UID.004_(Stats as cache)_(не допускать дрейфа между live projection и event truth)_(helper определяет только валидность тика, не пишет state сам) UID.018_(Variant and quality stats)_(подготовить общую точку для future variant-aware validation)_(audio/minus/stems позже смогут расширить этот helper additively) UID.050_(Session profile)_(дать session/live слоям единый low-level playback signal)_(верхние слои используют этот helper, не копируют пороги) UID.094_(No-paralysis rule)_(helper должен быть безопасным и no-throw)_(при плохих входных данных возвращает false, ничего не ломая)
-const toNum = (v, d = 0) => Number.isFinite(Number(v)) ? Number(v) : d;
-export function isValidPlaybackDelta({ deltaMs, prevTime, currentTime, volume, muted, maxDeltaMs = 2000, maxSeekDeltaSec = 1.5 } = {}) {
-  const dt = toNum(deltaMs, 0), prev = toNum(prevTime, 0), cur = toNum(currentTime, prev);
-  return dt > 0 && dt < maxDeltaMs && Math.abs(cur - prev) < maxSeekDeltaSec && toNum(volume, 100) > 0 && !muted;
+// UID.003_(Event log truth)_(валидное playback-время выводится из согласованности wall-time и media-position)
+// UID.004_(Stats as cache)_(background throttling не должен терять честное прослушивание)
+// UID.094_(No-paralysis rule)_(helper только вычисляет credit и никогда не управляет playback)
+
+const toNum = (value, fallback = 0) =>
+  Number.isFinite(Number(value))
+    ? Number(value)
+    : fallback;
+
+export function getCreditedPlaybackDeltaMs({
+  deltaMs,
+  prevTime,
+  currentTime,
+  volume,
+  muted,
+  normalDeltaMs = 2500,
+  seekToleranceSec = 1.5,
+  throttledToleranceSec = 3,
+  throttledToleranceRatio = 0.2
+} = {}) {
+  const wallMs = toNum(deltaMs);
+  const previous = toNum(prevTime);
+  const current = toNum(currentTime, previous);
+  const mediaMs = (current - previous) * 1000;
+
+  if (
+    wallMs <= 0 ||
+    mediaMs <= 0 ||
+    toNum(volume, 100) <= 0 ||
+    muted
+  ) {
+    return 0;
+  }
+
+  if (wallMs <= normalDeltaMs) {
+    if (mediaMs > wallMs + seekToleranceSec * 1000) {
+      return 0;
+    }
+
+    return Math.max(
+      0,
+      Math.floor(Math.min(wallMs, mediaMs))
+    );
+  }
+
+  const toleranceMs = Math.max(
+    throttledToleranceSec * 1000,
+    wallMs * throttledToleranceRatio
+  );
+
+  if (Math.abs(mediaMs - wallMs) > toleranceMs) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.floor(Math.min(wallMs, mediaMs))
+  );
 }
-export default { isValidPlaybackDelta };
+
+export function isValidPlaybackDelta(options = {}) {
+  return getCreditedPlaybackDeltaMs(options) > 0;
+}
+
+export default {
+  getCreditedPlaybackDeltaMs,
+  isValidPlaybackDelta
+};
