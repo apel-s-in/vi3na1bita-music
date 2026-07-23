@@ -129,6 +129,18 @@ jobs:
           test ! -f scripts/core/yandex-verified-disk.js
           grep -q "YandexLedgerDisk" scripts/core/yandex-disk.js
           
+      - name: Validate workflow runtime versions
+        run: |
+          if grep -REn "node-version:[[:space:]]*['\"]?20['\"]?" .github/workflows; then
+            echo "Node 20 workflow runtime found; use Node 24"
+            exit 2
+          fi
+
+          if grep -REn "actions/(checkout|setup-node)@v4" .github/workflows; then
+            echo "Legacy GitHub Action major found"
+            exit 2
+          fi
+          
       - name: Validate E2E workflow contract
         run: |
           grep -q "node-version: '24'" .github/workflows/e2e.yml
