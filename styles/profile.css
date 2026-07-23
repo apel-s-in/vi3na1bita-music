@@ -140,20 +140,15 @@
 .ach-hint-bubble:active{transform:scale(.98)}
 .ach-rpg-header{display:flex;align-items:center;gap:14px;margin-bottom:14px;text-align:left;background:rgba(255,255,255,.03);padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.05)}
 .profile-dyn-icon{background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;gap:2px;border:1px solid var(--border-color)}
-.pg-lvl-val{font-size:28px;font-weight:900;background:linear-gradient(135deg,#ffb74d,#ff5722);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
-.pg-xp-cur{color:#888;font-size:11px;font-weight:800;letter-spacing:0.5px}
-.rpg-level-badge{background:linear-gradient(135deg,#ff9800,#ff5722);width:54px;height:54px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 0 15px rgba(255,87,34,.4);border:2px solid #fff;flex-shrink:0}
-.rpg-level-badge .lvl-lbl{font-size:10px;font-weight:900;color:#fff;opacity:.9;line-height:1}
-.rpg-level-badge .lvl-val{font-size:24px;font-weight:900;color:#fff;line-height:1.1}
+.profile-shards-value{font-size:24px;font-weight:900;color:#ffd45a;line-height:1}
+.profile-shards-label{color:#ff8ca8;font-size:10px;font-weight:900;letter-spacing:.5px;text-transform:uppercase}
 .ach-progress-bars{flex:1;min-width:0}
 .ach-progress-header{margin-bottom:6px}
 .ach-progress-title{font-size:12px;font-weight:900;color:#fff;letter-spacing:.5px}
 .ach-bar{background:#232b38;height:6px;border-radius:3px;overflow:hidden;margin-bottom:4px}
-.ach-bar-xp{height:4px;opacity:.8}
 .ach-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#e80100,#4daaff);transition:width .5s ease}
-.ach-bar-fill.xp-fill{background:linear-gradient(90deg,#ff9800,#ffeb3b)}
 .ach-stat-row{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#8ab8fd;margin-bottom:4px}
-.ach-xp-label{color:#ff9800}
+.ach-shards-label{color:#ffd45a}
 .backup-btn{background:#0088cc;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:900;cursor:pointer;width:100%;transition:.2s;box-shadow:0 4px 12px rgba(0,136,204,.3)}
 .backup-btn:hover{background:#0099e6;transform:translateY(-1px)}
 .backup-btn:active{transform:scale(.98)}
@@ -169,8 +164,8 @@
 .ach-mini-bar{width:100%;background:rgba(255,255,255,.06);height:6px;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
 .ach-mini-fill{height:100%;background:linear-gradient(90deg,#4daaff,#7c4dff);transition:width .25s ease}
 .ach-bottom{margin-top:2px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
-.ach-xp{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:900;color:#ffd54f;background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.2);white-space:nowrap}
-.ach-item.done .ach-xp{color:#81c784;background:rgba(76,175,80,.12);border-color:rgba(76,175,80,.22)}
+.ach-reward{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:900;color:#ffd54f;background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.2);white-space:nowrap}
+.ach-item.done .ach-reward{color:#81c784;background:rgba(76,175,80,.12);border-color:rgba(76,175,80,.22)}
 .ach-remaining{text-align:center;font-size:12px;color:rgba(157,183,221,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ach-more{appearance:none;border:1px solid rgba(77,170,255,.22);background:rgba(77,170,255,.1);color:#eaf2ff;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:900;cursor:pointer;line-height:1;text-transform:uppercase;min-width:110px}
 .ach-more:hover{background:rgba(77,170,255,.18);border-color:rgba(77,170,255,.32)}
