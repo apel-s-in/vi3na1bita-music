@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 12:43:16 UTC
+Сгенерировано: 2026-07-23 12:53:47 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12961,7 +12961,7 @@ test('quality switch forces one reload and preserves playback uid',async({page})
 
 test('load without autoPlay preserves active playback intent when changing index',async({page})=>{await loginByPromo(page);await page.locator('#track-list .track').first().click();const result=await page.evaluate(async()=>{const pc=window.playerCore,target=pc.getPlaylistSnapshot()[1]?.uid;await pc.load(1);return{target,uid:pc.getCurrentTrackUid(),playing:pc.isPlaying()}});expect(result.target).toBeTruthy();expect(result.uid).toBe(result.target);expect(result.playing).toBeTruthy();});
 
-test('play with index starts the selected track',async({page})=>{await loginByPromo(page);const result=await page.evaluate(async()=>{const pc=window.playerCore,target=pc.getPlaylistSnapshot()[1]?.uid;await pc.play(1);return{target,uid:pc.getCurrentTrackUid(),playing:pc.isPlaying()}});expect(result.target).toBeTruthy();expect(result.uid).toBe(result.target);expect(result.playing).toBeTruthy();});
+test('play with index starts the selected track from paused playback context',async({page})=>{await loginByPromo(page);await page.locator('#track-list .track').first().click();await expect.poll(()=>page.evaluate(()=>!!window.playerCore?.isPlaying?.())).toBeTruthy();const target=await page.evaluate(()=>window.playerCore?.getPlaylistSnapshot?.()[1]?.uid||'');expect(target).toBeTruthy();const paused=await page.evaluate(()=>{window.playerCore.pause();return !window.playerCore.isPlaying();});expect(paused).toBeTruthy();await page.evaluate(async()=>window.playerCore.play(1));await expect.poll(()=>page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}))).toEqual({uid:target,playing:true});});
 
 test('explicit autoPlay false overrides active playback intent',async({page})=>{await loginByPromo(page);await page.locator('#track-list .track').first().click();const result=await page.evaluate(async()=>{const pc=window.playerCore,target=pc.getPlaylistSnapshot()[1]?.uid;await pc.load(1,{autoPlay:false});return{target,uid:pc.getCurrentTrackUid(),playing:pc.isPlaying()}});expect(result.target).toBeTruthy();expect(result.uid).toBe(result.target);expect(result.playing).toBeFalsy();});
 
