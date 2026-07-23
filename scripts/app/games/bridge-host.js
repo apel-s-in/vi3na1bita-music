@@ -5,7 +5,7 @@
 import { requestSocialAction } from '../../core/social-session.js';
 import {
   getEmbeddedFriendsRpcMethod
-} from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.0.2';
+} from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.0.3';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
