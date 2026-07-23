@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 14:06:45 UTC
+Сгенерировано: 2026-07-23 14:07:55 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -278,8 +278,25 @@ name: E2E smoke
 on:
   push:
     branches: [main, master]
-    paths-ignore: ['.meta/**']
+    paths:
+      - 'index.html'
+      - 'manifest.json'
+      - 'service-worker.js'
+      - 'albums.json'
+      - 'scripts/**'
+      - 'src/**'
+      - 'styles/**'
+      - '.github/workflows/e2e.yml'
   pull_request:
+    paths:
+      - 'index.html'
+      - 'manifest.json'
+      - 'service-worker.js'
+      - 'albums.json'
+      - 'scripts/**'
+      - 'src/**'
+      - 'styles/**'
+      - '.github/workflows/e2e.yml'
   workflow_dispatch:
 
 permissions:
