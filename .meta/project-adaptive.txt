@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 14:01:58 UTC
+Сгенерировано: 2026-07-23 14:03:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5379,7 +5379,7 @@ export default { mergePlaylistsStorageSafe };
 // FILE: /scripts/analytics/session-tracker.js
 // UID.003_(Event log truth)_(оставить session-tracker строителем playback-session событий)_(session intelligence должна опираться на эти события, а не обходить их) UID.018_(Variant and quality stats)_(готовить future variant-aware session accounting)_(audio/minus/stems/clip session semantics должны развиваться здесь) UID.050_(Session profile)_(дать listener/intel слою корректную основу текущей сессии)_(session tracker остаётся truth-layer для session context, а не UI слой) UID.060_(Session-aware next-track strategy)_(подготовить основу для context-aware рекомендаций)_(future session recs должны читать session data отсюда, не вмешиваясь в трекинг) UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой) UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
 import { eventLogger } from './event-logger.js';
-import { isValidPlaybackDelta } from './playback-validity.js';
+import { getCreditedPlaybackDeltaMs } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
 
 export class SessionTracker {
@@ -5432,10 +5432,28 @@ export class SessionTracker {
     if (!this.s) return;
     const rt = makePlaybackRuntimeSnapshot({ lastTickAt: this.s.lastUpdate, lastPos: this.s.lastPos, duration: this.s.duration, volume, muted, tick: { currentTime, volume, muted }, playerCore: window.playerCore });
     this.s.lastUpdate = rt.now; this.s.lastPos = rt.currentTime; this.s.duration = this.s.duration > 0 ? this.s.duration : rt.duration;
-    if (isValidPlaybackDelta({ deltaMs: rt.deltaMs, prevTime: rt.prevPos, currentTime: rt.currentTime, volume: rt.volume, muted: rt.muted })) {
-      this.s.accumulatedMs += rt.deltaMs; this._speedRunnerMs += rt.deltaMs;
-      if (this._speedRunnerMs >= 10800000 && !this._speedRunnerAwarded) { this._speedRunnerAwarded = true; eventLogger.log('FEATURE_USED', 'global', { feature: 'speed_runner' }); }
-    } else this._speedRunnerMs = 0;
+    const creditedMs = getCreditedPlaybackDeltaMs({
+      deltaMs: rt.deltaMs,
+      prevTime: rt.prevPos,
+      currentTime: rt.currentTime,
+      volume: rt.volume,
+      muted: rt.muted
+    });
+
+    if (creditedMs > 0) {
+      this.s.accumulatedMs += creditedMs;
+      this._speedRunnerMs += creditedMs;
+
+      if (
+        this._speedRunnerMs >= 10800000 &&
+        !this._speedRunnerAwarded
+      ) {
+        this._speedRunnerAwarded = true;
+        eventLogger.log('FEATURE_USED', 'global', {
+          feature: 'speed_runner'
+        });
+      }
+    }
   }
   _pause() {
     if (this.s) { this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false }); this.s.lastUpdate = Date.now(); }
