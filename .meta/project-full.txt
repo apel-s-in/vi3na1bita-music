@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 12:55:04 UTC
+Сгенерировано: 2026-07-23 13:17:29 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -17279,7 +17279,8 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     playlist = []; originalPlaylist = []; currentIndex = -1;
     flags = { shuf: false, rep: false, mute: false }; shufHist = [];
     sound = null; qMode = qNorm(ls.getItem(LS_PQ));
-    _tok = 0; _tick = null; _sleep = null; _skips = 0;
+    _tok = 0; _loadReq = 0; _tick = null; _sleep = null; _skips = 0;
+    _pendingIndex = null; _pendingUid = null; _selectionSeq = 0;
     _ev = new Map(); _favSubs = new Set(); _playingUid = null;
     _persistTimer = null;
     
@@ -17316,7 +17317,36 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{});
     }
 
+    _cancelPendingLoad() {
+      this._loadReq++;
+      this._pendingIndex = null;
+      this._pendingUid = null;
+    }
+
+    _commitTrackSelection(track, index, previousUid, dir, reason) {
+      const uid = sUid(track?.uid);
+      this.currentIndex = index;
+      this._pendingIndex = null;
+      this._pendingUid = null;
+
+      if (!uid || uid === sUid(previousUid)) return false;
+
+      const detail = {
+        uid,
+        previousUid: sUid(previousUid),
+        index,
+        dir: Number(dir) || 1,
+        reason: String(reason || 'selection'),
+        selectionSeq: ++this._selectionSeq
+      };
+
+      this._emit('onTrackChange', track, index);
+      emitG('player:trackChanged', detail);
+      return true;
+    }
+
     setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
+      this._cancelPendingLoad();
       const prevPos = this.getPosition(), wasPlay = this.isPlaying();
       this.playlist = (tracks || []).map(t => ({ ...t, uid: sUid(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' })).filter(t => t.uid);
       if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
@@ -17406,20 +17436,31 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       }
       if (this.currentIndex >= 0) return this.load(this.currentIndex, { autoPlay: true });
     }
-    pause() { this.sound?.pause(); }
-    stop() { this._unload(false); this._updMedia(); }
+    pause() {
+      this._cancelPendingLoad();
+      this.sound?.pause();
+    }
+
+    stop() {
+      this._cancelPendingLoad();
+      this._unload(false);
+      this._updMedia();
+    }
     
     next() {
       if (!this.playlist.length) return;
-      if (this.flags.shuf) { this.shufHist.push(this.currentIndex); if (this.shufHist.length > 50) this.shufHist.shift(); }
-      this.load((this.currentIndex + 1) % this.playlist.length, { autoPlay: true, dir: 1 });
+      const base = Number.isInteger(this._pendingIndex) ? this._pendingIndex : this.currentIndex;
+      if (this.flags.shuf) { this.shufHist.push(base); if (this.shufHist.length > 50) this.shufHist.shift(); }
+      return this.load((base + 1) % this.playlist.length, { autoPlay: true, dir: 1, reason: 'next' });
     }
     
     prev() {
       if (!this.playlist.length) return;
-      if (this.getPosition() > 3) return void this.seek(0);
-      if (this.flags.shuf && this.shufHist.length) return this.load(this.shufHist.pop(), { autoPlay: true, dir: -1 });
-      this.load((this.currentIndex - 1 + this.playlist.length) % this.playlist.length, { autoPlay: true, dir: -1 });
+      const hasPending = Number.isInteger(this._pendingIndex);
+      if (!hasPending && this.getPosition() > 3) return void this.seek(0);
+      if (this.flags.shuf && this.shufHist.length) return this.load(this.shufHist.pop(), { autoPlay: true, dir: -1, reason: 'previous_history' });
+      const base = hasPending ? this._pendingIndex : this.currentIndex;
+      return this.load((base - 1 + this.playlist.length) % this.playlist.length, { autoPlay: true, dir: -1, reason: 'previous' });
     }
     
     seek(s) { return this.sound?.seek(s) || 0; }
@@ -17438,115 +17479,187 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     isMuted() { return this.flags.mute; }
 
     async load(idx, opts = {}) {
-      const t = this.playlist[idx], tok = ++this._tok, dir = Number(opts.dir) || 1, uid = sUid(t?.uid);
-      if (!t) return;
+      const targetIndex = Number(idx);
+      const t = this.playlist[targetIndex];
+      const uid = sUid(t?.uid);
+      const dir = Number(opts.dir) || 1;
+      const req = ++this._loadReq;
+
+      if (!t || !uid) return false;
 
       const autoPlay = opts.autoPlay ?? this.isPlaying();
-      opts = { ...opts, autoPlay };
-      
-      this.currentIndex = idx;
+      const reason = String(opts.reason || (opts.isAutoSkip ? 'auto_skip' : (opts._forceReload ? 'transport_reload' : 'selection')));
+      opts = { ...opts, autoPlay, reason };
+      this._pendingIndex = targetIndex;
+      this._pendingUid = uid;
+
       if (!opts.isAutoSkip) this._skips = 0;
-      this._emit('onTrackChange', t, idx);
-      emitG('player:trackChanged', { uid, dir });
-      // Обновляем lockscreen metadata сразу при смене трека (до загрузки аудио)
+
+      let resolved = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(() => null);
+      if (req !== this._loadReq) return false;
+
+      const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
+      let url = resolved?.url || null;
+      let provider = resolved?.provider || 'unknown';
+
+      if (!url && !resolved?.blob) {
+        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode).catch(() => null);
+        if (req !== this._loadReq) return false;
+        if (smart?.url) {
+          url = smart.url;
+          provider = smart.provider || provider;
+        }
+      }
+
+      if (!url && !resolved?.blob) {
+        if (this._skips >= this.playlist.length) {
+          if (req === this._loadReq) {
+            this._pendingIndex = null;
+            this._pendingUid = null;
+          }
+          W.NotificationSystem?.error('Нет доступных треков');
+          this._emit('onPlaybackError', { reason: 'no_source', uid });
+          return false;
+        }
+
+        setTimeout(() => {
+          if (req !== this._loadReq || !this.playlist.length) return;
+          this._skips++;
+          this.load((targetIndex + dir + this.playlist.length) % this.playlist.length, {
+            ...opts,
+            autoPlay,
+            isAutoSkip: true,
+            dir,
+            reason: 'auto_skip'
+          });
+        }, 80);
+        return false;
+      }
+
+      const commitIndex = this.playlist.findIndex(track => sUid(track?.uid) === uid);
+      if (req !== this._loadReq || commitIndex < 0) return false;
+
+      const previousUid = sUid(this._playingUid || this.getCurrentTrackUid());
+      const hadSound = !!this.sound;
+      const position = Number(opts.resumePosition) || 0;
+      const retry = Number(opts._retryN) || 0;
+
+      this.currentIndex = commitIndex;
+      this._pendingIndex = null;
+      this._pendingUid = null;
+
+      if (this.sound && this._playingUid === uid && !opts._forceReload) {
+        if (position) this.seek(position);
+        if (autoPlay && !this.isPlaying()) this.sound.play();
+        this._updMedia();
+        this._syncMediaSessionPosition(true);
+        return true;
+      }
+
+      this._commitTrackSelection(t, commitIndex, previousUid, dir, reason);
       this._updMedia();
       this._syncMediaSessionPosition(true);
 
-      let r = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(()=>null);
-      if (tok !== this._tok) return;
+      const tok = ++this._tok;
+      let blobKey = null;
 
-      const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
-      let url = r?.url || null, aP = r?.provider || 'unknown';
-
-      if (r?.blob) {
-        this._oK = 'p_' + uid; this._oKTok = tok;
-        url = W.Utils?.blob?.createUrl ? W.Utils.blob.createUrl(this._oK, r.blob) : URL.createObjectURL(r.blob);
+      if (resolved?.blob) {
+        blobKey = `p_${uid}_${tok}`;
+        url = W.Utils?.blob?.createUrl
+          ? W.Utils.blob.createUrl(blobKey, resolved.blob)
+          : URL.createObjectURL(resolved.blob);
+        provider = 'cache';
       } else if (url && netOk && W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
         W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
       }
-      
-      if (!url) {
-        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode).catch(()=>null);
-        if (smart?.url) { url = smart.url; aP = smart.provider || aP; }
-      }
 
-      this.currentProvider = aP;
-      const sf = fn => (...a) => tok === this._tok && fn(...a);
-      
-      if (!url) {
-        if (this._skips >= this.playlist.length) { W.NotificationSystem?.error('Нет доступных треков'); return this._emit('onPlaybackError', { reason: 'no_source' }); }
-        return setTimeout(sf(() => {
-          this._skips++;
-          this.load(
-            (idx + dir + this.playlist.length) % this.playlist.length,
-            {
-              ...opts,
-              autoPlay: opts.autoPlay !== false,
-              isAutoSkip: true,
-              dir
-            }
-          );
-        }), 80);
-      }
+      this.currentProvider = provider;
+      const sameUidReload = hadSound && previousUid === uid;
+      const sf = fn => (...args) => tok === this._tok && fn(...args);
 
-      const pos = Number(opts.resumePosition) || 0, retry = Number(opts._retryN) || 0;
-      
-      if (this.sound && this._playingUid === uid && !opts._forceReload) {
-        this.currentIndex = idx;
-        this._emit('onTrackChange', t, idx);
-        emitG('player:trackChanged', { uid, dir });
-        if (pos) this.seek(pos);
-        if (opts.autoPlay !== false && !this.isPlaying()) this.play();
-        return;
-      }
-      
       this._unload(true);
       this._playingUid = uid;
-      
+      this._oK = blobKey;
+      this._oKTok = blobKey ? tok : 0;
+
       this.sound = new Howl({
-        src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: false,
+        src: [url],
+        html5: true,
+        format: ['mp3'],
+        xhr: { withCredentials: false },
+        autoplay: false,
         onload: sf(() => {
-          if (pos) this.seek(pos);
+          if (position) this.seek(position);
           this._updMedia();
           this._syncMediaSessionPosition(true);
         }),
         onplay: sf(() => {
           this._startT();
           this._persistPlaybackState(true);
-          this._emit('onPlay', t, idx);
+          this._emit('onPlay', t, commitIndex);
           this._updMedia();
           this._syncMediaSessionPosition(true);
-          emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider: aP });
-          emitG('player:providerChanged', { provider: aP });
+          emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider });
+          emitG('player:providerChanged', { provider });
         }),
-        onpause: sf(() => { this._stopT(); this._persistPlaybackState(true); this._emit('onPause'); this._updMedia(); this._syncMediaSessionPosition(true); emitG('player:pause'); }),
-        onend: sf(() => { this._emit('onEnd'); this._updMedia(); emitG('player:ended'); emitG('analytics:forceFlush'); this.flags.rep ? this.play(this.currentIndex) : this.next(); }),
-        onloaderror: sf(() => this._err(idx, retry, opts, dir)),
-        onplayerror: sf(() => this._err(idx, retry, opts, dir))
+        onpause: sf(() => {
+          this._stopT();
+          this._persistPlaybackState(true);
+          this._emit('onPause');
+          this._updMedia();
+          this._syncMediaSessionPosition(true);
+          emitG('player:pause', { uid });
+        }),
+        onend: sf(() => {
+          this._emit('onEnd');
+          this._updMedia();
+          emitG('player:ended', { uid });
+          emitG('analytics:forceFlush');
+          this.flags.rep ? this.play(this.currentIndex) : this.next();
+        }),
+        onloaderror: sf(() => this._err(commitIndex, retry, opts, dir)),
+        onplayerror: sf(() => this._err(commitIndex, retry, opts, dir))
       });
 
+      if (sameUidReload) {
+        emitG('player:transportReloaded', {
+          uid,
+          reason,
+          quality: this.qMode,
+          provider,
+          transportGeneration: tok,
+          autoPlay: !!autoPlay
+        });
+      }
+
       if (autoPlay) this.sound.play();
+      return true;
     }
 
-    _err(idx, r, o, d) {
+    _err(idx, retry, opts, dir) {
       const tok = this._tok;
-      const autoPlay = o.autoPlay !== false;
+      const req = this._loadReq;
+      const autoPlay = opts.autoPlay !== false;
 
-      this._emit('onPlaybackError', { reason: 'error' });
+      this._emit('onPlaybackError', {
+        reason: 'error',
+        uid: this.getCurrentTrackUid()
+      });
 
       if (
         (W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) &&
-        r < 2
+        retry < 2
       ) {
         setTimeout(() => {
-          if (tok !== this._tok) return;
+          if (tok !== this._tok || req !== this._loadReq) return;
           this.load(idx, {
-            ...o,
+            ...opts,
             autoPlay,
-            _retryN: r + 1,
-            dir: d
+            _retryN: retry + 1,
+            dir,
+            reason: 'retry'
           });
-        }, 250 + r * 500);
+        }, 250 + retry * 500);
         return;
       }
 
@@ -17556,14 +17669,20 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       );
 
       setTimeout(() => {
-        if (tok !== this._tok) return;
+        if (
+          tok !== this._tok ||
+          req !== this._loadReq ||
+          !this.playlist.length
+        ) return;
+
         this.load(
-          (idx + d + this.playlist.length) % this.playlist.length,
+          (idx + dir + this.playlist.length) % this.playlist.length,
           {
-            ...o,
+            ...opts,
             autoPlay,
             isAutoSkip: true,
-            dir: d
+            dir,
+            reason: 'error_skip'
           }
         );
       }, 120);
@@ -17662,7 +17781,8 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
           autoPlay: wasPlaying,
           resumePosition: position,
           dir: 1,
-          _forceReload: true
+          _forceReload: true,
+          reason: 'quality_change'
         });
       }
 
@@ -17733,6 +17853,7 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     getLikedUidsForAlbum(key) { const k = sUid(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && !i.deletedAt && sUid(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
     
     applyFavoritesOnlyFilter(opts = {}) {
+      this._cancelPendingLoad();
       const pA = W.AlbumsManager?.getPlayingAlbum?.();
       const favOn = ls.getItem('favoritesOnlyMode') === '1';
       if (!pA || !this.originalPlaylist?.length) return false;
@@ -17806,6 +17927,7 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
 
     toggleShuffle() { 
+      this._cancelPendingLoad();
       this.flags.shuf = !this.flags.shuf; 
       if (this.flags.shuf) this.shufflePlaylist(); else { const u = this.getCurrentTrackUid(); this.playlist = [...this.originalPlaylist]; if(u) this.currentIndex = Math.max(0, this.playlist.findIndex(t => t.uid === u)); } 
       emitG('playlist:changed', { reason: 'shuffle', shuffleMode: this.flags.shuf }); 
