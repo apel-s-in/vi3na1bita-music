@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 09:49:37 UTC
+Сгенерировано: 2026-07-23 10:07:43 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12988,8 +12988,8 @@ export const likeFirstTrack=async page=>{await waitTracks(page);const first=page
 export const openFavorites=async page=>{await page.click('.album-icon[data-akey="__favorites__"]');await waitTracks(page);};
 export const playFirstTrack=async page=>{await waitTracks(page);await page.locator('#track-list .track').first().click();await page.waitForSelector('#lyricsplayerblock',{timeout:10000});await waitForPlayback(page);};
 export const openSleepTimer=async page=>{await page.click('[data-testid="sleep-open"]');const modal=page.locator('.modal-bg.active').last();await expect(modal.locator('#sm-inp-min')).toBeVisible({timeout:5000});};
-export const setSleepPreset=async(page,minutes)=>{const modal=page.locator('.modal-bg.active').last(),toggle=modal.locator('#sm-toggle');if(!(await toggle.isChecked()))await toggle.check();await modal.locator('#sm-inp-min').fill(String(minutes));await expect(modal.locator('#sm-btn-apply')).toBeVisible();await modal.locator('#sm-btn-apply').click();};
-export const resetSleepTimer=async page=>{const modal=page.locator('.modal-bg.active').last(),toggle=modal.locator('#sm-toggle');if(await toggle.count()){if(await toggle.isChecked())await toggle.uncheck();const close=modal.locator('#sm-btn-close');if(await close.isVisible())await close.click();}else await page.evaluate(()=>window.SleepTimer?.stop?.(false));};
+export const setSleepPreset=async(page,minutes)=>{const modal=page.locator('.modal-bg.active').last(),toggle=modal.locator('#sm-toggle'),switchLabel=modal.locator('.sleep-toggle-switch');if(!(await toggle.isChecked())){await switchLabel.click();await expect(toggle).toBeChecked();}await modal.locator('#sm-inp-min').fill(String(minutes));const apply=modal.locator('#sm-btn-apply');await expect(apply).toBeVisible();await apply.click();};
+export const resetSleepTimer=async page=>{const modal=page.locator('.modal-bg.active').last(),toggle=modal.locator('#sm-toggle');if(await toggle.count()){if(await toggle.isChecked()){await modal.locator('.sleep-toggle-switch').click();await expect(toggle).not.toBeChecked();}const close=modal.locator('#sm-btn-close');if(await close.isVisible())await close.click();}else await page.evaluate(()=>window.SleepTimer?.stop?.(false));};
 export const seedPlayerStateV2FromCurrent=async(page,{position=5,wasPlaying=true}={})=>{await page.evaluate(({position,wasPlaying})=>{const pc=window.playerCore,track=pc?.getCurrentTrack?.()||null,album=window.AlbumsManager?.getPlayingAlbum?.()||null;localStorage.setItem('playerStateV2',JSON.stringify({album,currentAlbum:window.AlbumsManager?.getCurrentAlbum?.()||album,trackUid:String(track?.uid||'').trim()||null,sourceAlbum:String(track?.sourceAlbum||'').trim()||null,trackIndex:pc?.getIndex?.()||0,position:Math.floor(position),volume:pc?.getVolume?.()??100,wasPlaying:!!wasPlaying,ts:Date.now()}));},{position,wasPlaying});};
 
 //=================================================
