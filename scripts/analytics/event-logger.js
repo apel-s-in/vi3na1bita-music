@@ -10,7 +10,7 @@ import { buildLedgerEvents, writeLedgerCheckpoint } from './event-integrity.js';
 
 class EventLogger {
   constructor() {
-    this.queue = []; this.sessionId = crypto.randomUUID(); this.deviceHash = localStorage.getItem('deviceHash') || ('tmp_' + crypto.randomUUID()); this.deviceStableId = localStorage.getItem('deviceStableId') || ''; this._flushing = false; this._flushPromise = null; this._rerun = false;
+    this.queue = []; this.sessionId = crypto.randomUUID(); this.deviceHash = localStorage.getItem('deviceHash') || ('tmp_' + crypto.randomUUID()); this.deviceStableId = localStorage.getItem('deviceStableId') || ''; this._flushPromise = null; this._rerun = false;
   }
   async init() {
     await metaDB.init();
@@ -35,7 +35,6 @@ class EventLogger {
   }
   flush() {
     if (this._flushPromise) { this._rerun = true; return this._flushPromise; }
-    this._flushing = true;
     this._flushPromise = (async () => {
       do {
         this._rerun = false;
@@ -52,7 +51,7 @@ class EventLogger {
         }
       } while (this._rerun || this.queue.length);
       return true;
-    })().finally(() => { this._flushing = false; this._flushPromise = null; });
+    })().finally(() => { this._flushPromise = null; });
     return this._flushPromise;
   }
 }
