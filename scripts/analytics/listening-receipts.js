@@ -27,6 +27,7 @@ class ListeningReceiptService {
     this.chain = Promise.resolve();
     this.initialized = false;
     this.lastProgress = null;
+    this.rewardCatalog = [];
   }
 
   initialize() {
@@ -293,6 +294,11 @@ class ListeningReceiptService {
     );
 
     this.lastProgress = result?.progress || null;
+    this.rewardCatalog = Array.isArray(
+      result?.catalog?.rewardItems
+    )
+      ? result.catalog.rewardItems.map(item => ({ ...item }))
+      : [];
 
     if (
       result?.wallet ||
@@ -306,6 +312,10 @@ class ListeningReceiptService {
 
     this.emit('status', result);
     return result;
+  }
+  
+  getRewardCatalog() {
+    return this.rewardCatalog.map(item => ({ ...item }));
   }
 
   startTimer() {
