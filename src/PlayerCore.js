@@ -71,7 +71,7 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       else if (tUid) this.currentIndex = Math.max(0, this.playlist.findIndex(t => t.uid === tUid));
 
       this._skips = 0;
-      if (this.sound && this.getCurrentTrackUid() === tUid && wasPlay && opts.preservePosition) {
+      if (this.sound && this._playingUid === tUid && wasPlay && opts.preservePosition) {
         this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
         return this._updMedia();
       }
@@ -135,8 +135,18 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     isPlaying() { return !!this.sound?.playing(); }
     play(idx, opts = {}) {
       this.prepareContext();
-      if (idx != null) return (idx === this.currentIndex && this.sound) ? (!this.isPlaying() && this.sound.play()) : this.load(idx, opts);
-      if (this.sound) !this.isPlaying() && this.sound.play(); else if (this.currentIndex >= 0) this.load(this.currentIndex, { autoPlay: true });
+      if (idx != null) {
+        if (idx === this.currentIndex && this.sound) {
+          if (opts.autoPlay !== false && !this.isPlaying()) return this.sound.play();
+          return;
+        }
+        return this.load(idx, { ...opts, autoPlay: opts.autoPlay ?? true });
+      }
+      if (this.sound) {
+        if (!this.isPlaying()) return this.sound.play();
+        return;
+      }
+      if (this.currentIndex >= 0) return this.load(this.currentIndex, { autoPlay: true });
     }
     pause() { this.sound?.pause(); }
     stop() { this._unload(false); this._updMedia(); }
@@ -172,6 +182,9 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     async load(idx, opts = {}) {
       const t = this.playlist[idx], tok = ++this._tok, dir = Number(opts.dir) || 1, uid = sUid(t?.uid);
       if (!t) return;
+
+      const autoPlay = opts.autoPlay ?? this.isPlaying();
+      opts = { ...opts, autoPlay };
       
       this.currentIndex = idx;
       if (!opts.isAutoSkip) this._skips = 0;
@@ -232,8 +245,6 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       this._unload(true);
       this._playingUid = uid;
       
-      const auto = opts.autoPlay ?? this.isPlaying();
-      
       this.sound = new Howl({
         src: [url], html5: true, format: ['mp3'], xhr: { withCredentials: false }, autoplay: false,
         onload: sf(() => {
@@ -256,7 +267,7 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
         onplayerror: sf(() => this._err(idx, retry, opts, dir))
       });
 
-      if (auto) this.sound.play();
+      if (autoPlay) this.sound.play();
     }
 
     _err(idx, r, o, d) {
