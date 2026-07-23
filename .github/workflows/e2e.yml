@@ -3,8 +3,25 @@ name: E2E smoke
 on:
   push:
     branches: [main, master]
-    paths-ignore: ['.meta/**']
+    paths:
+      - 'index.html'
+      - 'manifest.json'
+      - 'service-worker.js'
+      - 'albums.json'
+      - 'scripts/**'
+      - 'src/**'
+      - 'styles/**'
+      - '.github/workflows/e2e.yml'
   pull_request:
+    paths:
+      - 'index.html'
+      - 'manifest.json'
+      - 'service-worker.js'
+      - 'albums.json'
+      - 'scripts/**'
+      - 'src/**'
+      - 'styles/**'
+      - '.github/workflows/e2e.yml'
   workflow_dispatch:
 
 permissions:
