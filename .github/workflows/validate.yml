@@ -2,17 +2,32 @@ name: Validate manifest and SW
 on:
   push:
     branches: [main, master]
+    paths-ignore: ['.meta/**']
   pull_request:
+    paths-ignore: ['.meta/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with: { node-version: '24' }
-      - run: node scripts/ci/validate-manifest.mjs
-      - run: node scripts/ci/lint-sw.mjs
-      - run: node scripts/ci/validate-content.mjs
+      - name: Validate web manifest
+        run: node scripts/ci/validate-manifest.mjs
+      - name: Validate Service Worker contract
+        run: node scripts/ci/lint-sw.mjs
+      - name: Validate local content indexes
+        run: node scripts/ci/validate-content.mjs
 
       - name: Validate all first-party JavaScript
         run: |
@@ -171,12 +186,3 @@ jobs:
             echo "Native dialog found"
             exit 2
           fi
-  remote-validate:
-    name: Remote content validate (informational)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with: { node-version: '24' }
-      - run: node scripts/ci/validate-content.mjs
