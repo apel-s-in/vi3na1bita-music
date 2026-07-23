@@ -138,7 +138,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
 [/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-manifest.mjs
 [/scripts/core/] bootstrap.js, config.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
-[/scripts/e2e/] favorites.spec.js, player.spec.js, utils.js
+[/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
 [/scripts/intel/listener/] listener-collection.js, listener-profile.js
@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 10:27:37 UTC
+Сгенерировано: 2026-07-23 10:45:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12932,6 +12932,24 @@ test('Friends client exposes only E2EE V2 chat transport',async({page})=>{await 
 test('Game Center Friends RPC never receives social session or playback access',async({page})=>{await loginByPromo(page);const source=await page.evaluate(async()=>fetch('./scripts/app/games/bridge-host.js').then(response=>response.text()));expect(source).toContain('GC_FRIENDS_REQUEST');expect(source).toContain('getEmbeddedFriendsRpcMethod');expect(source).toContain('embedded-rpc-contract.js?v=');expect(source).not.toContain('FRIENDS_RPC_METHODS');expect(source).not.toMatch(/playerCore\?\.(play|pause|stop|setVolume|setMuted|seek|next|prev)/);expect(source).not.toMatch(/socialSession\s*[:,]|X-Yandex-OAuth/)});
 test('opening embedded Friends request does not stop current track',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:10000});await page.locator('#track-list .track').first().click();const before=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}));await page.locator('[data-album="__games__"]').click();const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}));expect(after.uid).toBe(before.uid);expect(after.playing).toBeTruthy()});
 test('Game capability and join-token contract is parent controlled',async({page})=>{await loginByPromo(page);const sources=await page.evaluate(async()=>{const[bridge,host]=await Promise.all([fetch('./scripts/app/games/bridge-host.js').then(r=>r.text()),fetch('./scripts/app/games/host.js').then(r=>r.text())]);return{bridge,host}});expect(sources.bridge).toContain('capabilities.tower');expect(sources.bridge).toContain('capabilities.war_hearts');expect(sources.bridge).toContain('room_join_token_create');expect(sources.bridge).toContain('room_join_token_redeem');expect(sources.host).toContain("url.searchParams.set('join'");expect(sources.host).not.toContain("url.searchParams.set('room'");expect(sources.host).not.toContain("url.searchParams.set('secret'");expect(sources.host).not.toContain("url.searchParams.set('key'")});
+
+//=================================================
+// FILE: /scripts/e2e/playwright.config.js
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: '.',
+  timeout: 30000,
+  expect: { timeout: 10000 },
+  workers: 1,
+  retries: 0,
+  reporter: [['line']],
+  outputDir: '../../test-results',
+  use: {
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure'
+  }
+});
 
 //=================================================
 // FILE: /scripts/e2e/utils.js
