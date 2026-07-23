@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 20:37:51 UTC
+Сгенерировано: 2026-07-23 20:38:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6718,6 +6718,11 @@ class AlbumsManager {
     W.addEventListener('quality:changed', () => {
       this.cache.forEach(album => delete album._pTracks);
     });
+
+    W.addEventListener(
+      'shards:wallet-updated',
+      () => this._renderIcons()
+    );
   }
 
   _renderIcons() {
@@ -6731,7 +6736,7 @@ class AlbumsManager {
       profileKey: PROFILE,
       logo: LOGO,
       escapeHtml: escHtml,
-      profile: W.achievementEngine?.profile || null
+      wallet: W.ShardWallet?.getSnapshot?.() || null
     });
 
     this.albumCarousel?.destroy?.();
