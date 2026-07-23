@@ -103,3 +103,56 @@ jobs:
             kill "$pid" 2>/dev/null || true
             wait "$pid" 2>/dev/null || true
           fi
+  webkit-informational:
+    name: WebKit lifecycle (manual informational)
+    if: github.event_name == 'workflow_dispatch'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_URL: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: '24' }
+
+      - name: Install Playwright
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install WebKit
+        run: npx playwright install --with-deps webkit
+
+      - name: Start local server
+        run: python3 -m http.server 4173 --bind 127.0.0.1 --directory . > /tmp/vi3-webkit-http.log 2>&1 & echo $! > webkit-server.pid
+
+      - name: Wait for local server
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "$BASE_URL/index.html" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/vi3-webkit-http.log
+          exit 1
+
+      - name: Run WebKit lifecycle subset
+        run: npx playwright test --config=scripts/e2e/playwright.config.js --browser=webkit --grep "@webkit"
+
+      - name: Upload WebKit diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-results-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Stop local server
+        if: always()
+        run: |
+          if [ -f webkit-server.pid ]; then
+            pid="$(cat webkit-server.pid)"
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          fi
