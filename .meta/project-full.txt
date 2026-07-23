@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 09:21:48 UTC
+Сгенерировано: 2026-07-23 09:22:42 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -671,6 +671,11 @@ jobs:
           grep -q "npx playwright test scripts/e2e" .github/workflows/e2e.yml
           grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
           grep -q "find scripts src" .github/workflows/e2e.yml
+
+          if grep -REn "\.waitForFunction\s*\(" scripts/e2e; then
+            echo "page.waitForFunction conflicts with the production CSP; use expect.poll + page.evaluate"
+            exit 2
+          fi
           
       - name: Reject native dialogs
         run: |
