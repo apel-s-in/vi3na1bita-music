@@ -21,9 +21,9 @@ jobs:
     env:
       BASE_URL: http://127.0.0.1:4173
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: '24' }
       - name: Validate application syntax
         run: |
           node --check service-worker.js
@@ -38,23 +38,30 @@ jobs:
               | sort
           )
       - name: Install test dependencies
-        run: npm install --no-save @playwright/test@1.48.2 http-server@14.1.1
+        run: npm install --no-save @playwright/test@1.55.0 http-server@14.1.1
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Start local server
         run: npx http-server -p 4173 -c-1 . > /tmp/vi3-http.log 2>&1 & echo $! > server.pid
       - name: Wait for local server
         run: for i in {1..30}; do curl -fsS "$BASE_URL/index.html" >/dev/null && exit 0; sleep 1; done; cat /tmp/vi3-http.log; exit 1
-      - name: Run Playwright tests
-        run: npx playwright test scripts/e2e --reporter=line --workers=1 --retries=0
+      - name: Run local blocking smoke
+        id: local-smoke
+        run: npx playwright test --config=scripts/e2e/playwright.config.js --grep-invert "@remote"
+
+      - name: Run external Friends integration
+        id: remote-integration
+        continue-on-error: true
+        run: npx playwright test --config=scripts/e2e/playwright.config.js --grep "@remote"
+
       - name: Collect Playwright diagnostics
-        if: failure()
+        if: failure() || steps.remote-integration.outcome == 'failure'
         run: |
           mkdir -p test-results
           cp /tmp/vi3-http.log test-results/http-server.log 2>/dev/null || true
 
       - name: Upload Playwright diagnostics
-        if: failure()
+        if: failure() || steps.remote-integration.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-results-${{ github.run_id }}
