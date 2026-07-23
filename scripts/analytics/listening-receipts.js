@@ -4,6 +4,8 @@
 import { requestSocialAction } from '../core/social-session.js';
 
 const HEARTBEAT_MS = 15000;
+const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
+const COMPLETION_OUTBOX_LIMIT = 100;
 
 const safe = value =>
   String(value == null ? '' : value).trim();
@@ -20,6 +22,46 @@ const networkAllowed = () =>
   window.NetPolicy?.isNetworkAllowed?.() ??
   navigator.onLine;
 
+const parseJson = (raw, fallback) => {
+  try {
+    return JSON.parse(raw || '');
+  } catch {
+    return fallback;
+  }
+};
+
+const currentYandexId = () =>
+  safe(
+    window.YandexAuth?.getProfile?.()?.yandexId ||
+    window.YandexAuth?.getProfile?.()?.id
+  );
+
+const readCompletionOutbox = () => {
+  const rows = parseJson(
+    localStorage.getItem(COMPLETION_OUTBOX_KEY),
+    []
+  );
+
+  return Array.isArray(rows)
+    ? rows.filter(item =>
+        item?.sessionId &&
+        item?.payload?.sessionId
+      )
+    : [];
+};
+
+const writeCompletionOutbox = rows => {
+  try {
+    localStorage.setItem(
+      COMPLETION_OUTBOX_KEY,
+      JSON.stringify(
+        (Array.isArray(rows) ? rows : [])
+          .slice(-COMPLETION_OUTBOX_LIMIT)
+      )
+    );
+  } catch {}
+};
+
 class ListeningReceiptService {
   constructor() {
     this.session = null;
@@ -28,6 +70,7 @@ class ListeningReceiptService {
     this.initialized = false;
     this.lastProgress = null;
     this.rewardCatalog = [];
+    this.flushingOutbox = null;
   }
 
   initialize() {
@@ -90,20 +133,72 @@ class ListeningReceiptService {
       'yandex:auth:changed',
       event => {
         if (event.detail?.status !== 'active') {
-          this.clearTimer();
-          this.session = null;
+          this.stageCurrentCompletion(
+            'auth_lost',
+            this.snapshot()
+          );
           return;
         }
 
-        this.refreshStatus().catch(() => null);
+        this.enqueue(async () => {
+          await this.flushCompletionOutbox();
+          await this.refreshStatus().catch(() => null);
 
-        if (window.playerCore?.isPlaying?.()) {
-          this.enqueue(() => this.start({
-            uid: window.playerCore?.getCurrentTrackUid?.(),
-            duration: window.playerCore?.getDuration?.(),
-            type: 'audio'
-          }));
-        }
+          if (window.playerCore?.isPlaying?.()) {
+            await this.start({
+              uid: window.playerCore?.getCurrentTrackUid?.(),
+              duration: window.playerCore?.getDuration?.(),
+              type: 'audio'
+            });
+          }
+        });
+      }
+    );
+
+    window.addEventListener(
+      'account:data-switching',
+      () => {
+        this.stageCurrentCompletion(
+          'account_switch',
+          this.snapshot()
+        );
+      }
+    );
+
+    window.addEventListener(
+      'account:data-switched',
+      () => {
+        this.enqueue(async () => {
+          await this.flushCompletionOutbox();
+
+          if (window.playerCore?.isPlaying?.()) {
+            await this.start({
+              uid: window.playerCore?.getCurrentTrackUid?.(),
+              duration: window.playerCore?.getDuration?.(),
+              type: 'audio'
+            });
+          }
+        });
+      }
+    );
+
+    window.addEventListener(
+      'online',
+      () => {
+        this.enqueue(async () => {
+          await this.flushCompletionOutbox();
+
+          if (
+            !this.session &&
+            window.playerCore?.isPlaying?.()
+          ) {
+            await this.start({
+              uid: window.playerCore?.getCurrentTrackUid?.(),
+              duration: window.playerCore?.getDuration?.(),
+              type: 'audio'
+            });
+          }
+        });
       }
     );
 
@@ -155,12 +250,139 @@ class ListeningReceiptService {
       ...extra
     };
   }
+  stageCurrentCompletion(
+    reason = 'unknown',
+    finalSnapshot = null
+  ) {
+    const current = this.session;
+    if (!current?.sessionId) {
+      this.clearTimer();
+      return null;
+    }
+
+    const payload = this.snapshot({
+      ...(finalSnapshot || {}),
+      sessionId: current.sessionId,
+      reason: safe(reason)
+    });
+    const ownerYandexId = currentYandexId();
+    const outbox = readCompletionOutbox();
+    const existing = outbox.find(
+      item => item.sessionId === current.sessionId
+    );
+
+    if (!existing) {
+      outbox.push({
+        id: `listen_complete_${current.sessionId}`,
+        sessionId: current.sessionId,
+        trackUid: current.trackUid,
+        ownerYandexId,
+        payload,
+        queuedAt: Date.now(),
+        attempts: 0
+      });
+      writeCompletionOutbox(outbox);
+    }
+
+    this.clearTimer();
+    this.session = null;
+    this.emit('completion_staged', null);
+    return payload;
+  }
+
+  applyCompletionResult(result) {
+    if (result?.progress) {
+      this.lastProgress = result.progress;
+    }
+
+    const grants = Array.isArray(result?.rewards)
+      ? result.rewards
+      : [];
+
+    if (result?.wallet || grants.length) {
+      window.ShardWallet
+        ?.refresh?.({ force: true })
+        .catch(() => null);
+    }
+
+    if (grants.length) {
+      const amount = grants.reduce(
+        (sum, grant) =>
+          sum + Number(grant?.amount || 0),
+        0
+      );
+
+      window.NotificationSystem?.success?.(
+        `♦ Начислено ${amount} Осколков`
+      );
+    }
+
+    this.emit('completed', result);
+    return result;
+  }
+
+  async flushCompletionOutbox() {
+    if (
+      !this.isAuthorized() ||
+      !networkAllowed()
+    ) return null;
+
+    if (this.flushingOutbox) {
+      return this.flushingOutbox;
+    }
+
+    const ownerYandexId = currentYandexId();
+
+    this.flushingOutbox = (async () => {
+      let lastResult = null;
+
+      while (true) {
+        const outbox = readCompletionOutbox();
+        const item = outbox.find(row =>
+          !row.ownerYandexId ||
+          row.ownerYandexId === ownerYandexId
+        );
+
+        if (!item) break;
+
+        const attempts = Number(item.attempts || 0) + 1;
+        writeCompletionOutbox(
+          outbox.map(row =>
+            row.id === item.id
+              ? { ...row, attempts, lastAttemptAt: Date.now() }
+              : row
+          )
+        );
+
+        const result = await requestSocialAction(
+          'listen_session_complete',
+          item.payload
+        );
+
+        writeCompletionOutbox(
+          readCompletionOutbox().filter(
+            row => row.id !== item.id
+          )
+        );
+
+        lastResult = this.applyCompletionResult(result);
+      }
+
+      return lastResult;
+    })().finally(() => {
+      this.flushingOutbox = null;
+    });
+
+    return this.flushingOutbox;
+  }
 
   async start(detail = {}) {
     if (
       !this.isAuthorized() ||
       !networkAllowed()
     ) return null;
+
+    await this.flushCompletionOutbox();
 
     const trackUid = safe(
       detail.uid ||
@@ -228,58 +450,13 @@ class ListeningReceiptService {
     reason = 'unknown',
     finalSnapshot = null
   ) {
-    const current = this.session;
-
-    if (!current?.sessionId) {
-      this.clearTimer();
-      return null;
-    }
-
-    this.clearTimer();
-    this.session = null;
-
-    if (
-      !this.isAuthorized() ||
-      !networkAllowed()
-    ) return null;
-
-    const result = await requestSocialAction(
-      'listen_session_complete',
-      this.snapshot({
-        ...(finalSnapshot || {}),
-        sessionId: current.sessionId,
-        reason: safe(reason)
-      })
+    const payload = this.stageCurrentCompletion(
+      reason,
+      finalSnapshot
     );
 
-    if (result?.progress) {
-      this.lastProgress = result.progress;
-    }
-
-    const grants = Array.isArray(result?.rewards)
-      ? result.rewards
-      : [];
-
-    if (result?.wallet || grants.length) {
-      window.ShardWallet
-        ?.refresh?.({ force: true })
-        .catch(() => null);
-    }
-
-    if (grants.length) {
-      const amount = grants.reduce(
-        (sum, grant) =>
-          sum + Number(grant?.amount || 0),
-        0
-      );
-
-      window.NotificationSystem?.success?.(
-        `♦ Начислено ${amount} Осколков`
-      );
-    }
-
-    this.emit('completed', result);
-    return result;
+    if (!payload) return null;
+    return this.flushCompletionOutbox();
   }
 
   async refreshStatus() {
@@ -312,6 +489,12 @@ class ListeningReceiptService {
 
     this.emit('status', result);
     return result;
+  }
+  getCompletionOutboxSnapshot() {
+    return readCompletionOutbox().map(item => ({
+      ...item,
+      payload: { ...item.payload }
+    }));
   }
   
   getRewardCatalog() {
