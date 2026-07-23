@@ -142,7 +142,8 @@ export class AchievementEngine {
     }
     window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
       total: this.achievements.length,
-      unlocked: Object.keys(this.unlocked || {}).length,
+      unlocked: this.achievements.filter(item => item.isUnlocked).length,
+      localUnlocked: Object.keys(this.unlocked || {}).length,
       items: this.unlocked || {},
       unlockMeta: this.unlockMeta || {},
       profile: this.profile,
@@ -160,26 +161,158 @@ export class AchievementEngine {
 
   _buildUIArray() {
     const arr = [], agg = this.lastAgg || {}, lv = window.liveStatsTracker?.getSnapshot?.() || null;
-    const add = (id, r, lvl, unl, uAt, c, t) => {
-      const rC = Number(c || 0), rT = Number(t || 0), isH = !unl && r.hidden;
-      let eC = rC, pct = rT > 0 ? Math.min(100, Math.max(0, (rC / rT) * 100)) : 0, pM = null;
-      if (!unl && !isH && rT > 0) {
-        if (r.id === 'time_total') { eC = Number(lv?.projectedTotalSec || rC); pct = rT > 0 ? Math.min(100, Math.max(0, (eC / rT) * 100)) : 0; pM = { kind: 'time_accum', live: true, toggleableTimer: true, remainingMs: Math.max(0, (rT - eC) * 1000), elapsedMs: Math.max(0, eC * 1000), targetMs: rT * 1000, currentRaw: eC, targetRaw: rT }; }
-        else if (r.id === 'streak_base') { eC = Number(lv?.projectedStreak || rC); pct = rT > 0 ? Math.min(100, Math.max(0, (eC / rT) * 100)) : 0; pM = { kind: 'streak_days', live: true, toggleableTimer: true, remainingDays: Math.max(0, rT - eC), elapsedDays: eC, targetDays: rT, currentRaw: eC, targetRaw: rT, hasTodayPersistent: !!lv?.hasTodayPersistent, wouldCountToday: !!lv?.wouldCountToday }; }
-        else pM = { kind: 'count', live: false, toggleableTimer: false, currentRaw: rC, targetRaw: rT };
+    const add = (id, r, lvl, localUnlocked, unlockedAt, current, target) => {
+      const reward = this._getServerReward(id);
+      const rewardEligible = reward?.eligible === true;
+      const rewardAwarded = reward?.awarded === true;
+      const completed = !!localUnlocked || rewardEligible || rewardAwarded;
+      const legacyAmount = lvl
+        ? this._getSc(r, lvl, true)
+        : Number(r.reward?.xp || 0);
+      const shardReward = Number(reward?.amount ?? legacyAmount);
+      const rawCurrent = Number(current || 0);
+      const rawTarget = Number(target || 0);
+      const hidden = !completed && !!r.hidden;
+      let effectiveCurrent = rawCurrent;
+      let pct = rawTarget > 0
+        ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100))
+        : 0;
+      let progressMeta = null;
+
+      if (!completed && !hidden && rawTarget > 0) {
+        if (r.id === 'time_total') {
+          effectiveCurrent = Number(lv?.projectedTotalSec || rawCurrent);
+          pct = Math.min(100, Math.max(0, (effectiveCurrent / rawTarget) * 100));
+          progressMeta = {
+            kind: 'time_accum',
+            live: true,
+            toggleableTimer: true,
+            remainingMs: Math.max(0, (rawTarget - effectiveCurrent) * 1000),
+            elapsedMs: Math.max(0, effectiveCurrent * 1000),
+            targetMs: rawTarget * 1000,
+            currentRaw: effectiveCurrent,
+            targetRaw: rawTarget
+          };
+        } else if (r.id === 'streak_base') {
+          effectiveCurrent = Number(lv?.projectedStreak || rawCurrent);
+          pct = Math.min(100, Math.max(0, (effectiveCurrent / rawTarget) * 100));
+          progressMeta = {
+            kind: 'streak_days',
+            live: true,
+            toggleableTimer: true,
+            remainingDays: Math.max(0, rawTarget - effectiveCurrent),
+            elapsedDays: effectiveCurrent,
+            targetDays: rawTarget,
+            currentRaw: effectiveCurrent,
+            targetRaw: rawTarget,
+            hasTodayPersistent: !!lv?.hasTodayPersistent,
+            wouldCountToday: !!lv?.wouldCountToday
+          };
+        } else {
+          progressMeta = {
+            kind: 'count',
+            live: false,
+            toggleableTimer: false,
+            currentRaw: rawCurrent,
+            targetRaw: rawTarget
+          };
+        }
       }
-      const vC = r.formatters?.target_hours ? r.formatters.target_hours(eC) : eC, vT = r.formatters?.target_hours ? r.formatters.target_hours(rT) : rT;
-      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, isSecret: !!r.hidden || r.category === 'secret', unlockedAt: uAt || null, unlockMeta: this.unlockMeta?.[id] || null, shardReward: Number(this._getServerReward(id)?.amount || 0),
-rewardEligible: this._getServerReward(id)?.eligible === true,
-rewardAwarded: this._getServerReward(id)?.awarded === true,
-rewardsEnabled: this._getServerReward(id)?.rewardsEnabled === true,
-hasServerReward: !!this._getServerReward(id), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
+
+      const visibleCurrent = r.formatters?.target_hours
+        ? r.formatters.target_hours(effectiveCurrent)
+        : effectiveCurrent;
+      const visibleTarget = r.formatters?.target_hours
+        ? r.formatters.target_hours(rawTarget)
+        : rawTarget;
+
+      arr.push({
+        id,
+        name: lvl
+          ? r.ui.name.replace('{level}', lvl)
+          : hidden
+            ? 'Секретное достижение'
+            : r.ui.name,
+        short: hidden
+          ? 'Откроется при особых условиях'
+          : r.ui.short.replace(/{target[a-z_]*}/g, visibleTarget),
+        desc: hidden
+          ? 'Продолжайте исследовать приложение, чтобы узнать секрет.'
+          : r.ui.desc,
+        howTo: hidden ? 'Скрыто' : r.ui.howTo,
+        icon: hidden ? '🔒' : r.ui.icon,
+        color: hidden || (!completed && lvl) ? '#888888' : r.ui.color,
+        isUnlocked: completed,
+        localUnlocked: !!localUnlocked,
+        serverCompleted: rewardEligible || rewardAwarded,
+        isHidden: hidden,
+        isSecret: !!r.hidden || r.category === 'secret',
+        unlockedAt: unlockedAt || null,
+        unlockMeta: this.unlockMeta?.[id] || null,
+        shardReward,
+        rewardEligible,
+        rewardAwarded,
+        rewardsEnabled: reward?.rewardsEnabled === true,
+        hasServerReward: !!reward,
+        rewardStatus: rewardAwarded
+          ? 'awarded'
+          : rewardEligible
+            ? 'verified'
+            : localUnlocked
+              ? 'local_completed'
+              : 'available',
+        ...(!completed && !hidden && rawTarget > 0 && {
+          progress: {
+            current: visibleCurrent,
+            target: visibleTarget,
+            pct
+          }
+        }),
+        ...(progressMeta && { progressMeta })
+      });
     };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.type === 'static') add(k, r, null, !!this.unlocked[k], this.unlocked[k], agg[r.trigger.conditions[0].metric] || 0, r.trigger.conditions[0].target);
       else if (r.type === 'scalable') {
-        let l = 1; while (this.unlocked[`${k}_${l}`]) { add(`${k}_${l}`, r, l, true, this.unlocked[`${k}_${l}`], 0, this._getSc(r, l, false)); l++; }
-        if ((!r.scaling.maxLevel || l <= r.scaling.maxLevel) && (!r.scaling.steps || l <= r.scaling.steps.length)) add(`${k}_${l}`, r, l, false, null, agg[r.trigger.conditions[0].metric] || 0, this._getSc(r, l, false));
+        let level = 1;
+
+        while (true) {
+          const id = `${k}_${level}`;
+          const reward = this._getServerReward(id);
+          const localUnlocked = !!this.unlocked[id];
+          const serverCompleted =
+            reward?.eligible === true ||
+            reward?.awarded === true;
+
+          if (!localUnlocked && !serverCompleted) break;
+
+          add(
+            id,
+            r,
+            level,
+            localUnlocked,
+            this.unlocked[id] || null,
+            Number(reward?.current || 0),
+            this._getSc(r, level, false)
+          );
+
+          level++;
+        }
+
+        if (
+          (!r.scaling.maxLevel || level <= r.scaling.maxLevel) &&
+          (!r.scaling.steps || level <= r.scaling.steps.length)
+        ) {
+          add(
+            `${k}_${level}`,
+            r,
+            level,
+            false,
+            null,
+            agg[r.trigger.conditions[0].metric] || 0,
+            this._getSc(r, level, false)
+          );
+        }
       }
     }
     return arr.sort((a, b) => a.isUnlocked === b.isUnlocked ? (b.unlockedAt || 0) - (a.unlockedAt || 0) : (a.isUnlocked ? -1 : 1));
@@ -210,5 +343,24 @@ hasServerReward: !!this._getServerReward(id), ...(!unl && !isH && rT > 0 && { pr
 
     return ev;
   }
-  broadcast(streak) { window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(this.unlocked).length, items: this.unlocked, unlockMeta: this.unlockMeta || {}, streak, profile: this.profile } })); }
+  broadcast(streak) {
+    const completed = this.achievements.filter(
+      item => item.isUnlocked
+    ).length;
+
+    window.dispatchEvent(new CustomEvent(
+      'achievements:updated',
+      {
+        detail: {
+          total: this.achievements.length,
+          unlocked: completed,
+          localUnlocked: Object.keys(this.unlocked).length,
+          items: this.unlocked,
+          unlockMeta: this.unlockMeta || {},
+          streak,
+          profile: this.profile
+        }
+      }
+    ));
+  }
 }
