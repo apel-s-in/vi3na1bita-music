@@ -185,9 +185,7 @@ export const refreshAchievementEngineFromDb = async ({ metaDB, reason = 'achieve
   }
   window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
     total: eng.achievements?.length || 0,
-    unlocked: (eng.achievements || []).filter(
-      item => item.isUnlocked
-    ).length,
+    unlocked: eng.getCompletedCount?.() ?? 0,
     localUnlocked: Object.keys(eng.unlocked || {}).length,
     items: eng.unlocked || {},
     unlockMeta: eng.unlockMeta || {},
