@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-22 21:04:30 UTC
+Сгенерировано: 2026-07-23 09:21:48 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12953,6 +12953,8 @@ test('Game capability and join-token contract is parent controlled',async({page}
 //=================================================
 // FILE: /scripts/e2e/utils.js
 // scripts/e2e/utils.js @ts-check
+import { expect } from '@playwright/test';
+
 export const BASE=process.env.BASE_URL||'http://127.0.0.1:4173';
 
 const HOWLER_MOCK=`(()=>{let globalVolume=1;class MockHowl{constructor(options={}){this.options=options;this._playing=false;this._position=0;this._duration=240;this._volume=Number(options.volume??1);this._events=new Map();queueMicrotask(()=>options.onload?.());if(options.autoplay)queueMicrotask(()=>this.play())}play(){if(this._playing)return 1;this._playing=true;queueMicrotask(()=>this.options.onplay?.());this._emit('play');return 1}pause(){if(!this._playing)return this;this._playing=false;queueMicrotask(()=>this.options.onpause?.());this._emit('pause');return this}stop(){const wasPlaying=this._playing;this._playing=false;this._position=0;if(wasPlaying){queueMicrotask(()=>this.options.onstop?.());this._emit('stop')}return this}unload(){this._playing=false;this._events.clear();return null}playing(){return this._playing}seek(value){if(value===undefined)return this._position;this._position=Math.max(0,Number(value)||0);this.options.onseek?.();this._emit('seek');return this}duration(){return this._duration}state(){return'loaded'}volume(value){if(value===undefined)return this._volume;this._volume=Number(value)||0;return this}mute(){return this}rate(){return 1}loop(){return false}on(name,fn){if(typeof fn==='function'){const rows=this._events.get(name)||[];rows.push(fn);this._events.set(name,rows)}return this}once(name,fn){const wrap=(...args)=>{this.off(name,wrap);fn(...args)};return this.on(name,wrap)}off(name,fn){if(!name){this._events.clear();return this}if(!fn){this._events.delete(name);return this}this._events.set(name,(this._events.get(name)||[]).filter(row=>row!==fn));return this}_emit(name,...args){(this._events.get(name)||[]).forEach(fn=>fn(...args))}}window.Howl=MockHowl;window.Howler={version:'e2e-mock',ctx:{state:'running',resume:()=>Promise.resolve(),addEventListener:()=>{}},masterGain:null,volume(value){if(value===undefined)return globalVolume;globalVolume=Number(value)||0;return this},mute(value){if(value)globalVolume=0;return this},stop(){return this},_howls:[]};})();`;
@@ -12969,14 +12971,32 @@ export const loginByPromo=async(page,promocode='VITRINA2025')=>{
   await page.fill('#promo-inp',promocode);
   await page.click('#promo-btn');
   await page.waitForSelector('#main-block:not(.hidden)',{timeout:10000});
-  await page.waitForFunction(()=>window.__appReady===true,{timeout:20000});
+  await expect.poll(
+    () => page.evaluate(() => window.__appReady === true),
+    {
+      timeout: 20000,
+      intervals: [100, 200, 500],
+      message: 'Приложение не завершило initialize()'
+    }
+  ).toBe(true);
   await page.waitForSelector('#album-icons-albums .album-icon',{timeout:10000});
   await page.waitForSelector('#album-icons-nav .album-icon',{timeout:10000});
   await page.waitForSelector('#track-list .track',{timeout:10000});
 };
 
 export const waitTracks=async page=>page.waitForSelector('#track-list .track',{timeout:10000});
-export const waitForPlayback=async page=>page.waitForFunction(()=>window.playerCore?.isPlaying?.()===true,{timeout:10000});
+export const waitForPlayback=async page=>{
+  await expect.poll(
+    () => page.evaluate(() =>
+      window.playerCore?.isPlaying?.() === true
+    ),
+    {
+      timeout: 10000,
+      intervals: [50, 100, 200],
+      message: 'PlayerCore не перешёл в playing'
+    }
+  ).toBe(true);
+};
 export const likeFirstTrack=async page=>{await waitTracks(page);const first=page.locator('#track-list .track').first();await first.hover();await first.locator('.like-star').click();};
 export const openFavorites=async page=>{await page.click('.album-icon[data-akey="__favorites__"]');await waitTracks(page);};
 export const playFirstTrack=async page=>{await waitTracks(page);await page.locator('#track-list .track').first().click();await page.waitForSelector('#lyricsplayerblock',{timeout:10000});await waitForPlayback(page);};
