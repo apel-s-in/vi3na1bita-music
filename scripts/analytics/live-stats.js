@@ -15,7 +15,13 @@ class LiveStatsTracker {
     window.addEventListener('player:play', e => { this.state.playing = true; this._updMeta(e.detail?.uid, e.detail?.duration); this._ensureTicker(); this._emit(); });
     window.addEventListener('player:tick', e => { const d = e.detail || {}; this.state.volume = Number(d.volume ?? this.state.volume ?? 100); this.state.muted = !!d.muted; this._flush({ currentTime: d.currentTime, duration: window.playerCore?.getDuration?.() || this.state.duration, volume: this.state.volume, muted: this.state.muted }); });
     ['player:pause', 'player:stop', 'player:ended'].forEach(ev => window.addEventListener(ev, () => { this._flush(); this.state.playing = false; if (ev === 'player:stop') { this.state.uid = null; this.state.lastPos = 0; } this._stopTickerIfIdle(); this._syncSleep(); this._emit(); }));
-    window.addEventListener('player:trackChanged', e => { this._flush(); this._updMeta(e.detail?.uid); this._emit(); });
+    window.addEventListener('player:trackChanged', e => {
+      const uid = String(e.detail?.uid || '').trim();
+      if (!uid || uid === String(this.state.uid || '')) return;
+      this._flush();
+      this._updMeta(uid);
+      this._emit();
+    });
     window.addEventListener('player:sleepTimerChanged', () => { this._syncSleep(); this._emit(); });
     document.addEventListener('visibilitychange', () => document.hidden && this._flush());
     this._syncSleep(); this._emit();
