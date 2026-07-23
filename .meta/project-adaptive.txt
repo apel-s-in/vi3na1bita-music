@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 19:36:53 UTC
+Сгенерировано: 2026-07-23 19:55:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2024,7 +2024,8 @@ export class AchievementEngine {
     }
     window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
       total: this.achievements.length,
-      unlocked: Object.keys(this.unlocked || {}).length,
+      unlocked: this.achievements.filter(item => item.isUnlocked).length,
+      localUnlocked: Object.keys(this.unlocked || {}).length,
       items: this.unlocked || {},
       unlockMeta: this.unlockMeta || {},
       profile: this.profile,
@@ -2042,26 +2043,158 @@ export class AchievementEngine {
 
   _buildUIArray() {
     const arr = [], agg = this.lastAgg || {}, lv = window.liveStatsTracker?.getSnapshot?.() || null;
-    const add = (id, r, lvl, unl, uAt, c, t) => {
-      const rC = Number(c || 0), rT = Number(t || 0), isH = !unl && r.hidden;
-      let eC = rC, pct = rT > 0 ? Math.min(100, Math.max(0, (rC / rT) * 100)) : 0, pM = null;
-      if (!unl && !isH && rT > 0) {
-        if (r.id === 'time_total') { eC = Number(lv?.projectedTotalSec || rC); pct = rT > 0 ? Math.min(100, Math.max(0, (eC / rT) * 100)) : 0; pM = { kind: 'time_accum', live: true, toggleableTimer: true, remainingMs: Math.max(0, (rT - eC) * 1000), elapsedMs: Math.max(0, eC * 1000), targetMs: rT * 1000, currentRaw: eC, targetRaw: rT }; }
-        else if (r.id === 'streak_base') { eC = Number(lv?.projectedStreak || rC); pct = rT > 0 ? Math.min(100, Math.max(0, (eC / rT) * 100)) : 0; pM = { kind: 'streak_days', live: true, toggleableTimer: true, remainingDays: Math.max(0, rT - eC), elapsedDays: eC, targetDays: rT, currentRaw: eC, targetRaw: rT, hasTodayPersistent: !!lv?.hasTodayPersistent, wouldCountToday: !!lv?.wouldCountToday }; }
-        else pM = { kind: 'count', live: false, toggleableTimer: false, currentRaw: rC, targetRaw: rT };
+    const add = (id, r, lvl, localUnlocked, unlockedAt, current, target) => {
+      const reward = this._getServerReward(id);
+      const rewardEligible = reward?.eligible === true;
+      const rewardAwarded = reward?.awarded === true;
+      const completed = !!localUnlocked || rewardEligible || rewardAwarded;
+      const legacyAmount = lvl
+        ? this._getSc(r, lvl, true)
+        : Number(r.reward?.xp || 0);
+      const shardReward = Number(reward?.amount ?? legacyAmount);
+      const rawCurrent = Number(current || 0);
+      const rawTarget = Number(target || 0);
+      const hidden = !completed && !!r.hidden;
+      let effectiveCurrent = rawCurrent;
+      let pct = rawTarget > 0
+        ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100))
+        : 0;
+      let progressMeta = null;
+
+      if (!completed && !hidden && rawTarget > 0) {
+        if (r.id === 'time_total') {
+          effectiveCurrent = Number(lv?.projectedTotalSec || rawCurrent);
+          pct = Math.min(100, Math.max(0, (effectiveCurrent / rawTarget) * 100));
+          progressMeta = {
+            kind: 'time_accum',
+            live: true,
+            toggleableTimer: true,
+            remainingMs: Math.max(0, (rawTarget - effectiveCurrent) * 1000),
+            elapsedMs: Math.max(0, effectiveCurrent * 1000),
+            targetMs: rawTarget * 1000,
+            currentRaw: effectiveCurrent,
+            targetRaw: rawTarget
+          };
+        } else if (r.id === 'streak_base') {
+          effectiveCurrent = Number(lv?.projectedStreak || rawCurrent);
+          pct = Math.min(100, Math.max(0, (effectiveCurrent / rawTarget) * 100));
+          progressMeta = {
+            kind: 'streak_days',
+            live: true,
+            toggleableTimer: true,
+            remainingDays: Math.max(0, rawTarget - effectiveCurrent),
+            elapsedDays: effectiveCurrent,
+            targetDays: rawTarget,
+            currentRaw: effectiveCurrent,
+            targetRaw: rawTarget,
+            hasTodayPersistent: !!lv?.hasTodayPersistent,
+            wouldCountToday: !!lv?.wouldCountToday
+          };
+        } else {
+          progressMeta = {
+            kind: 'count',
+            live: false,
+            toggleableTimer: false,
+            currentRaw: rawCurrent,
+            targetRaw: rawTarget
+          };
+        }
       }
-      const vC = r.formatters?.target_hours ? r.formatters.target_hours(eC) : eC, vT = r.formatters?.target_hours ? r.formatters.target_hours(rT) : rT;
-      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, isSecret: !!r.hidden || r.category === 'secret', unlockedAt: uAt || null, unlockMeta: this.unlockMeta?.[id] || null, shardReward: Number(this._getServerReward(id)?.amount || 0),
-rewardEligible: this._getServerReward(id)?.eligible === true,
-rewardAwarded: this._getServerReward(id)?.awarded === true,
-rewardsEnabled: this._getServerReward(id)?.rewardsEnabled === true,
-hasServerReward: !!this._getServerReward(id), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
+
+      const visibleCurrent = r.formatters?.target_hours
+        ? r.formatters.target_hours(effectiveCurrent)
+        : effectiveCurrent;
+      const visibleTarget = r.formatters?.target_hours
+        ? r.formatters.target_hours(rawTarget)
+        : rawTarget;
+
+      arr.push({
+        id,
+        name: lvl
+          ? r.ui.name.replace('{level}', lvl)
+          : hidden
+            ? 'Секретное достижение'
+            : r.ui.name,
+        short: hidden
+          ? 'Откроется при особых условиях'
+          : r.ui.short.replace(/{target[a-z_]*}/g, visibleTarget),
+        desc: hidden
+          ? 'Продолжайте исследовать приложение, чтобы узнать секрет.'
+          : r.ui.desc,
+        howTo: hidden ? 'Скрыто' : r.ui.howTo,
+        icon: hidden ? '🔒' : r.ui.icon,
+        color: hidden || (!completed && lvl) ? '#888888' : r.ui.color,
+        isUnlocked: completed,
+        localUnlocked: !!localUnlocked,
+        serverCompleted: rewardEligible || rewardAwarded,
+        isHidden: hidden,
+        isSecret: !!r.hidden || r.category === 'secret',
+        unlockedAt: unlockedAt || null,
+        unlockMeta: this.unlockMeta?.[id] || null,
+        shardReward,
+        rewardEligible,
+        rewardAwarded,
+        rewardsEnabled: reward?.rewardsEnabled === true,
+        hasServerReward: !!reward,
+        rewardStatus: rewardAwarded
+          ? 'awarded'
+          : rewardEligible
+            ? 'verified'
+            : localUnlocked
+              ? 'local_completed'
+              : 'available',
+        ...(!completed && !hidden && rawTarget > 0 && {
+          progress: {
+            current: visibleCurrent,
+            target: visibleTarget,
+            pct
+          }
+        }),
+        ...(progressMeta && { progressMeta })
+      });
     };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.type === 'static') add(k, r, null, !!this.unlocked[k], this.unlocked[k], agg[r.trigger.conditions[0].metric] || 0, r.trigger.conditions[0].target);
       else if (r.type === 'scalable') {
-        let l = 1; while (this.unlocked[`${k}_${l}`]) { add(`${k}_${l}`, r, l, true, this.unlocked[`${k}_${l}`], 0, this._getSc(r, l, false)); l++; }
-        if ((!r.scaling.maxLevel || l <= r.scaling.maxLevel) && (!r.scaling.steps || l <= r.scaling.steps.length)) add(`${k}_${l}`, r, l, false, null, agg[r.trigger.conditions[0].metric] || 0, this._getSc(r, l, false));
+        let level = 1;
+
+        while (true) {
+          const id = `${k}_${level}`;
+          const reward = this._getServerReward(id);
+          const localUnlocked = !!this.unlocked[id];
+          const serverCompleted =
+            reward?.eligible === true ||
+            reward?.awarded === true;
+
+          if (!localUnlocked && !serverCompleted) break;
+
+          add(
+            id,
+            r,
+            level,
+            localUnlocked,
+            this.unlocked[id] || null,
+            Number(reward?.current || 0),
+            this._getSc(r, level, false)
+          );
+
+          level++;
+        }
+
+        if (
+          (!r.scaling.maxLevel || level <= r.scaling.maxLevel) &&
+          (!r.scaling.steps || level <= r.scaling.steps.length)
+        ) {
+          add(
+            `${k}_${level}`,
+            r,
+            level,
+            false,
+            null,
+            agg[r.trigger.conditions[0].metric] || 0,
+            this._getSc(r, level, false)
+          );
+        }
       }
     }
     return arr.sort((a, b) => a.isUnlocked === b.isUnlocked ? (b.unlockedAt || 0) - (a.unlockedAt || 0) : (a.isUnlocked ? -1 : 1));
@@ -2092,7 +2225,26 @@ hasServerReward: !!this._getServerReward(id), ...(!unl && !isH && rT > 0 && { pr
 
     return ev;
   }
-  broadcast(streak) { window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(this.unlocked).length, items: this.unlocked, unlockMeta: this.unlockMeta || {}, streak, profile: this.profile } })); }
+  broadcast(streak) {
+    const completed = this.achievements.filter(
+      item => item.isUnlocked
+    ).length;
+
+    window.dispatchEvent(new CustomEvent(
+      'achievements:updated',
+      {
+        detail: {
+          total: this.achievements.length,
+          unlocked: completed,
+          localUnlocked: Object.keys(this.unlocked).length,
+          items: this.unlocked,
+          unlockMeta: this.unlockMeta || {},
+          streak,
+          profile: this.profile
+        }
+      }
+    ));
+  }
 }
 
 //=================================================
@@ -19431,185 +19583,5 @@ body.news-view #cover-wrap{display:none!important}
 .sc-set-tgl.on{background:rgba(77,170,255,0.15);color:var(--secondary-color);border-color:rgba(77,170,255,0.3)}
 .sc-set-tgl-desc{font-size:10px;display:block;opacity:0.6;margin-top:4px;font-weight:500}
 
-//=================================================
-// FILE: /styles/ui-core.css
-/* ==========================================
-   БИБЛИОТЕКА КОМПОНЕНТОВ (ui-core.css)
-   ========================================== */
 
-/* 1. КНОПКИ */
-.om-btn{all:unset;cursor:pointer;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:var(--om-r);font:600 13px inherit;text-align:center;transition:all .15s;user-select:none}
-.om-btn:active{transform:scale(.97)}
-.om-btn--primary{background:linear-gradient(135deg,#7c4dff,#651fff);color:#fff;box-shadow:0 2px 12px rgba(124,77,255,.25)}
-.om-btn--primary:hover{box-shadow:0 4px 20px rgba(124,77,255,.35);filter:brightness(1.08)}
-.om-btn--accent{background:var(--om-accent-a);color:#b388ff;border:1px solid rgba(124,77,255,.25)}
-.om-btn--accent:hover{background:rgba(124,77,255,.2)}
-.om-btn--ghost{background:rgba(255,255,255,.05);color:var(--om-dim);border:1px solid var(--om-border)}
-.om-btn--ghost:hover{background:rgba(255,255,255,.09);color:rgba(255,255,255,.8)}
-.om-btn--outline{background:transparent;color:var(--om-dim);border:1px solid rgba(255,255,255,.15)}
-.om-btn--outline:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.25);color:#fff}
-.om-btn--danger{background:rgba(244,67,54,.12);color:#ef5350;border:1px solid rgba(244,67,54,.25)}
-.om-btn--danger:hover{background:rgba(244,67,54,.2);box-shadow:0 2px 16px rgba(244,67,54,.15)}
-.om-btn--danger-outline{background:transparent;color:rgba(244,67,54,.7);border:1px solid rgba(244,67,54,.2)}
-.om-btn--danger-outline:hover{background:rgba(244,67,54,.08);color:#ef5350}
-.om-btn--disabled{opacity:.35!important;pointer-events:none!important;cursor:not-allowed!important;filter:grayscale(.6)}
-.modal-action-btn{background:rgba(77,170,255,.15);border:1px solid rgba(77,170,255,.3);color:var(--secondary-color);padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;transition:.2s}
-.modal-action-btn:hover{background:rgba(77,170,255,.25);transform:translateY(-1px);box-shadow:0 4px 12px rgba(77,170,255,.2)}
-.modal-action-btn:disabled{opacity:.45!important;cursor:not-allowed!important;filter:grayscale(.35);transform:none!important;box-shadow:none!important}
-.modal-action-btn:active{transform:translateY(0)}
-
-/* 2. МОДАЛЬНЫЕ ОКНА И ОВЕРЛЕИ */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);z-index:10015;animation:fadeIn .3s}
-.modal-bg.active{display:flex}
-.modal-feedback{background:var(--modal-bg);border-radius:14px;padding:28px 24px;min-width:240px;max-width:90vw;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.6);position:relative;animation:slideUp .3s}
-.bigclose{background:0 0;border:0;position:absolute;top:14px;right:14px;cursor:pointer;color:var(--c-e);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s}
-.bigclose:hover{transform:scale(1.1);background:rgba(255,255,255,.1)}
-.bigclose:active{transform:scale(.95)}
-.bigclose svg{width:22px;height:22px}
-.om-actions{display:flex;gap:12px;width:100%;margin-top:14px}
-.om-actions .modal-action-btn{flex:1;display:flex;align-items:center;justify-content:center;text-align:center}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
-
-/* 3. УВЕДОМЛЕНИЯ / TOASTS */
-#toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10000;pointer-events:none;display:flex;flex-direction:column;gap:10px;align-items:center}
-.toast{background:#2a2a2a;border-radius:12px;padding:15px 20px;box-shadow:0 4px 20px rgba(0,0,0,.3);opacity:0;transform:translateY(20px);transition:.3s ease;max-width:90vw;word-wrap:break-word;pointer-events:auto}
-.toast.show{opacity:1;transform:translateY(0)}
-.toast-content{display:flex;align-items:center;gap:10px}
-.toast-emoji{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
-.toast-message{flex:1;font-size:14px;line-height:1.4}
-.toast-info{border-left:4px solid var(--secondary-color)}
-.toast-success{border-left:4px solid #27b34c}
-.toast-error{border-left:4px solid var(--primary-color)}
-.toast-warning{border-left:4px solid #ff9800}
-.toast-offline{border-left:4px solid #666}
-
-/* 4. ДОПОЛНИТЕЛЬНЫЕ ОКНА И PWA (Бывшие инъекции) */
-.ios-install-prompt{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;border-radius:20px 20px 0 0;padding:24px 20px;transform:translateY(100%);transition:transform .3s cubic-bezier(.1,.8,.2,1);z-index:10000;box-shadow:0 -4px 30px rgba(0,0,0,.5)}
-.ios-install-prompt.show{transform:translateY(0)}
-.ios-prompt-icon{width:64px;height:64px;margin:0 auto 16px;display:block;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.4)}
-.ios-prompt-title{font-weight:900;font-size:18px;margin-bottom:8px;color:#fff;text-align:center}
-.ios-prompt-text{opacity:.85;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5;color:#eaf2ff}
-.ios-prompt-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:0;color:#fff;font-size:24px;cursor:pointer;line-height:1;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.ios-prompt-button{background:linear-gradient(135deg,#7c4dff,#4daaff);color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;width:100%;cursor:pointer;font-size:15px}
-
-.fb-modal-note{margin-bottom:20px;color:#8ab8fd;text-align:center}
-.fb-modal-links{display:flex;flex-direction:column;gap:15px;max-width:300px;margin:0 auto}
-.fb-modal-link{color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center}
-.fb-modal-link--tg{background:#0088cc}
-.fb-modal-link--mail{background:#4daaff}
-.fb-modal-link--gh{background:#333}
-
-.modal-feedback--dynamic{width:min(100%,var(--modal-max-width,400px));max-width:min(var(--modal-max-width,400px),400px);overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(23,58,101,.9) transparent}
-.modal-feedback--dynamic::-webkit-scrollbar,.modal-feedback--dynamic .modal-body::-webkit-scrollbar{width:3px;height:3px}
-.modal-feedback--dynamic::-webkit-scrollbar-track,.modal-feedback--dynamic .modal-body::-webkit-scrollbar-track{background:transparent}
-.modal-feedback--dynamic::-webkit-scrollbar-thumb,.modal-feedback--dynamic .modal-body::-webkit-scrollbar-thumb{background:rgba(23,58,101,.9);border-radius:999px}
-.modal-feedback--dynamic::-webkit-scrollbar-button,.modal-feedback--dynamic .modal-body::-webkit-scrollbar-button{display:none;width:0;height:0}
-.modal-feedback--dynamic .modal-body{max-width:100%;overflow-x:hidden}
-.profile-inline-actions{margin-top:14px}
-.profile-inline-actions .modal-action-btn{width:100%;min-height:48px;justify-content:center;text-align:center;white-space:normal;line-height:1.2}
-.modal-confirm-text{color:#9db7dd;line-height:1.45;margin-bottom:14px}
-.modal-confirm-btn{min-width:130px}
-.modal-choice-actions{display:flex;flex-direction:column;gap:8px;width:100%}
-.modal-choice-actions .modal-action-btn{width:100%;justify-content:center;min-height:44px}
-
-/* Util Modals */
-.pm-name-inp{width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid #666;margin-bottom:15px}
-.pm-name-save{width:100%}
-.pm-palette{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;justify-content:center}
-.pm-palette__dot{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s;box-shadow:0 2px 8px rgba(0,0,0,.5)}
-.pm-palette__dot:hover{transform:scale(1.15)}
-.pm-palette__reset{margin-top:15px;width:100%}
-.boot-fail{position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-family:sans-serif;z-index:99999}
-.boot-fail__box{max-width:560px}
-.boot-fail__title{color:#e80100;margin:0 0 12px}
-.boot-fail__text{margin:0}
-.sysinfo-root{font-size:13px;line-height:1.6;color:#eaf2ff;text-align:left}
-.sysinfo-group-title{color:#8ab8fd;margin:12px 0 6px}
-.sysinfo-row{margin:0 0 4px}
-.sysinfo-footer{margin-top:16px;border-top:1px solid #333;text-align:center;color:#666;font-size:10px;padding-top:10px}
-
-/* 6. СТАТИСТИКА И ГРАФИКИ (Универсальные) */
-.stats-grid-compact{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
-.stat-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:14px 10px;text-align:center}
-.stat-box b{display:block;color:#fff;font-size:18px;margin-bottom:4px;font-variant-numeric:tabular-nums}
-.stat-box span{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px}
-.stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:16px;margin-bottom:12px}
-.stat-title{font-size:13px;font-weight:800;color:var(--secondary-color);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-.stat-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
-.stat-list li{display:flex;justify-content:space-between;font-size:13px;color:#eaf2ff;align-items:center}
-.stat-list li span:last-child{font-weight:700;color:var(--secondary-color);font-variant-numeric:tabular-nums}
-.chart-block{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:16px;margin-bottom:12px}
-.chart-title{font-size:13px;font-weight:800;color:var(--secondary-color);text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
-.chart-title--click{cursor:pointer;user-select:none}
-.chart-title--click::after{content:'▼';font-size:10px;color:#888;transition:transform .2s}
-.chart-bars--hidden{display:none}
-.chart-bars{margin-top:14px;display:flex;flex-direction:column;gap:8px}
-.chart-row{display:flex;align-items:center;gap:10px;font-size:11px;color:#9db7dd}
-.chart-row .label{width:45px;text-align:right;flex-shrink:0}
-.chart-row .bar{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
-.chart-row .fill{height:100%;background:var(--grad-blue);border-radius:4px}
-.chart-row .val{width:30px;text-align:left;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
-
-/* 7. ВСПЛЫВАЮЩИЕ МЕНЮ */
-.cloud-menu{position:fixed;background:rgba(20,24,32,.98);border:1px solid rgba(77,170,255,.4);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999}
-.cloud-menu__item{cursor:pointer;padding:10px 14px;color:#eaf2ff;font-size:14px;font-weight:700;border-radius:8px;transition:.15s;white-space:nowrap}
-.cloud-menu__item:hover{background:rgba(255,255,255,.08)}
-.cloud-menu__item--danger{color:#ff6b6b}
-.cloud-menu__item--danger:hover{background:rgba(255,107,107,.1)}
-
-.sm-center{text-align:center}
-.sm-mb20{margin-bottom:20px}
-.sm-cover{width:100px;height:100px;border-radius:12px;overflow:hidden;margin:0 auto 12px;box-shadow:0 4px 15px rgba(0,0,0,0.5)}
-.sm-cover img{width:100%;height:100%;object-fit:cover}
-.sm-title{margin:0;color:#fff;font-size:18px}
-.sm-sub{font-size:12px;color:var(--secondary-color);margin-top:4px}
-.sm-fullw{width:100%}
-.sm-note{padding:14px 0 0;color:rgba(234,242,255,.72);font-size:12px;line-height:1.35;text-align:center;margin-bottom:14px}
-.sm-card,.sm-card-lg{background:rgba(0,0,0,0.2);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.05);color:#cfe3ff}
-.sm-card{margin-bottom:12px;font-size:12px}
-.sm-card-lg{margin-bottom:15px}
-.sm-cap{font-size:11px;color:#888;margin-bottom:8px;font-weight:bold;letter-spacing:1px}
-.sm-top-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:#eaf2ff;align-items:center}
-.sm-top-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
-.sm-top-val{color:var(--secondary-color);flex-shrink:0}
-.sm-empty{text-align:center;font-size:12px;color:#888}
-.sm-ach-wrap{max-height:220px;overflow-y:auto;padding-right:5px;display:flex;flex-direction:column;gap:8px}
-.sm-ach-row{display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05)}
-.sm-ach-icon{font-size:24px}
-.sm-ach-main{flex:1}
-.sm-ach-name{font-size:14px;font-weight:bold;color:#fff;margin-bottom:2px}
-.sm-ach-desc{font-size:11px;color:#aaa}
-.sm-ach-ok{color:#4caf50;font-weight:bold}
-
-/* 5. ИНДИКАТОРЫ И ИКОНКИ */
-.like-star{--star-hit-size:24px;--star-glyph-size:28px;margin-left:auto;width:var(--star-hit-size);height:var(--star-hit-size);min-width:var(--star-hit-size);min-height:var(--star-hit-size);cursor:pointer;opacity:.98;transition:transform .18s,filter .13s,opacity .13s,color .13s;pointer-events:auto!important;position:relative;z-index:10;flex:0 0 var(--star-hit-size);display:inline-flex;align-items:center;justify-content:center;transform-origin:center;line-height:0}
-.like-star:hover{filter:brightness(1.13);opacity:1;transform:scale(1.12)}
-.like-star:active{transform:scale(.95)}
-.like-star.animating{animation:starPulse .3s}
-.like-star-svg{display:inline-flex;align-items:center;justify-content:center;color:#f5f7fb;line-height:0}
-.like-star-svg svg{width:var(--star-glyph-size);height:var(--star-glyph-size);display:block;overflow:visible}
-.like-star-svg[data-liked="1"]{color:#ffd54a;filter:drop-shadow(0 0 8px rgba(255,213,74,.26))}
-.like-star-svg[data-liked="0"]{color:#f5f7fb}
-@keyframes starPulse{0%,to{transform:scale(1)}50%{transform:scale(1.4)}}
-.offline-ind{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;min-width:25px;font-size:15px;line-height:1;cursor:pointer;user-select:none;flex-shrink:0;border-radius:3px;transition:opacity .2s,transform .15s;vertical-align:middle;margin-right:6px}
-.offline-ind:hover{transform:scale(1.2)}
-.offline-ind:active{transform:scale(.95)}
-.offline-ind--none{opacity:.4;color:#888}
-.offline-ind--none:hover{opacity:.6}
-.offline-ind--nospace{opacity:.2;color:#888}
-.offline-ind--pinned{opacity:1;color:#f5c842;text-shadow:0 0 4px rgba(245,200,66,.4)}
-.offline-ind--pinned-loading{opacity:1;color:#f5c842;animation:offline-ind-blink 1s ease-in-out infinite}
-.offline-ind--cloud{opacity:1;color:#5bc0de;text-shadow:0 0 4px rgba(91,192,222,.4)}
-.offline-ind--cloud:hover{color:#29b6f6}
-.offline-ind--cloud-loading{opacity:.4;color:#888;animation:offline-ind-blink 1s ease-in-out infinite}
-@keyframes offline-ind-blink{50%{opacity:.4}}
-
-/* Service Worker update prompt */
-.sw-update-visible #toast-container{bottom:148px!important}
-.sw-update-panel{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10020;width:min(360px,calc(100vw - 28px));display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px;border-radius:18px;background:rgba(10,12,18,.82);border:1px solid rgba(124,77,255,.35);box-shadow:0 12px 38px rgba(0,0,0,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:fadeIn .22s ease-out}
-.sw-update-btn{min-height:46px;border:0;border-radius:14px;cursor:pointer;color:#fff;font-size:13px;font-weight:900;letter-spacing:.7px;background:linear-gradient(135deg,#7c4dff,#651fff);box-shadow:0 5px 18px rgba(124,77,255,.28);transition:transform .12s,filter .16s,box-shadow .16s}
-.sw-update-btn:hover{filter:brightness(1.08);box-shadow:0 7px 22px rgba(124,77,255,.38)}
-.sw-update-btn:active{transform:scale(.97)}
-.sw-update-btn--later{background:linear-gradient(135deg,#4a2bb8,#2d1b7a)}
-
+// ... (truncate)
