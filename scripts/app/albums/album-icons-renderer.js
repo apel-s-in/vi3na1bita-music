@@ -45,7 +45,7 @@ export const renderAlbumIcon = ({
   profileKey = '__profile__',
   logo = 'img/logo.png',
   escapeHtml = value => String(value || ''),
-  profile = null
+  wallet = null
 } = {}) => {
   if (!item?.key) return '';
 
@@ -53,9 +53,13 @@ export const renderAlbumIcon = ({
   const title = escapeHtml(item.title);
 
   if (item.key === profileKey) {
-    const level = profile?.level || '-';
-    const xp = profile?.xp !== undefined ? `${profile.xp} XP` : '...';
-    return `<div class="album-icon profile-dyn-icon" data-album="${key}" data-akey="${key}" title="${title}"><span class="pg-lvl-val" id="pg-lvl-val">${escapeHtml(level)}</span><div class="pg-xp-cur" id="pg-xp-cur">${escapeHtml(xp)}</div></div>`;
+    const available = wallet?.available === true;
+    const value = available
+      ? Number(wallet.shards || 0)
+      : '👤';
+    const label = available ? '♦' : 'Профиль';
+
+    return `<div class="album-icon profile-dyn-icon" data-album="${key}" data-akey="${key}" title="${title}"><span class="profile-shards-value">${escapeHtml(value)}</span><span class="profile-shards-label">${escapeHtml(label)}</span></div>`;
   }
 
   const { src, src2x } = resolveIconSources({ icon: item.icon, mobile, logo });
@@ -69,7 +73,7 @@ export const renderAlbumIconRows = ({
   profileKey = '__profile__',
   logo = 'img/logo.png',
   escapeHtml,
-  profile = null
+  wallet = null
 } = {}) => {
   const { albums, navigation } = getRenderableAlbumIcons({ config, albumsIndex });
   const render = item => renderAlbumIcon({
@@ -78,7 +82,7 @@ export const renderAlbumIconRows = ({
     profileKey,
     logo,
     escapeHtml,
-    profile
+    wallet
   });
 
   return `<div class="album-icons-row album-icons-row--albums" id="album-icons-albums">${albums.map(render).join('')}</div><div class="album-icons-row album-icons-row--nav" id="album-icons-nav">${navigation.map(render).join('')}</div>`;
