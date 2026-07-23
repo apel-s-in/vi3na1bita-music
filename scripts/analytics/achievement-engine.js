@@ -142,7 +142,7 @@ export class AchievementEngine {
     }
     window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
       total: this.achievements.length,
-      unlocked: this.achievements.filter(item => item.isUnlocked).length,
+      unlocked: this.getCompletedCount(),
       localUnlocked: Object.keys(this.unlocked || {}).length,
       items: this.unlocked || {},
       unlockMeta: this.unlockMeta || {},
@@ -343,10 +343,15 @@ export class AchievementEngine {
 
     return ev;
   }
+  getCompletedCount() {
+    return this.achievements.reduce(
+      (count, item) => count + (item?.isUnlocked ? 1 : 0),
+      0
+    );
+  }
+
   broadcast(streak) {
-    const completed = this.achievements.filter(
-      item => item.isUnlocked
-    ).length;
+    const completed = this.getCompletedCount();
 
     window.dispatchEvent(new CustomEvent(
       'achievements:updated',
