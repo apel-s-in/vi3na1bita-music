@@ -15,10 +15,13 @@ const renderTopTracks = rows => rows.length ? rows.map(s => {
   return tr ? `<div class="sm-top-row" data-uid="${esc(s.uid)}"><span class="sm-top-title">${esc(tr.title)}</span><b class="sm-top-val">${s.globalFullListenCount || 0} раз</b></div>` : '';
 }).join('') : '<div class="sm-empty">Слушайте музыку, чтобы увидеть топ</div>';
 
-const renderAchievements = engine => {
-  const achVal = engine?.unlocked || {};
-  return (engine?.achievements || []).map(a => `<div class="ach-item ${achVal[a.id] ? '' : 'locked'} sm-ach-row"><div class="ach-icon sm-ach-icon ${achVal[a.id] ? '' : 'sm-ach-locked'}">${esc(a.icon)}</div><div class="sm-ach-main"><div class="sm-ach-name">${esc(a.name)}</div><div class="sm-ach-desc">${esc(a.desc)}${!achVal[a.id] && a.progressMeta ? ` · ${esc(fmtAchTimerText(a, 'remaining'))}` : ''}</div></div>${achVal[a.id] ? '<div class="sm-ach-ok">✓</div>' : ''}</div>`).join('') || '<div class="sm-empty">Достижения пока недоступны</div>';
-};
+const renderAchievements = engine =>
+  (engine?.achievements || []).map(a => {
+    const completed = a?.isUnlocked === true;
+
+    return `<div class="ach-item ${completed ? '' : 'locked'} sm-ach-row"><div class="ach-icon sm-ach-icon ${completed ? '' : 'sm-ach-locked'}">${esc(a.icon)}</div><div class="sm-ach-main"><div class="sm-ach-name">${esc(a.name)}</div><div class="sm-ach-desc">${esc(a.desc)}${!completed && a.progressMeta ? ` · ${esc(fmtAchTimerText(a, 'remaining'))}` : ''}</div></div>${completed ? '<div class="sm-ach-ok">✓</div>' : ''}</div>`;
+  }).join('') ||
+  '<div class="sm-empty">Достижения пока недоступны</div>';
 
 export async function openStatisticsModal(uid = null) {
   if (uid || window.playerCore?.getCurrentTrackUid?.()) return openTrackStatisticsModal(uid);
