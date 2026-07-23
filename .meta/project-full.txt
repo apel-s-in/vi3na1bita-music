@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 20:26:55 UTC
+Сгенерировано: 2026-07-23 20:27:26 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2441,9 +2441,7 @@ export const refreshAchievementEngineFromDb = async ({ metaDB, reason = 'achieve
   }
   window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
     total: eng.achievements?.length || 0,
-    unlocked: (eng.achievements || []).filter(
-      item => item.isUnlocked
-    ).length,
+    unlocked: eng.getCompletedCount?.() ?? 0,
     localUnlocked: Object.keys(eng.unlocked || {}).length,
     items: eng.unlocked || {},
     unlockMeta: eng.unlockMeta || {},
