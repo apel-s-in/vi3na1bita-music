@@ -11,6 +11,10 @@ export class AchievementEngine {
     this.achievements = []; this.lastAgg = {}; this._checking = false; this._silentNotify = false;
     this._initBoot();
     window.addEventListener('stats:updated', () => this.check());
+    window.addEventListener('listening-receipts:updated', () => {
+      this.achievements = this._buildUIArray();
+      this.broadcast(this.lastAgg?.streak || 0);
+    });
   }
 
   async _initBoot() {
@@ -55,35 +59,63 @@ export class AchievementEngine {
       new Set(allReg.map(t => t.sourceAlbum).filter(Boolean)).forEach(aKey => { const aT = allReg.filter(t => t.sourceAlbum === aKey); agg[`album_${aKey}_complete`] = (aT.filter(t => playedUids.has(t.uid)).length >= aT.length && aT.length > 0) ? 1 : 0; });
     }
 
-    let chg = false, eXp = 0, now = Date.now();
-    const unlock = (id, name, icon, xp) => { this.unlocked[id] = now; const ev = this._notifyUnlock(name, icon, xp, id); this.unlockMeta[id] = normalizeAchievementUnlockMetaRow(id, { unlockedAt: now, eventId: ev?.eventId, sessionId: ev?.sessionId, deviceStableId: ev?.deviceStableId, deviceHash: ev?.deviceHash, deviceLabel: ev?.deviceLabel, deviceClass: ev?.deviceClass, devicePwa: ev?.devicePwa, platform: ev?.platform, source: 'achievement_engine' }); };
+    let chg = false, now = Date.now();
+    const unlock = (id, name, icon) => {
+      this.unlocked[id] = now;
+      const ev = this._notifyUnlock(name, icon, id);
+      this.unlockMeta[id] = normalizeAchievementUnlockMetaRow(id, {
+        unlockedAt: now,
+        eventId: ev?.eventId,
+        sessionId: ev?.sessionId,
+        deviceStableId: ev?.deviceStableId,
+        deviceHash: ev?.deviceHash,
+        deviceLabel: ev?.deviceLabel,
+        deviceClass: ev?.deviceClass,
+        devicePwa: ev?.devicePwa,
+        platform: ev?.platform,
+        source: 'achievement_engine'
+      });
+    };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.seasonal && ((r.seasonal.start && now < r.seasonal.start) || (r.seasonal.end && now > r.seasonal.end) || (r.seasonal.months && !r.seasonal.months.includes(new Date().getMonth())))) continue;
       if (r.type === 'static' && !this.unlocked[k]) {
-        if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { unlock(k, r.ui.name, r.ui.icon, r.reward.xp); eXp += r.reward.xp; chg = true; }
+        if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { unlock(k, r.ui.name, r.ui.icon); chg = true; }
       } else if (r.type === 'scalable') {
         let lvl = 1, sft = 50; while (this.unlocked[`${k}_${lvl}`]) lvl++;
         while (sft-- > 0 && (!r.scaling.maxLevel || lvl <= r.scaling.maxLevel) && (!r.scaling.steps || lvl <= r.scaling.steps.length)) {
-          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { const id = `${k}_${lvl}`, xp = this._getSc(r, lvl, true); unlock(id, r.ui.name.replace('{level}', lvl), r.ui.icon, xp); eXp += xp; chg = true; lvl++; } else break;
+          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { const id = `${k}_${lvl}`; unlock(id, r.ui.name.replace('{level}', lvl), r.ui.icon); chg = true; lvl++; } else break;
         }
       }
     }
 
     this.lastAgg = agg;
     if (chg) {
-      this.profile.xp += eXp; const nLvl = Math.floor(Math.sqrt(this.profile.xp / 100)) + 1;
-      if (nLvl > this.profile.level) { 
-        this.profile.level = nLvl; 
-        setTimeout(() => {
-          window.NotificationSystem?.success(`🎉 ПОЗДРАВЛЯЕМ! Ваш уровень повышен до ${nLvl}!`);
-          const ya = window.YandexAuth;
-          if (ya && ya.getSessionStatus() !== 'active' && window.Modals?.confirm) {
-            setTimeout(() => window.Modals.confirm({ title: '☁️ Сохраните ваш прогресс', textHtml: `Вы достигли <b>${nLvl} уровня</b>! Ваш прогресс, достижения и плейлисты пока хранятся только в браузере.<br><br>При желании можно подключить Яндекс Аккаунт, чтобы сохранить backup и восстановить его на другом устройстве. Это не обязательно.`, confirmText: 'Подключить', cancelText: 'Позже', onConfirm: () => ya.login() }), 1000);
+      await Promise.all([
+        metaDB.setGlobal(
+          'unlocked_achievements',
+          this.unlocked
+        ),
+        metaDB.setGlobal(
+          'achievement_unlock_meta',
+          this.unlockMeta
+        )
+      ]);
+
+      window.ListeningReceipts
+        ?.refreshStatus?.()
+        .catch(() => null);
+
+      try {
+        window.dispatchEvent(new CustomEvent(
+          'backup:domain-dirty',
+          {
+            detail: {
+              domain: 'achievements',
+              immediate: true
+            }
           }
-        }, 2000); 
-      }
-      await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('achievement_unlock_meta', this.unlockMeta), metaDB.setGlobal('user_profile_rpg', this.profile)]);
-      try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'achievements', immediate: true } })); } catch {}
+        ));
+      } catch {}
     }
     this.achievements = this._buildUIArray(); this.broadcast(agg.streak);
     } finally {
@@ -118,6 +150,13 @@ export class AchievementEngine {
     } }));
     return true;
   }
+  _getServerReward(id) {
+    return window.ListeningReceipts
+      ?.getRewardCatalog?.()
+      .find(item =>
+        String(item?.id || '') === String(id || '')
+      ) || null;
+  }
 
   _buildUIArray() {
     const arr = [], agg = this.lastAgg || {}, lv = window.liveStatsTracker?.getSnapshot?.() || null;
@@ -130,7 +169,11 @@ export class AchievementEngine {
         else pM = { kind: 'count', live: false, toggleableTimer: false, currentRaw: rC, targetRaw: rT };
       }
       const vC = r.formatters?.target_hours ? r.formatters.target_hours(eC) : eC, vT = r.formatters?.target_hours ? r.formatters.target_hours(rT) : rT;
-      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, isSecret: !!r.hidden || r.category === 'secret', unlockedAt: uAt || null, unlockMeta: this.unlockMeta?.[id] || null, xpReward: lvl ? this._getSc(r, lvl, true) : (r.reward.xp || 0), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
+      arr.push({ id, name: lvl ? r.ui.name.replace('{level}', lvl) : (isH ? 'Секретное достижение' : r.ui.name), short: isH ? 'Откроется при особых условиях' : r.ui.short.replace(/{target[a-z_]*}/g, vT), desc: isH ? 'Продолжайте исследовать приложение, чтобы узнать секрет.' : r.ui.desc, howTo: isH ? 'Скрыто' : r.ui.howTo, icon: isH ? '🔒' : r.ui.icon, color: isH || (!unl && lvl) ? '#888888' : r.ui.color, isUnlocked: unl, isHidden: isH, isSecret: !!r.hidden || r.category === 'secret', unlockedAt: uAt || null, unlockMeta: this.unlockMeta?.[id] || null, shardReward: Number(this._getServerReward(id)?.amount || 0),
+rewardEligible: this._getServerReward(id)?.eligible === true,
+rewardAwarded: this._getServerReward(id)?.awarded === true,
+rewardsEnabled: this._getServerReward(id)?.rewardsEnabled === true,
+hasServerReward: !!this._getServerReward(id), ...(!unl && !isH && rT > 0 && { progress: { current: vC, target: vT, pct } }), ...(pM && { progressMeta: pM }) });
     };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.type === 'static') add(k, r, null, !!this.unlocked[k], this.unlocked[k], agg[r.trigger.conditions[0].metric] || 0, r.trigger.conditions[0].target);
@@ -141,6 +184,31 @@ export class AchievementEngine {
     }
     return arr.sort((a, b) => a.isUnlocked === b.isUnlocked ? (b.unlockedAt || 0) - (a.unlockedAt || 0) : (a.isUnlocked ? -1 : 1));
   }
-  _notifyUnlock(name, icon, xp, id = '') { const ev = eventLogger.log('ACHIEVEMENT_UNLOCK', null, { id, name, icon, xp }); if (!this._silentNotify) window.NotificationSystem?.success(`🏆 ${icon} Открыто: ${name} (+${xp} XP)`); return ev; }
+  _notifyUnlock(name, icon, id = '') {
+    const reward = this._getServerReward(id);
+    const ev = eventLogger.log(
+      'ACHIEVEMENT_UNLOCK',
+      null,
+      {
+        id,
+        name,
+        icon,
+        rewardCurrency: 'shards',
+        rewardStatus: reward
+          ? 'server_pending'
+          : 'validator_pending'
+      }
+    );
+
+    if (!this._silentNotify) {
+      window.NotificationSystem?.success(
+        reward
+          ? `🏆 ${icon} Открыто: ${name}. Проверяем награду ${reward.amount} ♦`
+          : `🏆 ${icon} Открыто: ${name}`
+      );
+    }
+
+    return ev;
+  }
   broadcast(streak) { window.dispatchEvent(new CustomEvent('achievements:updated', { detail: { total: this.achievements.length, unlocked: Object.keys(this.unlocked).length, items: this.unlocked, unlockMeta: this.unlockMeta || {}, streak, profile: this.profile } })); }
 }
