@@ -140,6 +140,8 @@
 .sleep-status-row strong{color:#fff;font-weight:800;font-variant-numeric:tabular-nums}
 .sleep-controls-card{background:rgba(255,255,255,0.03);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:14px;transition:opacity 0.2s}
 .sleep-controls-card.disabled{opacity:0.4;pointer-events:none;filter:grayscale(0.5)}
+.sleep-modal-actions{display:flex;gap:10px;margin-top:-6px}
+.sleep-modal-actions .om-btn{flex:1}
 .sleep-input-row{display:flex;align-items:center;gap:12px}
 .sleep-label{flex:1;font-size:13px;color:#eaf2ff;font-weight:600}
 .sleep-input-wrap{position:relative;width:120px;display:flex;align-items:center}
