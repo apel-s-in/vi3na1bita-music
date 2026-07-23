@@ -51,6 +51,9 @@ jobs:
           grep -q "listen_session_heartbeat" scripts/analytics/listening-receipts.js
           grep -q "listen_session_complete" scripts/analytics/listening-receipts.js
           grep -q "achievement_reward_status" scripts/analytics/listening-receipts.js
+          grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/listening-receipts.js
+          grep -q "flushCompletionOutbox" scripts/analytics/listening-receipts.js
+          grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/account-data-boundary.js
           if grep -En "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" scripts/analytics/listening-receipts.js; then
             echo "Listening receipts must not control playback"
             exit 2
