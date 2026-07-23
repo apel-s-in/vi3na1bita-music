@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 19:55:56 UTC
+Сгенерировано: 2026-07-23 19:56:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9848,12 +9848,23 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
   const tM = ctx._achTimerMode ??= new Map(), esc = v => CSS.escape(String(v || '')), hEsc = v => window.Utils?.escapeHtml?.(String(v || '')) || String(v || ''), eng = () => window.achievementEngine || e;
   const rewardText = a => {
     if (a?.isHidden && !a?.isUnlocked) return 'Секретное';
-    if (!a?.hasServerReward) return 'Награда готовится';
-    if (a?.rewardAwarded) return `+${a.shardReward} ♦ начислено`;
-    if (a?.rewardEligible && !a?.rewardsEnabled) {
-      return `${a.shardReward} ♦ · проверено`;
+    if (a?.rewardAwarded) return `+${a.shardReward} ♦ получено`;
+
+    if (a?.rewardEligible) {
+      return a?.rewardsEnabled
+        ? `+${a.shardReward} ♦ · начисляется`
+        : `+${a.shardReward} ♦ · подтверждено`;
     }
-    return `+${a.shardReward} ♦`;
+
+    if (a?.localUnlocked) {
+      return a?.hasServerReward
+        ? `+${a.shardReward} ♦ · проверяется`
+        : `+${a.shardReward} ♦ · награда готовится`;
+    }
+
+    return a?.hasServerReward
+      ? `+${a.shardReward} ♦`
+      : `+${a.shardReward} ♦ · награда готовится`;
   };
   const unlockInfo = a => { const m = a?.unlockMeta || {}, ts = Number(m.unlockedAt || a?.unlockedAt || 0), dt = ts > 0 ? new Date(ts).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—', dev = [m.deviceLabel, m.deviceClass || m.platform, m.devicePwa ? 'PWA' : ''].filter(Boolean).join(' · '); return hEsc(`Открыто: ${dt}${dev ? ` · ${dev}` : ''}`); };
   const gM = id => tM.get(id) || 'remaining', tH = a => { const t = fmtAchTimerText(a, gM(a.id)); return t ? `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${t}</button>` : ''; };
