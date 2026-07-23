@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 19:58:37 UTC
+Сгенерировано: 2026-07-23 20:07:46 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5780,18 +5780,84 @@ export class SessionTracker {
     if (this.s) { this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false }); this.s.lastUpdate = Date.now(); }
     this._speedRunnerMs = 0;
   }
-  _end(isE) {
+  _end(endedNaturally) {
     if (!this.s) return;
-    if (!isE) this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
-    const { uid, variant, quality, accumulatedMs, duration, lastPos } = this.s; this.s = null;
-    if (duration <= 0 && !isE) return;
-    const rawSec = Math.floor(accumulatedMs / 1000), sec = isE ? Math.max(rawSec, Math.floor(duration || lastPos || 0)) : rawSec, prg = duration > 0 ? Math.max(lastPos, isE ? duration : 0) / duration : 0, isV = sec >= 13 || isE, isF = prg >= 0.9 || isE;
-    if (isV || isF) {
-      const n = new Date(), h = n.getHours(), m = n.getMinutes();
-      if (isV && h === 11 && m === 11) eventLogger.log('FEATURE_USED', 'global', { feature: 'play_11_11' });
-      if (isV && (n.getDay() === 0 || n.getDay() === 6)) eventLogger.log('FEATURE_USED', 'global', { feature: 'weekend_play' });
-      eventLogger.log('LISTEN_COMPLETE', uid, { variant, quality, listenedSeconds: sec, trackDuration: duration, progress: prg, isFullListen: isF, isValidListen: isV });
-    } else eventLogger.log('LISTEN_SKIP', uid, { listenedSeconds: sec });
+
+    const targetPosition = endedNaturally && this.s.duration > 0
+      ? this.s.duration
+      : Number(
+          window.playerCore?.getPosition?.() ||
+          this.s.lastPos ||
+          0
+        );
+
+    this._tick({
+      currentTime: targetPosition,
+      volume: window.playerCore?.getVolume?.() ?? 100,
+      muted: window.playerCore?.isMuted?.() ?? false
+    });
+
+    const {
+      uid,
+      variant,
+      quality,
+      accumulatedMs,
+      duration,
+      lastPos
+    } = this.s;
+
+    this.s = null;
+
+    if (duration <= 0 && !endedNaturally) return;
+
+    const listenedSeconds = Math.floor(accumulatedMs / 1000);
+    const progress = duration > 0
+      ? Math.max(0, Math.min(1, lastPos / duration))
+      : 0;
+    const valid = listenedSeconds >= 13;
+    const full =
+      endedNaturally &&
+      progress >= 0.9 &&
+      listenedSeconds >= Math.max(
+        13,
+        Math.floor(duration * 0.8)
+      );
+
+    if (!valid && !full) {
+      eventLogger.log('LISTEN_SKIP', uid, {
+        listenedSeconds
+      });
+      return;
+    }
+
+    const date = new Date();
+    const hour = date.getHours();
+    const minute = date.getMinutes();
+
+    if (valid && hour === 11 && minute === 11) {
+      eventLogger.log('FEATURE_USED', 'global', {
+        feature: 'play_11_11'
+      });
+    }
+
+    if (
+      valid &&
+      (date.getDay() === 0 || date.getDay() === 6)
+    ) {
+      eventLogger.log('FEATURE_USED', 'global', {
+        feature: 'weekend_play'
+      });
+    }
+
+    eventLogger.log('LISTEN_COMPLETE', uid, {
+      variant,
+      quality,
+      listenedSeconds,
+      trackDuration: duration,
+      progress,
+      isFullListen: full,
+      isValidListen: valid
+    });
   }
 }
 
