@@ -14,6 +14,7 @@ let _el = null, _started = false, _bound = false;
 let _watchdogInterval = null, _retryTimer = null, _retryCount = 0;
 let _playbackIntent = false;
 let _lastKnownPosition = 0;
+let _recoveryGeneration = 0;
 const MAX_RETRY = 5;
 
 // ─── silence <audio> ────────────────────────────────────────────────────────
@@ -81,6 +82,52 @@ function _bindCtxWatcher() {
   }
 }
 
+function _invalidateRecovery() {
+  _recoveryGeneration++;
+}
+
+function _captureRecovery(position = 0) {
+  const player = window.playerCore;
+  const sound = player?.sound || null;
+
+  return {
+    generation: _recoveryGeneration,
+    player,
+    sound,
+    uid: String(player?.getCurrentTrackUid?.() || ''),
+    position: Math.max(
+      0,
+      Number(position || _lastKnownPosition || 0)
+    )
+  };
+}
+
+function _recoverIfCurrent(snapshot) {
+  if (
+    !_playbackIntent ||
+    !snapshot?.player ||
+    !snapshot.sound ||
+    snapshot.generation !== _recoveryGeneration
+  ) return false;
+
+  const player = window.playerCore;
+
+  if (
+    player !== snapshot.player ||
+    player.sound !== snapshot.sound ||
+    String(player.getCurrentTrackUid?.() || '') !== snapshot.uid
+  ) return false;
+
+  try {
+    if (snapshot.sound.playing()) return false;
+    snapshot.sound.seek(snapshot.position);
+    snapshot.sound.play();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ─── iOS watchdog — каждые 10 сек (быстрее чем было 25) ────────────────────
 function _startWatchdog() {
   if (_watchdogInterval) return;
@@ -96,16 +143,17 @@ function _startWatchdog() {
 
     // iOS завис (звук не движется)
     if (isIOS) {
-      const pc = window.playerCore;
-      if (pc?.sound && !pc.sound.playing()) {
-        const pos = pc.getPosition?.() || _lastKnownPosition || 0;
+      const player = window.playerCore;
+
+      if (player?.sound && !player.sound.playing()) {
+        const recovery = _captureRecovery(
+          player.getPosition?.() ||
+          _lastKnownPosition ||
+          0
+        );
+
         setTimeout(() => {
-          if (_playbackIntent && pc?.sound && !pc.sound.playing()) {
-            try {
-              pc.sound.seek(pos);
-              pc.sound.play();
-            } catch {}
-          }
+          _recoverIfCurrent(recovery);
         }, 600);
       }
     }
@@ -162,6 +210,7 @@ export function initIosAudioKeeper() {
   _bound = true;
 
   window.addEventListener('player:play', () => {
+    _invalidateRecovery();
     _playbackIntent = true;
     _lastKnownPosition = window.playerCore?.getPosition?.() || _lastKnownPosition;
     _bindCtxWatcher();
@@ -174,6 +223,7 @@ export function initIosAudioKeeper() {
   });
 
   window.addEventListener('player:pause', () => {
+    _invalidateRecovery();
     _playbackIntent = false;
     _lastKnownPosition = window.playerCore?.getPosition?.() || _lastKnownPosition;
     if (isIOS) {
@@ -184,6 +234,7 @@ export function initIosAudioKeeper() {
   });
 
   window.addEventListener('player:stop', () => {
+    _invalidateRecovery();
     _playbackIntent = false;
     _lastKnownPosition = 0;
     if (isIOS) {
@@ -217,14 +268,11 @@ export function initIosAudioKeeper() {
       if (!_started && _playbackIntent) startKeeper();
 
       if (_wasPlaying) {
-        // Даём 500мс и проверяем — iOS мог заморозить
+        // Даём 500мс и восстанавливаем только тот же UID и тот же Howl.
+        const recovery = _captureRecovery(_lastPos || 0);
+
         setTimeout(() => {
-          const pc = window.playerCore;
-          if (!pc) return;
-          if (_playbackIntent && (!pc.isPlaying() || (pc.sound && !pc.sound.playing()))) {
-            const p = _lastPos || 0;
-            try { if (pc.sound) { pc.sound.seek(p); pc.sound.play(); } } catch {}
-          }
+          _recoverIfCurrent(recovery);
         }, 500);
       }
     }
