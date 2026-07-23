@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 21:18:45 UTC
+Сгенерировано: 2026-07-23 21:19:15 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -685,6 +685,42 @@ jobs:
             exit 2
           fi
 
+      - name: Validate verified shard reward client
+        run: |
+          grep -q "getCompletedCount" scripts/analytics/achievement-engine.js
+          grep -q "rewardAwarded" scripts/app/profile/achievements-view.js
+          grep -q "server_catalog" scripts/app/shards/view.js
+
+          if grep -REn \
+            "1 XP = 1 Осколок|\+[[:space:]]*.*XP|xpReward" \
+            scripts/app \
+            scripts/ui \
+            styles; then
+            echo "Legacy visible XP reward presentation found"
+            exit 2
+          fi
+
+          if grep -En \
+            "Object\.keys\(.*achievementEngine.*unlocked|Object\.keys\(engine\?\.unlocked" \
+            scripts/app/profile/view.js \
+            scripts/ui/statistics-modal.js; then
+            echo "Local-only achievement count found"
+            exit 2
+          fi
+
+      - name: Validate backup reward boundary
+        run: |
+          grep -q "backup_saves" scripts/analytics/achievements-dict.js
+          grep -q "BACKUP_CREATED" scripts/analytics/stats-aggregator.js
+
+          if grep -REn \
+            "grant_shards|wallet_restore|achievement_claim" \
+            scripts/analytics/backup-* \
+            scripts/core/yandex-*; then
+            echo "Backup client must not grant or restore shards"
+            exit 2
+          fi
+          
       - name: Validate account-local vault
         run: |
           node --input-type=module --check < scripts/analytics/account-data-boundary.js
