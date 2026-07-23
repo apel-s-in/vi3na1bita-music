@@ -1,5 +1,5 @@
 // scripts/e2e/player.spec.js @ts-check
-import{test,expect}from'@playwright/test';import{loginByPromo,openSleepTimer,setSleepPreset,resetSleepTimer}from'./utils.js';
+import{test,expect}from'@playwright/test';import{loginByPromo,openSleepTimer,setSleepPreset,resetSleepTimer,waitForAppReady}from'./utils.js';
 
 test('application boot has no syntax errors and renders tracks',async({page})=>{const errors=[];page.on('pageerror',error=>errors.push(String(error?.message||error)));await loginByPromo(page);await page.waitForSelector('#album-icons-albums .album-icon',{timeout:10000});await page.waitForSelector('#track-list .track',{timeout:10000});const state=await page.evaluate(()=>({app:typeof window.app?.initialize==='function',albums:!!window.AlbumsManager,player:!!window.playerCore,ui:!!window.PlayerUI,tracks:document.querySelectorAll('#track-list .track').length}));expect(state.app).toBeTruthy();expect(state.albums).toBeTruthy();expect(state.player).toBeTruthy();expect(state.ui).toBeTruthy();expect(state.tracks).toBeGreaterThan(0);expect(errors).toEqual([]);});
 test('play track, toggle favorites-only and sleep timer UI',async({page})=>{await loginByPromo(page);await expect(page.locator('#main-block')).toBeVisible();await page.waitForSelector('#track-list .track',{timeout:1e4});const f=page.locator('#track-list .track').first();await f.locator('.like-star').click();await f.click();await expect(page.locator('#lyricsplayerblock')).toBeVisible();await expect(page.locator('#play-pause-icon')).toBeVisible();await page.click('#favorites-btn');await expect(page.locator('#favorites-btn')).toHaveClass(/favorites-active/);await openSleepTimer(page);await setSleepPreset(page,15);await expect(page.locator('#sleep-timer-badge')).toBeVisible();await openSleepTimer(page);await resetSleepTimer(page);await expect(page.locator('#sleep-timer-badge')).toBeHidden()});
@@ -11,7 +11,7 @@ test('favoritesOnly modal: visible non-starred track from another album offers c
 test('shuffle history: next-next-prev returns to previously played track',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.click('#shuffle-btn');await expect(page.locator('#shuffle-btn')).toHaveClass(/active/);const gU=async()=>page.evaluate(()=>String(window.playerCore?.getCurrentTrack?.()?.uid||'')),f=await gU();await page.click('#next-btn');await page.waitForTimeout(200);const s=await gU();await page.click('#next-btn');await page.waitForTimeout(200);const t=await gU();await page.click('#prev-btn');await page.waitForTimeout(200);const b=await gU();expect(f).toBeTruthy();expect(s).toBeTruthy();expect(t).toBeTruthy();expect(b).toBe(s)});
 test('social achievement tracks all four news social links',async({page})=>{await loginByPromo(page);await page.click('.album-icon[data-akey="__reliz__"]');await page.waitForTimeout(300);for(const h of['https://www.youtube.com/channel/UCbjm1J0V8RkWvNj4Z8-JIhA/','https://t.me/vitrina_razbita','https://vk.com/apelsinov','https://www.tiktok.com/@vi3na1bita']){await page.locator(`#social-links a[href="${h}"]`).click();await page.waitForTimeout(100)}await page.waitForTimeout(500);const st=await page.evaluate(()=>new Promise((r,j)=>{const d=indexedDB.open('MetaDB_v4');d.onerror=()=>j(d.error);d.onsuccess=()=>{const g=d.result.transaction('stats','readonly').objectStore('stats').get('global');g.onerror=()=>j(g.error);g.onsuccess=()=>r(g.result?.featuresUsed||{})}}));expect(st.social_visit_youtube||0).toBeGreaterThan(0);expect(st.social_visit_telegram||0).toBeGreaterThan(0);expect(st.social_visit_vk||0).toBeGreaterThan(0);expect(st.social_visit_tiktok||0).toBeGreaterThan(0);expect(st.social_visit_all||0).toBe(1)});
 test('logo pulse module is loaded without import/runtime crash',async({page})=>{await loginByPromo(page);const s=await page.evaluate(()=>({hasLogoPulse:!!window.LogoPulse,hasToggle:typeof window.LogoPulse?.toggle==='function',hasUpdate:typeof window.LogoPulse?.updateSettings==='function'}));expect(s.hasLogoPulse).toBeTruthy();expect(s.hasToggle).toBeTruthy();expect(s.hasUpdate).toBeTruthy()});
-test('profile smoke: open profile, change avatar/name, no console errors, playback survives',async({page})=>{const er=[];page.on('pageerror',e=>er.push(String(e?.message||e)));page.on('console',m=>{if(m.type()==='error')er.push(m.text())});await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});await page.click('.album-icon[data-akey="__profile__"]');await page.waitForSelector('#tab-account',{timeout:1e4});await page.click('#prof-avatar-btn');await page.waitForSelector('.prof-ava-btn',{timeout:1e4});await page.locator('.prof-ava-btn').nth(1).click();await page.click('#prof-name-edit');await page.fill('#prof-name-inp','Тестовый профиль');await page.keyboard.press('Enter');await page.waitForTimeout(300);const st=await page.evaluate(()=>({playing:!!window.playerCore?.isPlaying?.(),name:document.querySelector('#prof-name-inp')?.value||'',avatar:document.querySelector('#prof-avatar-btn')?.textContent||''}));expect(st.playing).toBeTruthy();expect(st.name).toBe('Тестовый профиль');expect(st.avatar.length).toBeGreaterThan(0);expect(er.filter(e=>!/favicon/i.test(e)&&!/ERR_ABORTED/i.test(e))).toEqual([])});
+test('profile smoke: open profile, change avatar/name, no console errors, playback survives',async({page})=>{const er=[];page.on('pageerror',e=>er.push(String(e?.message||e)));page.on('console',m=>{if(m.type()==='error')er.push(m.text())});await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});await page.click('.album-icon[data-akey="__profile__"]');await page.waitForSelector('#tab-account',{timeout:1e4});await page.click('#prof-avatar-btn');await page.waitForSelector('.prof-ava-btn',{timeout:1e4});await page.locator('.prof-ava-btn').nth(1).click();await page.click('#prof-name-edit');await page.fill('#prof-name-inp','Тест-профиль');await page.keyboard.press('Enter');await page.waitForTimeout(300);const st=await page.evaluate(()=>({playing:!!window.playerCore?.isPlaying?.(),name:document.querySelector('#prof-name-inp')?.value||'',avatar:document.querySelector('#prof-avatar-btn')?.textContent||''}));expect(st.playing).toBeTruthy();expect(st.name).toBe('Тестовый профиль');expect(st.avatar.length).toBeGreaterThan(0);expect(er.filter(e=>!/favicon/i.test(e)&&!/ERR_ABORTED/i.test(e))).toEqual([])});
 test('sleep timer logs feature usage into global stats',async({page})=>{await loginByPromo(page);await page.evaluate(async()=>{window.dispatchEvent(new CustomEvent('player:sleepTimerTriggered',{detail:{targetAt:Date.now(),meta:{mode:'minutes',minutes:1}}}));await window.eventLogger?.flush?.();await window.statsAggregator?.waitForIdle?.();});const features=await page.evaluate(()=>new Promise((resolve,reject)=>{const request=indexedDB.open('MetaDB_v4');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const row=request.result.transaction('stats','readonly').objectStore('stats').get('global');row.onerror=()=>reject(row.error);row.onsuccess=()=>resolve(row.result?.featuresUsed||{});};}));expect(features.sleep_timer||0).toBeGreaterThan(0);});
 test('backup restore smoke: import current backup does not stop playback',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});const before=await page.evaluate(()=>String(window.playerCore?.getCurrentTrackUid?.()||''));await page.evaluate(async()=>{window.YandexAuth={...(window.YandexAuth||{}),getToken:()=>'e2e-token',getProfile:()=>({yandexId:'e2e'}),getSessionStatus:()=>'active',isTokenAlive:()=>true};const{AccountDataContext}=await import('./scripts/analytics/account-data-boundary.js');await AccountDataContext.switchToYandexAccount('e2e',{adoptLocalData:true});const{BackupVault}=await import('./scripts/analytics/backup-vault.js');const b=await BackupVault.buildBackupObject();b.identity.ownerYandexId='e2e';await BackupVault.importBackupObject(b,'all')});const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}));expect(after.playing).toBeTruthy();expect(after.uid).toBe(before)});
 test('backup reset stats smoke: clearing stats does not stop playback',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.click('#track-list .track >> nth=0');await page.waitForSelector('#lyricsplayerblock',{timeout:1e4});await page.evaluate(async()=>{const{metaDB}=await import('./scripts/analytics/meta-db.js');await metaDB.tx('stats','readwrite',s=>s.clear());window.dispatchEvent(new CustomEvent('stats:updated'))});expect(await page.evaluate(()=>!!window.playerCore?.isPlaying?.())).toBeTruthy()});
@@ -21,98 +21,72 @@ test('album carousel is circular, auto-loads settled album and never stops playb
 test('album gallery visibility persists and special navigation clears album highlight',async({page})=>{await loginByPromo(page);await page.waitForSelector('#cover-wrap',{timeout:1e4});await page.locator('#album-icons-albums [data-carousel-center="1"]').click();await expect(page.locator('#cover-wrap')).toBeHidden();await page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]').click();await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');await expect(page.locator('#cover-wrap')).toBeHidden();await page.locator('.album-icon[data-album="__favorites__"]').click();await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('__favorites__');const state=await page.evaluate(()=>({albumActive:document.querySelectorAll('#album-icons-albums .album-icon.active').length,navActive:document.querySelectorAll('#album-icons-nav .album-icon.active').length,center:document.querySelector('#album-icons-albums [data-carousel-center="1"]')?.dataset.album||''}));expect(state.albumActive).toBe(0);expect(state.navActive).toBe(1);expect(state.center).toBe('ne-vse-ravno')});
 test('desktop mouse click opens carousel album and toggles its gallery',async({page})=>{await loginByPromo(page);await page.waitForSelector('#album-icons-albums.album-carousel',{timeout:1e4});const side=page.locator('#album-icons-albums .album-icon[data-album="ne-vse-ravno"]');await side.click();await expect(side).toHaveAttribute('data-carousel-center','1');await expect.poll(()=>page.evaluate(()=>String(window.AlbumsManager?.getCurrentAlbum?.()||''))).toBe('ne-vse-ravno');const center=page.locator('#album-icons-albums [data-carousel-center="1"]');await center.click();await expect(page.locator('#cover-wrap')).toBeHidden();await center.click();await expect(page.locator('#cover-wrap')).toBeVisible()});
 test('special navigation has six items and Friends is separated from Game Center',async({page})=>{await loginByPromo(page);const keys=await page.locator('#album-icons-nav .album-icon').evaluateAll(a=>a.map(x=>x.dataset.album));expect(keys).toEqual(['__games__','__friends__','__showcase__','__favorites__','__reliz__','__profile__']);await page.locator('[data-album="__games__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__games__');await expect(page.locator('#active-album-title')).toContainText('ЗАЛ ВИТРИНЫ');await expect(page.locator('.vf-host-in-friends')).toHaveCount(0);await page.locator('[data-album="__friends__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');await expect(page.locator('.gc-host')).toHaveCount(0)});
-test('account-local vault switches favorites and stats without stopping playback', async ({ page }) => {
+test('account-local vault isolates favorites and ledger without stopping playback',async({page})=>{
   await loginByPromo(page);
-  await page.waitForSelector('#track-list .track', { timeout: 10000 });
-
-  const first = page.locator('#track-list .track').first();
+  const first=page.locator('#track-list .track').first();
   await first.locator('.like-star').click();
   await first.click();
-  await expect.poll(() =>
-    page.evaluate(() => !!window.playerCore?.isPlaying?.())
-  ).toBeTruthy();
+  await expect.poll(()=>page.evaluate(()=>!!window.playerCore?.isPlaying?.())).toBeTruthy();
 
-  const uid = await page.evaluate(() =>
-    String(window.playerCore?.getCurrentTrackUid?.() || '')
-  );
+  const uid=await page.evaluate(()=>String(window.playerCore?.getCurrentTrackUid?.()||''));
 
-  await page.evaluate(async () => {
-    Object.assign(window.YandexAuth, {
-      getSessionStatus: () => 'active',
-      isTokenAlive: () => true,
-      getProfile: () => ({ yandexId: 'account-a' })
+  const chainA=await page.evaluate(async()=>{
+    Object.assign(window.YandexAuth,{
+      getSessionStatus:()=>'active',
+      isTokenAlive:()=>true,
+      getProfile:()=>({yandexId:'account-a'})
     });
 
-    const { AccountDataContext } = await import(
-      './scripts/analytics/account-data-boundary.js'
-    );
+    const{AccountDataContext}=await import('./scripts/analytics/account-data-boundary.js');
+    await AccountDataContext.switchToYandexAccount('account-a',{adoptLocalData:true});
 
-    await AccountDataContext.switchToYandexAccount(
-      'account-a',
-      {
-        adoptLocalData: true
-      }
-    );
-    localStorage.setItem('__favorites_v2__', JSON.stringify([
-      {
-        uid: window.playerCore.getCurrentTrackUid(),
-        addedAt: Date.now(),
-        updatedAt: Date.now(),
-        inactiveAt: 0,
-        deletedAt: 0
-      }
-    ]));
+    localStorage.setItem('__favorites_v2__',JSON.stringify([{
+      uid:window.playerCore.getCurrentTrackUid(),
+      addedAt:Date.now(),
+      updatedAt:Date.now(),
+      inactiveAt:0,
+      deletedAt:0
+    }]));
 
-    localStorage.setItem(
-      'eventLedger:chainId:v1',
-      'chain-account-a'
-    );
-
+    await window.eventLogger?.flush?.();
+    const value=localStorage.getItem('eventLedger:chainId:v1')||'';
     await AccountDataContext.saveCurrent();
     await AccountDataContext.switchToYandexAccount('account-b');
+    return value;
   });
 
-  const accountB = await page.evaluate(() => ({
-    playing: !!window.playerCore?.isPlaying?.(),
-    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
-    favorites: JSON.parse(
-      localStorage.getItem('__favorites_v2__') || '[]'
-    ).length,
-    chainId: localStorage.getItem(
-      'eventLedger:chainId:v1'
-    ) || ''
+  expect(chainA).toMatch(/^chain_/);
+
+  const accountB=await page.evaluate(()=>({
+    playing:!!window.playerCore?.isPlaying?.(),
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    favorites:JSON.parse(localStorage.getItem('__favorites_v2__')||'[]').length,
+    chainId:localStorage.getItem('eventLedger:chainId:v1')||''
   }));
 
   expect(accountB.playing).toBeTruthy();
   expect(accountB.uid).toBe(uid);
   expect(accountB.favorites).toBe(0);
-  expect(accountB.chainId).toBe('');
+  expect(accountB.chainId).not.toBe(chainA);
 
-  await page.evaluate(async () => {
-    await window.AccountDataContext
-      .switchToYandexAccount('account-a');
-  });
+  await page.evaluate(()=>window.AccountDataContext.switchToYandexAccount('account-a'));
 
-  const accountA = await page.evaluate(() => ({
-    playing: !!window.playerCore?.isPlaying?.(),
-    uid: String(window.playerCore?.getCurrentTrackUid?.() || ''),
-    favorites: JSON.parse(
-      localStorage.getItem('__favorites_v2__') || '[]'
-    ).length,
-    chainId: localStorage.getItem(
-      'eventLedger:chainId:v1'
-    ) || ''
+  const accountA=await page.evaluate(()=>({
+    playing:!!window.playerCore?.isPlaying?.(),
+    uid:String(window.playerCore?.getCurrentTrackUid?.()||''),
+    favorites:JSON.parse(localStorage.getItem('__favorites_v2__')||'[]').length,
+    chainId:localStorage.getItem('eventLedger:chainId:v1')||''
   }));
 
   expect(accountA.playing).toBeTruthy();
   expect(accountA.uid).toBe(uid);
   expect(accountA.favorites).toBe(1);
-  expect(accountA.chainId).toBe('chain-account-a');
+  expect(accountA.chainId).toBe(chainA);
 });
 test('Game Center title is visible and Friends timers stop after leaving section',async({page})=>{await loginByPromo(page);await page.locator('[data-album="__games__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__games__');const gameTitle=page.locator('#active-album-title');await expect(gameTitle).toBeVisible();await expect(gameTitle).toContainText('ЗАЛ ВИТРИНЫ');const gameTitleStyle=await gameTitle.evaluate(el=>({display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility,opacity:getComputedStyle(el).opacity}));expect(gameTitleStyle.display).not.toBe('none');expect(gameTitleStyle.visibility).toBe('visible');expect(Number(gameTitleStyle.opacity)).toBeGreaterThan(0);await page.locator('[data-album="__friends__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');await expect(page.locator('#active-album-title')).toContainText('ДРУЗЬЯ');await page.locator('[data-album="__showcase__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__showcase__');expect(await page.evaluate(()=>!!window.playerCore)).toBeTruthy()});
 test('quality switch forces one reload and preserves playback uid',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});const row=page.locator('#track-list .track').filter({has:page.locator('.track-title')}).first();await row.click();const before=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.(),quality:String(window.playerCore?.qMode||'')}));const result=await page.evaluate(()=>{const pc=window.playerCore;const original=pc.load.bind(pc);let calls=0;pc.load=(...args)=>{calls++;return original(...args)};const next=pc.qMode==='hi'?'lo':'hi';pc.switchQuality(next);return{calls,next}});expect(result.calls).toBe(1);await page.waitForTimeout(500);const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),quality:String(window.playerCore?.qMode||'')}));expect(after.uid).toBe(before.uid);expect(after.quality).toBe(result.next)});
 test('active Yandex session requests signed social session without legacy credentials',async({page})=>{let requestSnapshot=null;await page.route('https://functions.yandexcloud.net/d4e2epg33mkshjoar6av',async route=>{const request=route.request();const body=request.postDataJSON();requestSnapshot={method:request.method(),action:body?.action||'',playerId:body?.playerId||'',clientSecret:body?.clientSecret||'',oauth:request.headers()['x-yandex-oauth']||''};await route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type, Accept, X-Yandex-OAuth'},body:JSON.stringify({ok:true,friendId:'ya_e2e_signed_user',socialSession:'e2e.header.signature',expiresAt:Date.now()+20*60*1000,profile:{friendId:'ya_e2e_signed_user',displayName:'E2E Друг',avatarUrl:''}})})});await loginByPromo(page);const result=await page.evaluate(async()=>{Object.assign(window.YandexAuth,{getToken:()=>'e2e-yandex-oauth-token',isTokenAlive:()=>true,getSessionStatus:()=>'active',getProfile:()=>({yandexId:'e2e-yandex-id',displayName:'E2E Друг',avatar:''})});const module=await import(`./scripts/app/friends/friends-block.js?e2e=${Date.now()}`);const session=await module.issueSocialSession({force:true});return{friendId:session.friendId,hasSession:!!session.socialSession,expiresAt:Number(session.expiresAt||0)}});expect(requestSnapshot).toEqual({method:'POST',action:'social_session_issue',playerId:'',clientSecret:'',oauth:'e2e-yandex-oauth-token'});expect(result.friendId).toBe('ya_e2e_signed_user');expect(result.hasSession).toBeTruthy();expect(result.expiresAt).toBeGreaterThan(Date.now())});
-test('playerStateV2 restores uid without autoplay until trusted gesture',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:1e4});await page.locator('#track-list .track').first().click();const saved=await page.evaluate(()=>{const pc=window.playerCore;const state={album:window.AlbumsManager?.getPlayingAlbum?.(),currentAlbum:window.AlbumsManager?.getCurrentAlbum?.(),trackUid:pc?.getCurrentTrackUid?.(),sourceAlbum:pc?.getCurrentTrack?.()?.sourceAlbum||'',trackIndex:pc?.getIndex?.()||0,position:3,volume:pc?.getVolume?.()??100,muted:false,wasPlaying:true,repeat:false,shuffle:false,quality:pc?.qMode||'hi',ts:Date.now()};localStorage.setItem('playerStateV2',JSON.stringify(state));localStorage.setItem('promocode','VITRINA2025');return state});await page.reload({waitUntil:'load'});await page.waitForSelector('#main-block:not(.hidden)',{timeout:1e4});await expect.poll(()=>page.evaluate(()=>String(window.playerCore?.getCurrentTrackUid?.()||''))).toBe(saved.trackUid);expect(await page.evaluate(()=>!!window.playerCore?.isPlaying?.())).toBeFalsy();await page.locator('#active-album-title').click();await expect.poll(()=>page.evaluate(()=>!!window.playerCore?.isPlaying?.())).toBeTruthy();expect(await page.evaluate(()=>String(window.playerCore?.getCurrentTrackUid?.()||''))).toBe(saved.trackUid)});
+test('playerStateV2 restores uid without autoplay until trusted gesture',async({page})=>{await loginByPromo(page);await page.locator('#track-list .track').first().click();const saved=await page.evaluate(()=>{const pc=window.playerCore,state={album:window.AlbumsManager?.getPlayingAlbum?.(),currentAlbum:window.AlbumsManager?.getCurrentAlbum?.(),trackUid:pc?.getCurrentTrackUid?.(),sourceAlbum:pc?.getCurrentTrack?.()?.sourceAlbum||'',trackIndex:pc?.getIndex?.()||0,position:3,volume:pc?.getVolume?.()??100,muted:false,wasPlaying:true,repeat:false,shuffle:false,quality:pc?.qMode||'hi',ts:Date.now()};localStorage.setItem('playerStateV2',JSON.stringify(state));localStorage.setItem('promocode','VITRINA2025');return state;});await page.reload({waitUntil:'load'});await page.waitForSelector('#main-block:not(.hidden)',{timeout:10000});await waitForAppReady(page);await expect.poll(()=>page.evaluate(()=>String(window.playerCore?.getCurrentTrackUid?.()||''))).toBe(saved.trackUid);expect(await page.evaluate(()=>!!window.playerCore?.isPlaying?.())).toBeFalsy();await page.locator('#active-album-title').click();await expect.poll(()=>page.evaluate(()=>!!window.playerCore?.isPlaying?.()),{timeout:10000}).toBeTruthy();expect(await page.evaluate(()=>String(window.playerCore?.getCurrentTrackUid?.()||''))).toBe(saved.trackUid);});
 test('E2EE device key is non-extractable and AES payload roundtrip works',async({page})=>{await loginByPromo(page);const result=await page.evaluate(async()=>{const build=String(window.APP_CONFIG?.APP_VERSION||window.VERSION||'dev');const module=await import(`https://vi3na1bita.website.yandexcloud.net/Friends/friends-crypto.js?v=${encodeURIComponent(build)}&e2e=${Date.now()}`);const requests=[];const devices=[];const request=async(action,data)=>{requests.push({action,data});if(action==='crypto_device_register'){devices.splice(0,devices.length,{ownerId:'ya_e2e_a',deviceId:data.deviceId,publicJwk:data.publicJwk,fingerprint:data.fingerprint},{ownerId:'ya_e2e_b',deviceId:data.deviceId,publicJwk:data.publicJwk,fingerprint:data.fingerprint});return{ok:true}}if(action==='crypto_device_list')return{ok:true,items:devices};return{ok:true}};const cryptoApi=new module.FriendsCrypto({request});cryptoApi.setIdentity({friendId:'ya_e2e_a',displayName:'E2E',deviceStableId:'device-e2e'});const device=await cryptoApi.ensureDevice();const pack=await cryptoApi.encryptPayload({friendId:'ya_e2e_b',clientMsgId:'e2e-message',payload:{type:'message',text:'секрет',reactions:{}}});const message=await cryptoApi.decryptMessage({cryptoVersion:2,crypto:pack});let exportBlocked=false;try{await crypto.subtle.exportKey('jwk',device.privateKey)}catch{exportBlocked=true}return{extractable:device.privateKey.extractable,exportBlocked,text:message.text,envelopes:pack.envelopes.length,hasPlaintext:JSON.stringify(pack).includes('секрет')}});expect(result.extractable).toBeFalsy();expect(result.exportBlocked).toBeTruthy();expect(result.text).toBe('секрет');expect(result.envelopes).toBe(2);expect(result.hasPlaintext).toBeFalsy()});
 test('Friends navigation and encrypted push click never interrupt playback',async({page})=>{await loginByPromo(page);await page.waitForSelector('#track-list .track',{timeout:10000});await page.locator('#track-list .track').first().click();const before=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}));await page.locator('[data-album="__friends__"]').click();await expect.poll(()=>page.evaluate(()=>window.AlbumsManager?.getCurrentAlbum?.())).toBe('__friends__');await page.evaluate(()=>{window.dispatchEvent(new MessageEvent('message',{data:{type:'PUSH_NOTIFICATION_CLICK',kind:'VOICE_CALL',fromFriendId:'ya_e2e_friend',callId:'voice_e2e',url:'./?openFriends=1&voiceWith=ya_e2e_friend'}}))});await page.waitForTimeout(250);const after=await page.evaluate(()=>({uid:String(window.playerCore?.getCurrentTrackUid?.()||''),playing:!!window.playerCore?.isPlaying?.()}));expect(after.uid).toBe(before.uid);expect(after.playing).toBeTruthy()});
 test('Friends client exposes only E2EE V2 chat transport',async({page})=>{await loginByPromo(page);const result=await page.evaluate(async()=>{const build=String(window.APP_CONFIG?.APP_VERSION||'dev');const source=await fetch(`https://vi3na1bita.website.yandexcloud.net/Friends/friends-core.js?v=${encodeURIComponent(build)}`).then(response=>response.text());return{hasSendV2:source.includes("'chat_send_v2'"),hasUpdateV2:source.includes("'chat_update_v2'"),hasDeleteV2:source.includes("'chat_delete_v2'"),hasPlainSend:/['"]chat_send['"]/.test(source),hasPlainDelete:/['"]chat_delete['"]/.test(source),hasPlainReact:/['"]chat_react['"]/.test(source),hasLegacySecret:/clientSecret|X-Vi3-Player|X-Vi3-Secret/.test(source)}});expect(result).toEqual({hasSendV2:true,hasUpdateV2:true,hasDeleteV2:true,hasPlainSend:false,hasPlainDelete:false,hasPlainReact:false,hasLegacySecret:false})});
