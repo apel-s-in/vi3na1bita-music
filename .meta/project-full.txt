@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 20:31:09 UTC
+Сгенерировано: 2026-07-23 20:32:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1343,6 +1343,7 @@ const EXACT_STORAGE_KEYS = new Set([
   'eventLedger:chainId:v1',
   'favoriteMirror:outbox:v1',
   'favoriteMirror:revision:v1',
+  'listeningReceipts:completionOutbox:v1',
   'vf_unread'
 ]);
 
