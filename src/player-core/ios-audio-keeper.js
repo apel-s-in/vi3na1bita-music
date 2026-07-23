@@ -249,6 +249,14 @@ export function initIosAudioKeeper() {
     if (isIOS) _resumeCtx();
   });
 
+  window.addEventListener('player:transportReloaded', () => {
+    _bindCtxWatcher();
+    if (isIOS && _playbackIntent) {
+      _resumeCtx();
+      if (!_started) startKeeper();
+    }
+  });
+
   // ── visibilitychange: главный recovery ─────────────────────────────────────
   let _lastPos = 0, _wasPlaying = false;
 
