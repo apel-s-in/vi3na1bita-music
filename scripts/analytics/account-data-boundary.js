@@ -38,6 +38,7 @@ const EXACT_STORAGE_KEYS = new Set([
   'eventLedger:chainId:v1',
   'favoriteMirror:outbox:v1',
   'favoriteMirror:revision:v1',
+  'listeningReceipts:completionOutbox:v1',
   'vf_unread'
 ]);
 
