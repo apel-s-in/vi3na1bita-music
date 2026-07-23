@@ -135,6 +135,11 @@ jobs:
           grep -q "npx playwright test scripts/e2e" .github/workflows/e2e.yml
           grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
           grep -q "find scripts src" .github/workflows/e2e.yml
+
+          if grep -REn "\.waitForFunction\s*\(" scripts/e2e; then
+            echo "page.waitForFunction conflicts with the production CSP; use expect.poll + page.evaluate"
+            exit 2
+          fi
           
       - name: Reject native dialogs
         run: |
