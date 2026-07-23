@@ -178,6 +178,31 @@ jobs:
             exit 2
           fi
           
+      - name: Validate playback ownership boundaries
+        run: |
+          mutation_re='playerCore(\?\.|\.)[[:space:]]*(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist|applyFavoritesOnlyFilter)[[:space:]]*\('
+
+          if grep -REn "$mutation_re" \
+            scripts/app/games \
+            scripts/app/friends \
+            scripts/intel; then
+            echo "Games, Friends and Intel must not mutate PlayerCore"
+            exit 2
+          fi
+
+          if grep -REn "new[[:space:]]+Howl[[:space:]]*\(" \
+            scripts/app/games \
+            scripts/app/friends \
+            scripts/intel \
+            scripts/analytics; then
+            echo "Secondary audio owner found outside PlayerCore"
+            exit 2
+          fi
+
+          grep -q "player:transportReloaded" src/PlayerCore.js
+          grep -q "previousUid" src/PlayerCore.js
+          grep -q "_loadReq" src/PlayerCore.js
+          
       - name: Reject browser-native dialogs
         run: |
           native_dialog_re='(^|[^[:alnum:]_$.])(confirm|alert|prompt)[[:space:]]*\(|(^|[^[:alnum:]_$])(window|self|globalThis)(\.|\?\.)[[:space:]]*(confirm|alert|prompt)[[:space:]]*\('
