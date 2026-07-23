@@ -75,37 +75,11 @@ const rP=async()=>{
     });
 
     if(st.wasPlaying){
-      const events=['pointerdown','touchend','keydown'];
-      let armed=true;
-
-      const cleanup=()=>{
-        events.forEach(name=>
-          D.removeEventListener(name,resume,true)
-        );
-      };
-
-      const resume=event=>{
-        if(!armed||event?.isTrusted===false)return;
-        armed=false;
-        cleanup();
-
-        try{
-          if(
-            W.playerCore?.getCurrentTrackUid?.()===uid&&
-            !W.playerCore?.isPlaying?.()
-          ){
-            W.playerCore.prepareContext?.();
-            W.playerCore.play?.();
-          }
-        }catch{}
-      };
-
-      events.forEach(name=>
-        D.addEventListener(name,resume,{
-          capture:true,
-          passive:true
-        })
-      );
+      await import('./app/player/restore-gesture.js')
+        .then(module=>
+          module.armRestorePlaybackGesture({uid})
+        )
+        .catch(()=>{});
     }
 
     setTimeout(()=>{
