@@ -61,6 +61,21 @@ const GAME_SAVE_LIMITS = Object.freeze({
   })
 });
 
+const GAME_HOST_SYNC_EVENTS = Object.freeze([
+  'achievements:updated',
+  'stats:updated',
+  'analytics:liveTick',
+  'yandex:auth:changed',
+  'shards:wallet-updated',
+  'player:play',
+  'player:pause',
+  'player:stop',
+  'player:trackChanged',
+  'player:transportReloaded',
+  'playlist:changed',
+  'quality:changed'
+]);
+
 const validateGameSave = payload => {
   const gameId = safe(payload?.gameId);
   const key = safe(payload?.key);
@@ -182,7 +197,10 @@ const buildSnapshot = ({ config = {} } = {}) => {
       uid: safe(t?.uid || ''),
       title: safe(t?.title || ''),
       album: safe(t?.album || W.TrackRegistry?.getAlbumTitle?.(t?.sourceAlbum) || ''),
-      cover: safe(t?.cover || '')
+      cover: safe(t?.cover || ''),
+      position: Math.max(0, n(W.playerCore?.getPosition?.())),
+      duration: Math.max(0, n(W.playerCore?.getDuration?.())),
+      quality: safe(W.playerCore?.qMode || 'hi')
     }
   };
 };
@@ -633,7 +651,9 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   const onHostUpdate = () => send('GC_HOST_STATE', buildSnapshot({ config }));
 
   W.addEventListener('message', onMessage);
-  ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'shards:wallet-updated', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.addEventListener(x, onHostUpdate));
+  GAME_HOST_SYNC_EVENTS.forEach(name =>
+    W.addEventListener(name, onHostUpdate)
+  );
 
   iframe.addEventListener('load', () => {
     send('GC_INIT', makeInitPayload());
@@ -647,7 +667,9 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       alive = false;
       activeFriendsRequests.clear();
       W.removeEventListener('message', onMessage);
-      ['achievements:updated', 'stats:updated', 'analytics:liveTick', 'yandex:auth:changed', 'shards:wallet-updated', 'player:play', 'player:pause', 'player:stop', 'player:trackChanged'].forEach(x => W.removeEventListener(x, onHostUpdate));
+      GAME_HOST_SYNC_EVENTS.forEach(name =>
+        W.removeEventListener(name, onHostUpdate)
+      );
     }
   };
 };
