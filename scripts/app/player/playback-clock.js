@@ -9,7 +9,7 @@ const pull = () => {
 
 export const initPlaybackClock = () => {
   if (_init) return; _init = true;
-  ['player:play', 'player:pause', 'player:stop', 'player:ended', 'player:trackChanged', 'player:tick'].forEach(n => W.addEventListener(n, pull));
+  ['player:play', 'player:pause', 'player:stop', 'player:ended', 'player:trackChanged', 'player:transportReloaded', 'playlist:changed', 'player:tick'].forEach(n => W.addEventListener(n, pull));
   document.addEventListener('visibilitychange', pull); pull();
 };
 
