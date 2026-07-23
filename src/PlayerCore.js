@@ -185,7 +185,11 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
 
     stop() {
       this._cancelPendingLoad();
-      this._unload(false);
+      this._unload({
+        emitStop: true,
+        clearPersistedState: true,
+        revokeBlob: true
+      });
       this._updMedia();
     }
     
@@ -319,7 +323,11 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       const sameUidReload = hadSound && previousUid === uid;
       const sf = fn => (...args) => tok === this._tok && fn(...args);
 
-      this._unload(true);
+      this._unload({
+        emitStop: false,
+        clearPersistedState: false,
+        revokeBlob: true
+      });
       this._playingUid = uid;
       this._oK = blobKey;
       this._oKTok = blobKey ? tok : 0;
@@ -430,15 +438,40 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       }, 120);
     }
 
-    _unload(silent) {
-      if (this.sound) { try { this.sound.stop(); this.sound.unload(); } catch {} this.sound = null; }
-      this._playingUid = null;
-      if (this._oK && (!silent || (this._oKTok && this._oKTok !== this._tok))) {
-        try { W.Utils?.blob?.revokeUrl?.(this._oK); } catch {}
-        this._oK = null; this._oKTok = 0;
+    _unload({
+      emitStop = true,
+      clearPersistedState = emitStop,
+      revokeBlob = true
+    } = {}) {
+      if (this.sound) {
+        try {
+          this.sound.stop();
+          this.sound.unload();
+        } catch {}
+        this.sound = null;
       }
+
+      this._playingUid = null;
+
+      if (revokeBlob && this._oK) {
+        try {
+          W.Utils?.blob?.revokeUrl?.(this._oK);
+        } catch {}
+        this._oK = null;
+        this._oKTok = 0;
+      }
+
       this._stopT();
-      if (!silent) { this._clearPersistedPlaybackState(); this._syncMediaSessionPosition(true); emitG('player:stop'); this._emit('onStop'); }
+
+      if (clearPersistedState) {
+        this._clearPersistedPlaybackState();
+      }
+
+      if (emitStop) {
+        this._syncMediaSessionPosition(true);
+        emitG('player:stop');
+        this._emit('onStop');
+      }
     }
 
     _syncMediaSessionPosition(force = false) { try { this._ms?.updatePositionState?.({ force }); } catch {} }
