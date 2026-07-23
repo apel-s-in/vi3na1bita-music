@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 20:29:23 UTC
+Сгенерировано: 2026-07-23 20:29:56 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -8492,7 +8492,8 @@ const confirmEmbeddedFriendsAction = descriptor =>
 const buildSnapshot = ({ config = {} } = {}) => {
   const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
   const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
-  const unlocked = Object.keys(a?.unlocked || {}).length;
+  const unlocked = a?.getCompletedCount?.() ??
+    Object.keys(a?.unlocked || {}).length;
   const total = Array.isArray(a?.achievements) ? a.achievements.length : 0;
   let gameData = {};
   try { gameData = JSON.parse(localStorage.getItem(`gc_data_${gcId}`) || '{}'); } catch {}
