@@ -178,11 +178,13 @@ jobs:
             exit 2
           fi
           
-      - name: Reject native dialogs
+      - name: Reject browser-native dialogs
         run: |
-          if grep -REn "\b(confirm|alert|prompt)\s*\(" \
+          native_dialog_re='(^|[^[:alnum:]_$.])(confirm|alert|prompt)[[:space:]]*\(|(^|[^[:alnum:]_$])(window|self|globalThis)(\.|\?\.)[[:space:]]*(confirm|alert|prompt)[[:space:]]*\('
+
+          if grep -En "$native_dialog_re" \
             scripts/app/player-ui.js \
             scripts/ui/offline-modal.js; then
-            echo "Native dialog found"
+            echo "Browser-native dialog found; use window.Modals instead"
             exit 2
           fi
