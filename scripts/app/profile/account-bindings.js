@@ -1,8 +1,16 @@
 export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileChanged } = {}) => {
   if (!c || !profile) return () => {};
-  const nInp = c.querySelector('#prof-name-inp'), pencilBtn = c.querySelector('#prof-name-edit'), avatarBtn = c.querySelector('#prof-avatar-btn'), levelEl = () => c.querySelector('#prof-meta-level');
+  const nInp = c.querySelector('#prof-name-inp'), pencilBtn = c.querySelector('#prof-name-edit'), avatarBtn = c.querySelector('#prof-avatar-btn'), shardsEl = () => c.querySelector('#prof-meta-shards');
 
-  const syncLevelMeta = () => { const el = levelEl(); if (el) el.textContent = `⭐ Уровень: ${window.achievementEngine?.profile?.level || 1}`; };
+  const syncShardMeta = () => {
+    const el = shardsEl();
+    const wallet = window.ShardWallet?.getSnapshot?.();
+    if (el) {
+      el.textContent = wallet?.available
+        ? `♦ Осколки: ${Number(wallet.shards || 0)}`
+        : '♦ Осколки: нужен вход через Яндекс';
+    }
+  };
 
   const saveName = async () => {
     if (!nInp) return;
@@ -10,7 +18,7 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
     nInp.classList.add('name-inactive'); nInp.blur();
     await metaDB?.setGlobal?.('user_profile', profile).catch(() => {});
     try { window.eventLogger?.log?.('PROFILE_UPDATED', null, { field: 'name', value: profile.name }); window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'profile',immediate:true}})); } catch {}
-    window.NotificationSystem?.success?.('Имя сохранено'); onProfileChanged?.(); syncLevelMeta();
+    window.NotificationSystem?.success?.('Имя сохранено'); onProfileChanged?.(); syncShardMeta();
   };
 
   if (nInp) {
@@ -46,7 +54,12 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
   });
   };
 
-  syncLevelMeta(); window.addEventListener('achievements:updated', syncLevelMeta);
-  return () => window.removeEventListener('achievements:updated', syncLevelMeta);
+  syncShardMeta();
+  window.addEventListener('shards:wallet-updated', syncShardMeta);
+  return () =>
+    window.removeEventListener(
+      'shards:wallet-updated',
+      syncShardMeta
+    );
 };
 export default { bindProfileAccount };
