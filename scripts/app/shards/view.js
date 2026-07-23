@@ -4,35 +4,39 @@ const esc = value =>
   window.Utils?.escapeHtml?.(String(value || '')) ||
   String(value || '');
 
-const SERVER_REWARD_PREFIXES = [
-  'play_total_',
-  'full_total_',
-  'time_total_',
-  'streak_base_',
-  'unique_tracks_',
-  'one_track_full_',
-  'fav_total_',
-  'album_complete_'
-];
-
-const hasServerReward = item =>
-  SERVER_REWARD_PREFIXES.some(prefix =>
-    String(item?.id || '').startsWith(prefix)
+const serverRewardMap = () =>
+  new Map(
+    (
+      window.ListeningReceipts
+        ?.getRewardCatalog?.() || []
+    ).map(item => [
+      String(item?.id || ''),
+      item
+    ])
   );
 
-const nearestAchievements = () =>
-  (window.achievementEngine?.achievements || [])
+const nearestAchievements = () => {
+  const rewards = serverRewardMap();
+
+  return (window.achievementEngine?.achievements || [])
     .filter(item =>
       !item.isUnlocked &&
       !item.isHidden &&
       item.progress &&
-      hasServerReward(item)
+      rewards.has(String(item.id || ''))
     )
+    .map(item => ({
+      ...item,
+      shardReward: Number(
+        rewards.get(String(item.id || ''))?.amount || 0
+      )
+    }))
     .sort((a, b) =>
       Number(b.progress?.pct || 0) -
       Number(a.progress?.pct || 0)
     )
     .slice(0, 3);
+};
 
 const renderAchievements = () => {
   const items = nearestAchievements();
@@ -61,7 +65,7 @@ const renderAchievements = () => {
         </div>
       </div>
       <strong>
-        +${Number(item.xpReward || 0)} ♦
+        +${Number(item.shardReward || 0)} ♦
         <small>после проверки</small>
       </strong>
     </div>
@@ -211,7 +215,12 @@ export const loadShardsView = async ctx => {
   };
 
   try {
-    await shardWallet.refresh({ force: true });
+    await Promise.all([
+      shardWallet.refresh({ force: true }),
+      window.ListeningReceipts
+        ?.refreshStatus?.()
+        .catch(() => null)
+    ]);
     render();
   } catch (error) {
     root.innerHTML = `
