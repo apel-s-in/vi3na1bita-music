@@ -58,11 +58,6 @@ export function getCreditedPlaybackDeltaMs({
   );
 }
 
-export function isValidPlaybackDelta(options = {}) {
-  return getCreditedPlaybackDeltaMs(options) > 0;
-}
-
 export default {
-  getCreditedPlaybackDeltaMs,
-  isValidPlaybackDelta
+  getCreditedPlaybackDeltaMs
 };
