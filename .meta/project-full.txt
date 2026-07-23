@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 10:54:46 UTC
+Сгенерировано: 2026-07-23 10:55:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -671,6 +671,18 @@ jobs:
           test -f scripts/core/yandex-ledger-disk.js
           test ! -f scripts/core/yandex-verified-disk.js
           grep -q "YandexLedgerDisk" scripts/core/yandex-disk.js
+          
+      - name: Validate workflow runtime versions
+        run: |
+          if grep -REn "node-version:[[:space:]]*['\"]?20['\"]?" .github/workflows; then
+            echo "Node 20 workflow runtime found; use Node 24"
+            exit 2
+          fi
+
+          if grep -REn "actions/(checkout|setup-node)@v4" .github/workflows; then
+            echo "Legacy GitHub Action major found"
+            exit 2
+          fi
           
       - name: Validate E2E workflow contract
         run: |
