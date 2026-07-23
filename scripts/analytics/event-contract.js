@@ -16,7 +16,15 @@ export const describeEventForUi = ev => {
   if (t === EVENT_TYPES.LISTEN_COMPLETE) return { icon: '🎵', title: 'Прослушано', desc: `Валидно: ${d.isValidListen ? 'да' : 'нет'} · полностью: ${d.isFullListen ? 'да' : 'нет'} · ${sN(d.listenedSeconds || (d.isFullListen ? d.trackDuration : 0))} сек` };
   if (t === EVENT_TYPES.LISTEN_SKIP) return { icon: '⏭️', title: 'Пропущено', desc: `${sN(d.listenedSeconds)} сек` };
   if (t === EVENT_TYPES.LISTEN_START) return { icon: '▶️', title: 'Старт прослушивания', desc: sS(d.variant || 'audio') };
-  if (t === EVENT_TYPES.ACHIEVEMENT_UNLOCK) return { icon: '🏆', title: 'Достижение открыто', desc: `${sS(d.name || d.id || 'Достижение')} · +${sN(d.xp)} XP` };
+  if (t === EVENT_TYPES.ACHIEVEMENT_UNLOCK) return {
+    icon: '🏆',
+    title: 'Достижение открыто',
+    desc: `${sS(d.name || d.id || 'Достижение')} · ${
+      d.rewardStatus === 'server_pending'
+        ? 'награда проверяется сервером'
+        : 'награда готовится'
+    }`
+  };
   if (t === EVENT_TYPES.FAVORITE_CHANGED) return { icon: d.liked ? '⭐' : '☆', title: d.liked ? 'Добавлено в избранное' : 'Убрано из избранного', desc: sS(d.source || d.albumKey) };
   if (t === EVENT_TYPES.PLAYLIST_CHANGED) return { icon: '📋', title: 'Плейлист изменён', desc: `${sS(d.action || 'update')}${d.name ? ` · ${sS(d.name)}` : ''}` };
   if (t === EVENT_TYPES.PROFILE_UPDATED) return { icon: '👤', title: 'Профиль обновлён', desc: sS(d.field || 'profile') };
