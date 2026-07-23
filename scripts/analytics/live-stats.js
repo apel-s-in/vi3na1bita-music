@@ -1,5 +1,5 @@
 import { metaDB } from './meta-db.js';
-import { isValidPlaybackDelta } from './playback-validity.js';
+import { getCreditedPlaybackDeltaMs } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
 
 const dayKeyLocal = (ts = Date.now()) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -33,7 +33,20 @@ class LiveStatsTracker {
     if (!this.state.playing) return;
     const rt = makePlaybackRuntimeSnapshot({ lastTickAt: this.state.lastTickAt, lastPos: this.state.lastPos, duration: this.state.duration, volume: this.state.volume, muted: this.state.muted, tick: t, playerCore: window.playerCore });
     this.state.duration = rt.duration; this.state.lastTickAt = rt.now; this.state.lastPos = rt.currentTime;
-    if (isValidPlaybackDelta({ deltaMs: rt.deltaMs, prevTime: rt.prevPos, currentTime: rt.currentTime, volume: rt.volume, muted: rt.muted })) { this.state.liveAccumulatedMs += rt.deltaMs; this.state.todayValidSec = Math.floor(this.state.liveAccumulatedMs / 1000); }
+    const creditedMs = getCreditedPlaybackDeltaMs({
+      deltaMs: rt.deltaMs,
+      prevTime: rt.prevPos,
+      currentTime: rt.currentTime,
+      volume: rt.volume,
+      muted: rt.muted
+    });
+
+    if (creditedMs > 0) {
+      this.state.liveAccumulatedMs += creditedMs;
+      this.state.todayValidSec = Math.floor(
+        this.state.liveAccumulatedMs / 1000
+      );
+    }
   }
   _ensureTicker() { if (!this._tick) this._tick = setInterval(() => { if (this.state.playing) this._flush(); this._syncSleep(); this._emit(); }, 1000); }
   _stopTickerIfIdle() { if (!this.state.playing && this._tick) { clearInterval(this._tick); this._tick = null; } }
