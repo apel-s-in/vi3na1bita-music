@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 09:31:08 UTC
+Сгенерировано: 2026-07-23 09:45:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -12970,20 +12970,24 @@ const installAudioMock=async page=>{
   await page.route('**/scripts/vendor/howler.min.js',route=>route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:HOWLER_MOCK}));
 };
 
+export const waitForAppReady=async(page,{timeout=20000}={})=>{
+  await expect.poll(
+    () => page.evaluate(() => window.__appReady === true),
+    {
+      timeout,
+      intervals: [100,200,500],
+      message: 'Приложение не завершило initialize()'
+    }
+  ).toBe(true);
+};
+
 export const loginByPromo=async(page,promocode='VITRINA2025')=>{
   await installAudioMock(page);
   await page.goto(`${BASE}/index.html`,{waitUntil:'load'});
   await page.fill('#promo-inp',promocode);
   await page.click('#promo-btn');
   await page.waitForSelector('#main-block:not(.hidden)',{timeout:10000});
-  await expect.poll(
-    () => page.evaluate(() => window.__appReady === true),
-    {
-      timeout: 20000,
-      intervals: [100, 200, 500],
-      message: 'Приложение не завершило initialize()'
-    }
-  ).toBe(true);
+  await waitForAppReady(page);
   await page.waitForSelector('#album-icons-albums .album-icon',{timeout:10000});
   await page.waitForSelector('#album-icons-nav .album-icon',{timeout:10000});
   await page.waitForSelector('#track-list .track',{timeout:10000});
@@ -13005,9 +13009,9 @@ export const waitForPlayback=async page=>{
 export const likeFirstTrack=async page=>{await waitTracks(page);const first=page.locator('#track-list .track').first();await first.hover();await first.locator('.like-star').click();};
 export const openFavorites=async page=>{await page.click('.album-icon[data-akey="__favorites__"]');await waitTracks(page);};
 export const playFirstTrack=async page=>{await waitTracks(page);await page.locator('#track-list .track').first().click();await page.waitForSelector('#lyricsplayerblock',{timeout:10000});await waitForPlayback(page);};
-export const openSleepTimer=async page=>{await page.click('[data-testid="sleep-open"]');await page.waitForSelector('#sm-inp-min',{timeout:5000});};
-export const setSleepPreset=async(page,minutes)=>{await page.fill('#sm-inp-min',String(minutes));await page.click('#sm-btn-apply');};
-export const resetSleepTimer=async page=>{const toggle=page.locator('#sm-toggle');if(await toggle.count())await toggle.uncheck();else await page.evaluate(()=>window.SleepTimer?.stop?.(false));};
+export const openSleepTimer=async page=>{await page.click('[data-testid="sleep-open"]');const modal=page.locator('.modal-bg.active').last();await expect(modal.locator('#sm-inp-min')).toBeVisible({timeout:5000});};
+export const setSleepPreset=async(page,minutes)=>{const modal=page.locator('.modal-bg.active').last(),toggle=modal.locator('#sm-toggle');if(!(await toggle.isChecked()))await toggle.check();await modal.locator('#sm-inp-min').fill(String(minutes));await expect(modal.locator('#sm-btn-apply')).toBeVisible();await modal.locator('#sm-btn-apply').click();};
+export const resetSleepTimer=async page=>{const modal=page.locator('.modal-bg.active').last(),toggle=modal.locator('#sm-toggle');if(await toggle.count()){if(await toggle.isChecked())await toggle.uncheck();const close=modal.locator('#sm-btn-close');if(await close.isVisible())await close.click();}else await page.evaluate(()=>window.SleepTimer?.stop?.(false));};
 export const seedPlayerStateV2FromCurrent=async(page,{position=5,wasPlaying=true}={})=>{await page.evaluate(({position,wasPlaying})=>{const pc=window.playerCore,track=pc?.getCurrentTrack?.()||null,album=window.AlbumsManager?.getPlayingAlbum?.()||null;localStorage.setItem('playerStateV2',JSON.stringify({album,currentAlbum:window.AlbumsManager?.getCurrentAlbum?.()||album,trackUid:String(track?.uid||'').trim()||null,sourceAlbum:String(track?.sourceAlbum||'').trim()||null,trackIndex:pc?.getIndex?.()||0,position:Math.floor(position),volume:pc?.getVolume?.()??100,wasPlaying:!!wasPlaying,ts:Date.now()}));},{position,wasPlaying});};
 
 //=================================================
