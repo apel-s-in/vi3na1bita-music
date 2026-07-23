@@ -140,6 +140,11 @@ jobs:
             echo "page.waitForFunction conflicts with the production CSP; use expect.poll + page.evaluate"
             exit 2
           fi
+
+          if grep -REn "\.click\(\{[[:space:]]*force:[[:space:]]*true" scripts/e2e; then
+            echo "Forced click found: smoke tests must follow a real visible user path"
+            exit 2
+          fi
           
       - name: Reject native dialogs
         run: |
