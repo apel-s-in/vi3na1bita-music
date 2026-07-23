@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 12:53:47 UTC
+Сгенерировано: 2026-07-23 12:55:04 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -313,13 +313,21 @@ jobs:
               | sort
           )
       - name: Install test dependencies
-        run: npm install --no-save @playwright/test@1.55.0 http-server@14.1.1
+        run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Start local server
-        run: npx http-server -p 4173 -c-1 . > /tmp/vi3-http.log 2>&1 & echo $! > server.pid
+        run: python3 -m http.server 4173 --bind 127.0.0.1 --directory . > /tmp/vi3-http.log 2>&1 & echo $! > server.pid
       - name: Wait for local server
-        run: for i in {1..30}; do curl -fsS "$BASE_URL/index.html" >/dev/null && exit 0; sleep 1; done; cat /tmp/vi3-http.log; exit 1
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "$BASE_URL/index.html" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/vi3-http.log
+          exit 1
       - name: Run local blocking smoke
         id: local-smoke
         run: npx playwright test --config=scripts/e2e/playwright.config.js --grep-invert "@remote"
@@ -347,7 +355,12 @@ jobs:
           retention-days: 7
       - name: Stop local server
         if: always()
-        run: kill "$(cat server.pid)" 2>/dev/null || true
+        run: |
+          if [ -f server.pid ]; then
+            pid="$(cat server.pid)"
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          fi
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
