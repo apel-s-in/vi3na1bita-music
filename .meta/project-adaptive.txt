@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 13:18:51 UTC
+Сгенерировано: 2026-07-23 13:19:24 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -9137,7 +9137,7 @@ const pull = () => {
 
 export const initPlaybackClock = () => {
   if (_init) return; _init = true;
-  ['player:play', 'player:pause', 'player:stop', 'player:ended', 'player:trackChanged', 'player:tick'].forEach(n => W.addEventListener(n, pull));
+  ['player:play', 'player:pause', 'player:stop', 'player:ended', 'player:trackChanged', 'player:transportReloaded', 'playlist:changed', 'player:tick'].forEach(n => W.addEventListener(n, pull));
   document.addEventListener('visibilitychange', pull); pull();
 };
 
