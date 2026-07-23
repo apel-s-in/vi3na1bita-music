@@ -83,6 +83,11 @@ class AlbumsManager {
     W.addEventListener('quality:changed', () => {
       this.cache.forEach(album => delete album._pTracks);
     });
+
+    W.addEventListener(
+      'shards:wallet-updated',
+      () => this._renderIcons()
+    );
   }
 
   _renderIcons() {
@@ -96,7 +101,7 @@ class AlbumsManager {
       profileKey: PROFILE,
       logo: LOGO,
       escapeHtml: escHtml,
-      profile: W.achievementEngine?.profile || null
+      wallet: W.ShardWallet?.getSnapshot?.() || null
     });
 
     this.albumCarousel?.destroy?.();
