@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 19:36:02 UTC
+Сгенерировано: 2026-07-23 19:36:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11145,8 +11145,8 @@ export const loadShardsView = async ctx => {
         <div class="shards-note">
           За регистрацию через Яндекс начисляется
           <b>100 Осколков</b>.
-          Для музыкальных достижений действует правило
-          <b>1 XP = 1 Осколок</b>.
+          Размер каждой награды задаётся
+          <b>серверным каталогом достижений</b>.
           Награда зачисляется после серверной проверки
           и не может быть повторно получена через restore
           или другое устройство.
