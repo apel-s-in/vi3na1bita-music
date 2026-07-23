@@ -7,9 +7,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: '24' }
       - run: node scripts/ci/validate-manifest.mjs
       - run: node scripts/ci/lint-sw.mjs
       - run: node scripts/ci/validate-content.mjs
@@ -131,10 +131,15 @@ jobs:
           
       - name: Validate E2E workflow contract
         run: |
-          grep -q "npm install --no-save @playwright/test@1.48.2" .github/workflows/e2e.yml
-          grep -q "npx playwright test scripts/e2e" .github/workflows/e2e.yml
+          grep -q "node-version: '24'" .github/workflows/e2e.yml
+          grep -q "npm install --no-save @playwright/test@1.55.0" .github/workflows/e2e.yml
+          grep -q "playwright.config.js --grep-invert \"@remote\"" .github/workflows/e2e.yml
+          grep -q "playwright.config.js --grep \"@remote\"" .github/workflows/e2e.yml
+          grep -q "continue-on-error: true" .github/workflows/e2e.yml
           grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
           grep -q "find scripts src" .github/workflows/e2e.yml
+          grep -q "trace: 'retain-on-failure'" scripts/e2e/playwright.config.js
+          grep -q "screenshot: 'only-on-failure'" scripts/e2e/playwright.config.js
 
           if grep -REn "\.waitForFunction\s*\(" scripts/e2e; then
             echo "page.waitForFunction conflicts with the production CSP; use expect.poll + page.evaluate"
@@ -159,7 +164,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: '24' }
       - run: node scripts/ci/validate-content.mjs
