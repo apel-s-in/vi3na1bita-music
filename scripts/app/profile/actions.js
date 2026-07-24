@@ -1,10 +1,9 @@
 // UID.096_(Helper-first anti-duplication policy)_(actions.js должен быть router-слоем)_(reset/trash вынесены в отдельные modules) UID.094_(No-paralysis rule)_(profile actions не должны влиять на playback)_(клики профиля не стопают и не сбрасывают плеер)
 
 import { createTrashActionHandlers } from './actions-trash.js';
-import { createResetActionHandlers } from './actions-reset.js';
 import { bindTabStripPhysics } from './tab-strip-physics.js';
 
-export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db, reloadProfile: rP }) => {
+export const bindProfileActions = ({ ctx, container: c, achView: aV, reloadProfile: rP }) => {
   if (!c || ctx._pB) return;
   ctx._pB = true; bindTabStripPhysics(c);
 
@@ -15,8 +14,7 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, metaDB: db,
     { sel: '.chart-title', run: ({ el }) => { const box = c.querySelector('#' + el.dataset.tg); if (!box) return; const vis = box.style.display !== 'none'; box.style.display = vis ? 'none' : ''; localStorage.setItem(el.dataset.ls, vis ? '0' : '1'); } },
     { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
     { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
-    ...createTrashActionHandlers({ reloadProfile: rP }),
-    ...createResetActionHandlers({ metaDB: db, reloadProfile: rP })
+    ...createTrashActionHandlers({ reloadProfile: rP })
   ];
 
   c.addEventListener('click', async e => { for (const h of handlers) { const el = e.target.closest(h.sel); if (el) { await h.run({ el, event: e }); break; } } });
