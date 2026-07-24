@@ -458,7 +458,10 @@ class ListeningReceiptService {
     }
 
     if (this.session?.sessionId) {
-      await this.complete('replaced');
+      // stageCurrentCompletion уже переносит старую session в durable
+      // outbox. Временная ошибка отправки не должна блокировать
+      // создание session для нового трека.
+      await this.complete('replaced').catch(() => null);
     }
 
     const result = await requestSocialAction(
