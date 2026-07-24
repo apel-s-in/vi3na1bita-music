@@ -55,7 +55,7 @@ export class AchievementEngine {
       a.maxOneTrackFull = Math.max(a.maxOneTrackFull, b.globalFullListenCount || 0);
       ['lyrics', 'nightPlay', 'earlyPlay', 'hiQuality', 'shufflePlay'].forEach((k, i) => a[['featLyrics','nightPlays','earlyPlays','hiPlays','shufflePlays'][i]] += f[k] || 0);
       return a;
-    }, { validPlays: 0, fullPlays: 0, totalSec: 0, uniqueTracks: 0, maxOneTrackFull: 0, featLyrics: 0, nightPlays: 0, earlyPlays: 0, hiPlays: 0, shufflePlays: 0, favCount, streak: strk, play11_11: gStat.play_11_11 || 0, weekendPlays: gStat.weekend_play || 0, backups: gStat.backup || 0, pwaInstalled: gStat.pwa_installed || 0, sleepTimerTriggers: gStat.sleep_timer || 0, socialVisitAll: gStat.social_visit_all || 0, favOrderedCombo: gStat.fav_ordered_5 || 0, favShuffleCombo: gStat.fav_shuffle_5 || 0, midnightTriple: gStat.midnight_triple || 0, speedRunnerCombo: gStat.speed_runner || 0 });
+    }, { validPlays: 0, fullPlays: 0, totalSec: 0, uniqueTracks: 0, maxOneTrackFull: 0, featLyrics: 0, nightPlays: 0, earlyPlays: 0, hiPlays: 0, shufflePlays: 0, favCount, streak: strk, play11_11: gStat.play_11_11 || 0, weekendPlays: gStat.weekend_play || 0, backups: gStat.backup || 0, pwaInstalled: gStat.pwa_installed || 0, sleepTimerTriggers: gStat.sleep_timer || 0, socialVisitAll: gStat.social_visit_all || 0 });
 
     if (window.TrackRegistry) {
       const allReg = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getTrackByUid(u)), playedUids = new Set(trStats.filter(s => s.globalFullListenCount > 0).map(s => s.uid));
