@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 22:34:17 UTC
+Сгенерировано: 2026-07-24 22:34:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11107,8 +11107,65 @@ export default { openLedgerHealthModal };
 
 //=================================================
 // FILE: /scripts/app/profile/live-bindings.js
-import { readStatsViewModel } from '../../analytics/stats-state.js'; import { renderProfileStats } from './stats-view.js';
-export const bindProfileLiveBindings = ({ ctx, getContainer: gC, achView: aV, metaDB } = {}) => { if(ctx._pLB) return; ctx._pLB=true; const isP=()=>ctx.getCurrentAlbum?.()===(window.APP_CONFIG?.SPECIAL_PROFILE_KEY||'__profile__')&&gC?.()?.isConnected, aA=()=>!!gC?.()?.querySelector('#tab-achievements.active'), sA=()=>!!gC?.()?.querySelector('#tab-stats.active'), rA=()=>isP()&&aA()&&aV.render(ctx._achCurrentFilter||'available'), uA=()=>isP()&&aA()&&aV.updateLiveNodes(), rS=async()=>{if(!isP()||!sA()||!metaDB)return;const c=gC(),vm=await readStatsViewModel(metaDB),s=vm.summary,st=(await metaDB.getGlobal('global_streak').catch(()=>null))?.value?.current||0,set=(id,v)=>{const el=c?.querySelector(id);if(el)el.textContent=String(v)};renderProfileStats({container:c,vm});set('#prof-stat-tracks',s.totalFull);set('#prof-stat-time',window.Utils?.fmt?.durationHuman?window.Utils.fmt.durationHuman(s.totalSec):`${Math.floor(s.totalSec/60)}м`);set('#prof-stat-streak',st);set('#prof-stat-ach',window.achievementEngine?.getCompletedCount?.()??0)}; window.addEventListener('analytics:liveTick',uA); window.addEventListener('achievements:updated',rA); window.addEventListener('stats:updated',()=>setTimeout(rS,60)); window.addEventListener('stats:rebuilt',()=>setTimeout(rS,80)); window.addEventListener('backup:restore:applied',()=>{setTimeout(rA,120);setTimeout(rS,140)}); window.addEventListener('profile:data:refreshed',()=>{setTimeout(rA,120);setTimeout(rS,140)}); window.addEventListener('profile:main-tab-selected',e=>{if(e.detail?.tabId==='achievements')setTimeout(rA,40);if(e.detail?.tabId==='stats')setTimeout(rS,40)}); };
+import { readStatsViewModel } from '../../analytics/stats-state.js';
+import { renderProfileStats } from './stats-view.js';
+
+export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaDB } = {}) => {
+  if (ctx._pLB) return;
+  ctx._pLB = true;
+
+  const isProfile = () => ctx.getCurrentAlbum?.() === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__') && getContainer?.()?.isConnected;
+  const achievementsActive = () => !!getContainer?.()?.querySelector('#tab-achievements.active');
+  const statsActive = () => !!getContainer?.()?.querySelector('#tab-stats.active');
+
+  const renderAchievements = () => {
+    if (!isProfile() || !achievementsActive()) return;
+    ctx._profileAchievementsView?.render?.(ctx._achCurrentFilter || 'available');
+  };
+
+  const updateAchievements = () => {
+    if (!isProfile() || !achievementsActive()) return;
+    const engine = window.achievementEngine;
+    if (engine?._buildUIArray) engine.achievements = engine._buildUIArray();
+    ctx._profileAchievementsView?.updateLiveNodes?.();
+  };
+
+  const renderStats = async () => {
+    if (!isProfile() || !statsActive() || !metaDB) return;
+    const container = getContainer();
+    const vm = await readStatsViewModel(metaDB);
+    const summary = vm.summary;
+    const streak = (await metaDB.getGlobal('global_streak').catch(() => null))?.value?.current || 0;
+    const set = (selector, value) => {
+      const element = container?.querySelector(selector);
+      if (element) element.textContent = String(value);
+    };
+
+    renderProfileStats({ container, vm });
+    set('#prof-stat-tracks', summary.totalFull);
+    set('#prof-stat-time', window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(summary.totalSec) : `${Math.floor(summary.totalSec / 60)}м`);
+    set('#prof-stat-streak', streak);
+    set('#prof-stat-ach', window.achievementEngine?.getCompletedCount?.() ?? 0);
+  };
+
+  window.addEventListener('analytics:liveTick', updateAchievements);
+  window.addEventListener('achievements:updated', renderAchievements);
+  window.addEventListener('stats:updated', () => setTimeout(renderStats, 60));
+  window.addEventListener('stats:rebuilt', () => setTimeout(renderStats, 80));
+  window.addEventListener('backup:restore:applied', () => {
+    setTimeout(renderAchievements, 120);
+    setTimeout(renderStats, 140);
+  });
+  window.addEventListener('profile:data:refreshed', () => {
+    setTimeout(renderAchievements, 120);
+    setTimeout(renderStats, 140);
+  });
+  window.addEventListener('profile:main-tab-selected', event => {
+    if (event.detail?.tabId === 'achievements') setTimeout(renderAchievements, 40);
+    if (event.detail?.tabId === 'stats') setTimeout(renderStats, 40);
+  });
+};
+
 export default { bindProfileLiveBindings };
 
 //=================================================
