@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 21:29:24 UTC
+Сгенерировано: 2026-07-24 21:30:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -20417,9 +20417,6 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 #ach-hint-bubble-text{white-space:nowrap;display:inline-block;transform-origin:center center;transition:opacity 0.3s}
 .ach-hint-bubble:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1);border-color:rgba(77,170,255,.6)}
 .ach-hint-bubble:active{transform:scale(.98)}
-.profile-dyn-icon{background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;gap:2px;border:1px solid var(--border-color)}
-.profile-shards-value{font-size:24px;font-weight:900;color:#ffd45a;line-height:1}
-.profile-shards-label{color:#ff8ca8;font-size:10px;font-weight:900;letter-spacing:.5px;text-transform:uppercase}
 .backup-btn{background:#0088cc;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:900;cursor:pointer;width:100%;transition:.2s;box-shadow:0 4px 12px rgba(0,136,204,.3)}
 .backup-btn:hover{background:#0099e6;transform:translateY(-1px)}
 .backup-btn:active{transform:scale(.98)}
