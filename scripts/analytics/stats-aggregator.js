@@ -34,13 +34,9 @@ const calculateStreakSummary = values => {
 
 export class StatsAggregator {
   constructor({ bindEvents = true } = {}) {
-    this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
     this._processing = false; this._rerun = false;
     if (bindEvents) {
       window.addEventListener('analytics:logUpdated', () => this.processHotEvents());
-      window.addEventListener('account:data-switched', () => {
-        this.session = { favOrderedRun: 0, favOrderedLastUid: null, favShuffleEvents: new Set(), midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null };
-      });
     }
   }
 
@@ -73,7 +69,6 @@ export class StatsAggregator {
           if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
             const { isFullListen: isF, isValidListen: isV, variant: v, quality: q } = ev.data;
             const lSec = Math.max(0, Number(ev.data.listenedSeconds || 0) || 0);
-            let comboUpdate = null;
             await metaDB.updateStat(ev.uid, s => {
               s.lastPlayedAt = ev.timestamp;
               s.featuresUsed = s.featuresUsed || {};
@@ -100,46 +95,15 @@ export class StatsAggregator {
                 if (mins >= 300 && mins <= 539) s.featuresUsed.earlyPlay = (s.featuresUsed.earlyPlay || 0) + 1;
                 if (q === 'hi') s.featuresUsed.hiQuality = (s.featuresUsed.hiQuality || 0) + 1;
                 if (s.globalFullListenCount >= (parseInt(localStorage.getItem('cloud:listenThreshold')) || 5) && !window._isRestoring) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
-                {
-                  const isFavOnly =
-                    ev.data.favoritesOnly === true;
-                  const isShuf =
-                    ev.data.shuffle === true;
-                  const isFav =
-                    ev.data.favoriteAtStart === true;
-
-                  if (isShuf) {
-                    s.featuresUsed.shufflePlay =
-                      (s.featuresUsed.shufflePlay || 0) + 1;
-                  }
-                  if (isFavOnly && !isShuf && isFav) { if (this.session.favOrderedLastUid !== ev.uid) { this.session.favOrderedRun++; this.session.favOrderedLastUid = ev.uid; } } else { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; }
-                  isFavOnly && isShuf && isFav ? this.session.favShuffleEvents.add(ev.uid) : this.session.favShuffleEvents.clear();
-                  const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
-                  if (timeStr >= '00:00:00' && timeStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
-                  this.session.lastFullUid = ev.uid;
-                  if (this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) {
-                    comboUpdate = {
-                      favOrdered: this.session.favOrderedRun >= 5,
-                      favShuffle: this.session.favShuffleEvents.size >= 5,
-                      midnightTriple: this.session.midnightTripleCount >= 3
-                    };
-                  }
+                if (ev.data.shuffle === true) {
+                  s.featuresUsed.shufflePlay =
+                    (s.featuresUsed.shufflePlay || 0) + 1;
                 }
               }
               return s;
             });
 
-            if (comboUpdate) {
-              await metaDB.updateStat('global', gs => {
-                gs.featuresUsed = gs.featuresUsed || {};
-                if (comboUpdate.favOrdered) gs.featuresUsed.fav_ordered_5 = 5;
-                if (comboUpdate.favShuffle) gs.featuresUsed.fav_shuffle_5 = 5;
-                if (comboUpdate.midnightTriple) gs.featuresUsed.midnight_triple = 1;
-                return gs;
-              });
-            }
-          } else if (ev.type === 'LISTEN_SKIP') Object.assign(this.session, { favOrderedRun: 0, favOrderedLastUid: null, midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null }) && this.session.favShuffleEvents.clear();
-          else if (ev.type === 'BACKUP_CREATED') { if (ev.data?.uploadedShared) await metaDB.updateStat('global', s => { s.featuresUsed = s.featuresUsed || {}; s.featuresUsed.backup = (s.featuresUsed.backup || 0) + 1; return s; }); }
+          } else if (ev.type === 'BACKUP_CREATED') { if (ev.data?.uploadedShared) await metaDB.updateStat('global', s => { s.featuresUsed = s.featuresUsed || {}; s.featuresUsed.backup = (s.featuresUsed.backup || 0) + 1; return s; }); }
           else if (ev.type === 'FEATURE_USED') {
             await metaDB.updateStat(ev.uid || 'global', s => {
               s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1; s.lastPlayedAt = ev.timestamp;
