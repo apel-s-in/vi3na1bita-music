@@ -126,7 +126,7 @@ F всегда относится к playing-context, а не к просто о
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
 [/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js
-[/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, track-registry.js
+[/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 21:13:23 UTC
+Сгенерировано: 2026-07-24 21:16:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11925,6 +11925,363 @@ export const enableWebPush = async core => {
 };
 
 export default { syncWebPushSubscription, enableWebPush };
+
+//=================================================
+// FILE: /scripts/app/pwa-install.js
+// PWA installation bridge.
+// Не управляет playback и подтверждает установку только после standalone-запуска.
+
+import { requestSocialAction } from '../core/social-session.js';
+import { applyShardRewardResult } from './shards/reward-notifier.js';
+
+const W = window;
+const D = document;
+const INTENT_PREFIX = 'pwa:installIntent:v1:';
+
+let initialized = false;
+let deferredPrompt = null;
+let verificationPromise = null;
+
+const safe = value => String(value == null ? '' : value).trim();
+
+const currentOwner = () => safe(
+  W.YandexAuth?.getProfile?.()?.yandexId ||
+  W.YandexAuth?.getProfile?.()?.id
+);
+
+const currentDeviceId = () => safe(
+  localStorage.getItem('deviceStableId') ||
+  localStorage.getItem('deviceHash') ||
+  'web'
+);
+
+const isStandalone = () =>
+  W.matchMedia?.('(display-mode: standalone)')?.matches === true ||
+  navigator.standalone === true;
+
+const platform = () => {
+  const ua = navigator.userAgent || '';
+  const iPadOs =
+    navigator.platform === 'MacIntel' &&
+    navigator.maxTouchPoints > 1;
+
+  if (/iPhone|iPad|iPod/i.test(ua) || iPadOs) return 'ios';
+  if (/Android/i.test(ua)) return 'android';
+  return 'desktop';
+};
+
+const intentKey = owner => `${INTENT_PREFIX}${safe(owner)}`;
+
+const readIntent = owner => {
+  try {
+    const value = JSON.parse(
+      localStorage.getItem(intentKey(owner)) || 'null'
+    );
+
+    return value &&
+      value.intentId &&
+      value.challenge &&
+      value.deviceId
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeIntent = (owner, intent) => {
+  try {
+    localStorage.setItem(
+      intentKey(owner),
+      JSON.stringify(intent)
+    );
+  } catch {}
+};
+
+const clearIntent = owner => {
+  try {
+    localStorage.removeItem(intentKey(owner));
+  } catch {}
+};
+
+const instructionData = () => {
+  const type = platform();
+
+  if (type === 'ios') {
+    return {
+      icon: '📱',
+      title: 'Установка на iPhone или iPad',
+      steps: [
+        'Откройте приложение именно в Safari.',
+        'Нажмите кнопку «Поделиться» в нижней или верхней панели Safari.',
+        'Прокрутите меню и выберите «На экран Домой».',
+        'Подтвердите добавление кнопкой «Добавить».',
+        'Закройте Safari и запустите приложение новым ярлыком с экрана Домой.'
+      ],
+      note: 'Награда подтверждается только после запуска с созданного ярлыка.'
+    };
+  }
+
+  if (type === 'android') {
+    return {
+      icon: '🤖',
+      title: 'Установка на Android',
+      steps: [
+        'Откройте меню браузера ⋮.',
+        'Выберите «Установить приложение» или «Добавить на главный экран».',
+        'Подтвердите установку.',
+        'Закройте вкладку браузера.',
+        'Запустите приложение созданным ярлыком с главного экрана.'
+      ],
+      note: 'Если браузер показывает системное окно установки, подтвердите его.'
+    };
+  }
+
+  return {
+    icon: '💻',
+    title: 'Установка на компьютер',
+    steps: [
+      'Нажмите значок установки в правой части адресной строки.',
+      'Если значка нет, откройте меню браузера.',
+      'Выберите «Установить Витрина Разбита» или «Установить приложение».',
+      'Подтвердите установку.',
+      'Закройте эту вкладку и запустите приложение ярлыком с рабочего стола или из меню приложений.'
+    ],
+    note: 'Награда подтверждается после отдельного запуска установленного окна.'
+  };
+};
+
+const openInstructions = () => {
+  const data = instructionData();
+  const escape = W.Utils?.escapeHtml || (value => String(value || ''));
+
+  return W.Modals?.open?.({
+    title: data.title,
+    maxWidth: 420,
+    bodyHtml: `
+      <section class="pwa-guide">
+        <div class="pwa-guide-icon">${data.icon}</div>
+        <ol class="pwa-guide-steps">
+          ${data.steps.map(step => `<li>${escape(step)}</li>`).join('')}
+        </ol>
+        <div class="pwa-guide-note">${escape(data.note)}</div>
+        <button class="om-btn om-btn--primary pwa-guide-close" type="button">
+          Инструкция понятна
+        </button>
+      </section>
+    `
+  });
+};
+
+const beginInstallIntent = async () => {
+  const owner = currentOwner();
+
+  if (
+    W.YandexAuth?.getSessionStatus?.() !== 'active' ||
+    !W.YandexAuth?.isTokenAlive?.() ||
+    !owner
+  ) {
+    W.Modals?.choice?.({
+      title: 'Нужен вход через Яндекс',
+      textHtml:
+        'Для подтверждения PWA-достижения сначала войдите через Яндекс.<br><br>' +
+        'Установка и награда будут привязаны к одному Яндекс ID.',
+      actions: [
+        {
+          key: 'login',
+          text: 'Войти через Яндекс',
+          primary: true,
+          onClick: () => W.YandexAuth?.login?.()
+        },
+        {
+          key: 'cancel',
+          text: 'Позже',
+          onClick: () => {}
+        }
+      ]
+    });
+
+    return null;
+  }
+
+  const result = await requestSocialAction(
+    'pwa_install_intent',
+    {
+      deviceId: currentDeviceId(),
+      platform: platform(),
+      launchMode: 'browser'
+    }
+  );
+
+  if (result?.alreadyCompleted) return result;
+
+  if (
+    result?.intentId &&
+    result?.challenge
+  ) {
+    writeIntent(owner, {
+      intentId: safe(result.intentId),
+      challenge: safe(result.challenge),
+      deviceId: currentDeviceId(),
+      platform: platform(),
+      createdAt: Date.now(),
+      expiresAt: Number(result.expiresAt || 0)
+    });
+  }
+
+  return result;
+};
+
+const verifyStandaloneLaunch = async () => {
+  if (!isStandalone() || verificationPromise) {
+    return verificationPromise;
+  }
+
+  const owner = currentOwner();
+
+  if (
+    !owner ||
+    W.YandexAuth?.getSessionStatus?.() !== 'active' ||
+    !W.YandexAuth?.isTokenAlive?.()
+  ) {
+    return null;
+  }
+
+  const intent = readIntent(owner);
+  if (!intent) return null;
+
+  verificationPromise = requestSocialAction(
+    'pwa_launch_verify',
+    {
+      intentId: intent.intentId,
+      challenge: intent.challenge,
+      deviceId: intent.deviceId,
+      platform: intent.platform,
+      launchMode: 'standalone'
+    }
+  )
+    .then(result => {
+      clearIntent(owner);
+
+      if (result?.progress) {
+        W.ListeningReceipts.lastProgress = result.progress;
+      }
+
+      applyShardRewardResult(result);
+
+      queueMicrotask(() => {
+        W.ListeningReceipts
+          ?.refreshStatus?.()
+          .catch(() => null);
+      });
+
+      W.NotificationSystem?.success?.(
+        result?.duplicate
+          ? 'PWA уже подтверждено для вашего аккаунта'
+          : '📱 Приложение установлено. Достижение подтверждено!'
+      );
+
+      return result;
+    })
+    .finally(() => {
+      verificationPromise = null;
+    });
+
+  return verificationPromise;
+};
+
+const handleInstallClick = async button => {
+  button.disabled = true;
+
+  try {
+    const intent = await beginInstallIntent();
+    if (!intent) return;
+
+    if (intent.alreadyCompleted) {
+      W.NotificationSystem?.info?.(
+        'PWA-достижение уже выполнено для этого Яндекс ID'
+      );
+    }
+
+    if (deferredPrompt) {
+      const prompt = deferredPrompt;
+      deferredPrompt = null;
+
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+
+      if (choice?.outcome === 'accepted') {
+        W.NotificationSystem?.success?.(
+          'Установка началась. После неё запустите приложение с ярлыка.'
+        );
+      } else {
+        W.NotificationSystem?.info?.(
+          'Установка отменена. Можно повторить позже.'
+        );
+      }
+
+      return;
+    }
+
+    const modal = openInstructions();
+    modal
+      ?.querySelector('.pwa-guide-close')
+      ?.addEventListener('click', () => modal.remove());
+  } catch (error) {
+    W.NotificationSystem?.error?.(
+      `Не удалось начать установку: ${error?.message || 'ошибка'}`
+    );
+  } finally {
+    button.disabled = false;
+  }
+};
+
+export const initPwaInstall = () => {
+  if (initialized) return;
+  initialized = true;
+
+  const button = D.getElementById('install-pwa-btn');
+  if (!button) return;
+
+  button.innerHTML =
+    '<span class="pwa-install-icon" aria-hidden="true">📲</span>' +
+    '<span>Установить приложение</span>';
+
+  if (isStandalone()) {
+    button.hidden = true;
+  } else {
+    button.hidden = false;
+    button.addEventListener('click', () =>
+      handleInstallClick(button)
+    );
+  }
+
+  W.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredPrompt = event;
+  });
+
+  W.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    button.hidden = true;
+
+    W.NotificationSystem?.success?.(
+      'Приложение установлено. Запустите его с нового ярлыка.'
+    );
+  });
+
+  W.addEventListener('yandex:auth:changed', event => {
+    if (event.detail?.status === 'active') {
+      verifyStandaloneLaunch().catch(() => null);
+    }
+  });
+
+  if (isStandalone()) {
+    verifyStandaloneLaunch().catch(() => null);
+  }
+};
+
+export default { initPwaInstall };
 
 //=================================================
 // FILE: /scripts/app/shards/reward-notifier.js

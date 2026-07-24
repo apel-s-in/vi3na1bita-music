@@ -126,7 +126,7 @@ F всегда относится к playing-context, а не к просто о
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
 [/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js
-[/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, track-registry.js
+[/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 21:13:23 UTC
+Сгенерировано: 2026-07-24 21:16:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11927,6 +11927,363 @@ export const enableWebPush = async core => {
 export default { syncWebPushSubscription, enableWebPush };
 
 //=================================================
+// FILE: /scripts/app/pwa-install.js
+// PWA installation bridge.
+// Не управляет playback и подтверждает установку только после standalone-запуска.
+
+import { requestSocialAction } from '../core/social-session.js';
+import { applyShardRewardResult } from './shards/reward-notifier.js';
+
+const W = window;
+const D = document;
+const INTENT_PREFIX = 'pwa:installIntent:v1:';
+
+let initialized = false;
+let deferredPrompt = null;
+let verificationPromise = null;
+
+const safe = value => String(value == null ? '' : value).trim();
+
+const currentOwner = () => safe(
+  W.YandexAuth?.getProfile?.()?.yandexId ||
+  W.YandexAuth?.getProfile?.()?.id
+);
+
+const currentDeviceId = () => safe(
+  localStorage.getItem('deviceStableId') ||
+  localStorage.getItem('deviceHash') ||
+  'web'
+);
+
+const isStandalone = () =>
+  W.matchMedia?.('(display-mode: standalone)')?.matches === true ||
+  navigator.standalone === true;
+
+const platform = () => {
+  const ua = navigator.userAgent || '';
+  const iPadOs =
+    navigator.platform === 'MacIntel' &&
+    navigator.maxTouchPoints > 1;
+
+  if (/iPhone|iPad|iPod/i.test(ua) || iPadOs) return 'ios';
+  if (/Android/i.test(ua)) return 'android';
+  return 'desktop';
+};
+
+const intentKey = owner => `${INTENT_PREFIX}${safe(owner)}`;
+
+const readIntent = owner => {
+  try {
+    const value = JSON.parse(
+      localStorage.getItem(intentKey(owner)) || 'null'
+    );
+
+    return value &&
+      value.intentId &&
+      value.challenge &&
+      value.deviceId
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeIntent = (owner, intent) => {
+  try {
+    localStorage.setItem(
+      intentKey(owner),
+      JSON.stringify(intent)
+    );
+  } catch {}
+};
+
+const clearIntent = owner => {
+  try {
+    localStorage.removeItem(intentKey(owner));
+  } catch {}
+};
+
+const instructionData = () => {
+  const type = platform();
+
+  if (type === 'ios') {
+    return {
+      icon: '📱',
+      title: 'Установка на iPhone или iPad',
+      steps: [
+        'Откройте приложение именно в Safari.',
+        'Нажмите кнопку «Поделиться» в нижней или верхней панели Safari.',
+        'Прокрутите меню и выберите «На экран Домой».',
+        'Подтвердите добавление кнопкой «Добавить».',
+        'Закройте Safari и запустите приложение новым ярлыком с экрана Домой.'
+      ],
+      note: 'Награда подтверждается только после запуска с созданного ярлыка.'
+    };
+  }
+
+  if (type === 'android') {
+    return {
+      icon: '🤖',
+      title: 'Установка на Android',
+      steps: [
+        'Откройте меню браузера ⋮.',
+        'Выберите «Установить приложение» или «Добавить на главный экран».',
+        'Подтвердите установку.',
+        'Закройте вкладку браузера.',
+        'Запустите приложение созданным ярлыком с главного экрана.'
+      ],
+      note: 'Если браузер показывает системное окно установки, подтвердите его.'
+    };
+  }
+
+  return {
+    icon: '💻',
+    title: 'Установка на компьютер',
+    steps: [
+      'Нажмите значок установки в правой части адресной строки.',
+      'Если значка нет, откройте меню браузера.',
+      'Выберите «Установить Витрина Разбита» или «Установить приложение».',
+      'Подтвердите установку.',
+      'Закройте эту вкладку и запустите приложение ярлыком с рабочего стола или из меню приложений.'
+    ],
+    note: 'Награда подтверждается после отдельного запуска установленного окна.'
+  };
+};
+
+const openInstructions = () => {
+  const data = instructionData();
+  const escape = W.Utils?.escapeHtml || (value => String(value || ''));
+
+  return W.Modals?.open?.({
+    title: data.title,
+    maxWidth: 420,
+    bodyHtml: `
+      <section class="pwa-guide">
+        <div class="pwa-guide-icon">${data.icon}</div>
+        <ol class="pwa-guide-steps">
+          ${data.steps.map(step => `<li>${escape(step)}</li>`).join('')}
+        </ol>
+        <div class="pwa-guide-note">${escape(data.note)}</div>
+        <button class="om-btn om-btn--primary pwa-guide-close" type="button">
+          Инструкция понятна
+        </button>
+      </section>
+    `
+  });
+};
+
+const beginInstallIntent = async () => {
+  const owner = currentOwner();
+
+  if (
+    W.YandexAuth?.getSessionStatus?.() !== 'active' ||
+    !W.YandexAuth?.isTokenAlive?.() ||
+    !owner
+  ) {
+    W.Modals?.choice?.({
+      title: 'Нужен вход через Яндекс',
+      textHtml:
+        'Для подтверждения PWA-достижения сначала войдите через Яндекс.<br><br>' +
+        'Установка и награда будут привязаны к одному Яндекс ID.',
+      actions: [
+        {
+          key: 'login',
+          text: 'Войти через Яндекс',
+          primary: true,
+          onClick: () => W.YandexAuth?.login?.()
+        },
+        {
+          key: 'cancel',
+          text: 'Позже',
+          onClick: () => {}
+        }
+      ]
+    });
+
+    return null;
+  }
+
+  const result = await requestSocialAction(
+    'pwa_install_intent',
+    {
+      deviceId: currentDeviceId(),
+      platform: platform(),
+      launchMode: 'browser'
+    }
+  );
+
+  if (result?.alreadyCompleted) return result;
+
+  if (
+    result?.intentId &&
+    result?.challenge
+  ) {
+    writeIntent(owner, {
+      intentId: safe(result.intentId),
+      challenge: safe(result.challenge),
+      deviceId: currentDeviceId(),
+      platform: platform(),
+      createdAt: Date.now(),
+      expiresAt: Number(result.expiresAt || 0)
+    });
+  }
+
+  return result;
+};
+
+const verifyStandaloneLaunch = async () => {
+  if (!isStandalone() || verificationPromise) {
+    return verificationPromise;
+  }
+
+  const owner = currentOwner();
+
+  if (
+    !owner ||
+    W.YandexAuth?.getSessionStatus?.() !== 'active' ||
+    !W.YandexAuth?.isTokenAlive?.()
+  ) {
+    return null;
+  }
+
+  const intent = readIntent(owner);
+  if (!intent) return null;
+
+  verificationPromise = requestSocialAction(
+    'pwa_launch_verify',
+    {
+      intentId: intent.intentId,
+      challenge: intent.challenge,
+      deviceId: intent.deviceId,
+      platform: intent.platform,
+      launchMode: 'standalone'
+    }
+  )
+    .then(result => {
+      clearIntent(owner);
+
+      if (result?.progress) {
+        W.ListeningReceipts.lastProgress = result.progress;
+      }
+
+      applyShardRewardResult(result);
+
+      queueMicrotask(() => {
+        W.ListeningReceipts
+          ?.refreshStatus?.()
+          .catch(() => null);
+      });
+
+      W.NotificationSystem?.success?.(
+        result?.duplicate
+          ? 'PWA уже подтверждено для вашего аккаунта'
+          : '📱 Приложение установлено. Достижение подтверждено!'
+      );
+
+      return result;
+    })
+    .finally(() => {
+      verificationPromise = null;
+    });
+
+  return verificationPromise;
+};
+
+const handleInstallClick = async button => {
+  button.disabled = true;
+
+  try {
+    const intent = await beginInstallIntent();
+    if (!intent) return;
+
+    if (intent.alreadyCompleted) {
+      W.NotificationSystem?.info?.(
+        'PWA-достижение уже выполнено для этого Яндекс ID'
+      );
+    }
+
+    if (deferredPrompt) {
+      const prompt = deferredPrompt;
+      deferredPrompt = null;
+
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+
+      if (choice?.outcome === 'accepted') {
+        W.NotificationSystem?.success?.(
+          'Установка началась. После неё запустите приложение с ярлыка.'
+        );
+      } else {
+        W.NotificationSystem?.info?.(
+          'Установка отменена. Можно повторить позже.'
+        );
+      }
+
+      return;
+    }
+
+    const modal = openInstructions();
+    modal
+      ?.querySelector('.pwa-guide-close')
+      ?.addEventListener('click', () => modal.remove());
+  } catch (error) {
+    W.NotificationSystem?.error?.(
+      `Не удалось начать установку: ${error?.message || 'ошибка'}`
+    );
+  } finally {
+    button.disabled = false;
+  }
+};
+
+export const initPwaInstall = () => {
+  if (initialized) return;
+  initialized = true;
+
+  const button = D.getElementById('install-pwa-btn');
+  if (!button) return;
+
+  button.innerHTML =
+    '<span class="pwa-install-icon" aria-hidden="true">📲</span>' +
+    '<span>Установить приложение</span>';
+
+  if (isStandalone()) {
+    button.hidden = true;
+  } else {
+    button.hidden = false;
+    button.addEventListener('click', () =>
+      handleInstallClick(button)
+    );
+  }
+
+  W.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredPrompt = event;
+  });
+
+  W.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    button.hidden = true;
+
+    W.NotificationSystem?.success?.(
+      'Приложение установлено. Запустите его с нового ярлыка.'
+    );
+  });
+
+  W.addEventListener('yandex:auth:changed', event => {
+    if (event.detail?.status === 'active') {
+      verifyStandaloneLaunch().catch(() => null);
+    }
+  });
+
+  if (isStandalone()) {
+    verifyStandaloneLaunch().catch(() => null);
+  }
+};
+
+export default { initPwaInstall };
+
+//=================================================
 // FILE: /scripts/app/shards/reward-notifier.js
 // Единая обработка результатов серверных reward channels.
 // Не управляет playback, Favorites или backup.
@@ -18682,1071 +19039,6 @@ export function ensureMediaSession(h = {}) {
     }
   };
 }
-
-//=================================================
-// FILE: /src/PlayerCore.js
-import { getTrackByUid } from '../scripts/app/track-registry.js';
-import { Favorites } from '../scripts/core/favorites-manager.js';
-import { ensureMediaSession } from './player-core/media-session.js';
-import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-resolver.js';
-import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
-import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.js';
-
-// UID.001_(Playback safety invariant)_(защитить священное правило проигрывания)_(никакие intel/recs/providers/telemetry не имеют права стопать/сбрасывать playback кроме уже разрешённых сценариев) UID.008_(No playback mutation by intel)_(развести ядро плеера и интеллектуальный слой)_(PlayerCore остаётся единственным владельцем playback state, intel только читает и рекомендует) UID.011_(Media variants registry)_(подготовить future playback для richer variants)_(PlayerCore должен оставаться тонким исполнителем, а выбор variant/source — вне его) UID.012_(Quality dimension)_(сохранить quality-aware playback как часть ядра)_(Hi/Lo/Lossless логика должна заходить в PlayerCore только через безопасные resolver/registry bridges) UID.050_(Session profile)_(дать future session-aware recommendations корректный источник контекста)_(события play/pause/tick/trackChanged отсюда питают session/intel слой, но не наоборот) UID.060_(Session-aware next-track strategy)_(подготовить безопасную стыковку next-track intelligence)_(любые future next suggestions могут предлагаться intel-слоем, но применять их может только PlayerCore по явному действию/разрешённому autoplay) UID.062_(Recommendation memory and feedback)_(готовить reaction signals без влияния на playback)_(recs telemetry может читать player transitions, но не должна вмешиваться в них) UID.079_(VK social/media actions)_(не смешивать external provider actions с ядром аудио)_(PlayerCore не должен знать о VK/Yandex/Google actions beyond already resolved media URLs) UID.094_(No-paralysis rule)_(оставить плеер работоспособным при любых сбоях нового слоя)_(если intel/providers/telemetry недоступны, PlayerCore работает полностью автономно)
-
-(function () {
-  'use strict';
-  
-  const W = window, ls = localStorage, LS_VOL = 'playerVolume', LS_PQ = 'qualityMode:v1';
-  const clamp = (n, a, b) => Math.min(Math.max(Number(n) || 0, a), b);
-  const sUid = v => (v == null ? '' : String(v)).trim() || null;
-  const qNorm = v => String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
-  const emitG = (n, d) => W.dispatchEvent(new CustomEvent(n, d ? { detail: d } : undefined));
-  const isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
-  class PlayerCore {
-    playlist = []; originalPlaylist = []; currentIndex = -1;
-    flags = { shuf: false, rep: false, mute: false }; shufHist = [];
-    sound = null; qMode = qNorm(ls.getItem(LS_PQ));
-    _tok = 0; _loadReq = 0; _tick = null; _sleep = null; _skips = 0;
-    _pendingIndex = null; _pendingUid = null; _selectionSeq = 0;
-    _ev = new Map(); _favSubs = new Set(); _playingUid = null;
-    _persistTimer = null;
-    
-    constructor() {
-      W.addEventListener('offline:uiChanged', () => this.qMode = qNorm(ls.getItem(LS_PQ)));
-      this._ms = ensureMediaSession({
-        onPlay: () => this.play(),
-        onPause: () => this.pause(),
-        onStop: () => this.stop(),
-        onPrev: () => this.prev(),
-        onNext: () => this.next(),
-        onSeekTo: t => this.seek(t),
-        getPositionState: () => ({
-          duration: this.getDuration(),
-          playbackRate: 1,
-          position: this.getPosition()
-        })
-      });
-      
-      const unlock = () => { 
-        if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{});
-        if (this._unlk) return; this._unlk = true;
-        try { new Howl({ src: ['data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIWFhYW5uYWFuYW5uYW5uYW5uYW5uYW5uYW5uYW5uYW5u//OEAAAAAAAAAAAAAAAAAAAAAAAAMGluZ2QAAAAcAAAABAAAASFycnJyc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nz//OEAAAAAAAAAAAAAAAAAAAAAAAATGF2YzU4Ljc2AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOzuJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], html5: true, volume: 0 }).play(); } catch {}
-      };
-      ['touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, unlock, { once: true, capture: true }));
-    }
-
-    initialize() {
-      initIosAudioKeeper();
-      this._bindPlaybackPersistence();
-    }
-
-    prepareContext() {
-      if (W.Howler?.ctx?.state === 'suspended') W.Howler.ctx.resume().catch(()=>{});
-    }
-
-    _cancelPendingLoad() {
-      this._loadReq++;
-      this._pendingIndex = null;
-      this._pendingUid = null;
-    }
-
-    _commitTrackSelection(track, index, previousUid, dir, reason) {
-      const uid = sUid(track?.uid);
-      this.currentIndex = index;
-      this._pendingIndex = null;
-      this._pendingUid = null;
-
-      if (!uid || uid === sUid(previousUid)) return false;
-
-      const detail = {
-        uid,
-        previousUid: sUid(previousUid),
-        index,
-        dir: Number(dir) || 1,
-        reason: String(reason || 'selection'),
-        selectionSeq: ++this._selectionSeq
-      };
-
-      this._emit('onTrackChange', track, index);
-      emitG('player:trackChanged', detail);
-      return true;
-    }
-
-    setPlaylist(tracks, startIdx = 0, meta, opts = {}) {
-      this._cancelPendingLoad();
-      const prevPos = this.getPosition(), wasPlay = this.isPlaying();
-      this.playlist = (tracks || []).map(t => ({ ...t, uid: sUid(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' })).filter(t => t.uid);
-      if (!opts.preserveOriginalPlaylist) this.originalPlaylist = [...this.playlist];
-
-      this.currentIndex = clamp(startIdx, 0, Math.max(0, this.playlist.length - 1));
-      const tUid = this.playlist[this.currentIndex]?.uid || null;
-      if (!opts.preserveShuffleMode) this.shufHist = [];
-
-      if (this.flags.shuf && !opts.preserveShuffleMode) this.shufflePlaylist(tUid);
-      else if (tUid) this.currentIndex = Math.max(0, this.playlist.findIndex(t => t.uid === tUid));
-
-      this._skips = 0;
-      if (this.sound && this._playingUid === tUid && wasPlay && opts.preservePosition) {
-        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-        return this._updMedia();
-      }
-
-      if (opts.deferLoad) {
-        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-        this._updMedia();
-        return;
-      }
-
-      if (wasPlay) this.load(this.currentIndex, {
-        autoPlay: true,
-        resumePosition: opts.preservePosition ? prevPos : 0
-      });
-      else {
-        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-        this._updMedia();
-      }
-    }
-
-    playExactFromPlaylist(tracks, targetUid, opts = {}) {
-      const uid = sUid(targetUid);
-      const list = (tracks || []).map(t => ({ ...t, uid: sUid(t.uid), title: t.title || 'Без названия', artist: t.artist || 'Витрина Разбита' })).filter(t => t.uid);
-      if (!uid || !list.length) return false;
-
-      const idx = list.findIndex(t => t.uid === uid);
-      if (idx < 0) return false;
-
-      const isSame = !!this.sound && this.getCurrentTrackUid() === uid;
-
-      this.setPlaylist(list, idx, null, {
-        preservePosition: isSame,
-        preserveOriginalPlaylist: !!opts.preserveOriginalPlaylist,
-        preserveShuffleMode: false,
-        deferLoad: !isSame
-      });
-
-      if (!isSame) {
-        this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 });
-      }
-      else emitG('playlist:changed', { reason: 'seamless_switch' });
-      return true;
-    }
-
-    shufflePlaylist(keepUid = null) {
-      const cUid = keepUid || this.getCurrentTrackUid();
-      for (let i = this.playlist.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [this.playlist[i], this.playlist[j]] = [this.playlist[j], this.playlist[i]];
-      }
-      this.currentIndex = 0;
-      if (cUid) { const idx = this.playlist.findIndex(t => t.uid === cUid); if (idx >= 0) this.playlist.unshift(...this.playlist.splice(idx, 1)); }
-    }
-
-    getPlaylistSnapshot() { return [...this.playlist]; }
-    getCurrentTrack() { return this.playlist[this.currentIndex] || null; }
-    getIndex() { return this.currentIndex; }
-    getNextIndex() { return this.playlist.length ? (this.currentIndex + 1) % this.playlist.length : -1; }
-    getCurrentTrackUid() { return sUid(this.getCurrentTrack()?.uid); }
-
-    isPlaying() { return !!this.sound?.playing(); }
-    play(idx, opts = {}) {
-      this.prepareContext();
-      if (idx != null) {
-        if (idx === this.currentIndex && this.sound) {
-          if (opts.autoPlay !== false && !this.isPlaying()) return this.sound.play();
-          return;
-        }
-        return this.load(idx, { ...opts, autoPlay: opts.autoPlay ?? true });
-      }
-      if (this.sound) {
-        if (!this.isPlaying()) return this.sound.play();
-        return;
-      }
-      if (this.currentIndex >= 0) return this.load(this.currentIndex, { autoPlay: true });
-    }
-    pause() {
-      this._cancelPendingLoad();
-      this.sound?.pause();
-    }
-
-    stop() {
-      this._cancelPendingLoad();
-      this._unload({
-        emitStop: true,
-        clearPersistedState: true,
-        revokeBlob: true
-      });
-      this._updMedia();
-    }
-    
-    next() {
-      if (!this.playlist.length) return;
-      const base = Number.isInteger(this._pendingIndex) ? this._pendingIndex : this.currentIndex;
-      if (this.flags.shuf) { this.shufHist.push(base); if (this.shufHist.length > 50) this.shufHist.shift(); }
-      return this.load((base + 1) % this.playlist.length, { autoPlay: true, dir: 1, reason: 'next' });
-    }
-    
-    prev() {
-      if (!this.playlist.length) return;
-      const hasPending = Number.isInteger(this._pendingIndex);
-      if (!hasPending && this.getPosition() > 3) return void this.seek(0);
-      if (this.flags.shuf && this.shufHist.length) return this.load(this.shufHist.pop(), { autoPlay: true, dir: -1, reason: 'previous_history' });
-      const base = hasPending ? this._pendingIndex : this.currentIndex;
-      return this.load((base - 1 + this.playlist.length) % this.playlist.length, { autoPlay: true, dir: -1, reason: 'previous' });
-    }
-    
-    seek(s) { return this.sound?.seek(s) || 0; }
-    getPosition() { return this.sound?.seek() || 0; }
-    getDuration() { return this.sound?.duration() || 0; }
-
-    setVolume(v) { 
-      if (isMob) return; 
-      const vol = clamp(Number(v)/100, 0, 1); 
-      ls.setItem(LS_VOL, String(Math.round(vol * 100)));
-      markDeviceSettingsDirty();
-      if (!this.flags.mute) Howler.volume(vol);
-    }
-    getVolume() { return isMob ? 100 : Number(ls.getItem(LS_VOL) ?? 100); }
-    setMuted(m) { if (isMob) return; this.flags.mute = !!m; Howler.volume(this.flags.mute ? 0 : this.getVolume() / 100); }
-    isMuted() { return this.flags.mute; }
-
-    async load(idx, opts = {}) {
-      const targetIndex = Number(idx);
-      const t = this.playlist[targetIndex];
-      const uid = sUid(t?.uid);
-      const dir = Number(opts.dir) || 1;
-      const req = ++this._loadReq;
-
-      if (!t || !uid) return false;
-
-      const autoPlay = opts.autoPlay ?? this.isPlaying();
-      const reason = String(opts.reason || (opts.isAutoSkip ? 'auto_skip' : (opts._forceReload ? 'transport_reload' : 'selection')));
-      opts = { ...opts, autoPlay, reason };
-      this._pendingIndex = targetIndex;
-      this._pendingUid = uid;
-
-      if (!opts.isAutoSkip) this._skips = 0;
-
-      let resolved = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(() => null);
-      if (req !== this._loadReq) return false;
-
-      const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
-      let url = resolved?.url || null;
-      let provider = resolved?.provider || 'unknown';
-
-      if (!url && !resolved?.blob) {
-        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode).catch(() => null);
-        if (req !== this._loadReq) return false;
-        if (smart?.url) {
-          url = smart.url;
-          provider = smart.provider || provider;
-        }
-      }
-
-      if (!url && !resolved?.blob) {
-        if (this._skips >= this.playlist.length) {
-          if (req === this._loadReq) {
-            this._pendingIndex = null;
-            this._pendingUid = null;
-          }
-          W.NotificationSystem?.error('Нет доступных треков');
-          this._emit('onPlaybackError', { reason: 'no_source', uid });
-          return false;
-        }
-
-        setTimeout(() => {
-          if (req !== this._loadReq || !this.playlist.length) return;
-          this._skips++;
-          this.load((targetIndex + dir + this.playlist.length) % this.playlist.length, {
-            ...opts,
-            autoPlay,
-            isAutoSkip: true,
-            dir,
-            reason: 'auto_skip'
-          });
-        }, 80);
-        return false;
-      }
-
-      const commitIndex = this.playlist.findIndex(track => sUid(track?.uid) === uid);
-      if (req !== this._loadReq || commitIndex < 0) return false;
-
-      const previousUid = sUid(this._playingUid || this.getCurrentTrackUid());
-      const hadSound = !!this.sound;
-      const position = Number(opts.resumePosition) || 0;
-      const retry = Number(opts._retryN) || 0;
-
-      this.currentIndex = commitIndex;
-      this._pendingIndex = null;
-      this._pendingUid = null;
-
-      if (this.sound && this._playingUid === uid && !opts._forceReload) {
-        if (position) this.seek(position);
-        if (autoPlay && !this.isPlaying()) this.sound.play();
-        this._updMedia();
-        this._syncMediaSessionPosition(true);
-        return true;
-      }
-
-      this._commitTrackSelection(t, commitIndex, previousUid, dir, reason);
-      this._updMedia();
-      this._syncMediaSessionPosition(true);
-
-      const tok = ++this._tok;
-      let blobKey = null;
-
-      if (resolved?.blob) {
-        blobKey = `p_${uid}_${tok}`;
-        url = W.Utils?.blob?.createUrl
-          ? W.Utils.blob.createUrl(blobKey, resolved.blob)
-          : URL.createObjectURL(resolved.blob);
-        provider = 'cache';
-      } else if (url && netOk && W.Utils?.getNet?.()?.kind === 'cellular' && W.NetPolicy?.shouldShowCellularToast?.()) {
-        W.NotificationSystem?.show?.('Воспроизведение через мобильную сеть', 'info');
-      }
-
-      this.currentProvider = provider;
-      const sameUidReload = hadSound && previousUid === uid;
-      const sf = fn => (...args) => tok === this._tok && fn(...args);
-
-      this._unload({
-        emitStop: false,
-        clearPersistedState: false,
-        revokeBlob: true
-      });
-      this._playingUid = uid;
-      this._oK = blobKey;
-      this._oKTok = blobKey ? tok : 0;
-
-      this.sound = new Howl({
-        src: [url],
-        html5: true,
-        format: ['mp3'],
-        xhr: { withCredentials: false },
-        autoplay: false,
-        onload: sf(() => {
-          if (position) this.seek(position);
-          this._updMedia();
-          this._syncMediaSessionPosition(true);
-        }),
-        onplay: sf(() => {
-          this._startT();
-          this._persistPlaybackState(true);
-          this._emit('onPlay', t, commitIndex);
-          this._updMedia();
-          this._syncMediaSessionPosition(true);
-          emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider });
-          emitG('player:providerChanged', { provider });
-        }),
-        onpause: sf(() => {
-          this._stopT();
-          this._persistPlaybackState(true);
-          this._emit('onPause');
-          this._updMedia();
-          this._syncMediaSessionPosition(true);
-          emitG('player:pause', { uid });
-        }),
-        onend: sf(() => {
-          this._emit('onEnd');
-          this._updMedia();
-          emitG('player:ended', { uid });
-          emitG('analytics:forceFlush');
-          this.flags.rep ? this.play(this.currentIndex) : this.next();
-        }),
-        onloaderror: sf(() => this._err(commitIndex, retry, opts, dir)),
-        onplayerror: sf(() => this._err(commitIndex, retry, opts, dir))
-      });
-
-      if (sameUidReload) {
-        emitG('player:transportReloaded', {
-          uid,
-          reason,
-          quality: this.qMode,
-          provider,
-          transportGeneration: tok,
-          autoPlay: !!autoPlay
-        });
-      }
-
-      if (autoPlay) this.sound.play();
-      return true;
-    }
-
-    _err(idx, retry, opts, dir) {
-      const tok = this._tok;
-      const req = this._loadReq;
-      const autoPlay = opts.autoPlay !== false;
-
-      this._emit('onPlaybackError', {
-        reason: 'error',
-        uid: this.getCurrentTrackUid()
-      });
-
-      if (
-        (W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) &&
-        retry < 2
-      ) {
-        setTimeout(() => {
-          if (tok !== this._tok || req !== this._loadReq) return;
-          this.load(idx, {
-            ...opts,
-            autoPlay,
-            _retryN: retry + 1,
-            dir,
-            reason: 'retry'
-          });
-        }, 250 + retry * 500);
-        return;
-      }
-
-      this._skips = Math.min(
-        this.playlist.length,
-        this._skips + 1
-      );
-
-      setTimeout(() => {
-        if (
-          tok !== this._tok ||
-          req !== this._loadReq ||
-          !this.playlist.length
-        ) return;
-
-        this.load(
-          (idx + dir + this.playlist.length) % this.playlist.length,
-          {
-            ...opts,
-            autoPlay,
-            isAutoSkip: true,
-            dir,
-            reason: 'error_skip'
-          }
-        );
-      }, 120);
-    }
-
-    _unload({
-      emitStop = true,
-      clearPersistedState = emitStop,
-      revokeBlob = true
-    } = {}) {
-      if (this.sound) {
-        try {
-          this.sound.stop();
-          this.sound.unload();
-        } catch {}
-        this.sound = null;
-      }
-
-      this._playingUid = null;
-
-      if (revokeBlob && this._oK) {
-        try {
-          W.Utils?.blob?.revokeUrl?.(this._oK);
-        } catch {}
-        this._oK = null;
-        this._oKTok = 0;
-      }
-
-      this._stopT();
-
-      if (clearPersistedState) {
-        this._clearPersistedPlaybackState();
-      }
-
-      if (emitStop) {
-        this._syncMediaSessionPosition(true);
-        emitG('player:stop');
-        this._emit('onStop');
-      }
-    }
-
-    _syncMediaSessionPosition(force = false) { try { this._ms?.updatePositionState?.({ force }); } catch {} }
-
-    _buildPersistedState() {
-      const t = this.getCurrentTrack();
-      const uid = sUid(t?.uid);
-      const pA = sUid(W.AlbumsManager?.getPlayingAlbum?.());
-      const cA = sUid(W.AlbumsManager?.getCurrentAlbum?.()) || pA;
-      if (!uid || this.currentIndex < 0 || !pA) return null;
-      return {
-        album: pA,
-        currentAlbum: cA,
-        trackUid: uid,
-        sourceAlbum: sUid(t?.sourceAlbum),
-        trackIndex: this.currentIndex,
-        position: Math.max(0, Math.floor(this.getPosition() || 0)),
-        volume: this.getVolume(),
-        muted: !!this.isMuted(),
-        wasPlaying: !!this.isPlaying(),
-        repeat: !!this.flags.rep,
-        shuffle: !!this.flags.shuf,
-        quality: this.qMode || 'hi',
-        ts: Date.now()
-      };
-    }
-
-    _persistPlaybackState(force = false) {
-      try {
-        const st = this._buildPersistedState();
-        if (!st) return;
-        if (!force && this._persistTimer) return;
-        if (!force) {
-          this._persistTimer = setTimeout(() => {
-            this._persistTimer = null;
-            try { localStorage.setItem('playerStateV2', JSON.stringify(this._buildPersistedState())); } catch {}
-          }, 150);
-          return;
-        }
-        localStorage.setItem('playerStateV2', JSON.stringify(st));
-      } catch {}
-    }
-
-    _clearPersistedPlaybackState() {
-      try { localStorage.removeItem('playerStateV2'); } catch {}
-    }
-
-    _bindPlaybackPersistence() {
-      W.addEventListener('beforeunload', () => this._persistPlaybackState(true));
-      document.addEventListener('visibilitychange', () => { if (document.hidden) this._persistPlaybackState(true); });
-    }
-
-    _startT() {
-      this._stopT();
-      this._tick = setInterval(() => {
-        const pos = this.getPosition(), dur = this.getDuration();
-        this._persistPlaybackState(false);
-        this._emit('onTick', pos, dur);
-        emitG('player:tick', { currentTime: pos, volume: this.getVolume(), muted: this.isMuted() });
-        this._syncMediaSessionPosition(false);
-      }, 250);
-    }
-    _stopT() { if (this._tick) clearInterval(this._tick); this._tick = null; }
-    _updMedia() { try { this._ms?.updateMetadata?.({ title: this.getCurrentTrack()?.title, artist: this.getCurrentTrack()?.artist, album: this.getCurrentTrack()?.album, artworkUrl: this.getCurrentTrack()?.cover, playing: this.isPlaying() }); } catch {} }
-
-    canToggleQualityForCurrentTrack() { return !!this.getCurrentTrack() && !!(getTrackByUid(this.getCurrentTrackUid())?.audio_low || this.getCurrentTrack()?.sources?.audio?.lo); }
-    switchQuality(m) {
-      const nq = qNorm(m);
-      if (this.qMode === nq) return false;
-
-      const wasPlaying = this.isPlaying();
-      const position = this.getPosition();
-
-      this.qMode = nq;
-      ls.setItem(LS_PQ, nq);
-      markDeviceSettingsDirty();
-      emitG('quality:changed', { quality: nq });
-      emitG('offline:uiChanged');
-
-      if (this.currentIndex >= 0 && this.sound) {
-        this.load(this.currentIndex, {
-          autoPlay: wasPlaying,
-          resumePosition: position,
-          dir: 1,
-          _forceReload: true,
-          reason: 'quality_change'
-        });
-      }
-
-      W.NotificationSystem?.show?.(
-        `Качество переключено на ${nq === 'hi' ? 'Hi' : 'Lo'}`,
-        'info'
-      );
-      return true;
-    }
-
-    isFavorite(uid) { return Favorites.isLiked(sUid(uid)); }
-    toggleFavorite(uid, opts = {}) {
-      const u = sUid(uid); if (!u) return { liked: false };
-      const pA = W.AlbumsManager?.getPlayingAlbum?.(), isFavView = pA === W.SPECIAL_FAVORITES_KEY;
-      const src = opts.source || (opts.fromAlbum ? 'album' : (isFavView ? 'favorites' : 'album'));
-      
-      const liked = Favorites.toggle(u, { source: src, albumKey: opts.albumKey });
-      this._favSubs.forEach(f => { try { f({ uid: u, liked, albumKey: opts.albumKey }); } catch {} });
-
-      if (!liked && src === 'favorites' && isFavView && this.getCurrentTrackUid() === u) {
-        const activeCount = this.getFavoritesState().active?.length || 0;
-        if (activeCount <= 0) {
-          this.stop();
-        } else {
-          this.next();
-        }
-      } else if (!liked && ls.getItem('favoritesOnlyMode') === '1') {
-        const pA = W.AlbumsManager?.getPlayingAlbum?.();
-        const st = resolveFavoritesOnlyState({
-          sourcePlaylist: this.originalPlaylist,
-          playingAlbum: pA,
-          favoritesOnly: true,
-          currentUid: this.getCurrentTrackUid(),
-          isFavorite: x => this.isFavorite(x),
-          favoritesState: this.getFavoritesState()
-        });
-
-        if (!st.resolvedPlaylist.length) {
-          ls.setItem('favoritesOnlyMode', '0');
-          this.applyFavoritesOnlyFilter({ forceReload: false });
-          W.NotificationSystem?.info?.('⭐ Режим только избранные выключен');
-        } else {
-          this.applyFavoritesOnlyFilter({ forceReload: this.getCurrentTrackUid() === u });
-        }
-      }
-      return { liked };
-    }
-
-    removeInactivePermanently(uid) { const u = sUid(uid); if (u && Favorites.remove(u)) this._favSubs.forEach(f => { try { f({ uid: u, liked: false, removed: true }); } catch {} }); }
-    restoreInactive(uid) { return this.toggleFavorite(uid, { source: 'favorites' }); }
-    
-    showInactiveFavoriteModal(p = {}) {
-      emitG('player:inactiveFavoriteModalRequested', {
-        uid: sUid(p.uid),
-        title: String(p.title || 'Трек'),
-        onDeleted: typeof p.onDeleted === 'function' ? p.onDeleted : null
-      });
-    }
-
-    getFavoritesState() {
-      return Favorites.getSnapshot().reduce((r, i) => {
-        const u = sUid(i?.uid);
-        if (u && !i.deletedAt) r[i.inactiveAt ? 'inactive' : 'active'].push({ uid: u, sourceAlbum: sUid(i.sourceAlbum || i.albumKey || getTrackByUid(u)?.sourceAlbum), ...(i.inactiveAt && { inactiveAt: i.inactiveAt }) });
-        return r;
-      }, { active: [], inactive: [] });
-    }
-
-    getLikedUidsForAlbum(key) { const k = sUid(key); return k ? Favorites.getSnapshot().filter(i => !i.inactiveAt && !i.deletedAt && sUid(getTrackByUid(i.uid)?.sourceAlbum) === k).map(i => i.uid) : []; }
-    
-    applyFavoritesOnlyFilter(opts = {}) {
-      this._cancelPendingLoad();
-      const pA = W.AlbumsManager?.getPlayingAlbum?.();
-      const favOn = ls.getItem('favoritesOnlyMode') === '1';
-      if (!pA || !this.originalPlaylist?.length) return false;
-
-      const wasPlaying = this.isPlaying();
-      const curUid = this.getCurrentTrackUid();
-      const prevPos = this.getPosition();
-
-      const st = resolveFavoritesOnlyState({
-        sourcePlaylist: this.originalPlaylist,
-        playingAlbum: pA,
-        favoritesOnly: favOn,
-        currentUid: curUid,
-        isFavorite: uid => this.isFavorite(uid),
-        favoritesState: this.getFavoritesState()
-      });
-
-      if (favOn && st.isEmptyForFavoritesMode) return false;
-      if (!st.resolvedPlaylist.length) return false;
-
-      const sameSet = st.resolvedPlaylist.length === this.playlist.length && st.resolvedPlaylist.every((t, i) => sUid(t.uid) === sUid(this.playlist[i]?.uid));
-      const nextIdx = st.currentAllowed ? Math.max(0, st.currentIndex) : 0;
-      const keepUid = sUid(st.resolvedPlaylist[nextIdx]?.uid);
-      const keepCurrent = st.currentAllowed && sUid(curUid) === keepUid;
-
-      this.shufHist = [];
-      this.playlist = [...st.resolvedPlaylist];
-      this.currentIndex = nextIdx;
-
-      if (!favOn) {
-        if (this.flags.shuf) {
-          const cur = keepUid || curUid;
-          this.shufflePlaylist(cur);
-          this.currentIndex = Math.max(0, this.playlist.findIndex(t => sUid(t.uid) === cur));
-        }
-        if (keepCurrent && this.sound) {
-          this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-          this._updMedia();
-          W.PlayerUI?.updatePlaylistFiltering?.();
-          emitG('playlist:changed', { reason: 'favoritesOnlyOff' });
-          return true;
-        }
-      }
-
-      if (favOn && this.flags.shuf) {
-        const head = keepUid || st.firstPlayableUid;
-        this.shufflePlaylist(head);
-        this.currentIndex = Math.max(0, this.playlist.findIndex(t => sUid(t.uid) === head));
-      }
-
-      if (keepCurrent && this.sound && (sameSet || !opts.forceReload)) {
-        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-        this._updMedia();
-        W.PlayerUI?.updatePlaylistFiltering?.();
-        emitG('playlist:changed', { reason: favOn ? 'favoritesOnlyOnKeep' : 'favoritesOnlyOffKeep' });
-        return true;
-      }
-
-      if (wasPlaying || opts.autoPlayIfNeeded) {
-        this.load(this.currentIndex, { autoPlay: true, resumePosition: keepCurrent ? prevPos : 0, dir: 1 });
-      } else {
-        this._emit('onTrackChange', this.getCurrentTrack(), this.currentIndex);
-        this._updMedia();
-      }
-
-      W.PlayerUI?.updatePlaylistFiltering?.();
-      emitG('playlist:changed', { reason: favOn ? 'favoritesOnlyOn' : 'favoritesOnlyOff' });
-      return true;
-    }
-
-    onFavoritesChanged(cb) { this._favSubs.add(cb); return () => this._favSubs.delete(cb); }
-
-    toggleShuffle() { 
-      this._cancelPendingLoad();
-      this.flags.shuf = !this.flags.shuf; 
-      if (this.flags.shuf) this.shufflePlaylist(); else { const u = this.getCurrentTrackUid(); this.playlist = [...this.originalPlaylist]; if(u) this.currentIndex = Math.max(0, this.playlist.findIndex(t => t.uid === u)); } 
-      emitG('playlist:changed', { reason: 'shuffle', shuffleMode: this.flags.shuf }); 
-    }
-    isShuffle() { return this.flags.shuf; }
-    
-    toggleRepeat() { this.flags.rep = !this.flags.rep; emitG('playlist:changed', { reason: 'repeat', repeatMode: this.flags.rep }); }
-    isRepeat() { return this.flags.rep; }
-
-    on(evs) { Object.entries(evs||{}).forEach(([k, f]) => { if (!this._ev.has(k)) this._ev.set(k, new Set()); this._ev.get(k).add(f); }); }
-    _emit(n, ...a) { this._ev.get(n)?.forEach(f => { try { f(...a); } catch {} }); }
-
-    setSleepTimer(ms, meta = {}) {
-      clearTimeout(this._sleep);
-      this._sleep = null;
-      this._sleepMeta = ms > 0 ? { ...meta } : null;
-      this._sleepTarget = ms > 0 ? Date.now() + ms : 0;
-
-      emitG('player:sleepTimerChanged', {
-        active: ms > 0,
-        targetAt: this._sleepTarget || 0,
-        meta: this._sleepMeta || null
-      });
-
-      if (ms > 0) {
-        this._sleep = setTimeout(() => {
-          this.stop();
-          this._emit('onSleepTriggered');
-          emitG('player:sleepTimerTriggered', {
-            targetAt: this._sleepTarget || 0,
-            meta: this._sleepMeta || null
-          });
-          this._sleep = null;
-          this._sleepTarget = 0;
-          this._sleepMeta = null;
-          emitG('player:sleepTimerChanged', { active: false, targetAt: 0, meta: null });
-        }, ms);
-      }
-    }
-    getSleepTimerTarget() { return this._sleepTarget || 0; }
-    getSleepTimerMeta() { return this._sleepMeta || null; }
-    clearSleepTimer() { this.setSleepTimer(0); }
-  }
-
-  W.playerCore = new PlayerCore();
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => W.playerCore.initialize()); else W.playerCore.initialize();
-})();
-
-//=================================================
-// FILE: /styles/album-carousel.css
-/* Обычные альбомы: круговая Cover Flow-карусель без влияния на playback. */
-.album-icons-row--albums.album-carousel{--album-carousel-x1:clamp(54px,17vw,70px);--album-carousel-x2:clamp(88px,28vw,118px);--album-carousel-x3:clamp(112px,37vw,154px);--album-carousel-drag-x:0px;position:relative;display:block;width:100%;height:118px;margin:-8px 0;padding:18px 0;overflow:visible;perspective:900px;perspective-origin:50% 48%;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
-.album-icons-row--albums.album-carousel.album-carousel-dragging{cursor:grabbing}
-.album-icons-row--albums.album-carousel .album-icon{position:absolute;top:32px;left:50%;width:52px;height:52px;margin:0;opacity:.42;filter:grayscale(70%) brightness(.72);transform:translateX(calc(-50% + var(--album-carousel-drag-x))) scale(.82);transform-origin:center;transition:left .5s cubic-bezier(.22,1,.36,1),top .5s cubic-bezier(.22,1,.36,1),width .5s cubic-bezier(.22,1,.36,1),height .5s cubic-bezier(.22,1,.36,1),opacity .35s ease,filter .35s ease,transform .5s cubic-bezier(.22,1,.36,1),box-shadow .35s ease,border-color .35s ease;will-change:left,top,transform;backface-visibility:hidden}
-.album-icons-row--albums.album-carousel.album-carousel-dragging .album-icon{transition:none!important}
-.album-icons-row--albums.album-carousel .album-icon:hover{opacity:1}
-.album-icons-row--albums.album-carousel .album-carousel-slot-0{left:50%;top:18px;z-index:10;width:82px;height:82px;opacity:1;filter:none;transform:translateX(calc(-50% + var(--album-carousel-drag-x))) translateZ(70px);border-color:var(--border-color);box-shadow:0 8px 20px rgba(0,0,0,.42)}
-.album-icons-row--albums.album-carousel .album-carousel-slot-p1{left:calc(50% + var(--album-carousel-x1));top:26px;z-index:8;width:66px;height:66px;opacity:.88;filter:grayscale(24%) brightness(.9);transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(-28deg) scale(.96)}
-.album-icons-row--albums.album-carousel .album-carousel-slot-m1{left:calc(50% - var(--album-carousel-x1));top:26px;z-index:8;width:66px;height:66px;opacity:.88;filter:grayscale(24%) brightness(.9);transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(28deg) scale(.96)}
-.album-icons-row--albums.album-carousel .album-carousel-slot-p2{left:calc(50% + var(--album-carousel-x2));top:32px;z-index:6;width:54px;height:54px;opacity:.68;filter:grayscale(48%) brightness(.78);transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(-38deg) scale(.9)}
-.album-icons-row--albums.album-carousel .album-carousel-slot-m2{left:calc(50% - var(--album-carousel-x2));top:32px;z-index:6;width:54px;height:54px;opacity:.68;filter:grayscale(48%) brightness(.78);transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(38deg) scale(.9)}
-.album-icons-row--albums.album-carousel .album-carousel-slot-p3{left:calc(50% + var(--album-carousel-x3));top:38px;z-index:4;width:44px;height:44px;opacity:.44;filter:grayscale(72%) brightness(.66);transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(-48deg) scale(.84)}
-.album-icons-row--albums.album-carousel .album-carousel-slot-m3{left:calc(50% - var(--album-carousel-x3));top:38px;z-index:4;width:44px;height:44px;opacity:.44;filter:grayscale(72%) brightness(.66);transform:translateX(calc(-50% + var(--album-carousel-drag-x))) rotateY(48deg) scale(.84)}
-.album-icons-row--albums.album-carousel .album-carousel-hidden{left:50%;z-index:0;opacity:0;pointer-events:none;transform:translateX(calc(-50% + var(--album-carousel-drag-x))) scale(.55)}
-.album-icons-row--albums.album-carousel .album-icon.active.album-carousel-slot-0{border-color:rgba(77,170,255,.72);box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 22px rgba(77,170,255,.38)}
-.album-icons-row--albums.album-carousel .album-icon.active:not(.album-carousel-slot-0){border-color:rgba(77,170,255,.58);box-shadow:0 0 12px rgba(77,170,255,.24)}
-.album-icons-row--albums.album-carousel.album-carousel-no-animation .album-icon{transition:none!important}
-@media(max-width:380px){
-.album-icons-row--albums.album-carousel{--album-carousel-x1:56px;--album-carousel-x2:96px;--album-carousel-x3:132px;height:112px}
-.album-icons-row--albums.album-carousel .album-carousel-slot-0{width:74px;height:74px;top:20px}
-.album-icons-row--albums.album-carousel .album-carousel-slot-p1,.album-icons-row--albums.album-carousel .album-carousel-slot-m1{width:60px;height:60px;top:27px}
-.album-icons-row--albums.album-carousel .album-carousel-slot-p3,.album-icons-row--albums.album-carousel .album-carousel-slot-m3{width:40px;height:40px}
-}
-@media(max-width:340px){
-.album-icons-row--albums.album-carousel{--album-carousel-x1:52px;--album-carousel-x2:88px;--album-carousel-x3:116px}
-}
-@media(prefers-reduced-motion:reduce){
-.album-icons-row--albums.album-carousel .album-icon{transition:none!important}
-}
-
-//=================================================
-// FILE: /styles/base.css
-/* ========================================== ФУНДАМЕНТ ПРИЛОЖЕНИЯ (base.css) ========================================== */
-/* 1. ПЕРЕМЕННЫЕ */
-:root{--primary-bg:#181818;--primary-color:#e80100;--secondary-color:#4daaff;--text-color:#f2f2f2;--modal-bg:#252d39;--border-color:#394866;--btn-size:44px;--btn-radius:8px;--bg-0:#0f1218;--c-blue:#8ab8fd;--c-w:#fff;--c-e:#eee;--shadow-1:0 4px 24px rgba(0,0,0,.3);--shadow-2:0 8px 32px rgba(0,0,0,.4);--grad-blue:linear-gradient(90deg,#4daaff,#357ac9);--om-bd:rgba(255,255,255,.1);--om-sub:#9db7dd;--om-bg:#141420;--om-border:rgba(255,255,255,.08);--om-muted:rgba(255,255,255,.4);--om-dim:rgba(255,255,255,.6);--om-card:rgba(255,255,255,.03);--om-accent:#7c4dff;--om-accent-a:rgba(124,77,255,.15);--om-green:#4caf50;--om-red:#f44336;--om-yellow:#ffc107;--om-r:10px}
-@media(prefers-color-scheme:dark){body{background:#0d0d0d}}
-/* 2. СБРОС И БАЗОВЫЕ ТЕГИ */
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--primary-bg);color:var(--text-color);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
-body{min-height:100vh;min-width:100vw;padding-top:env(safe-area-inset-top);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background:transparent!important}
-button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--secondary-color);outline-offset:2px}
-/* 3. ГЛОБАЛЬНЫЙ ЛЕЙАУТ */
-#main-block,#promocode-block,#modals-container{position:relative;z-index:5}
-/* 4. УТИЛИТЫ И АНИМАЦИИ */
-.hidden,[hidden]{display:none!important}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.animate-in{animation:fadeInUp .4s ease-out}
-
-//=================================================
-// FILE: /styles/games.css
-/* Game Center host in main app. No audio, no WebGL, no autoplay. */
-body.games-view,body.friends-view{background:var(--primary-bg)!important}
-body.games-view #cover-wrap,body.friends-view #cover-wrap{display:none!important}
-body.games-view #track-list,body.friends-view #track-list{max-width:395px;width:100%}
-.vf-host-in-friends{display:block;width:100%;max-width:320px;margin:0 auto 24px;border-radius:18px;overflow:hidden;background:rgba(8,11,26,.5);border:1px solid rgba(132,145,255,.18);box-sizing:border-box}
-.vf-host-in-friends.is-unauth>*:not(.custom-ya-unauth){display:none!important}
-.vf-host-in-friends .vf-app{position:static!important;inset:auto!important;max-width:none!important;height:auto!important;overflow:visible!important;background:transparent!important;padding:14px!important}
-.vf-host-in-friends .vf-wrap>.vf-head{display:none!important}
-.vf-host-in-friends.is-unauth>.vf-wrap,.vf-host-in-friends.is-unauth>.friends-authorized-guide{display:none!important}
-.custom-ya-unauth,.friends-authorized-guide{width:100%;padding:18px 14px;color:#eaf2ff;box-sizing:border-box}
-.custom-ya-unauth{display:flex;flex-direction:column;align-items:center;text-align:center}
-.friends-hero-icon{width:68px;height:68px;display:grid;place-items:center;margin-bottom:10px;border-radius:22px;background:linear-gradient(135deg,rgba(124,77,255,.24),rgba(77,170,255,.16));border:1px solid rgba(182,168,255,.32);font-size:36px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
-.friends-hero-kicker{font-size:10px;font-weight:900;color:#b6a8ff;text-transform:uppercase;letter-spacing:1px}
-.custom-ya-unauth h3{margin:7px 0 6px;font-size:19px;line-height:1.2;color:#fff}
-.friends-hero-text{margin:0 0 14px;color:#9db7dd;font-size:12px;line-height:1.45}
-.friends-feature-grid{display:grid;grid-template-columns:1fr;gap:7px;width:100%;margin:4px 0 14px}
-.friends-feature-card{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:13px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);text-align:left}
-.friends-feature-card>span{width:28px;flex:0 0 28px;font-size:21px;text-align:center}
-.friends-feature-card div{min-width:0}
-.friends-feature-card b{display:block;color:#fff;font-size:12px;line-height:1.2}
-.friends-feature-card small{display:block;margin-top:3px;color:#8ea8cc;font-size:10.5px;line-height:1.35}
-.friends-privacy-note{width:100%;margin-bottom:12px;padding:9px 10px;border-radius:11px;background:rgba(70,230,165,.07);border:1px solid rgba(70,230,165,.18);color:#adffdf;font-size:10.5px;line-height:1.35}
-.friends-login-btn{max-width:280px!important;margin:0 auto!important}
-.friends-ya-letter{font-size:20px;line-height:1}
-.friends-login-note{margin-top:9px;color:#7287aa;font-size:10px;line-height:1.35}
-body.games-view #active-album-title.active-album-title.games{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#8ab8fd!important;letter-spacing:.05em;text-align:center}
-body.friends-view #active-album-title.active-album-title.friends{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;color:#b6a8ff!important;letter-spacing:.05em;text-align:center}
-.gc-host{width:100%;margin:0 auto 32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:fadeInUp .25s ease-out}
-.gc-panel{border-radius:16px;padding:24px 16px;background:linear-gradient(180deg,rgba(22,28,40,.92),rgba(12,16,24,.96)),url('../img/bg-in.webp') center/cover no-repeat;border:1px solid rgba(77,170,255,.18);box-shadow:0 10px 28px rgba(0,0,0,.35);width:100%;max-width:320px;aspect-ratio:9/16;margin:0 auto;display:flex;flex-direction:column;justify-content:center;align-items:center}
-.gc-panel-kicker{font-size:10px;color:#8ab8fd;text-transform:uppercase;letter-spacing:1px;font-weight:900}
-.gc-panel-title{font-size:18px;color:#fff;font-weight:900;margin-top:4px}
-.gc-panel-text{font-size:12px;color:#9db7dd;line-height:1.45;margin-top:8px}
-.gc-panel-note{font-size:12px;color:#ffb74d;line-height:1.4;margin-top:10px;padding:10px;border-radius:12px;background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.18)}
-.gc-enter-btn{width:100%;min-height:46px;margin-top:12px;border:0;border-radius:14px;background:linear-gradient(135deg,#4daaff,#7c4dff);color:#fff;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;cursor:pointer;box-shadow:0 8px 22px rgba(77,170,255,.22);transition:transform .12s,filter .16s,opacity .16s}
-.gc-enter-btn:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
-.gc-enter-btn:active:not(:disabled){transform:scale(.98)}
-.gc-enter-btn:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.25);box-shadow:none}
-.gc-devline{margin-top:8px;font-size:10px;color:#556b88;text-align:center}
-.gc-frame-wrap{width:100%;aspect-ratio:9/16;height:auto;border-radius:18px;overflow:hidden;border:1px solid rgba(77,170,255,.22);background:#05080d;box-shadow:0 12px 34px rgba(0,0,0,.48)}
-.gc-frame{display:block;width:100%;height:100%;border:0;background:#05080d;overflow:hidden}
-.gc-launch-cover{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(circle at 50% 42%,rgba(255,49,89,.24),transparent 34%),#03040c;color:#fff;text-align:center;pointer-events:none}
-.gc-launch-logo{width:84px;height:84px;display:grid;place-items:center;border-radius:50%;background:rgba(255,49,89,.14);border:1px solid rgba(255,49,89,.35);font-size:44px;animation:gcLaunchPulse 1.15s ease-in-out infinite}
-.gc-launch-cover b{font-size:17px;font-weight:950}
-.gc-launch-cover span{max-width:260px;color:#9db7dd;font-size:12px;line-height:1.35}
-@keyframes gcLaunchPulse{0%,100%{transform:scale(.94);box-shadow:0 0 0 0 rgba(255,49,89,.35)}50%{transform:scale(1.05);box-shadow:0 0 0 16px rgba(255,49,89,0)}}
-@media(max-width:380px){.gc-panel{padding:12px}}
-.gc-host.is-gc-parked{position:fixed!important;left:-200vw!important;top:0!important;width:1px!important;height:1px!important;min-height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;transform:translate3d(-200vw,0,0)!important}
-.gc-host.is-gc-parked .gc-frame-wrap{position:static!important;inset:auto!important;width:1px!important;height:1px!important;max-width:1px!important;min-height:1px!important;border:0!important;box-shadow:none!important}
-.gc-host.is-mounted{margin-top:0}
-.gc-host.is-mounted .gc-panel{display:none!important}
-.gc-host.is-mounted .gc-frame-wrap{position:fixed;inset:0;z-index:9999;width:100%;max-width:420px;height:100dvh;margin:0 auto;border:0;border-radius:0;aspect-ratio:auto;box-shadow:none;background:#03040c}
-.gc-host.is-mounted .gc-frame{width:100%;height:100%}
-body:has(.gc-host.is-mounted:not(.is-gc-parked)){overflow:hidden}
-#gc-floating-heart{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10005;width:140px;height:140px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.gc-floating-pulse{position:absolute;inset:10px;border-radius:50%;background:#ff3159;filter:blur(20px);animation:gcHeartPulse 5.5s infinite ease-in-out;pointer-events:none}
-@keyframes gcHeartPulse{0%,100%{transform:scale(0.9);opacity:0.4}50%{transform:scale(1.3);opacity:0.8}}
-.gc-floating-img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 25px rgba(0,0,0,0.6));transition:transform 0.2s;z-index:2}
-#gc-floating-heart:active .gc-floating-img{transform:scale(0.95)}
-.gc-floating-text{position:absolute;z-index:3;text-align:center;font-weight:900;font-size:15px;line-height:1.1;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.9),0 0 10px rgba(255,49,89,0.9),0 0 20px rgba(255,49,89,0.9);pointer-events:none}
-.gc-floating-close{position:absolute;top:-6px;right:-6px;z-index:4;width:32px;height:32px;border-radius:50%;background:rgba(10,12,24,0.9);border:1px solid rgba(255,255,255,0.2);color:#9db7dd;font-size:16px;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:0.2s}
-.gc-floating-close:hover{color:#fff;background:rgba(255,49,89,0.9);border-color:#ff3159}
-
-//=================================================
-// FILE: /styles/main.css
-/* ========================================== ГЛАВНЫЙ ЛЕЙАУТ И БАЗОВЫЕ СПИСКИ (main.css) ========================================== */
-#main-block{max-width:420px;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 10px env(safe-area-inset-bottom)}
-#now-playing.now-playing-inline{width:100%;max-width:395px;margin:8px auto 0}
-#sysinfo-btn.sysinfo-hidden{display:none}
-.active-album-title{width:100%;max-width:400px;margin:18px auto 6px;text-align:center;color:#eaf2ff;font-weight:900;letter-spacing:.01em;line-height:1.15;text-shadow:0 1px 0 rgba(0,0,0,.35);font-size:clamp(18px,4.6vw,24px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.active-album-title.fav{color:#ffd166;letter-spacing:.06em}
-.active-album-title.news{color:var(--c-blue);letter-spacing:.02em}
-.album-icons{display:flex;flex-direction:column;gap:10px;margin:12px auto 0;max-width:400px;width:100%;padding:4px 8px}
-.album-icons-row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
-.album-icons-row--albums,.album-icons-row--nav{flex-wrap:nowrap}
-.album-icon{flex-shrink:0;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);cursor:pointer;filter:grayscale(70%) brightness(.88);opacity:.72;transition:width .3s cubic-bezier(.4,0,.2,1),height .3s cubic-bezier(.4,0,.2,1),min-width .3s cubic-bezier(.4,0,.2,1),filter .25s,opacity .25s,box-shadow .25s,transform .15s;touch-action:manipulation;-webkit-touch-callout:none;width:clamp(52px,13.5vw,72px);height:clamp(52px,13.5vw,72px)}
-.album-icon img{width:100%;height:100%;object-fit:cover;display:block}
-.album-icons-row--albums .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 14px rgba(77,170,255,.35);width:clamp(64px,17vw,82px);height:clamp(64px,17vw,82px);border-color:rgba(77,170,255,.45)}
-.album-icons-row--nav{gap:clamp(2px,.7vw,4px)}
-.album-icons-row--nav .album-icon{width:clamp(38px,11.8vw,50px);height:clamp(38px,11.8vw,50px);min-width:0}
-.album-icons-row--nav .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 10px rgba(0,0,0,.35);border-color:var(--secondary-color)}
-.album-icons-row--nav .profile-shards-value{font-size:clamp(16px,5vw,22px)}
-.album-icons-row--nav .profile-shards-label{font-size:clamp(8px,2.4vw,10px)}
-.album-icon:hover{transform:translateY(-2px);opacity:.9}
-.album-icon:active{transform:translateY(0) scale(.95)}
-.album-icons-row--nav .profile-dyn-icon{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;gap:2px;background:rgba(255,255,255,.03)}
-.track-list{margin:0 auto;max-width:370px;width:100%;font-size:1.05em;color:var(--c-e);background:0;padding:0}
-.fav-empty{padding:20px;text-align:center;color:#8ab8fd}
-.fav-empty h3{margin:0 0 10px}
-.fav-empty p{margin:0;opacity:.9}
-.fav-track-thumb{width:32px;height:32px;border-radius:4px;margin:0 8px 0 4px;object-fit:cover;flex-shrink:0}
-.fav-track-title-wrap{margin-left:0!important}
-.fav-track-meta{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.track{display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background .13s,transform .1s;background:0 0;user-select:none}
-.track:hover{background:rgba(255,255,255,.05)}
-.track.current{background:#232b38!important;border-left:3px solid var(--secondary-color)!important}
-.track:active{transform:scale(.98);background:rgba(255,255,255,.08)!important}
-.track.inactive{opacity:.45;filter:grayscale(.6)}
-.favonly-filtered [data-hidden-by-favonly]{display:none!important}
-.tnum{min-width:30px;color:var(--c-blue);font-weight:500}
-.track-title{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.track,.player-control-btn,.offline-btn,button,a,input,select,textarea,[role="button"]{touch-action:manipulation;-webkit-touch-callout:none}
-.logo-bottom{max-width:112px;width:23vw;min-width:66px;height:auto;display:block;margin:0 auto 15px!important;cursor:pointer;transition:transform .05s ease-out!important;will-change:transform,filter;transform:translateZ(0);transform-origin:center}
-.logo-bottom:hover{opacity:.9}
-.bottom-controls-center{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:32px auto 0;gap:10px;width:100%;max-width:300px;padding-bottom:env(safe-area-inset-bottom)}
-#install-pwa-btn{display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;background:linear-gradient(135deg,#7c4dff,#4daaff);border:0;border-radius:14px;font-size:14px;font-weight:900;letter-spacing:0.5px;margin:0 auto 10px;padding:14px 20px;cursor:pointer;width:100%;max-width:370px;box-shadow:0 6px 20px rgba(124,77,255,.4);transition:transform .2s,box-shadow .2s,filter .2s;text-transform:uppercase}
-#install-pwa-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(124,77,255,.5);filter:brightness(1.1)}
-#install-pwa-btn:active{transform:translateY(0);box-shadow:0 4px 15px rgba(124,77,255,.4)}
-@media(display-mode:standalone){#install-pwa-btn{display:none!important}}
-.feedback-link,.support-link{color:var(--secondary-color)!important;text-decoration:underline!important;font-weight:800;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:color .18s;font-size:1em;display:block;text-align:center;width:100%;margin:6px 0;background:0 0;border:0;padding:8px}
-.feedback-link:hover,.support-link:hover{color:var(--c-w)!important}
-.offline-btn{min-width:110px;height:40px;font-size:1.05em;font-weight:900;border:0;border-radius:10px;cursor:pointer;letter-spacing:.07em;box-shadow:0 2px 8px rgba(6,0,0,.2);transition:background .2s,color .14s,transform .1s,box-shadow .2s;display:block;margin:10px auto 0}
-.offline-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(6,0,0,.3)}
-.offline-btn:active{transform:translateY(0)}
-@media(max-width:380px){.album-icon{width:54px;height:54px}.album-icon.active{width:60px;height:60px}}
-@media(display-mode:standalone){.bottom-controls-center{padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
-
-//=================================================
-// FILE: /styles/offline.css
-/* ==========================================
-   ОФЛАЙН МЕНЕДЖЕР (offline.css)
-   ========================================== */
-
-.om-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:flex-start;justify-content:center;background:transparent;transition:all .25s;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 12px 40px}
-.om-overlay--visible{background:rgba(0,0,0,.65);backdrop-filter:blur(6px)}
-.om-modal{width:100%;max-width:420px;background:var(--om-bg);border:1px solid var(--om-border);border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.6);color:#e8e8f0;font:14px/1.5 -apple-system,BlinkMacSystemFont,sans-serif;opacity:0;transform:translateY(20px) scale(.97);transition:opacity .25s,transform .25s}
-.om-modal--visible{opacity:1;transform:none}
-.om-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
-.om-header__title{display:flex;align-items:center;gap:8px;font:700 16px/1 inherit;letter-spacing:1.5px;text-transform:uppercase;color:#fff}
-.om-header__close{all:unset;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:22px;color:var(--om-muted);transition:all .15s}
-.om-header__close:hover{background:rgba(255,255,255,.08);color:#fff}
-.om-body{padding:4px 0;max-height:calc(100vh - 120px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent}
-.om-body::-webkit-scrollbar{width:5px}
-.om-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px}
-.om-section{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06)}
-.om-section--last{border-bottom:none}
-.om-section__title{display:flex;align-items:center;gap:8px;margin:0 0 14px;font:600 13px/1 inherit;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.55)}
-.om-section__icon{font-size:15px}
-.om-divider{height:1px;background:rgba(255,255,255,.06);margin:14px 0}
-
-.om-storage-info,.om-traffic,.om-mode-card{background:var(--om-card);border-radius:var(--om-r);padding:12px 14px}
-.om-mode-card{border:1px solid rgba(255,255,255,.06)}
-.om-storage-segbar{display:flex;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;cursor:pointer;margin-bottom:8px;transition:box-shadow .2s}
-.om-storage-segbar:hover{box-shadow:0 0 0 2px rgba(124,77,255,.25)}
-.om-storage-segbar:active{box-shadow:0 0 0 2px rgba(124,77,255,.4)}
-.om-segbar__fill{height:100%;transition:width .5s ease;min-width:0;width:var(--seg-w,0)}
-.om-segbar--pinned{background:#f5c842}
-.om-segbar--cloud{background:#5bc0de}
-.om-segbar--transient{background:#ef5350}
-.om-segbar--other{background:#78909c}
-.om-fill-dyn{background:#9c27b0}
-.om-storage-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--om-dim)}
-.om-legend-item{display:inline-flex;align-items:center;gap:4px}
-.om-legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-.om-legend-dot--pinned{background:#f5c842}
-.om-legend-dot--cloud{background:#5bc0de}
-.om-legend-dot--transient{background:#ef5350}
-.om-legend-dot--other{background:#78909c}
-
-.om-net-unsupported{font-size:13px;color:var(--om-muted);font-style:italic;margin-bottom:10px;padding:8px 12px;background:var(--om-card);border-radius:8px;border-left:3px solid rgba(255,255,255,.12)}
-.om-net-kill-hint{font-size:12px;color:#ffab40;background:rgba(255,171,64,.08);border:1px solid rgba(255,171,64,.2);border-radius:8px;padding:8px 12px;margin-top:8px;line-height:1.4}
-.om-net-kill-btn{margin-top:8px}
-
-.om-toggles-row{display:flex;gap:8px;margin-bottom:10px}
-.om-toggle{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;flex:1;padding:10px 12px;border-radius:var(--om-r);font:500 13px inherit;transition:all .15s;user-select:none}
-.om-toggle--on{background:rgba(76,175,80,.15);box-shadow:inset 0 0 0 1px rgba(76,175,80,.35);color:#81c784}
-.om-toggle--off{background:rgba(244,67,54,.1);box-shadow:inset 0 0 0 1px rgba(244,67,54,.25);color:#ef9a9a}
-.om-toggle--neutral{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);color:var(--om-dim)}
-.om-toggle:hover{filter:brightness(1.12)}
-.om-toggle:active{transform:scale(.98)}
-.om-toggle__dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.om-toggle--on .om-toggle__dot{background:var(--om-green);box-shadow:0 0 6px rgba(76,175,80,.5)}
-.om-toggle--off .om-toggle__dot{background:var(--om-red);box-shadow:0 0 6px rgba(244,67,54,.4)}
-.om-toggle--neutral .om-toggle__dot{background:rgba(255,255,255,.3)}
-.om-toggle__label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.om-toggle-small{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;font-size:12px;color:var(--om-muted);background:var(--om-card);border:1px solid rgba(255,255,255,.06);transition:all .15s;margin-bottom:10px;text-align:center;user-select:none}
-.om-toggle-small--on{color:var(--om-dim);background:rgba(255,193,7,.08);border-color:rgba(255,193,7,.2)}
-
-.om-traffic{margin-bottom:12px}
-.om-traffic__title{font:600 12px inherit;text-transform:uppercase;letter-spacing:.5px;color:var(--om-muted);margin-bottom:8px}
-.om-traffic__group{margin-bottom:8px}
-.om-traffic__group:last-child{margin-bottom:0}
-.om-traffic__subtitle{font:500 11px inherit;color:rgba(255,255,255,.35);margin-bottom:3px}
-.om-traffic__row{display:flex;justify-content:space-between;font-size:13px;color:var(--om-dim);padding:2px 0}
-.om-traffic__row span:last-child{font-weight:500;color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums}
-
-.om-quality-toggle,.om-mode-toggle{display:flex;border-radius:8px;overflow:visible;border:1px solid rgba(255,255,255,.1);flex-shrink:0}
-.om-quality-btn,.om-mode-btn{all:unset;cursor:pointer;padding:6px 16px;font:600 13px inherit;color:rgba(255,255,255,.35);background:var(--om-card);transition:all .15s;user-select:none;text-align:center;white-space:nowrap}
-.om-mode-btn{font-size:12px;min-width:40px}
-.om-quality-btn:first-child,.om-mode-btn:first-child{border-right:1px solid rgba(255,255,255,.08)}
-.om-quality-btn:hover,.om-mode-btn:hover{background:rgba(255,255,255,.08)}
-.om-quality-btn--active-hi{background:rgba(76,175,80,.18)!important;color:#81c784!important;box-shadow:inset 0 -2px 0 var(--om-green)}
-.om-quality-btn--active-lo{background:rgba(255,193,7,.15)!important;color:#ffd54f!important;box-shadow:inset 0 -2px 0 var(--om-yellow)}
-.om-mode-btn--active{background:var(--om-accent-a)!important;color:#b388ff!important;box-shadow:inset 0 -2px 0 var(--om-accent)}
-
-.om-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-.om-setting{display:flex;flex-direction:column;gap:4px}
-.om-setting__label{font:500 11px inherit;color:rgba(255,255,255,.45)}
-.om-setting__input{all:unset;box-sizing:border-box;width:100%;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;font:500 14px inherit;font-variant-numeric:tabular-nums;transition:all .15s;-moz-appearance:textfield}
-.om-setting__input::-webkit-outer-spin-button,.om-setting__input::-webkit-inner-spin-button{-webkit-appearance:none}
-.om-setting__input:focus{border-color:rgba(124,77,255,.5);background:rgba(124,77,255,.06);outline:none}
-
-.om-dl-stats{display:flex;gap:12px;margin-bottom:12px}
-.om-dl-stat{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 8px;background:var(--om-card);border-radius:var(--om-r);border:1px solid rgba(255,255,255,.05)}
-.om-dl-stat__num{font:700 22px inherit;color:#fff;font-variant-numeric:tabular-nums}
-.om-dl-stat__label{font-size:11px;color:var(--om-muted);margin-top:2px}
-
-.om-mode-card__head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-.om-mode-card__head>div:first-child{flex:1;min-width:0}
-.om-mode-card__name{font:600 14px inherit;color:#fff;margin-bottom:2px}
-.om-mode-card__desc{font-size:12px;color:var(--om-muted);line-height:1.4}
-.om-mode-card__hint{font-size:12px;color:rgba(255,255,255,.35);margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
-.om-mode-card--disabled{opacity:.45;pointer-events:none;position:relative}
-.om-mode-card--disabled::after{content:'';position:absolute;inset:0;border-radius:var(--om-r);background:repeating-linear-gradient(135deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 20px)}
-.om-mode-card--disabled .om-mode-btn{cursor:not-allowed}
-
-.om-track-list{margin-top:12px;max-height:260px;overflow-y:auto;scrollbar-width:thin}
-.om-track-list::-webkit-scrollbar{width:4px}
-.om-track-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-.om-list-empty{text-align:center;padding:20px 12px;font-size:13px;color:rgba(255,255,255,.35)}
-.om-list-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;transition:background .12s,opacity .2s,transform .2s}
-.om-list-item:hover{background:rgba(255,255,255,.04)}
-.om-list-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
-.om-list-title{flex:1;font-size:13px;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.om-list-meta{font-size:11px;color:rgba(255,255,255,.35);flex-shrink:0;font-variant-numeric:tabular-nums}
-.om-list-del{all:unset;cursor:pointer;flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:14px;color:rgba(244,67,54,.6);transition:all .15s;margin-left:4px}
-.om-list-del:hover{background:rgba(244,67,54,.12);color:#ef5350}
-.om-list-del:active{transform:scale(.9)}
-.om-list-del-all{margin-top:10px}
-
-.om-pc-toprow{display:flex;gap:12px;align-items:flex-end;margin-bottom:14px}
-.om-pc-quality,.om-pc-recache{display:flex;flex-direction:column;gap:6px}
-.om-pc-quality{flex:0 0 auto}
-.om-pc-recache{flex:1}
-.om-pc-quality__label,.om-pc-recache__label{font-size:11px;color:rgba(255,255,255,.45);font-weight:500}
-.om-pc-recache__btn{width:100%;justify-content:center;white-space:nowrap;padding:6px 14px}
-
-.om-fullw{width:100%}
-.om-mt8{margin-top:8px}
-.om-mt10{margin-top:10px}
-.om-mb10{margin-bottom:10px}
-.om-mb14{margin-bottom:14px}
-.om-pt10{padding-top:10px}
-.om-item-btn-sm{padding:4px 8px;font-size:11px}
-
-@media(max-width:380px){
-  .om-overlay{padding:8px 6px 24px}
-  .om-modal{border-radius:12px}
-  .om-section,.om-header{padding:14px}
-  .om-settings-grid{grid-template-columns:1fr}
-  .om-toggles-row{flex-direction:column;gap:6px}
-  .om-mode-card__head{flex-direction:column;align-items:flex-start;gap:8px}
-}
-@media(max-width:340px){.om-pc-toprow{flex-direction:column;gap:8px}}
-@media(max-height:500px){.om-body{max-height:calc(100vh - 80px)}.om-overlay{padding:8px}}
-@media(min-width:768px){.om-overlay{align-items:center;padding:40px 20px}.om-body{max-height:70vh}}
-@media(prefers-reduced-motion:reduce){.om-modal,.om-overlay{transition:none!important}}
 
 
 // ... (truncate)
