@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 13:19:19 UTC
+Сгенерировано: 2026-07-24 13:20:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -1951,8 +1951,7 @@ export class AchievementEngine {
   constructor() {
     this.dict = { ...AchievementDictionary };
     this.unlocked = {}; this.unlockMeta = {}; this.profile = { xp: 0, level: 1 };
-    this.achievements = []; this.lastAgg = {}; this._checking = false; this._silentNotify = false;
-    this._initBoot();
+    this.achievements = []; this.lastAgg = {}; this._checking = false; this._checkAgain = false; this._silentNotify = false;
     window.addEventListener('stats:updated', () => this.check());
     window.addEventListener('listening-receipts:updated', () => {
       this.achievements = this._buildUIArray();
@@ -1982,7 +1981,10 @@ export class AchievementEngine {
 
   async check({ force = false, reason = '' } = {}) {
     if (window._isRestoring && !force) return;
-    if (this._checking) return;
+    if (this._checking) {
+      this._checkAgain = true;
+      return;
+    }
     this._checking = true;
     try {
     const statsArr = await metaDB.getAllStats(), gStat = statsArr.find(s => s.uid === 'global')?.featuresUsed || {};
@@ -2064,6 +2066,13 @@ export class AchievementEngine {
     this.broadcast(agg.streak, { reason });
     } finally {
       this._checking = false;
+
+      if (this._checkAgain) {
+        this._checkAgain = false;
+        queueMicrotask(() =>
+          this.check({ reason: 'coalesced_update' })
+        );
+      }
     }
   }
 
