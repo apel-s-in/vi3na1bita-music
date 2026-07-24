@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 20:31:03 UTC
+Сгенерировано: 2026-07-24 20:31:38 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -722,9 +722,16 @@ jobs:
           grep -q "activeDays: \[\]" scripts/analytics/stats-state.js
 
           if grep -En \
-            "lastFullListens|isRateLimited|setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
+            "lastFullListens|isRateLimited|comboUpdate|favOrderedRun|favShuffleEvents|midnightTripleTrack|midnightTripleCount|setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
             scripts/analytics/stats-aggregator.js; then
-            echo "Legacy local listening suppression or timer found"
+            echo "Legacy local listening validator found"
+            exit 2
+          fi
+
+          if grep -En \
+            "_speedRunnerMs|_speedRunnerAwarded|feature:[[:space:]]*['\"]speed_runner['\"]" \
+            scripts/analytics/session-tracker.js; then
+            echo "Legacy local speed runner validator found"
             exit 2
           fi
 
