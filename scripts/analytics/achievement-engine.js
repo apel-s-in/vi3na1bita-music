@@ -182,8 +182,12 @@ export class AchievementEngine {
         ? this._getSc(r, lvl, true)
         : Number(r.reward?.xp || 0);
       const shardReward = Number(reward?.amount ?? legacyAmount);
-      const rawCurrent = Number(current || 0);
-      const rawTarget = Number(target || 0);
+      const rawCurrent = Number(
+        reward?.current ?? current ?? 0
+      );
+      const rawTarget = Number(
+        reward?.target ?? target ?? 0
+      );
       const hidden = !completed && !!r.hidden;
       let effectiveCurrent = rawCurrent;
       let pct = rawTarget > 0
