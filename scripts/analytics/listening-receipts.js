@@ -6,6 +6,8 @@ import { requestSocialAction } from '../core/social-session.js';
 const HEARTBEAT_MS = 15000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
+const COMPLETION_OUTBOX_TTL_MS =
+  90 * 24 * 60 * 60 * 1000;
 
 const safe = value =>
   String(value == null ? '' : value).trim();
@@ -42,12 +44,32 @@ const readCompletionOutbox = () => {
     []
   );
 
-  return Array.isArray(rows)
-    ? rows.filter(item =>
-        item?.sessionId &&
-        item?.payload?.sessionId
-      )
-    : [];
+  if (!Array.isArray(rows)) return [];
+
+  const cutoff =
+    Date.now() - COMPLETION_OUTBOX_TTL_MS;
+
+  const valid = rows.filter(item =>
+    item?.sessionId &&
+    item?.payload?.sessionId &&
+    (
+      !Number(item.queuedAt) ||
+      Number(item.queuedAt) >= cutoff
+    )
+  );
+
+  if (valid.length !== rows.length) {
+    try {
+      localStorage.setItem(
+        COMPLETION_OUTBOX_KEY,
+        JSON.stringify(
+          valid.slice(-COMPLETION_OUTBOX_LIMIT)
+        )
+      );
+    } catch {}
+  }
+
+  return valid;
 };
 
 const writeCompletionOutbox = rows => {
@@ -60,6 +82,17 @@ const writeCompletionOutbox = rows => {
       )
     );
   } catch {}
+};
+
+const isTerminalCompletionError = error => {
+  const status = Number(error?.status || 0);
+  const message = safe(error?.message);
+
+  return (
+    status === 400 &&
+    /listen_session_(not_found|not_completable|expired)/
+      .test(message)
+  );
 };
 
 class ListeningReceiptService {
@@ -265,7 +298,10 @@ class ListeningReceiptService {
       sessionId: current.sessionId,
       reason: safe(reason)
     });
-    const ownerYandexId = currentYandexId();
+    const ownerYandexId = safe(
+      current.ownerYandexId ||
+      currentYandexId()
+    );
     const outbox = readCompletionOutbox();
     const existing = outbox.find(
       item => item.sessionId === current.sessionId
@@ -339,8 +375,7 @@ class ListeningReceiptService {
       while (true) {
         const outbox = readCompletionOutbox();
         const item = outbox.find(row =>
-          !row.ownerYandexId ||
-          row.ownerYandexId === ownerYandexId
+          safe(row.ownerYandexId) === ownerYandexId
         );
 
         if (!item) break;
@@ -354,10 +389,31 @@ class ListeningReceiptService {
           )
         );
 
-        const result = await requestSocialAction(
-          'listen_session_complete',
-          item.payload
-        );
+        let result;
+
+        try {
+          result = await requestSocialAction(
+            'listen_session_complete',
+            item.payload
+          );
+        } catch (error) {
+          if (!isTerminalCompletionError(error)) {
+            throw error;
+          }
+
+          writeCompletionOutbox(
+            readCompletionOutbox().filter(
+              row => row.id !== item.id
+            )
+          );
+
+          this.emit('completion_discarded', {
+            error: safe(error?.message),
+            sessionId: item.sessionId
+          });
+
+          continue;
+        }
 
         writeCompletionOutbox(
           readCompletionOutbox().filter(
@@ -420,7 +476,8 @@ class ListeningReceiptService {
 
     this.session = {
       sessionId: safe(result.session.sessionId),
-      trackUid
+      trackUid,
+      ownerYandexId: currentYandexId()
     };
 
     this.startTimer();
@@ -491,8 +548,16 @@ class ListeningReceiptService {
     return result;
   }
   getCompletionOutboxSnapshot() {
+    const ownerYandexId = currentYandexId();
+
     return readCompletionOutbox().map(item => ({
       ...item,
+      belongsToCurrentAccount:
+        safe(item.ownerYandexId) === ownerYandexId,
+      ageMs: Math.max(
+        0,
+        Date.now() - Number(item.queuedAt || Date.now())
+      ),
       payload: { ...item.payload }
     }));
   }
