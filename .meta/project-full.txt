@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 20:39:10 UTC
+Сгенерировано: 2026-07-24 21:11:11 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2724,12 +2724,6 @@ export const AchievementDictionary = {
     ui: { name: "Выходные с музыкой", short: "10 прослушиваний в выходные.", desc: "Добиться активности в Сб или Вс.", howTo: "Слушайте музыку на выходных.", icon: "🎉", color: "#ff5252" },
     reward: { xp: 100, tier: 3 },
     trigger: { conditions: [{ metric: "weekendPlays", operator: "gte", target: 10 }] }
-  },
-  "socials_all_visited": {
-    id: "socials_all_visited", type: "static", category: "features",
-    ui: { name: "Подписчик всего", short: "Откройте все соцсети из шапки.", desc: "Кликните по каждой из ссылок соцсетей хотя бы один раз.", howTo: "Перейдите по всем ссылкам соцсетей в шапке приложения.", icon: "🌐", color: "#03a9f4" },
-    reward: { xp: 50, tier: 1 },
-    trigger: { conditions: [{ metric: "socialVisitAll", operator: "gte", target: 1 }] }
   },
   "pwa_installed": {
     id: "pwa_installed", type: "static", category: "features",
