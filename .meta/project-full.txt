@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 20:24:23 UTC
+Сгенерировано: 2026-07-24 20:25:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -20009,11 +20009,9 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 #promo-btn:disabled{opacity:.5;cursor:not-allowed}
 #promo-error{color:#ff6b6b;margin-top:12px;font-size:14px;min-height:20px}
 
-/* Avatar & Reset Modals */
+/* Avatar Modals */
 .prof-ava-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
 .prof-ava-btn{font-size:24px;background:#232b38}
-.prof-reset-btn{width:100%}
-.prof-reset-btn--mb{margin-bottom:8px}
 
 /* Carousel 3D */
 .sc-3d-wrap{margin:8px 0 12px;padding:0 2px;touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:visible}
@@ -20119,8 +20117,6 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 .stat-sub{color:#888;font-size:12px;text-align:center}
 .stat-card--mb10{margin-bottom:10px}
 .stat-card--mb15{margin-bottom:15px}
-.prof-reset-wrap{display:flex;justify-content:center;margin-top:8px}
-.backup-btn--dark{background:#444}
 
 .ach-hint-bubble{background:linear-gradient(180deg,rgba(26,34,50,.95),rgba(12,16,24,.98));border-radius:12px;padding:12px 18px;font-size:13px;color:#eaf2ff;font-weight:700;display:flex;align-items:center;justify-content:center;margin:16px auto 8px;width:100%;max-width:320px;height:44px;box-sizing:border-box;overflow:hidden;cursor:pointer;border:1px solid rgba(77,170,255,.4);box-shadow:0 6px 16px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .2s,box-shadow .2s}
 #ach-hint-bubble-text{white-space:nowrap;display:inline-block;transform-origin:center center;transition:opacity 0.3s}
