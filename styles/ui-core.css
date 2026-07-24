@@ -58,6 +58,13 @@
 .ios-prompt-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:0;color:#fff;font-size:24px;cursor:pointer;line-height:1;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .ios-prompt-button{background:linear-gradient(135deg,#7c4dff,#4daaff);color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;width:100%;cursor:pointer;font-size:15px}
 
+.pwa-guide{display:flex;flex-direction:column;align-items:center;gap:14px}
+.pwa-guide-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:16px;background:linear-gradient(135deg,rgba(124,77,255,.22),rgba(77,170,255,.16));border:1px solid rgba(124,77,255,.28);font-size:27px}
+.pwa-guide-steps{width:100%;margin:0;padding:0 0 0 24px;color:#eaf2ff;font-size:13px;line-height:1.5}
+.pwa-guide-steps li{padding:4px 0 4px 5px}
+.pwa-guide-note{width:100%;padding:10px 12px;border-radius:11px;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.2);color:#9db7dd;font-size:11px;line-height:1.4;text-align:center}
+.pwa-guide-close{width:100%}
+
 .fb-modal-note{margin-bottom:20px;color:#8ab8fd;text-align:center}
 .fb-modal-links{display:flex;flex-direction:column;gap:15px;max-width:300px;margin:0 auto}
 .fb-modal-link{color:#fff;padding:15px;border-radius:8px;text-decoration:none;text-align:center}
