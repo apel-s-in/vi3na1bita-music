@@ -470,7 +470,15 @@ class ListeningReceiptService {
           localStorage.getItem('deviceHash') ||
           'web'
         ),
-        variant: safe(detail.type || 'audio')
+        variant: safe(detail.type || 'audio'),
+        timezoneOffsetMin:
+          new Date().getTimezoneOffset(),
+        shuffle:
+          !!window.playerCore?.isShuffle?.(),
+        favoritesOnly:
+          localStorage.getItem('favoritesOnlyMode') === '1',
+        favoriteAtStart:
+          !!window.playerCore?.isFavorite?.(trackUid)
       })
     );
 
