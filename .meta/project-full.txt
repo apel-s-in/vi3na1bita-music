@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 13:22:14 UTC
+Сгенерировано: 2026-07-24 13:23:10 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -6342,14 +6342,28 @@ export class StatsAggregator {
               }
               if (isF && !isRateLimited && v !== 'short') {
                 s.globalFullListenCount++; this.lastFullListens.set(ev.uid, ev.timestamp);
-                const mins = new Date(ev.timestamp).getHours() * 60 + new Date(ev.timestamp).getMinutes();
+                const contextDate = new Date(
+                  Number(ev.data.startedAt || ev.timestamp)
+                );
+                const mins =
+                  contextDate.getHours() * 60 +
+                  contextDate.getMinutes();
                 if (mins >= 120 && mins <= 270) s.featuresUsed.nightPlay = (s.featuresUsed.nightPlay || 0) + 1;
                 if (mins >= 300 && mins <= 539) s.featuresUsed.earlyPlay = (s.featuresUsed.earlyPlay || 0) + 1;
                 if (q === 'hi') s.featuresUsed.hiQuality = (s.featuresUsed.hiQuality || 0) + 1;
                 if (s.globalFullListenCount >= (parseInt(localStorage.getItem('cloud:listenThreshold')) || 5) && !window._isRestoring) window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', { detail: { uid: ev.uid } }));
-                if (window.playerCore) {
-                  const isFavOnly = localStorage.getItem('favoritesOnlyMode') === '1', isShuf = window.playerCore.isShuffle(), isFav = window.playerCore.isFavorite(ev.uid);
-                  if (isShuf) s.featuresUsed.shufflePlay = (s.featuresUsed.shufflePlay || 0) + 1;
+                {
+                  const isFavOnly =
+                    ev.data.favoritesOnly === true;
+                  const isShuf =
+                    ev.data.shuffle === true;
+                  const isFav =
+                    ev.data.favoriteAtStart === true;
+
+                  if (isShuf) {
+                    s.featuresUsed.shufflePlay =
+                      (s.featuresUsed.shufflePlay || 0) + 1;
+                  }
                   if (isFavOnly && !isShuf && isFav) { if (this.session.favOrderedLastUid !== ev.uid) { this.session.favOrderedRun++; this.session.favOrderedLastUid = ev.uid; } } else { this.session.favOrderedRun = 0; this.session.favOrderedLastUid = null; }
                   isFavOnly && isShuf && isFav ? this.session.favShuffleEvents.add(ev.uid) : this.session.favShuffleEvents.clear();
                   const timeStr = new Date(ev.timestamp).toTimeString().slice(0, 8);
