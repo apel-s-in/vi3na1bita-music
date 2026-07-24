@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 19:56:59 UTC
+Сгенерировано: 2026-07-24 19:57:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -688,6 +688,12 @@ jobs:
           grep -q "favoritesOnly" scripts/analytics/listening-receipts.js
           grep -q "favoriteAtStart" scripts/analytics/listening-receipts.js
           grep -q "queueMicrotask" scripts/analytics/listening-receipts.js
+          grep -q "music_feature_use" scripts/analytics/listening-receipts.js
+          grep -q "sleep_timer_start" scripts/analytics/listening-receipts.js
+          grep -q "sleep_timer_complete" scripts/analytics/listening-receipts.js
+          grep -q "sleep_timer_cancel" scripts/analytics/listening-receipts.js
+          grep -q "recordFeature" scripts/app/player-ui.js
+          grep -q "completeSleepTimer" scripts/ui/sleep-timer.js
           grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/account-data-boundary.js
           if grep -En "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" scripts/analytics/listening-receipts.js; then
             echo "Listening receipts must not control playback"
