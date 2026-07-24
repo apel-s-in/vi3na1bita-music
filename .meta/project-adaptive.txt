@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 21:32:11 UTC
+Сгенерировано: 2026-07-24 22:33:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -11221,8 +11221,18 @@ export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderCloudMetaBox, r
 
 //=================================================
 // FILE: /scripts/app/profile/profile-tab-bindings.js
-import { bindProfileActions } from './actions.js'; import { bindProfileLiveBindings } from './live-bindings.js'; import { bindProfileAccount } from './account-bindings.js';
-export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, onProfileChanged, reloadProfile } = {}) => { if(!container)return; bindProfileAccount({container,profile,metaDB,onProfileChanged}); bindProfileLiveBindings({ctx,getContainer:()=>document.getElementById('track-list'),achView,metaDB}); bindProfileActions({ctx,container,achView,reloadProfile}); };
+import { bindProfileActions } from './actions.js';
+import { bindProfileLiveBindings } from './live-bindings.js';
+import { bindProfileAccount } from './account-bindings.js';
+
+export const bindProfileTabControllers = ({ ctx, container, achView, profile, metaDB, onProfileChanged, reloadProfile } = {}) => {
+  if (!container) return;
+  ctx._profileAchievementsView = achView;
+  bindProfileAccount({ container, profile, metaDB, onProfileChanged });
+  bindProfileLiveBindings({ ctx, getContainer: () => document.getElementById('track-list'), metaDB });
+  bindProfileActions({ ctx, container, achView, reloadProfile });
+};
+
 export default { bindProfileTabControllers };
 
 //=================================================
