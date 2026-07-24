@@ -70,19 +70,19 @@ export const AchievementDictionary = {
   // ==========================================
   "quality_snob": {
     id: "quality_snob", type: "static", category: "features",
-    ui: { name: "Качество звука", short: "10 прослушиваний в качестве Hi.", desc: "Только для ценителей кристального звука.", howTo: "Переключатель качества в положении Hi.", icon: "💎", color: "#4fc3f7" },
+    ui: { name: "Качество звука", short: "10 полных прослушиваний в качестве Hi.", desc: "Сервер учитывает только полные прослушивания, начатые в качестве Hi.", howTo: "Установите качество Hi и дослушивайте треки полностью.", icon: "💎", color: "#4fc3f7" },
     reward: { xp: 30, tier: 2 },
     trigger: { conditions: [{ metric: "hiPlays", operator: "gte", target: 10 }] }
   },
   "early_bird": {
     id: "early_bird", type: "static", category: "time",
-    ui: { name: "Ранняя пташка", short: "Слушайте утром (10 раз).", desc: "Окно 05:00–08:00 (по вашему времени).", howTo: "Запланируйте утреннее прослушивание.", icon: "🌅", color: "#ffd54f" },
+    ui: { name: "Ранняя пташка", short: "10 полных утренних прослушиваний.", desc: "Старт трека с 05:00 до 08:59 по времени, зафиксированному при начале сессии.", howTo: "Запускайте утром и дослушивайте треки полностью.", icon: "🌅", color: "#ffd54f" },
     reward: { xp: 50, tier: 2 },
     trigger: { conditions: [{ metric: "earlyPlays", operator: "gte", target: 10 }] }
   },
   "night_owl": {
     id: "night_owl", type: "static", category: "time",
-    ui: { name: "Ночной слушатель", short: "Слушайте ночью (10 раз).", desc: "Окно 02:00–04:30.", howTo: "Включите трек поздно ночью.", icon: "🦉", color: "#b388ff" },
+    ui: { name: "Ночной слушатель", short: "10 полных ночных прослушиваний.", desc: "Старт трека с 02:00 до 04:30 по времени, зафиксированному при начале сессии.", howTo: "Запускайте ночью и дослушивайте треки полностью.", icon: "🦉", color: "#b388ff" },
     reward: { xp: 50, tier: 2 },
     trigger: { conditions: [{ metric: "nightPlays", operator: "gte", target: 10 }] }
   },
@@ -123,7 +123,7 @@ export const AchievementDictionary = {
   // ==========================================
   "use_shuffle_5": {
     id: "use_shuffle_5", type: "static", category: "listening",
-    ui: { name: "В случайном порядке", short: "5 прослушиваний в режиме Shuffle.", desc: "Слушайте с включённым случайным порядком.", howTo: "Включите Shuffle и слушайте.", icon: "🔀", color: "#ff9800" },
+    ui: { name: "В случайном порядке", short: "5 полных прослушиваний в режиме Shuffle.", desc: "Режим Shuffle фиксируется серверной сессией при старте трека.", howTo: "Включите Shuffle и дослушайте 5 треков полностью.", icon: "🔀", color: "#ff9800" },
     reward: { xp: 50, tier: 2 },
     trigger: { conditions: [{ metric: "shufflePlays", operator: "gte", target: 5 }] }
   },
