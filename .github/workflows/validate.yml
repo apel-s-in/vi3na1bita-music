@@ -62,6 +62,12 @@ jobs:
           grep -q "favoritesOnly" scripts/analytics/listening-receipts.js
           grep -q "favoriteAtStart" scripts/analytics/listening-receipts.js
           grep -q "queueMicrotask" scripts/analytics/listening-receipts.js
+          grep -q "music_feature_use" scripts/analytics/listening-receipts.js
+          grep -q "sleep_timer_start" scripts/analytics/listening-receipts.js
+          grep -q "sleep_timer_complete" scripts/analytics/listening-receipts.js
+          grep -q "sleep_timer_cancel" scripts/analytics/listening-receipts.js
+          grep -q "recordFeature" scripts/app/player-ui.js
+          grep -q "completeSleepTimer" scripts/ui/sleep-timer.js
           grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/account-data-boundary.js
           if grep -En "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" scripts/analytics/listening-receipts.js; then
             echo "Listening receipts must not control playback"
