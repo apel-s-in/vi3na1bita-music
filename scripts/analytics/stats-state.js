@@ -16,6 +16,12 @@ export const rebuildStatsFromEvents = async (db = defaultMetaDB, events = [], { 
   await db.clearEvents('events_warm').catch(() => {});
   if (warm.length) await db.addEvents(warm, 'events_warm');
   await db.tx('stats', 'readwrite', s => s.clear());
+  await db.setGlobal('global_streak', {
+    current: 0,
+    longest: 0,
+    lastActiveDate: '',
+    activeDays: []
+  });
   await db.clearEvents('events_hot').catch(() => {});
   const BATCH_SIZE = 500;
   for (let i = 0; i < warm.length; i += BATCH_SIZE) {
