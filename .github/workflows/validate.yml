@@ -80,6 +80,20 @@ jobs:
             exit 2
           fi
 
+      - name: Validate shared shard reward notifier
+        run: |
+          node --input-type=module --check < scripts/app/shards/reward-notifier.js
+          grep -q "applyShardRewardResult" scripts/analytics/listening-receipts.js
+          grep -q "applyShardRewardResult" scripts/analytics/favorite-mirror.js
+          grep -q "reward-notifier.js" service-worker.js
+
+          if grep -En \
+            "\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(" \
+            scripts/app/shards/reward-notifier.js; then
+            echo "Reward notifier must not control playback"
+            exit 2
+          fi
+
       - name: Validate verified shard reward client
         run: |
           grep -q "getCompletedCount" scripts/analytics/achievement-engine.js
