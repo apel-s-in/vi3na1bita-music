@@ -108,7 +108,6 @@ export class StatsAggregator {
             await metaDB.updateStat(ev.uid || 'global', s => {
               s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1; s.lastPlayedAt = ev.timestamp;
               try { const d = new Date(ev.timestamp); (s.byHour ??= Array(24).fill(0))[d.getHours()]++; (s.byWeekday ??= Array(7).fill(0))[(d.getDay() + 6) % 7]++; } catch {}
-              if (f === 'social_visit') { const tgt = String(ev.data.target || 'other').toLowerCase(); s.featuresUsed[`social_visit_${tgt}`] = (s.featuresUsed[`social_visit_${tgt}`] || 0) + 1; if (s.featuresUsed.social_visit_youtube && s.featuresUsed.social_visit_telegram && s.featuresUsed.social_visit_vk && s.featuresUsed.social_visit_tiktok) s.featuresUsed.social_visit_all = 1; }
               if (['sleep_timer_set', 'sleep_timer_extend', 'sleep_timer_cancel', 'sleep_timer'].includes(f)) { s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + Math.max(0, Number(ev.data.minutes || 0)); if (ev.data.mode) s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] = (s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] || 0) + 1; }
               return s;
             });
