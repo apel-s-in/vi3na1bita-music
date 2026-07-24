@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 13:04:44 UTC
+Сгенерировано: 2026-07-24 13:05:50 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -681,6 +681,7 @@ jobs:
           grep -q "flushCompletionOutbox" scripts/analytics/listening-receipts.js
           grep -q "COMPLETION_OUTBOX_TTL_MS" scripts/analytics/listening-receipts.js
           grep -q "isTerminalCompletionError" scripts/analytics/listening-receipts.js
+          grep -q "flushCompletionOutbox().catch" scripts/analytics/listening-receipts.js
           grep -q "ownerYandexId: currentYandexId()" scripts/analytics/listening-receipts.js
           grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/account-data-boundary.js
           if grep -En "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" scripts/analytics/listening-receipts.js; then
@@ -708,6 +709,23 @@ jobs:
             scripts/app/profile/view.js \
             scripts/ui/statistics-modal.js; then
             echo "Local-only achievement count found"
+            exit 2
+          fi
+
+      - name: Validate deterministic recommendations
+        run: |
+          node --input-type=module --check < scripts/app/profile/recs-view.js
+          grep -q "stableScore" scripts/app/profile/recs-view.js
+
+          if grep -En \
+            "sort\([[:space:]]*\(\)[[:space:]]*=>[[:space:]]*Math\.random" \
+            scripts/app/profile/recs-view.js; then
+            echo "Random comparator found in recommendations"
+            exit 2
+          fi
+
+          if grep -q "oldTabs" scripts/app/profile/carousel-flat.js; then
+            echo "Removed legacy profile-tabs fallback found"
             exit 2
           fi
 
