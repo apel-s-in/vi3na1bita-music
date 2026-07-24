@@ -178,21 +178,23 @@ export const refreshAchievementEngineFromDb = async ({ metaDB, reason = 'achieve
   if (forceCheck && typeof eng.check === 'function') {
     const old = !!eng._silentNotify;
     eng._silentNotify = !!silent;
-    try { await eng.check({ force: true }); } finally { eng._silentNotify = old; }
+
+    try {
+      await eng.check({ force: true, reason });
+    } finally {
+      eng._silentNotify = old;
+    }
   } else {
-    eng.achievements = eng._buildUIArray?.() || eng.achievements || [];
-    eng.broadcast?.(n(st?.value?.current));
+    eng.achievements =
+      eng._buildUIArray?.() ||
+      eng.achievements ||
+      [];
+    eng.broadcast?.(
+      n(st?.value?.current),
+      { reason }
+    );
   }
-  window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
-    total: eng.achievements?.length || 0,
-    unlocked: eng.getCompletedCount?.() ?? 0,
-    localUnlocked: Object.keys(eng.unlocked || {}).length,
-    items: eng.unlocked || {},
-    unlockMeta: eng.unlockMeta || {},
-    streak: n(st?.value?.current),
-    profile: eng.profile || { xp: 0, level: 1 },
-    reason
-  } }));
+
   return true;
 };
 
