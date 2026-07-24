@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 17:17:47 UTC
+Сгенерировано: 2026-07-24 17:18:14 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -719,6 +719,12 @@ jobs:
             echo "Reward notifier must not control playback"
             exit 2
           fi
+
+      - name: Validate server-authoritative achievements
+        run: |
+          grep -q "_requiresServerVerification" scripts/analytics/achievement-engine.js
+          grep -q "legacy_local_unverified" scripts/analytics/achievement-engine.js
+          grep -q "if (this._requiresServerVerification(r)) continue" scripts/analytics/achievement-engine.js
 
       - name: Validate verified shard reward client
         run: |
