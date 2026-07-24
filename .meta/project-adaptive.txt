@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 16:34:36 UTC
+Сгенерировано: 2026-07-24 16:35:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -4362,6 +4362,7 @@ window.eventLogger = eventLogger;
 // Не управляет playback и не перестраивает playing playlist.
 
 import { requestSocialAction } from '../core/social-session.js';
+import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 import {
   favoriteSignature,
   localToRemote,
@@ -4703,28 +4704,7 @@ class FavoriteMirrorService {
           }
         );
 
-        if (
-          result?.wallet ||
-          (Array.isArray(result?.rewards) &&
-            result.rewards.length)
-        ) {
-          window.ShardWallet
-            ?.refresh?.({ force: true })
-            .catch(() => null);
-        }
-
-        if (Array.isArray(result?.rewards) &&
-            result.rewards.length) {
-          const amount = result.rewards.reduce(
-            (sum, reward) =>
-              sum + Number(reward?.amount || 0),
-            0
-          );
-
-          window.NotificationSystem?.success?.(
-            `♦ Начислено ${amount} Осколков`
-          );
-        }
+        applyShardRewardResult(result);
 
         outbox = readOutbox()
           .filter(row =>
