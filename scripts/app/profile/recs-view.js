@@ -1,3 +1,59 @@
-// UID.054_(Recommendation engine core)_(перевести вкладку Для Вас на единый движок)_(этот view должен стать thin renderer поверх intel recommendation engine) UID.056_(Recommendation reasons)_(показывать пользователю объяснение)_(future рендерить reason chips/human explanations рядом с треком) UID.060_(Session-aware next-track strategy)_(развести общие рекомендации и текущий session context)_(profile recs — taste/global слой, а не next-track executor) UID.061_(Community-driven recommendations)_(подмешивать cohort/similar listeners сигналы)_(view должен уметь принять community reasons, но не считать их сам) UID.062_(Recommendation memory and feedback)_(помнить shown/clicked/accepted/dismissed)_(recs-view станет важной точка user feedback для recommendation_state) UID.063_(Profile recs tab upgrade)_(полностью заменить случайные recs на explainable personalized recs)_(текущая random fallback логика должна остаться только как safe fallback) UID.082_(Local truth vs external telemetry split)_(любые rec interactions наружу только через telemetry mapper)_(не слать raw rec data напрямую из view)
-const esc = s => window.Utils?.escapeHtml ? window.Utils.escapeHtml(String(s||'')) : String(s||'');
-export const renderProfileRecs = ({ container: c, all }) => { const r = c?.querySelector('#prof-recs-list'); if(!r)return; const p = new Set((all||[]).filter(s=>s.globalFullListenCount>0).map(s=>s.uid)), recs = (window.TrackRegistry?.getAllUids?.()||[]).filter(u=>!p.has(u)).sort(()=>Math.random()-.5).slice(0,4); r.innerHTML = recs.length ? recs.map(u=>`<div class="profile-list-item" data-uid="${u}"><div class="log-info"><div class="log-title">${esc(window.TrackRegistry?.getTrackByUid(u)?.title)}</div><div class="log-desc">${esc(window.TrackRegistry?.getTrackByUid(u)?.album)}</div></div><button class="rec-play-btn" data-playuid="${u}">▶</button></div>`).join('') : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>'; };
+// UID.054_(Recommendation engine core)_(profile view остаётся thin renderer)_(до готовности engine используется стабильный дневной fallback)
+// UID.094_(No-paralysis rule)_(fallback не управляет playback)_(только отображает кандидатов)
+
+const esc = value =>
+  window.Utils?.escapeHtml?.(String(value || '')) ||
+  String(value || '');
+
+const dailyKey = () =>
+  new Date().toISOString().slice(0, 10);
+
+const stableScore = (uid, seed) => {
+  const text = `${seed}:${String(uid || '')}`;
+  let hash = 2166136261;
+
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+};
+
+export const renderProfileRecs = ({ container, all }) => {
+  const root = container?.querySelector('#prof-recs-list');
+  if (!root) return;
+
+  const played = new Set(
+    (all || [])
+      .filter(stat =>
+        Number(stat?.globalFullListenCount || 0) > 0
+      )
+      .map(stat => String(stat.uid || ''))
+  );
+
+  const seed = dailyKey();
+  const recommendations = (
+    window.TrackRegistry?.getAllUids?.() || []
+  )
+    .filter(uid => !played.has(uid))
+    .map(uid => ({
+      uid,
+      score: stableScore(uid, seed)
+    }))
+    .sort((left, right) =>
+      left.score - right.score ||
+      left.uid.localeCompare(right.uid)
+    )
+    .slice(0, 4)
+    .map(item => item.uid);
+
+  root.innerHTML = recommendations.length
+    ? recommendations.map(uid => {
+        const track =
+          window.TrackRegistry?.getTrackByUid?.(uid);
+
+        return `<div class="profile-list-item" data-uid="${esc(uid)}"><div class="log-info"><div class="log-title">${esc(track?.title)}</div><div class="log-desc">${esc(track?.album)}</div></div><button class="rec-play-btn" data-playuid="${esc(uid)}">▶</button></div>`;
+      }).join('')
+    : '<div class="fav-empty">Вы прослушали абсолютно всё! 🏆</div>';
+};
