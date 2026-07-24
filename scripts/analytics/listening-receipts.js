@@ -2,6 +2,7 @@
 // Режим наград задаёт сервер; клиент никогда не управляет playback.
 
 import { requestSocialAction } from '../core/social-session.js';
+import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 
 const HEARTBEAT_MS = 15000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
@@ -331,28 +332,7 @@ class ListeningReceiptService {
       this.lastProgress = result.progress;
     }
 
-    const grants = Array.isArray(result?.rewards)
-      ? result.rewards
-      : [];
-
-    if (result?.wallet || grants.length) {
-      window.ShardWallet
-        ?.refresh?.({ force: true })
-        .catch(() => null);
-    }
-
-    if (grants.length) {
-      const amount = grants.reduce(
-        (sum, grant) =>
-          sum + Number(grant?.amount || 0),
-        0
-      );
-
-      window.NotificationSystem?.success?.(
-        `♦ Начислено ${amount} Осколков`
-      );
-    }
-
+    applyShardRewardResult(result);
     this.emit('completed', result);
 
     // Completion содержит свежий progress, но не полный reward catalog.
