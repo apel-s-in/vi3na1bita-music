@@ -66,7 +66,13 @@
           'shuffle-btn': () => { c.toggleShuffle(); syncUI(); }, 'repeat-btn': () => { c.toggleRepeat(); syncUI(); },
           'mute-btn': () => { c.setMuted(!c.isMuted()); syncUI(); }, 'sleep-timer-btn': () => W.SleepTimer?.show?.(),
           'pq-btn': onPQClick, 'lyrics-text-btn': () => W.LyricsModal?.show?.(), 'pulse-btn': () => W.LogoPulse?.toggle?.(), 'stats-btn': () => W.StatisticsModal?.openStatisticsModal?.(),
-          'lyrics-toggle-btn': () => { W.LyricsController?.toggleLyricsView?.(); W.eventLogger?.log('FEATURE_USED', c.getCurrentTrackUid(), { feature: 'lyrics' }); },
+          'lyrics-toggle-btn': () => {
+            W.LyricsController?.toggleLyricsView?.();
+            W.eventLogger?.log('FEATURE_USED', c.getCurrentTrackUid(), { feature: 'lyrics' });
+            W.ListeningReceipts?.recordFeature?.('lyrics', {
+              trackUid: c.getCurrentTrackUid()
+            });
+          },
           'animation-btn': () => W.LyricsController?.toggleAnimation?.(), 'source-indicator': () => U.ui.toast(`Источник музыки: ${{yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'}`, 'info'),
           'favorites-btn': () => { const res = W.FavoritesOnlyActions?.toggleFavoritesOnlyMode?.({ player: c, storage: localStorage, syncUi: syncUI }) || { ok: false, enabled: U.lsGetBool01('favoritesOnlyMode'), reason: 'missing_action' }; if (!res.ok) return U.ui.toast(res.reason === 'empty' ? 'Отметьте понравившийся трек ⭐' : 'Ошибка режима избранного', res.reason === 'empty' ? 'info' : 'error'); U.ui.toast(res.enabled ? '⭐ Только избранные' : 'Играют все треки', res.enabled ? 'success' : 'info'); }
         })[b.id]?.();
