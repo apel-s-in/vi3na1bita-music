@@ -37,7 +37,7 @@ export class AchievementEngine {
   _evalCondition(c, agg) { const v = agg[c.metric] || 0; return c.operator === 'gte' ? v >= c.target : v === c.target; }
   _getSc(r, lvl, isXp) { if (isXp) return Math.floor(r.reward.xpBase * Math.pow(r.reward.xpMultiplier, lvl - 1)); const s = r.scaling; return s.math === 'custom' ? (s.steps[lvl - 1] ?? s.steps[s.steps.length - 1]) : r.trigger.conditions[0].startTarget * Math.pow(s.factor, lvl - 1); }
 
-  async check({ force = false } = {}) {
+  async check({ force = false, reason = '' } = {}) {
     if (window._isRestoring && !force) return;
     if (this._checking) return;
     this._checking = true;
@@ -117,7 +117,8 @@ export class AchievementEngine {
         ));
       } catch {}
     }
-    this.achievements = this._buildUIArray(); this.broadcast(agg.streak);
+    this.achievements = this._buildUIArray();
+    this.broadcast(agg.streak, { reason });
     } finally {
       this._checking = false;
     }
@@ -129,26 +130,28 @@ export class AchievementEngine {
       metaDB.getGlobal('achievement_unlock_meta'),
       metaDB.getGlobal('user_profile_rpg')
     ]);
+
     this.unlocked = unData?.value || {};
-    this.unlockMeta = normalizeAchievementUnlockMeta(metaData?.value || {}, this.unlocked);
+    this.unlockMeta = normalizeAchievementUnlockMeta(
+      metaData?.value || {},
+      this.unlocked
+    );
     this.profile = profData?.value || { xp: 0, level: 1 };
+
     if (forceCheck) {
       const old = this._silentNotify;
       this._silentNotify = !!silent;
-      try { await this.check({ force: true }); } finally { this._silentNotify = old; }
+
+      try {
+        await this.check({ force: true, reason });
+      } finally {
+        this._silentNotify = old;
+      }
     } else {
       this.achievements = this._buildUIArray();
-      this.broadcast(0);
+      this.broadcast(0, { reason });
     }
-    window.dispatchEvent(new CustomEvent('achievements:updated', { detail: {
-      total: this.achievements.length,
-      unlocked: this.getCompletedCount(),
-      localUnlocked: Object.keys(this.unlocked || {}).length,
-      items: this.unlocked || {},
-      unlockMeta: this.unlockMeta || {},
-      profile: this.profile,
-      reason
-    } }));
+
     return true;
   }
   _getServerReward(id) {
@@ -350,22 +353,24 @@ export class AchievementEngine {
     );
   }
 
-  broadcast(streak) {
-    const completed = this.getCompletedCount();
+  getSnapshotDetail(streak = this.lastAgg?.streak || 0, extra = {}) {
+    return {
+      total: this.achievements.length,
+      unlocked: this.getCompletedCount(),
+      localUnlocked: Object.keys(this.unlocked || {}).length,
+      items: this.unlocked || {},
+      unlockMeta: this.unlockMeta || {},
+      streak: Number(streak || 0),
+      profile: this.profile,
+      ...extra
+    };
+  }
 
+  broadcast(streak, extra = {}) {
     window.dispatchEvent(new CustomEvent(
       'achievements:updated',
       {
-        detail: {
-          total: this.achievements.length,
-          unlocked: completed,
-          localUnlocked: Object.keys(this.unlocked).length,
-          items: this.unlocked,
-          unlockMeta: this.unlockMeta || {},
-          streak,
-          profile: this.profile
-        }
+        detail: this.getSnapshotDetail(streak, extra)
       }
     ));
   }
-}
