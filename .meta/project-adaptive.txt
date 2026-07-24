@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-23 21:26:40 UTC
+Сгенерировано: 2026-07-24 12:34:02 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5090,6 +5090,8 @@ import { requestSocialAction } from '../core/social-session.js';
 const HEARTBEAT_MS = 15000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
+const COMPLETION_OUTBOX_TTL_MS =
+  90 * 24 * 60 * 60 * 1000;
 
 const safe = value =>
   String(value == null ? '' : value).trim();
@@ -5126,12 +5128,32 @@ const readCompletionOutbox = () => {
     []
   );
 
-  return Array.isArray(rows)
-    ? rows.filter(item =>
-        item?.sessionId &&
-        item?.payload?.sessionId
-      )
-    : [];
+  if (!Array.isArray(rows)) return [];
+
+  const cutoff =
+    Date.now() - COMPLETION_OUTBOX_TTL_MS;
+
+  const valid = rows.filter(item =>
+    item?.sessionId &&
+    item?.payload?.sessionId &&
+    (
+      !Number(item.queuedAt) ||
+      Number(item.queuedAt) >= cutoff
+    )
+  );
+
+  if (valid.length !== rows.length) {
+    try {
+      localStorage.setItem(
+        COMPLETION_OUTBOX_KEY,
+        JSON.stringify(
+          valid.slice(-COMPLETION_OUTBOX_LIMIT)
+        )
+      );
+    } catch {}
+  }
+
+  return valid;
 };
 
 const writeCompletionOutbox = rows => {
@@ -5144,6 +5166,17 @@ const writeCompletionOutbox = rows => {
       )
     );
   } catch {}
+};
+
+const isTerminalCompletionError = error => {
+  const status = Number(error?.status || 0);
+  const message = safe(error?.message);
+
+  return (
+    status === 400 &&
+    /listen_session_(not_found|not_completable|expired)/
+      .test(message)
+  );
 };
 
 class ListeningReceiptService {
@@ -5349,7 +5382,10 @@ class ListeningReceiptService {
       sessionId: current.sessionId,
       reason: safe(reason)
     });
-    const ownerYandexId = currentYandexId();
+    const ownerYandexId = safe(
+      current.ownerYandexId ||
+      currentYandexId()
+    );
     const outbox = readCompletionOutbox();
     const existing = outbox.find(
       item => item.sessionId === current.sessionId
@@ -5423,8 +5459,7 @@ class ListeningReceiptService {
       while (true) {
         const outbox = readCompletionOutbox();
         const item = outbox.find(row =>
-          !row.ownerYandexId ||
-          row.ownerYandexId === ownerYandexId
+          safe(row.ownerYandexId) === ownerYandexId
         );
 
         if (!item) break;
@@ -5438,10 +5473,31 @@ class ListeningReceiptService {
           )
         );
 
-        const result = await requestSocialAction(
-          'listen_session_complete',
-          item.payload
-        );
+        let result;
+
+        try {
+          result = await requestSocialAction(
+            'listen_session_complete',
+            item.payload
+          );
+        } catch (error) {
+          if (!isTerminalCompletionError(error)) {
+            throw error;
+          }
+
+          writeCompletionOutbox(
+            readCompletionOutbox().filter(
+              row => row.id !== item.id
+            )
+          );
+
+          this.emit('completion_discarded', {
+            error: safe(error?.message),
+            sessionId: item.sessionId
+          });
+
+          continue;
+        }
 
         writeCompletionOutbox(
           readCompletionOutbox().filter(
@@ -5504,7 +5560,8 @@ class ListeningReceiptService {
 
     this.session = {
       sessionId: safe(result.session.sessionId),
-      trackUid
+      trackUid,
+      ownerYandexId: currentYandexId()
     };
 
     this.startTimer();
@@ -5575,8 +5632,16 @@ class ListeningReceiptService {
     return result;
   }
   getCompletionOutboxSnapshot() {
+    const ownerYandexId = currentYandexId();
+
     return readCompletionOutbox().map(item => ({
       ...item,
+      belongsToCurrentAccount:
+        safe(item.ownerYandexId) === ownerYandexId,
+      ageMs: Math.max(
+        0,
+        Date.now() - Number(item.queuedAt || Date.now())
+      ),
       payload: { ...item.payload }
     }));
   }
@@ -19684,41 +19749,6 @@ button.fresh-version-card{appearance:none;font:inherit}
 /* Physics horizontal tabs */
 .physics-tabs{scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,transparent 0,#000 22px,#000 calc(100% - 22px),transparent 100%)}
 .physics-tabs .ach-classic-tab{scroll-snap-align:center;flex:0 0 auto;min-width:max-content}
-
-//=================================================
-// FILE: /styles/shards.css
-body:has(.shards-view) #cover-wrap{display:none!important}
-.active-album-title.shards{color:#ff6b95;letter-spacing:.08em}
-.shards-view{display:grid;gap:14px;padding:4px 0 24px}
-.shards-wallet-card{display:flex;align-items:center;gap:16px;padding:18px;border-radius:20px;background:radial-gradient(circle at 12% 20%,rgba(255,49,89,.3),transparent 42%),linear-gradient(135deg,rgba(255,49,89,.16),rgba(77,170,255,.08)),#11162c;border:1px solid rgba(255,107,149,.32);box-shadow:0 16px 36px rgba(0,0,0,.32)}
-.shards-wallet-icon{width:62px;height:62px;display:grid;place-items:center;flex-shrink:0;border-radius:20px;background:linear-gradient(135deg,#ff3159,#9b4dff);color:#fff;font-size:38px;text-shadow:0 0 18px rgba(255,255,255,.7);box-shadow:0 0 28px rgba(255,49,89,.32)}
-.shards-wallet-card>div{display:flex;min-width:0;flex-direction:column}
-.shards-wallet-card small{color:#ffb4c5;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
-.shards-wallet-card b{margin:3px 0;color:#fff;font-size:34px;line-height:1;font-weight:950}
-.shards-wallet-card span{color:#9db7dd;font-size:11px;line-height:1.35}
-.shards-note,.shards-modal-note{padding:12px;border-radius:14px;background:rgba(77,170,255,.07);border:1px solid rgba(77,170,255,.17);color:#9db7dd;font-size:12px;line-height:1.45}
-.shards-note b,.shards-modal-note b{color:#fff}
-.shards-section-title{margin:4px 2px 0;color:#eaf2ff;font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:.06em}
-.shards-shop{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.shards-product{min-width:0;min-height:128px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:10px 6px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);color:#fff;cursor:pointer}
-.shards-product:active{transform:scale(.97)}
-.shards-product>span{font-size:38px;line-height:1}
-.shards-product b{max-width:100%;font-size:11px;line-height:1.2;text-align:center}
-.shards-product small{color:#ffd45a;font-size:12px;font-weight:950}
-.shards-product.is-owned{background:rgba(70,230,165,.08);border-color:rgba(70,230,165,.26)}
-.shards-product.is-owned small{color:#adffdf}
-.shards-achievements{display:grid;gap:8px}
-.shards-achievement{display:grid;grid-template-columns:38px 1fr auto;align-items:center;gap:10px;padding:11px;border-radius:15px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
-.shards-achievement-icon{font-size:25px;text-align:center}
-.shards-achievement-info{min-width:0}
-.shards-achievement-info b{display:block;color:#fff;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shards-achievement-info small{display:block;margin-top:2px;color:#8ea8cc;font-size:10px;line-height:1.25}
-.shards-achievement>strong{display:flex;flex-direction:column;align-items:flex-end;color:#ffd45a;font-size:12px;white-space:nowrap}
-.shards-achievement>strong small{margin-top:2px;color:#7f93b5;font-size:8px;font-weight:700}
-.shards-achievement-progress{height:4px;margin-top:7px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.07)}
-.shards-achievement-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ff3159,#ffd45a)}
-.shards-empty,.shards-loading{display:grid;gap:8px;padding:28px 18px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);color:#9db7dd;text-align:center;font-size:13px;line-height:1.45}
-.shards-empty b{color:#fff;font-size:15px}
 
 
 // ... (truncate)
