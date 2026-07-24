@@ -74,6 +74,19 @@ jobs:
             exit 2
           fi
 
+      - name: Reject user-facing global progress reset
+        run: |
+          test ! -f scripts/app/profile/actions-reset.js
+
+          if grep -REn \
+            "stats-reset-open-btn|resetProfileData|ОЧИСТИТЬ СТАТИСТИКУ|Только достижения|Сбросить всё" \
+            scripts/app/profile \
+            scripts/core/utils.js \
+            service-worker.js; then
+            echo "User-facing statistics or achievement reset found"
+            exit 2
+          fi
+
       - name: Validate truthful local listening statistics
         run: |
           grep -q "const activeDays = new Set" scripts/analytics/stats-aggregator.js
