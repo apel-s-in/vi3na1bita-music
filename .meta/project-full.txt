@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 15:18:04 UTC
+Сгенерировано: 2026-07-24 15:18:58 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -682,6 +682,7 @@ jobs:
           grep -q "COMPLETION_OUTBOX_TTL_MS" scripts/analytics/listening-receipts.js
           grep -q "isTerminalCompletionError" scripts/analytics/listening-receipts.js
           grep -q "flushCompletionOutbox().catch" scripts/analytics/listening-receipts.js
+          grep -q "complete('replaced').catch" scripts/analytics/listening-receipts.js
           grep -q "ownerYandexId: currentYandexId()" scripts/analytics/listening-receipts.js
           grep -q "timezoneOffsetMin" scripts/analytics/listening-receipts.js
           grep -q "favoritesOnly" scripts/analytics/listening-receipts.js
@@ -689,6 +690,18 @@ jobs:
           grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/account-data-boundary.js
           if grep -En "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" scripts/analytics/listening-receipts.js; then
             echo "Listening receipts must not control playback"
+            exit 2
+          fi
+
+      - name: Validate awaited achievement combinations
+        run: |
+          grep -q "let comboUpdate = null" scripts/analytics/stats-aggregator.js
+          grep -q "if (comboUpdate)" scripts/analytics/stats-aggregator.js
+
+          if grep -En \
+            "setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
+            scripts/analytics/stats-aggregator.js; then
+            echo "Untracked combo stats timer found"
             exit 2
           fi
 
