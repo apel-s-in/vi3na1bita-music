@@ -66,7 +66,7 @@ async function handleAction(e) {
   const actions = {
     'toggle-storage-details': () => { _stExpanded = !_stExpanded; $('#om-st-detail', _overlay)?.classList.toggle('hidden', !_stExpanded); },
     'toggle-list': () => { _listExpanded = !_listExpanded; el.textContent = _listExpanded ? 'Скрыть список 🔒/☁' : 'Показать список 🔒/☁'; $('#om-track-list-container', _overlay)?.classList.toggle('hidden', !_listExpanded); },
-    'nuke': () => confirmBox({ title: 'Удалить все офлайн-треки?', textHtml: 'Статистика облачков будет сброшена.<br>Global-статистика останется.', confirmText: 'Далее', onConfirm: () => setTimeout(() => confirmBox({ title: 'Вы уверены?', textHtml: 'Это действие нельзя отменить.', confirmText: 'Удалить всё', onConfirm: async () => { await om.removeAllCached(); refresh(); } }), 100) }),
+    'nuke': () => confirmBox({ title: 'Удалить все офлайн-треки?', textHtml: 'Будут удалены только локальные аудиофайлы и параметры их кэша.<br>Глобальная статистика, достижения и Осколки сохранятся.', confirmText: 'Далее', onConfirm: () => setTimeout(() => confirmBox({ title: 'Вы уверены?', textHtml: 'Это действие нельзя отменить.', confirmText: 'Удалить всё', onConfirm: async () => { await om.removeAllCached(); refresh(); } }), 100) }),
     'toggle-wifi': () => { Net.toggleWifi(); refresh(); },
     'toggle-cell': () => { Net.toggleCellular(); refresh(); },
     'toggle-toast': () => { Net.toggleCellularToast(); refresh(); },
@@ -85,7 +85,7 @@ async function handleAction(e) {
     'apply-cloud': async () => { await om.confirmApplyCloudSettings({ newN: Math.max(1, parseInt($('#inp-n', _overlay)?.value || '5')), newD: Math.max(1, parseInt($('#inp-d', _overlay)?.value || '31')) }); refresh(); window.NotificationSystem?.success?.('Настройки применены'); },
     'apply-r2-dyn': async () => { if (om.setDynamicLimitMB) await om.setDynamicLimitMB(Math.max(0, parseInt($('#inp-dyn-mb', _overlay)?.value || '0'))); refresh(); window.NotificationSystem?.success?.('Лимит Dynamic применён'); },
     'list-item-act': async () => { await om.togglePinned(el.dataset.uid); refresh(); },
-    'list-item-del': () => confirmBox({ title: 'Удалить трек?', textHtml: 'Статистика облачка будет сброшена.', confirmText: 'Удалить', onConfirm: async () => { await om.removeCached(el.dataset.uid); refresh(); } }),
+    'list-item-del': () => confirmBox({ title: 'Удалить трек из кэша?', textHtml: 'Будет удалён только локальный аудиофайл. Глобальная статистика, достижения и Осколки сохранятся.', confirmText: 'Удалить', onConfirm: async () => { await om.removeCached(el.dataset.uid); refresh(); } }),
     'set-mode': async () => { const v = el.dataset.val; if (v === 'R2' || v === 'R1') { if (await om.hasSpace()) om.setMode(v); else window.NotificationSystem?.warning?.('Недостаточно места на устройстве.'); } else om.setMode(v === 'not-R2' ? 'R0' : v); refresh(); },
     'clear-needs-update': async () => { await clearNeedsUpdate(el.dataset.uid); refresh(); },
     'recheck-updates': async () => { await checkForUpdates(); refresh(); },
