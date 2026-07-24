@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 17:45:22 UTC
+Сгенерировано: 2026-07-24 17:45:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -694,15 +694,18 @@ jobs:
             exit 2
           fi
 
-      - name: Validate awaited achievement combinations
+      - name: Validate truthful local listening statistics
         run: |
-          grep -q "let comboUpdate = null" scripts/analytics/stats-aggregator.js
-          grep -q "if (comboUpdate)" scripts/analytics/stats-aggregator.js
+          grep -q "const activeDays = new Set" scripts/analytics/stats-aggregator.js
+          grep -q "if (isV)" scripts/analytics/stats-aggregator.js
+          grep -q "s.globalListenSeconds += lSec" scripts/analytics/stats-aggregator.js
+          grep -q "calculateStreakSummary" scripts/analytics/stats-aggregator.js
+          grep -q "activeDays: \[\]" scripts/analytics/stats-state.js
 
           if grep -En \
-            "setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
+            "lastFullListens|isRateLimited|setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
             scripts/analytics/stats-aggregator.js; then
-            echo "Untracked combo stats timer found"
+            echo "Legacy local listening suppression or timer found"
             exit 2
           fi
 
