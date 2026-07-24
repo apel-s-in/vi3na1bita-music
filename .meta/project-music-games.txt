@@ -157,7 +157,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 21:21:44 UTC
+Сгенерировано: 2026-07-24 21:22:19 UTC
 
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
@@ -373,7 +373,7 @@ jobs:
   <div id="now-playing" class="now-playing-inline"></div><div class="track-list" id="track-list"></div>
   <div class="bottom-controls-center" id="app-shell-controls">
     <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
-    <button id="install-pwa-btn"><span style="font-size:18px;line-height:1">📱</span> УСТАНОВИТЬ ПРИЛОЖЕНИЕ</button>
+    <button id="install-pwa-btn" type="button"><span class="pwa-install-icon" aria-hidden="true">📲</span><span>УСТАНОВИТЬ ПРИЛОЖЕНИЕ</span></button>
     <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
     <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
     <a class="support-link" id="support-link" href="#" target="_blank">ПОДДЕРЖАТЬ</a>
