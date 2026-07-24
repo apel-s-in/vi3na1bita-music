@@ -94,7 +94,7 @@ export const AchievementDictionary = {
   },
   "pwa_installed": {
     id: "pwa_installed", type: "static", category: "features",
-    ui: { name: "На моём устройстве", short: "Установите приложение как PWA.", desc: "Срабатывает при событии установки.", howTo: "Нажмите 'Установить как приложение'.", icon: "📱", color: "#4caf50" },
+    ui: { name: "На моём устройстве", short: "Установите PWA и запустите его с ярлыка.", desc: "Сервер подтверждает отдельный standalone-запуск с того же устройства и Яндекс ID.", howTo: "Войдите через Яндекс, нажмите «Установить приложение», выполните инструкцию и откройте приложение созданным ярлыком.", icon: "📱", color: "#4caf50" },
     reward: { xp: 200, tier: 4 },
     trigger: { conditions: [{ metric: "pwaInstalled", operator: "gte", target: 1 }] }
   },
