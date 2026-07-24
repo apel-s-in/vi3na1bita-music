@@ -44,6 +44,7 @@ export class StatsAggregator {
         for (const ev of events) {
           if (ev.type === 'LISTEN_COMPLETE' && ev.data) {
             const { isFullListen: isF, isValidListen: isV, variant: v, trackDuration: tDur, quality: q } = ev.data, lSec = Math.max(0, Number(ev.data.listenedSeconds || (isF ? tDur : 0)) || 0), isRateLimited = isF && (ev.timestamp - (this.lastFullListens.get(ev.uid) || 0)) < (tDur || 0) * 900;
+            let comboUpdate = null;
             await metaDB.updateStat(ev.uid, s => {
               s.globalListenSeconds += (lSec || 0); s.lastPlayedAt = ev.timestamp; s.featuresUsed = s.featuresUsed || {};
               if (isV) {
@@ -80,12 +81,26 @@ export class StatsAggregator {
                   if (timeStr >= '00:00:00' && timeStr <= '00:30:00') { if (this.session.lastFullUid === ev.uid && this.session.midnightTripleTrack === ev.uid) this.session.midnightTripleCount++; else { this.session.midnightTripleTrack = ev.uid; this.session.midnightTripleCount = 1; } } else { this.session.midnightTripleTrack = null; this.session.midnightTripleCount = 0; }
                   this.session.lastFullUid = ev.uid;
                   if ((this.session.favOrderedRun >= 5 || this.session.favShuffleEvents.size >= 5 || this.session.midnightTripleCount >= 3) && !window._isRestoring) {
-                    setTimeout(async () => await metaDB.updateStat('global', gs => { gs.featuresUsed = gs.featuresUsed || {}; if (this.session.favOrderedRun >= 5) gs.featuresUsed.fav_ordered_5 = 5; if (this.session.favShuffleEvents.size >= 5) gs.featuresUsed.fav_shuffle_5 = 5; if (this.session.midnightTripleCount >= 3) gs.featuresUsed.midnight_triple = 1; return gs; }), 500);
+                    comboUpdate = {
+                      favOrdered: this.session.favOrderedRun >= 5,
+                      favShuffle: this.session.favShuffleEvents.size >= 5,
+                      midnightTriple: this.session.midnightTripleCount >= 3
+                    };
                   }
                 }
               }
               return s;
             });
+
+            if (comboUpdate) {
+              await metaDB.updateStat('global', gs => {
+                gs.featuresUsed = gs.featuresUsed || {};
+                if (comboUpdate.favOrdered) gs.featuresUsed.fav_ordered_5 = 5;
+                if (comboUpdate.favShuffle) gs.featuresUsed.fav_shuffle_5 = 5;
+                if (comboUpdate.midnightTriple) gs.featuresUsed.midnight_triple = 1;
+                return gs;
+              });
+            }
           } else if (ev.type === 'LISTEN_SKIP') Object.assign(this.session, { favOrderedRun: 0, favOrderedLastUid: null, midnightTripleTrack: null, midnightTripleCount: 0, lastFullUid: null }) && this.session.favShuffleEvents.clear();
           else if (ev.type === 'BACKUP_CREATED') { if (ev.data?.uploadedShared) await metaDB.updateStat('global', s => { s.featuresUsed = s.featuresUsed || {}; s.featuresUsed.backup = (s.featuresUsed.backup || 0) + 1; return s; }); }
           else if (ev.type === 'FEATURE_USED') {
