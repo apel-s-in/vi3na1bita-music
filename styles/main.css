@@ -14,11 +14,8 @@
 .album-icons-row--nav{gap:clamp(2px,.7vw,4px)}
 .album-icons-row--nav .album-icon{width:clamp(38px,11.8vw,50px);height:clamp(38px,11.8vw,50px);min-width:0}
 .album-icons-row--nav .album-icon.active{filter:none;opacity:1;box-shadow:0 2px 10px rgba(0,0,0,.35);border-color:var(--secondary-color)}
-.album-icons-row--nav .profile-shards-value{font-size:clamp(16px,5vw,22px)}
-.album-icons-row--nav .profile-shards-label{font-size:clamp(8px,2.4vw,10px)}
 .album-icon:hover{transform:translateY(-2px);opacity:.9}
 .album-icon:active{transform:translateY(0) scale(.95)}
-.album-icons-row--nav .profile-dyn-icon{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;gap:2px;background:rgba(255,255,255,.03)}
 .track-list{margin:0 auto;max-width:370px;width:100%;font-size:1.05em;color:var(--c-e);background:0;padding:0}
 .fav-empty{padding:20px;text-align:center;color:#8ab8fd}
 .fav-empty h3{margin:0 0 10px}
