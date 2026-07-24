@@ -354,6 +354,13 @@ class ListeningReceiptService {
     }
 
     this.emit('completed', result);
+
+    // Completion содержит свежий progress, но не полный reward catalog.
+    // Обновляем overlay асинхронно, не блокируя playback или outbox.
+    queueMicrotask(() => {
+      this.refreshStatus().catch(() => null);
+    });
+
     return result;
   }
 
