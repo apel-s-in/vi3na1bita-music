@@ -94,6 +94,12 @@ jobs:
             exit 2
           fi
 
+      - name: Validate server-authoritative achievements
+        run: |
+          grep -q "_requiresServerVerification" scripts/analytics/achievement-engine.js
+          grep -q "legacy_local_unverified" scripts/analytics/achievement-engine.js
+          grep -q "if (this._requiresServerVerification(r)) continue" scripts/analytics/achievement-engine.js
+
       - name: Validate verified shard reward client
         run: |
           grep -q "getCompletedCount" scripts/analytics/achievement-engine.js
