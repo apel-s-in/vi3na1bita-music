@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 13:23:10 UTC
+Сгенерировано: 2026-07-24 13:23:50 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -5592,7 +5592,15 @@ class ListeningReceiptService {
           localStorage.getItem('deviceHash') ||
           'web'
         ),
-        variant: safe(detail.type || 'audio')
+        variant: safe(detail.type || 'audio'),
+        timezoneOffsetMin:
+          new Date().getTimezoneOffset(),
+        shuffle:
+          !!window.playerCore?.isShuffle?.(),
+        favoritesOnly:
+          localStorage.getItem('favoritesOnlyMode') === '1',
+        favoriteAtStart:
+          !!window.playerCore?.isFavorite?.(trackUid)
       })
     );
 
