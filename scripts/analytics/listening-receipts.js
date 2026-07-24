@@ -39,6 +39,13 @@ const currentYandexId = () =>
     window.YandexAuth?.getProfile?.()?.id
   );
 
+const currentDeviceId = () =>
+  safe(
+    localStorage.getItem('deviceStableId') ||
+    localStorage.getItem('deviceHash') ||
+    'web'
+  );
+
 const readCompletionOutbox = () => {
   const rows = parseJson(
     localStorage.getItem(COMPLETION_OUTBOX_KEY),
@@ -105,6 +112,8 @@ class ListeningReceiptService {
     this.lastProgress = null;
     this.rewardCatalog = [];
     this.flushingOutbox = null;
+    this.pendingFeatures = new Map();
+    this.sleepTimer = null;
   }
 
   initialize() {
@@ -196,6 +205,8 @@ class ListeningReceiptService {
           'account_switch',
           this.snapshot()
         );
+        this.pendingFeatures.clear();
+        this.sleepTimer = null;
       }
     );
 
@@ -455,11 +466,7 @@ class ListeningReceiptService {
       'listen_session_start',
       this.snapshot({
         trackUid,
-        deviceId: safe(
-          localStorage.getItem('deviceStableId') ||
-          localStorage.getItem('deviceHash') ||
-          'web'
-        ),
+        deviceId: currentDeviceId(),
         variant: safe(detail.type || 'audio'),
         timezoneOffsetMin:
           new Date().getTimezoneOffset(),
@@ -481,6 +488,8 @@ class ListeningReceiptService {
     };
 
     this.startTimer();
+    await this.flushPendingFeatures()
+      .catch(() => null);
     this.emit('started', result);
     return this.session;
   }
@@ -499,6 +508,11 @@ class ListeningReceiptService {
       })
     );
 
+    if (result?.accepted) {
+      await this.flushPendingFeatures()
+        .catch(() => null);
+    }
+
     this.emit('heartbeat', result);
     return result;
   }
@@ -514,6 +528,190 @@ class ListeningReceiptService {
 
     if (!payload) return null;
     return this.flushCompletionOutbox();
+  }
+  recordFeature(feature, {
+    trackUid = ''
+  } = {}) {
+    const name = safe(feature);
+    const uid = safe(
+      trackUid ||
+      window.playerCore?.getCurrentTrackUid?.()
+    );
+
+    if (!name || !uid) return null;
+
+    this.pendingFeatures.set(
+      `${name}:${uid}`,
+      {
+        feature: name,
+        trackUid: uid,
+        queuedAt: Date.now()
+      }
+    );
+
+    this.enqueue(() =>
+      this.flushPendingFeatures()
+    );
+
+    return true;
+  }
+
+  async flushPendingFeatures() {
+    if (
+      !this.session?.sessionId ||
+      !this.isAuthorized() ||
+      !networkAllowed()
+    ) return null;
+
+    const item = [...this.pendingFeatures.values()]
+      .find(row =>
+        row.trackUid === this.session.trackUid
+      );
+
+    if (!item) return null;
+
+    const result = await requestSocialAction(
+      'music_feature_use',
+      {
+        feature: item.feature,
+        sessionId: this.session.sessionId,
+        trackUid: item.trackUid,
+        deviceId: currentDeviceId()
+      }
+    );
+
+    this.pendingFeatures.delete(
+      `${item.feature}:${item.trackUid}`
+    );
+
+    if (result?.progress) {
+      this.lastProgress = result.progress;
+    }
+
+    applyShardRewardResult(result);
+
+    queueMicrotask(() => {
+      this.refreshStatus().catch(() => null);
+    });
+
+    this.emit('feature', result);
+    return result;
+  }
+
+  startSleepTimer({
+    minutes,
+    targetAt = 0,
+    mode = 'minutes'
+  } = {}) {
+    const requestedMinutes = Math.max(
+      1,
+      Math.min(720, Math.floor(Number(minutes) || 0))
+    );
+    const previous = this.sleepTimer;
+    const timer = {
+      timerId: `sleep_${crypto.randomUUID()}`,
+      deviceId: currentDeviceId(),
+      requestedMinutes,
+      targetAt: Number(targetAt || 0),
+      mode: safe(mode || 'minutes'),
+      ownerYandexId: currentYandexId()
+    };
+
+    this.sleepTimer = timer;
+
+    this.enqueue(async () => {
+      if (previous?.timerId) {
+        await requestSocialAction(
+          'sleep_timer_cancel',
+          {
+            timerId: previous.timerId,
+            deviceId: previous.deviceId,
+            reason: 'replaced'
+          }
+        ).catch(() => null);
+      }
+
+      const result = await requestSocialAction(
+        'sleep_timer_start',
+        {
+          timerId: timer.timerId,
+          deviceId: timer.deviceId,
+          requestedMinutes: timer.requestedMinutes,
+          targetAt: timer.targetAt,
+          mode: timer.mode
+        }
+      );
+
+      this.emit('sleep_timer_started', result);
+      return result;
+    });
+
+    return { ...timer };
+  }
+
+  cancelSleepTimer(reason = 'user_cancel') {
+    const timer = this.sleepTimer;
+    this.sleepTimer = null;
+
+    if (!timer?.timerId) return null;
+
+    this.enqueue(async () => {
+      const result = await requestSocialAction(
+        'sleep_timer_cancel',
+        {
+          timerId: timer.timerId,
+          deviceId: timer.deviceId,
+          reason: safe(reason)
+        }
+      );
+
+      this.emit('sleep_timer_canceled', result);
+      return result;
+    });
+
+    return { ...timer };
+  }
+
+  completeSleepTimer() {
+    const timer = this.sleepTimer;
+    if (!timer?.timerId) return null;
+
+    this.enqueue(async () => {
+      const result = await requestSocialAction(
+        'sleep_timer_complete',
+        {
+          timerId: timer.timerId,
+          deviceId: timer.deviceId
+        }
+      );
+
+      if (
+        this.sleepTimer?.timerId === timer.timerId
+      ) {
+        this.sleepTimer = null;
+      }
+
+      if (result?.progress) {
+        this.lastProgress = result.progress;
+      }
+
+      applyShardRewardResult(result);
+
+      queueMicrotask(() => {
+        this.refreshStatus().catch(() => null);
+      });
+
+      this.emit('sleep_timer_completed', result);
+      return result;
+    });
+
+    return { ...timer };
+  }
+
+  getSleepTimerReceiptState() {
+    return this.sleepTimer
+      ? { ...this.sleepTimer }
+      : null;
   }
 
   async refreshStatus() {
