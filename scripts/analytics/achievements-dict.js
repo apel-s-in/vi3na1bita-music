@@ -129,7 +129,7 @@ export const AchievementDictionary = {
   },
   "favorites_order_5_full": {
     id: "favorites_order_5_full", type: "static", category: "listening",
-    ui: { name: "Только избранное — по порядку", short: "5 избранных подряд, полностью.", desc: "Режим «только избранные», без Shuffle.", howTo: "Включите «только избранные» (без Shuffle) и слушайте 5 треков.", icon: "⭐", color: "#ff5252" },
+    ui: { name: "Только избранное — по порядку", short: "5 избранных подряд в их сохранённом порядке.", desc: "Сервер проверяет полные прослушивания и последовательные позиции в одном состоянии Избранного.", howTo: "Включите «только избранные» без Shuffle и дослушайте 5 треков подряд.", icon: "⭐", color: "#ff5252" },
     reward: { xp: 200, tier: 3 },
     trigger: { conditions: [{ metric: "favOrderedCombo", operator: "gte", target: 5 }] }
   },
@@ -151,13 +151,13 @@ export const AchievementDictionary = {
   },
   "midnight_triple": {
     id: "midnight_triple", type: "static", category: "secret", hidden: true,
-    ui: { name: "Полночный цикл", short: "Один трек 3 раза подряд в 00:00–00:30.", desc: "Сложный ночной челлендж.", howTo: "Запускайте один трек 3 раза до конца в полночь.", icon: "🦇", color: "#8a2be2" },
+    ui: { name: "Полночный цикл", short: "Один трек 3 раза подряд в 00:00–00:30.", desc: "Сервер проверяет три полных завершения одного UID на одном устройстве.", howTo: "С 00:00 до 00:30 трижды подряд запускайте и дослушивайте один трек полностью.", icon: "🦇", color: "#8a2be2" },
     reward: { xp: 400, tier: 6 },
     trigger: { conditions: [{ metric: "midnightTriple", operator: "gte", target: 1 }] }
   },
   "speed_runner": {
     id: "speed_runner", type: "static", category: "secret", hidden: true,
-    ui: { name: "Спидраннер", short: "Активность 3 часа без перерыва.", desc: "Слушайте музыку долго и упорно.", howTo: "Не выключайте музыку 3 часа подряд.", icon: "🏃", color: "#ff5722" },
+    ui: { name: "Спидраннер", short: "3 часа подтверждённого прослушивания без перерыва.", desc: "Сервер суммирует только непрерывные принятые интервалы одного устройства.", howTo: "Слушайте без пауз, mute, перемоток и больших разрывов между треками.", icon: "🏃", color: "#ff5722" },
     reward: { xp: 300, tier: 6 },
     trigger: { conditions: [{ metric: "speedRunnerCombo", operator: "gte", target: 1 }] }
   }
