@@ -43,11 +43,46 @@ export class SessionTracker {
       }
     );
   }
-  _start({ uid, duration, type = 'audio' }) {
-    if (this.s?.uid === uid && this.s?.variant === type) return void (this.s.lastUpdate = Date.now());
+  _start({ uid, duration, type = 'audio' } = {}) {
+    if (!uid) return;
+
+    if (
+      this.s?.uid === uid &&
+      this.s?.variant === type
+    ) {
+      this.s.lastUpdate = Date.now();
+      return;
+    }
+
     this._end(false);
-    this.s = { uid, variant: type, quality: window.playerCore?.qMode || 'hi', duration: duration || 0, accumulatedMs: 0, lastPos: Number(window.playerCore?.getPosition?.() || 0), lastUpdate: Date.now() };
-    eventLogger.log('LISTEN_START', uid, { variant: type });
+
+    const player = window.playerCore;
+    const startedAt = Date.now();
+
+    this.s = {
+      uid,
+      variant: type,
+      quality: player?.qMode || 'hi',
+      shuffle: !!player?.isShuffle?.(),
+      favoritesOnly:
+        localStorage.getItem('favoritesOnlyMode') === '1',
+      favoriteAtStart: !!player?.isFavorite?.(uid),
+      timezoneOffsetMin: new Date().getTimezoneOffset(),
+      startedAt,
+      duration: Number(duration || 0),
+      accumulatedMs: 0,
+      lastPos: Number(player?.getPosition?.() || 0),
+      lastUpdate: startedAt
+    };
+
+    eventLogger.log('LISTEN_START', uid, {
+      variant: type,
+      quality: this.s.quality,
+      shuffle: this.s.shuffle,
+      favoritesOnly: this.s.favoritesOnly,
+      favoriteAtStart: this.s.favoriteAtStart,
+      timezoneOffsetMin: this.s.timezoneOffsetMin
+    });
   }
   _tick({ currentTime, volume, muted }) {
     if (!this.s) return;
@@ -101,6 +136,11 @@ export class SessionTracker {
       uid,
       variant,
       quality,
+      shuffle,
+      favoritesOnly,
+      favoriteAtStart,
+      timezoneOffsetMin,
+      startedAt,
       accumulatedMs,
       duration,
       lastPos
@@ -130,11 +170,15 @@ export class SessionTracker {
       return;
     }
 
-    const date = new Date();
-    const hour = date.getHours();
-    const minute = date.getMinutes();
+    const startDate = new Date(startedAt || Date.now());
+    const startHour = startDate.getHours();
+    const startMinute = startDate.getMinutes();
 
-    if (valid && hour === 11 && minute === 11) {
+    if (
+      valid &&
+      startHour === 11 &&
+      startMinute === 11
+    ) {
       eventLogger.log('FEATURE_USED', 'global', {
         feature: 'play_11_11'
       });
@@ -142,7 +186,10 @@ export class SessionTracker {
 
     if (
       valid &&
-      (date.getDay() === 0 || date.getDay() === 6)
+      (
+        startDate.getDay() === 0 ||
+        startDate.getDay() === 6
+      )
     ) {
       eventLogger.log('FEATURE_USED', 'global', {
         feature: 'weekend_play'
@@ -152,6 +199,11 @@ export class SessionTracker {
     eventLogger.log('LISTEN_COMPLETE', uid, {
       variant,
       quality,
+      shuffle,
+      favoritesOnly,
+      favoriteAtStart,
+      timezoneOffsetMin,
+      startedAt,
       listenedSeconds,
       trackDuration: duration,
       progress,
