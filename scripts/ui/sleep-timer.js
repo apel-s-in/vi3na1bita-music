@@ -3,7 +3,16 @@ export class SleepTimer {
   initialize() {
     if (!window.Utils?.func?.initOnce?.('ui:sleep-timer:init', () => {})) return;
     window.addEventListener('player:sleepTimerChanged', () => this._syncBadge());
-    window.addEventListener('player:sleepTimerTriggered', () => { this._clearWarning(); this._extendPromptOpen = false; this._state.lastFinishedAt = Date.now(); this._state.usageCount++; this._saveState(); window.NotificationSystem?.info?.('Время вышло. Музыка остановлена.'); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer' }); });
+    window.addEventListener('player:sleepTimerTriggered', () => {
+      this._clearWarning();
+      this._extendPromptOpen = false;
+      this._state.lastFinishedAt = Date.now();
+      this._state.usageCount++;
+      this._saveState();
+      window.NotificationSystem?.info?.('Время вышло. Музыка остановлена.');
+      window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer' });
+      window.ListeningReceipts?.completeSleepTimer?.();
+    });
     clearInterval(this._tick); this._tick = setInterval(() => { this._syncBadge(); this._handleReminder(); }, 1000); this._syncBadge();
   }
   _saveState() { try { localStorage.setItem('sleepTimerState:v2', JSON.stringify(this._state)); } catch {} }
@@ -48,9 +57,9 @@ export class SleepTimer {
     const liveInt = setInterval(() => { if (isR() && drA && document.activeElement !== iMin && document.activeElement !== iTim) { const r = this._getRemainingMs(); if (r>0) { drM = Math.ceil(r/60000); upd(); } } }, 1000);
     const oR = m.remove.bind(m); m.remove = () => { clearInterval(liveInt); oR(); }; upd();
   }
-  startMinutes(m) { if (!m || m < 1) return; const ms = m * 60000; this._state.lastDurationMin = m; this._saveState(); window.playerCore?.setSleepTimer?.(ms, { mode: 'minutes', minutes: m, remind5m: !!this._state.remind5m }); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_set', mode: 'minutes', minutes: m }); this._syncBadge(); window.NotificationSystem?.info?.(`Таймер сна установлен на ${m} мин.`); }
-  startAt(t) { const [h, m] = String(t).split(':').map(Number), d = new Date(), tgt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0); if (tgt <= d) tgt.setDate(tgt.getDate() + 1); const minutes = Math.max(1, Math.round((tgt.getTime() - Date.now()) / 60000)); this._state.lastDurationMin = minutes; this._saveState(); window.playerCore?.setSleepTimer?.(tgt.getTime() - Date.now(), { mode: 'clock', exactTime: t, remind5m: !!this._state.remind5m }); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_set', mode: 'clock', minutes, exactTime: t }); this._syncBadge(); window.NotificationSystem?.info?.(`Таймер сна установлен на ${t}`); }
-  extendMinutes(m) { const rem = this._getRemainingMs(); if (rem <= 0) return this.startMinutes(m); const nextMs = rem + m * 60000, nextMin = Math.ceil(nextMs / 60000); this._state.lastDurationMin = nextMin; this._saveState(); window.playerCore?.setSleepTimer?.(nextMs, { mode: 'extended', minutes: nextMin, remind5m: !!this._state.remind5m }); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_extend', mode: 'extended', minutes: m, totalMinutes: nextMin }); this._syncBadge(); window.NotificationSystem?.success?.(`Таймер продлён на ${m} мин.`); }
-  stop(notify = true) { const remMin = Math.ceil(this._getRemainingMs() / 60000); this._clearWarning(); window.playerCore?.clearSleepTimer?.(); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_cancel', minutes: Math.max(0, remMin) }); this._syncBadge(); if (notify) window.NotificationSystem?.info?.('Таймер сна сброшен'); }
+  startMinutes(m) { if (!m || m < 1) return; const ms = m * 60000, targetAt = Date.now() + ms; this._state.lastDurationMin = m; this._saveState(); window.playerCore?.setSleepTimer?.(ms, { mode: 'minutes', minutes: m, remind5m: !!this._state.remind5m }); window.ListeningReceipts?.startSleepTimer?.({ minutes: m, targetAt, mode: 'minutes' }); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_set', mode: 'minutes', minutes: m }); this._syncBadge(); window.NotificationSystem?.info?.(`Таймер сна установлен на ${m} мин.`); }
+  startAt(t) { const [h, m] = String(t).split(':').map(Number), d = new Date(), tgt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0); if (tgt <= d) tgt.setDate(tgt.getDate() + 1); const minutes = Math.max(1, Math.round((tgt.getTime() - Date.now()) / 60000)); this._state.lastDurationMin = minutes; this._saveState(); window.playerCore?.setSleepTimer?.(tgt.getTime() - Date.now(), { mode: 'clock', exactTime: t, remind5m: !!this._state.remind5m }); window.ListeningReceipts?.startSleepTimer?.({ minutes, targetAt: tgt.getTime(), mode: 'clock' }); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_set', mode: 'clock', minutes, exactTime: t }); this._syncBadge(); window.NotificationSystem?.info?.(`Таймер сна установлен на ${t}`); }
+  extendMinutes(m) { const rem = this._getRemainingMs(); if (rem <= 0) return this.startMinutes(m); const nextMs = rem + m * 60000, nextMin = Math.ceil(nextMs / 60000), targetAt = Date.now() + nextMs; this._state.lastDurationMin = nextMin; this._saveState(); window.playerCore?.setSleepTimer?.(nextMs, { mode: 'extended', minutes: nextMin, remind5m: !!this._state.remind5m }); window.ListeningReceipts?.startSleepTimer?.({ minutes: nextMin, targetAt, mode: 'extended' }); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_extend', mode: 'extended', minutes: m, totalMinutes: nextMin }); this._syncBadge(); window.NotificationSystem?.success?.(`Таймер продлён на ${m} мин.`); }
+  stop(notify = true) { const remMin = Math.ceil(this._getRemainingMs() / 60000); this._clearWarning(); window.ListeningReceipts?.cancelSleepTimer?.('user_cancel'); window.playerCore?.clearSleepTimer?.(); window.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'sleep_timer_cancel', minutes: Math.max(0, remMin) }); this._syncBadge(); if (notify) window.NotificationSystem?.info?.('Таймер сна сброшен'); }
 }
 export const sleepTimerInstance = new SleepTimer(); window.SleepTimer = sleepTimerInstance;
