@@ -89,7 +89,7 @@ const isTerminalCompletionError = error => {
   const message = safe(error?.message);
 
   return (
-    status === 400 &&
+    [400, 404, 409, 410].includes(status) &&
     /listen_session_(not_found|not_completable|expired)/
       .test(message)
   );
@@ -174,7 +174,7 @@ class ListeningReceiptService {
         }
 
         this.enqueue(async () => {
-          await this.flushCompletionOutbox();
+          await this.flushCompletionOutbox().catch(() => null);
           await this.refreshStatus().catch(() => null);
 
           if (window.playerCore?.isPlaying?.()) {
@@ -202,7 +202,7 @@ class ListeningReceiptService {
       'account:data-switched',
       () => {
         this.enqueue(async () => {
-          await this.flushCompletionOutbox();
+          await this.flushCompletionOutbox().catch(() => null);
 
           if (window.playerCore?.isPlaying?.()) {
             await this.start({
@@ -219,7 +219,7 @@ class ListeningReceiptService {
       'online',
       () => {
         this.enqueue(async () => {
-          await this.flushCompletionOutbox();
+          await this.flushCompletionOutbox().catch(() => null);
 
           if (
             !this.session &&
@@ -438,7 +438,9 @@ class ListeningReceiptService {
       !networkAllowed()
     ) return null;
 
-    await this.flushCompletionOutbox();
+    // Старые completion отправляются best-effort. Временная ошибка
+    // не должна блокировать новую listening session текущего трека.
+    await this.flushCompletionOutbox().catch(() => null);
 
     const trackUid = safe(
       detail.uid ||
