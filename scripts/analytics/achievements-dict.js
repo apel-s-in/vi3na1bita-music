@@ -92,12 +92,6 @@ export const AchievementDictionary = {
     reward: { xp: 100, tier: 3 },
     trigger: { conditions: [{ metric: "weekendPlays", operator: "gte", target: 10 }] }
   },
-  "socials_all_visited": {
-    id: "socials_all_visited", type: "static", category: "features",
-    ui: { name: "Подписчик всего", short: "Откройте все соцсети из шапки.", desc: "Кликните по каждой из ссылок соцсетей хотя бы один раз.", howTo: "Перейдите по всем ссылкам соцсетей в шапке приложения.", icon: "🌐", color: "#03a9f4" },
-    reward: { xp: 50, tier: 1 },
-    trigger: { conditions: [{ metric: "socialVisitAll", operator: "gte", target: 1 }] }
-  },
   "pwa_installed": {
     id: "pwa_installed", type: "static", category: "features",
     ui: { name: "На моём устройстве", short: "Установите приложение как PWA.", desc: "Срабатывает при событии установки.", howTo: "Нажмите 'Установить как приложение'.", icon: "📱", color: "#4caf50" },
