@@ -37,7 +37,7 @@ document.addEventListener('click', async (e) => {
     e.stopPropagation(); const uid = _menu?.dataset.uid, act = mItem.dataset.action, mgr = getOfflineManager();
     _menu?.remove(); _menu = null; if (!uid) return;
     if (act === 'pin') { await mgr.togglePinned(uid); scheduleRefresh(); } 
-    else if (act === 'del' && window.Modals?.confirm) window.Modals.confirm({ title: 'Удалить из кэша?', textHtml: 'Статистика облачка будет сброшена.<br>Global-статистика останется.', confirmText: 'Удалить', cancelText: 'Отмена', onConfirm: async () => { await mgr.removeCached(uid); scheduleRefresh(); } });
+    else if (act === 'del' && window.Modals?.confirm) window.Modals.confirm({ title: 'Удалить из кэша?', textHtml: 'Будет удалён только локальный аудиофайл и его cache metadata.<br>Глобальная статистика, достижения и Осколки сохранятся.', confirmText: 'Удалить', cancelText: 'Отмена', onConfirm: async () => { await mgr.removeCached(uid); scheduleRefresh(); } });
     return;
   }
   if (_menu && !e.target.closest('.cloud-menu') && !e.target.closest('.offline-ind')) { _menu.remove(); _menu = null; }
