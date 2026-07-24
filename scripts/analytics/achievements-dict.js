@@ -59,7 +59,7 @@ export const AchievementDictionary = {
   },
   "sleep_timer": {
     id: "sleep_timer", type: "scalable", category: "features",
-    ui: { name: "Бережный сон ур. {level}", short: "Таймер сна сработал {target} раз.", desc: "Учитываются успешные остановки.", howTo: "Задайте таймер и дождитесь остановки.", icon: "😴", color: "#607d8b" },
+    ui: { name: "Бережный сон ур. {level}", short: "Подтверждённый таймер сна сработал {target} раз.", desc: "Сервер проверяет deadline и наблюдаемое прослушивание во время работы таймера.", howTo: "Установите таймер, слушайте музыку и дождитесь автоматической остановки.", icon: "😴", color: "#607d8b" },
     reward: { xpBase: 20, xpMultiplier: 1.5, tierBase: 1 },
     trigger: { conditions: [{ metric: "sleepTimerTriggers", operator: "gte" }] },
     scaling: { math: "custom", steps: [1, 5, 10, 50] }
@@ -113,7 +113,7 @@ export const AchievementDictionary = {
   },
   "feature_lyrics": {
     id: "feature_lyrics", type: "static", category: "features",
-    ui: { name: "Караоке мастер", short: "Включить лирику впервые.", desc: "Текст песен во время воспроизведения.", howTo: "Нажмите кнопку 'Т' в плеере.", icon: "🎤", color: "#4db6ac" },
+    ui: { name: "Караоке мастер", short: "Включите лирику во время подтверждённого прослушивания.", desc: "Сервер учитывает использование лирики только после принятого listening heartbeat.", howTo: "Запустите трек, дождитесь начала прослушивания и нажмите кнопку «Т».", icon: "🎤", color: "#4db6ac" },
     reward: { xp: 15, tier: 1 },
     trigger: { conditions: [{ metric: "featLyrics", operator: "gte", target: 1 }] }
   },
