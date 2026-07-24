@@ -2,6 +2,7 @@
 // Не управляет playback и не перестраивает playing playlist.
 
 import { requestSocialAction } from '../core/social-session.js';
+import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 import {
   favoriteSignature,
   localToRemote,
@@ -343,28 +344,7 @@ class FavoriteMirrorService {
           }
         );
 
-        if (
-          result?.wallet ||
-          (Array.isArray(result?.rewards) &&
-            result.rewards.length)
-        ) {
-          window.ShardWallet
-            ?.refresh?.({ force: true })
-            .catch(() => null);
-        }
-
-        if (Array.isArray(result?.rewards) &&
-            result.rewards.length) {
-          const amount = result.rewards.reduce(
-            (sum, reward) =>
-              sum + Number(reward?.amount || 0),
-            0
-          );
-
-          window.NotificationSystem?.success?.(
-            `♦ Начислено ${amount} Осколков`
-          );
-        }
+        applyShardRewardResult(result);
 
         outbox = readOutbox()
           .filter(row =>
