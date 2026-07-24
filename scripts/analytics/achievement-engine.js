@@ -8,8 +8,7 @@ export class AchievementEngine {
   constructor() {
     this.dict = { ...AchievementDictionary };
     this.unlocked = {}; this.unlockMeta = {}; this.profile = { xp: 0, level: 1 };
-    this.achievements = []; this.lastAgg = {}; this._checking = false; this._silentNotify = false;
-    this._initBoot();
+    this.achievements = []; this.lastAgg = {}; this._checking = false; this._checkAgain = false; this._silentNotify = false;
     window.addEventListener('stats:updated', () => this.check());
     window.addEventListener('listening-receipts:updated', () => {
       this.achievements = this._buildUIArray();
@@ -39,7 +38,10 @@ export class AchievementEngine {
 
   async check({ force = false, reason = '' } = {}) {
     if (window._isRestoring && !force) return;
-    if (this._checking) return;
+    if (this._checking) {
+      this._checkAgain = true;
+      return;
+    }
     this._checking = true;
     try {
     const statsArr = await metaDB.getAllStats(), gStat = statsArr.find(s => s.uid === 'global')?.featuresUsed || {};
@@ -121,6 +123,13 @@ export class AchievementEngine {
     this.broadcast(agg.streak, { reason });
     } finally {
       this._checking = false;
+
+      if (this._checkAgain) {
+        this._checkAgain = false;
+        queueMicrotask(() =>
+          this.check({ reason: 'coalesced_update' })
+        );
+      }
     }
   }
 
