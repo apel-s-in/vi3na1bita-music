@@ -4,17 +4,13 @@ import { getCreditedPlaybackDeltaMs } from './playback-validity.js';
 import { makePlaybackRuntimeSnapshot } from './playback-runtime.js';
 
 export class SessionTracker {
-  constructor() { this.s = null; this._speedRunnerMs = 0; this._speedRunnerAwarded = false; this._bindEvents(); }
+  constructor() { this.s = null; this._bindEvents(); }
   _bindEvents() {
     window.addEventListener('player:play', e => this._start(e.detail));
     window.addEventListener('player:pause', () => this._pause());
     window.addEventListener('player:tick', e => this._tick(e.detail));
     window.addEventListener('player:ended', () => this._end(true));
-    window.addEventListener('player:stop', () => {
-      this._speedRunnerMs = 0;
-      this._speedRunnerAwarded = false;
-      this._end(false);
-    });
+    window.addEventListener('player:stop', () => this._end(false));
     window.addEventListener('player:trackChanged', event => {
       const nextUid = String(event.detail?.uid || '').trim();
       if (!this.s || !nextUid || this.s.uid === nextUid) return;
@@ -23,11 +19,7 @@ export class SessionTracker {
 
     window.addEventListener(
       'account:data-switching',
-      () => {
-        this._speedRunnerMs = 0;
-        this._speedRunnerAwarded = false;
-        this._end(false);
-      }
+      () => this._end(false)
     );
 
     window.addEventListener(
@@ -98,22 +90,10 @@ export class SessionTracker {
 
     if (creditedMs > 0) {
       this.s.accumulatedMs += creditedMs;
-      this._speedRunnerMs += creditedMs;
-
-      if (
-        this._speedRunnerMs >= 10800000 &&
-        !this._speedRunnerAwarded
-      ) {
-        this._speedRunnerAwarded = true;
-        eventLogger.log('FEATURE_USED', 'global', {
-          feature: 'speed_runner'
-        });
-      }
     }
   }
   _pause() {
     if (this.s) { this._tick({ currentTime: window.playerCore?.getPosition?.() || this.s.lastPos || 0, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false }); this.s.lastUpdate = Date.now(); }
-    this._speedRunnerMs = 0;
   }
   _end(endedNaturally) {
     if (!this.s) return;
