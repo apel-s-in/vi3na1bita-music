@@ -123,6 +123,28 @@ jobs:
             exit 2
           fi
 
+      - name: Validate PWA achievement bridge
+        run: |
+          node --input-type=module --check < scripts/app/pwa-install.js
+          grep -q "pwa_install_intent" scripts/app/pwa-install.js
+          grep -q "pwa_launch_verify" scripts/app/pwa-install.js
+          grep -q "display-mode: standalone" scripts/app/pwa-install.js
+          grep -q "pwa-install.js" service-worker.js
+
+          if grep -REn \
+            "socials_all_visited|socialVisitAll|social_visit_all|Подписчик всего" \
+            scripts data; then
+            echo "Removed social achievement found"
+            exit 2
+          fi
+
+          if grep -En \
+            "\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(" \
+            scripts/app/pwa-install.js; then
+            echo "PWA install bridge must not control playback"
+            exit 2
+          fi
+
       - name: Validate server-authoritative achievements
         run: |
           grep -q "_requiresServerVerification" scripts/analytics/achievement-engine.js
