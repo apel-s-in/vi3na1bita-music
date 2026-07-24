@@ -96,9 +96,16 @@ jobs:
           grep -q "activeDays: \[\]" scripts/analytics/stats-state.js
 
           if grep -En \
-            "lastFullListens|isRateLimited|setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
+            "lastFullListens|isRateLimited|comboUpdate|favOrderedRun|favShuffleEvents|midnightTripleTrack|midnightTripleCount|setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
             scripts/analytics/stats-aggregator.js; then
-            echo "Legacy local listening suppression or timer found"
+            echo "Legacy local listening validator found"
+            exit 2
+          fi
+
+          if grep -En \
+            "_speedRunnerMs|_speedRunnerAwarded|feature:[[:space:]]*['\"]speed_runner['\"]" \
+            scripts/analytics/session-tracker.js; then
+            echo "Legacy local speed runner validator found"
             exit 2
           fi
 
