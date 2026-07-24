@@ -35,6 +35,7 @@ export class AchievementEngine {
 
   _evalCondition(c, agg) { const v = agg[c.metric] || 0; return c.operator === 'gte' ? v >= c.target : v === c.target; }
   _getSc(r, lvl, isXp) { if (isXp) return Math.floor(r.reward.xpBase * Math.pow(r.reward.xpMultiplier, lvl - 1)); const s = r.scaling; return s.math === 'custom' ? (s.steps[lvl - 1] ?? s.steps[s.steps.length - 1]) : r.trigger.conditions[0].startTarget * Math.pow(s.factor, lvl - 1); }
+  _requiresServerVerification(rule) { return !!rule?.reward; }
 
   async check({ force = false, reason = '' } = {}) {
     if (window._isRestoring && !force) return;
@@ -80,6 +81,11 @@ export class AchievementEngine {
     };
     for (const [k, r] of Object.entries(this.dict)) {
       if (r.seasonal && ((r.seasonal.start && now < r.seasonal.start) || (r.seasonal.end && now > r.seasonal.end) || (r.seasonal.months && !r.seasonal.months.includes(new Date().getMonth())))) continue;
+
+      // Наградные достижения подтверждает только сервер.
+      // Локальные stats используются лишь как предварительный progress.
+      if (this._requiresServerVerification(r)) continue;
+
       if (r.type === 'static' && !this.unlocked[k]) {
         if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { unlock(k, r.ui.name, r.ui.icon); chg = true; }
       } else if (r.type === 'scalable') {
@@ -177,7 +183,10 @@ export class AchievementEngine {
       const reward = this._getServerReward(id);
       const rewardEligible = reward?.eligible === true;
       const rewardAwarded = reward?.awarded === true;
-      const completed = !!localUnlocked || rewardEligible || rewardAwarded;
+      const requiresServerVerification = this._requiresServerVerification(r);
+      const completed = requiresServerVerification
+        ? rewardEligible || rewardAwarded
+        : !!localUnlocked || rewardEligible || rewardAwarded;
       const legacyAmount = lvl
         ? this._getSc(r, lvl, true)
         : Number(r.reward?.xp || 0);
@@ -274,9 +283,11 @@ export class AchievementEngine {
           ? 'awarded'
           : rewardEligible
             ? 'verified'
-            : localUnlocked
-              ? 'local_completed'
-              : 'available',
+            : localUnlocked && requiresServerVerification
+              ? 'legacy_local_unverified'
+              : localUnlocked
+                ? 'local_completed'
+                : 'available',
         ...(!completed && !hidden && rawTarget > 0 && {
           progress: {
             current: visibleCurrent,
@@ -299,8 +310,11 @@ export class AchievementEngine {
           const serverCompleted =
             reward?.eligible === true ||
             reward?.awarded === true;
+          const locallyCompleted =
+            !this._requiresServerVerification(r) &&
+            localUnlocked;
 
-          if (!localUnlocked && !serverCompleted) break;
+          if (!locallyCompleted && !serverCompleted) break;
 
           add(
             id,
