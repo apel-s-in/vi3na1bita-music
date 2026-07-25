@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - '.meta/**'
       - 'cloud-functions/**'
+      - 'generate-context.js'
       - '.github/workflows/generate-context.yml'
   workflow_dispatch:
     inputs:
@@ -116,7 +117,11 @@ jobs:
               --exclude "cloud-functions/**" \
               --exclude "scripts/ci/*" \
               --exclude "scripts/e2e/*" \
-              --exclude "generate-context.js"
+              --exclude "generate-context.js" \
+              --exclude "service-worker.js"
+
+            echo "Publishing service-worker.js last"
+            upload_file "service-worker.js"
             exit 0
           fi
 
