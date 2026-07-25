@@ -259,8 +259,6 @@ ${purpose ? `Контекст: ${purpose}\n` : ''}Проект делается 
 
 ${renderTree()}
 
-Сгенерировано: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
-
 `;
 };
 
@@ -403,8 +401,6 @@ const functionHeaderBlock = functionName => {
 Публикация функции выполняется вручную. Переменные окружения и секреты в этот контекст не входят.
 
 ${renderFunctionTree(functionName)}
-
-Сгенерировано: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
 
 `;
 };
