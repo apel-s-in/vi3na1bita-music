@@ -936,7 +936,19 @@ jobs:
           grep -q "resetEachLevel: true" scripts/analytics/achievements-dict.js
           grep -q "steps: \[1, 10, 25, 50, 70, 100, 250, 500, 1000, 5000, 10000, 15000, 20000\]" scripts/analytics/achievements-dict.js
           grep -q "listenedSeconds >= 25" scripts/analytics/session-tracker.js
-          grep -q "liveAccumulatedMs / 1000) >= 25" scripts/analytics/live-stats.js
+          grep -q "totalListenMs" cloud-functions/vi3-signaling/index.js
+          grep -q "listenTimeBySession" cloud-functions/vi3-signaling/index.js
+          grep -q "applyVerifiedListenTimeProgress" cloud-functions/vi3-signaling/index.js
+          grep -q "repeatAfterLevel: 14" scripts/analytics/achievements-dict.js
+          grep -q "repeatStep: 3600000" scripts/analytics/achievements-dict.js
+          grep -q "const HEARTBEAT_MS = 10000" scripts/analytics/listening-receipts.js
+
+          if grep -En \
+            "projectedTotalSec \|\| rawCurrent|toggleableTimer: true" \
+            scripts/analytics/achievement-engine.js; then
+            echo "Legacy local or toggleable time achievement timer found"
+            exit 2
+          fi
 
           if grep -REn \
             "Засчитывается ≥13 сек|listenedSeconds >= 13|liveAccumulatedMs / 1000\) >= 13|Math\.max\([[:space:]]*13," \
@@ -10978,7 +10990,7 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
     render: (f = 'available') => {
       if (!c || !eng()?.achievements) return;
       const it = flt(ctx._achCurrentFilter = f);
-      c.innerHTML = it.length ? it.map(a => `<div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}"><div class="ach-top"><div class="ach-title" style="color:${a.isUnlocked ? '#fff' : a.color || '#fff'}">${hEsc(a.icon)} ${hEsc(a.name)}</div></div><div class="ach-sub">${a.isUnlocked && a.unlockedAt ? unlockInfo(a) : a.isHidden ? 'Откроется при особых условиях' : hEsc(a.short)}</div>${!a.isUnlocked && !a.isHidden && a.progress ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" data-ach-fill="${a.id}" style="width:${a.progress.pct}%"></div></div></div>` : ''}<div class="ach-bottom"><div class="ach-reward">${rewardText(a)}</div><div class="ach-remaining" data-ach-remaining="${a.id}">${tH(a)}</div><button class="ach-more" type="button">Подробнее</button></div><div class="ach-details" style="display:none"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${hEsc(a.howTo || 'Выполните условия.')}</div>${a.desc ? `<div class="ach-details-desc">${hEsc(a.desc)}</div>` : ''}</div></div>`).join('') : '<div class="fav-empty">По данному фильтру ничего нет</div>';
+      c.innerHTML = it.length ? it.map(a => `<div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}"><div class="ach-top"><div class="ach-title" style="color:${a.isUnlocked ? '#fff' : a.color || '#fff'}">${hEsc(a.icon)} ${hEsc(a.name)}</div></div><div class="ach-sub">${a.isUnlocked && a.unlockedAt ? unlockInfo(a) : a.isHidden ? 'Откроется при особых условиях' : hEsc(a.short)}</div>${!a.isUnlocked && !a.isHidden && a.progress ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" data-ach-fill="${a.id}" style="width:${a.progress.pct}%"></div></div></div>` : ''}<div class="ach-bottom"><div class="ach-reward">${rewardText(a)}</div><div class="ach-remaining" data-ach-remaining="${a.id}">${tH(a)}</div><button class="ach-more" type="button">Подробнее</button></div>${a.progressMeta?.serverConfirmed ? '<div class="ach-server-note">Подтверждено сервером · обновляется во время прослушивания</div>' : ''}<div class="ach-details" style="display:none"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${hEsc(a.howTo || 'Выполните условия.')}</div>${a.desc ? `<div class="ach-details-desc">${hEsc(a.desc)}</div>` : ''}</div></div>`).join('') : '<div class="fav-empty">По данному фильтру ничего нет</div>';
     },
     updateLiveNodes: () => {
       if (!c || !eng()?.achievements) return;
@@ -21137,6 +21149,8 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 .ach-reward{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:900;color:#ffd54f;background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.2);white-space:nowrap}
 .ach-item.done .ach-reward{color:#81c784;background:rgba(76,175,80,.12);border-color:rgba(76,175,80,.22)}
 .ach-remaining{text-align:center;font-size:12px;color:rgba(157,183,221,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ach-server-note{font-size:10px;color:#6f86a8;text-align:center;line-height:1.3}
+.ach-timer{font-variant-numeric:tabular-nums;font-weight:800;color:#cfe3ff}
 .ach-more{appearance:none;border:1px solid rgba(77,170,255,.22);background:rgba(77,170,255,.1);color:#eaf2ff;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:900;cursor:pointer;line-height:1;text-transform:uppercase;min-width:110px}
 .ach-more:hover{background:rgba(77,170,255,.18);border-color:rgba(77,170,255,.32)}
 .ach-more:active{transform:scale(.98)}
