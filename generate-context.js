@@ -43,7 +43,7 @@ const EXCLUDE_FILES_RAW = [
   'node_modules/**',
   '.git/**',
   '.meta/**',
-  'cloud-functions/**',
+  'cloud-functions',
   'assets/**',
   '.next/**',
   'dist/**',
@@ -76,7 +76,7 @@ const EXCLUDE_TREE_RAW = [
   'node_modules/**',
   '.git/**',
   '.meta/**',
-  'cloud-functions/**',
+  'cloud-functions',
   '.next/**',
   'dist/**',
   'build/**',
@@ -162,8 +162,11 @@ const ALWAYS_EXCLUDE = new Set(['ai-rules.txt']);
 
 const isExcluded = (rel, patterns) => {
   const u = toUnix(rel);
+
   if (
     !u ||
+    u === 'cloud-functions' ||
+    u.startsWith('cloud-functions/') ||
     u === SELF_FULL_REL ||
     u === SELF_MUSIC_GAMES_REL ||
     ALWAYS_EXCLUDE.has(u) ||
@@ -171,6 +174,7 @@ const isExcluded = (rel, patterns) => {
   ) {
     return true;
   }
+
   return patterns.some(re => re.test(u));
 };
 
