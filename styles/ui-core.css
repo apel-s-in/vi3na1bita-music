@@ -121,7 +121,7 @@
 .chart-row .label{width:45px;text-align:right;flex-shrink:0}
 .chart-row .bar{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
 .chart-row .fill{height:100%;background:var(--grad-blue);border-radius:4px}
-.chart-row .val{width:30px;text-align:left;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+.chart-row .val{width:58px;text-align:left;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* 7. ВСПЛЫВАЮЩИЕ МЕНЮ */
 .cloud-menu{position:fixed;background:rgba(20,24,32,.98);border:1px solid rgba(77,170,255,.4);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999}
