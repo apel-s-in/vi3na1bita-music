@@ -136,7 +136,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
 [/scripts/core/] bootstrap.js, config.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
@@ -14212,6 +14212,119 @@ const albs = JSON.parse(fs.readFileSync(af, 'utf8'))?.albums; if (!Array.isArray
 albs.forEach((a, i) => { if (!a.key || !a.title || (!a.base && !a.yandex_base && !a.github_base)) fail(`album[${i}] missing fields`); if (!/^https?:\/\//i.test(a.base || a.yandex_base || a.github_base)) fail(`album[${i}] base invalid`); });
 if (new Set(albs.map(a => a.key)).size !== albs.length) fail('duplicate keys');
 ['00','01','02','03','04','05','06'].forEach(id => { const iF = path.join(path.resolve('albums/gallery', id), 'index.json'); if (!fs.existsSync(iF)) fail(`gallery ${id} missing`); try { const it = JSON.parse(fs.readFileSync(iF, 'utf8'))?.items || []; if (!Array.isArray(it)) fail('items not array'); } catch { fail(`gallery ${id} invalid json`); } });
+
+//=================================================
+// FILE: /scripts/ci/validate-contracts.mjs
+name: Validate application contracts
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '.meta/**'
+  pull_request:
+    paths-ignore:
+      - '.meta/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Validate web manifest
+        run: node scripts/ci/validate-manifest.mjs
+
+      - name: Validate Service Worker contract
+        run: node scripts/ci/lint-sw.mjs
+
+      - name: Validate local content indexes
+        run: node scripts/ci/validate-content.mjs
+
+      - name: Validate first-party JavaScript syntax
+        run: |
+          set -euo pipefail
+
+          node --check service-worker.js
+          node --check generate-context.js
+
+          while IFS= read -r file; do
+            echo "CHECK $file"
+            node --input-type=module --check < "$file"
+          done < <(
+            find scripts src \
+              -type f \
+              \( -name '*.js' -o -name '*.mjs' \) \
+              ! -path 'scripts/vendor/*' \
+              | sort
+          )
+
+      - name: Validate Cloud Function sources
+        run: |
+          set -euo pipefail
+
+          functions=(
+            "vi3-signaling"
+            "vi3na1bita-backup-proxy"
+            "vi3-webpush"
+          )
+
+          for function_name in "${functions[@]}"; do
+            function_dir="cloud-functions/$function_name"
+            index_file="$function_dir/index.js"
+            package_file="$function_dir/package.json"
+
+            test -s "$index_file"
+            test -s "$package_file"
+
+            echo "CHECK $index_file"
+            node --check "$index_file"
+
+            echo "CHECK $package_file"
+            node -e "
+              const fs = require('fs');
+              const file = process.argv[1];
+              const value = JSON.parse(
+                fs.readFileSync(file, 'utf8')
+              );
+
+              if (
+                !value ||
+                typeof value !== 'object' ||
+                Array.isArray(value)
+              ) {
+                throw new Error(
+                  'package_json_object_required'
+                );
+              }
+
+              if (
+                value.main &&
+                value.main !== 'index.js'
+              ) {
+                throw new Error(
+                  'package_json_main_must_be_index_js'
+                );
+              }
+            " "$package_file"
+          done
+
+      - name: Validate application contracts
+        run: node scripts/ci/validate-contracts.mjs
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
