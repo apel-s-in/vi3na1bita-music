@@ -11165,17 +11165,3 @@ exports.handler = async event => {
     });
   }
 };
-
-//=================================================
-// FILE: /package.json
-{
-  "name": "vi3-signaling",
-  "version": "1.0.0",
-  "main": "index.js",
-  "type": "commonjs",
-  "dependencies": {
-    "ydb-sdk": "^5.9.0",
-    "@yandex-cloud/nodejs-sdk": "^2.6.0"
-  }
-}
-
