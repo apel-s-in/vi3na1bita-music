@@ -1,43 +1,79 @@
 name: Generate .meta context
+
 on:
   push:
     branches: [main, master]
-    paths-ignore: ['.meta/**']
+    paths-ignore:
+      - '.meta/**'
   workflow_dispatch:
-permissions: { contents: write }
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-meta-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   meta:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v5
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@v5
-        with: { node-version: '24' }
-      - name: Generate application and Cloud Function contexts
+        with:
+          node-version: '24'
+
+      - name: Generate current contexts
         run: |
           set -euo pipefail
-          node generate-context.js --mode=both --max-lines=20000
+
+          rm -f \
+            .meta/project-adaptive.txt \
+            .meta/vi3-signaling.txt \
+            .meta/vi3-webpush.txt \
+            .meta/vi3na1bita-backup-proxy.txt
+
+          node generate-context.js --mode=both
 
           test -s .meta/project-full.txt
-          test -s .meta/project-adaptive.txt
           test -s .meta/project-music-games.txt
-          test -s .meta/vi3-signaling.txt
-          test -s .meta/vi3na1bita-backup-proxy.txt
-          test -s .meta/vi3-webpush.txt
+          test -s .meta/functions/vi3-signaling.txt
+          test -s .meta/functions/vi3-webpush.txt
+          test -s .meta/functions/vi3na1bita-backup-proxy.txt
+
+          test ! -e .meta/project-adaptive.txt
+          test ! -e .meta/vi3-signaling.txt
+          test ! -e .meta/vi3-webpush.txt
+          test ! -e .meta/vi3na1bita-backup-proxy.txt
+
+          if grep -q "ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ" .meta/functions/*.txt; then
+            echo "ai-rules leaked into Cloud Function context"
+            exit 2
+          fi
 
           if grep -q "cloud-functions/" .meta/project-full.txt; then
             echo "cloud-functions leaked into project-full.txt"
             exit 2
           fi
 
-          grep -q "FILE: /index.js" .meta/vi3-signaling.txt
-          grep -q "FILE: /package.json" .meta/vi3-signaling.txt
-          grep -q "FILE: /index.js" .meta/vi3na1bita-backup-proxy.txt
-          grep -q "FILE: /package.json" .meta/vi3na1bita-backup-proxy.txt
-          grep -q "FILE: /index.js" .meta/vi3-webpush.txt
-          grep -q "FILE: /package.json" .meta/vi3-webpush.txt
+          if grep -q "// ... (truncate)" .meta/project-full.txt; then
+            echo "project-full.txt was truncated"
+            exit 2
+          fi
 
-          ls -la .meta
+          grep -q "FILE: /index.js" .meta/functions/vi3-signaling.txt
+          grep -q "FILE: /package.json" .meta/functions/vi3-signaling.txt
+          grep -q "FILE: /index.js" .meta/functions/vi3-webpush.txt
+          grep -q "FILE: /package.json" .meta/functions/vi3-webpush.txt
+          grep -q "FILE: /index.js" .meta/functions/vi3na1bita-backup-proxy.txt
+          grep -q "FILE: /package.json" .meta/functions/vi3na1bita-backup-proxy.txt
+
+          find .meta -maxdepth 2 -type f -print | sort
+
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: generate .meta context"
