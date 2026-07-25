@@ -115,7 +115,7 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/05/] 05-cover-01.jpg, 05-cover-01.png, 05-cover-01.webp, 05-cover-02.jpg, 05-cover-02.png, 05-cover-02.webp, 05-cover-03.jpg, 05-cover-03.png, 05-cover-03.webp, 05-cover-04.jpg, 05-cover-04.png, 05-cover-04.webp, index.json
 [/albums/gallery/06/] 06-cover-01.jpg, 06-cover-01.png, 06-cover-01.webp, 06-cover-02.jpg, 06-cover-02.png, 06-cover-02.webp, 06-cover-03.jpg, 06-cover-03.png, 06-cover-03.webp, 06-cover-04.jpg, 06-cover-04.png, 06-cover-04.webp, index.json
 [/audio/] silence.mp3
-[/cloud-functions/vi3-signaling/] index.js
+[/cloud-functions/vi3-signaling/] index.js, package.json
 [/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.json, taxonomy.json, track-profiles-index.json
 [/data/track-profiles/] _stub.profile.json, README.txt
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
@@ -157,7 +157,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-25 08:55:45 UTC
+Сгенерировано: 2026-07-25 08:56:31 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -27669,6 +27669,19 @@ exports.handler = async event => {
     });
   }
 };
+
+//=================================================
+// FILE: /cloud-functions/vi3-signaling/package.json
+{
+  "name": "vi3-signaling",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "ydb-sdk": "^5.9.0",
+    "@yandex-cloud/nodejs-sdk": "^2.6.0"
+  }
+}
 
 //=================================================
 // FILE: /data/custom_achievements.json
