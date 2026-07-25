@@ -5,6 +5,7 @@ on:
     branches: [main, master]
     paths-ignore:
       - '.meta/**'
+      - 'cloud-functions/**'
       - '.github/workflows/generate-context.yml'
   workflow_dispatch:
 
@@ -44,7 +45,7 @@ jobs:
 
           is_public_file() {
             case "$1" in
-              .git/*|.github/*|.meta/*|albums/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
+              .git/*|.github/*|.meta/*|cloud-functions/*|albums/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
               albums/gallery/*|audio/*|data/*|icons/*|img/*|news/*|scripts/*|src/*|styles/*) return 0 ;;
               index.html|oauth-callback.html|manifest.json|albums.json|service-worker.js) return 0 ;;
               *) return 1 ;;
@@ -94,6 +95,8 @@ jobs:
               --include "albums/gallery/**" \
               --exclude ".meta/*" \
               --exclude ".github/*" \
+              --exclude "cloud-functions/*" \
+              --exclude "cloud-functions/**" \
               --exclude "scripts/ci/*" \
               --exclude "scripts/e2e/*" \
               --exclude "generate-context.js"
