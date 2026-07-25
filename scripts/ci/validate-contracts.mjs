@@ -1,0 +1,110 @@
+name: Validate application contracts
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '.meta/**'
+  pull_request:
+    paths-ignore:
+      - '.meta/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Validate web manifest
+        run: node scripts/ci/validate-manifest.mjs
+
+      - name: Validate Service Worker contract
+        run: node scripts/ci/lint-sw.mjs
+
+      - name: Validate local content indexes
+        run: node scripts/ci/validate-content.mjs
+
+      - name: Validate first-party JavaScript syntax
+        run: |
+          set -euo pipefail
+
+          node --check service-worker.js
+          node --check generate-context.js
+
+          while IFS= read -r file; do
+            echo "CHECK $file"
+            node --input-type=module --check < "$file"
+          done < <(
+            find scripts src \
+              -type f \
+              \( -name '*.js' -o -name '*.mjs' \) \
+              ! -path 'scripts/vendor/*' \
+              | sort
+          )
+
+      - name: Validate Cloud Function sources
+        run: |
+          set -euo pipefail
+
+          functions=(
+            "vi3-signaling"
+            "vi3na1bita-backup-proxy"
+            "vi3-webpush"
+          )
+
+          for function_name in "${functions[@]}"; do
+            function_dir="cloud-functions/$function_name"
+            index_file="$function_dir/index.js"
+            package_file="$function_dir/package.json"
+
+            test -s "$index_file"
+            test -s "$package_file"
+
+            echo "CHECK $index_file"
+            node --check "$index_file"
+
+            echo "CHECK $package_file"
+            node -e "
+              const fs = require('fs');
+              const file = process.argv[1];
+              const value = JSON.parse(
+                fs.readFileSync(file, 'utf8')
+              );
+
+              if (
+                !value ||
+                typeof value !== 'object' ||
+                Array.isArray(value)
+              ) {
+                throw new Error(
+                  'package_json_object_required'
+                );
+              }
+
+              if (
+                value.main &&
+                value.main !== 'index.js'
+              ) {
+                throw new Error(
+                  'package_json_main_must_be_index_js'
+                );
+              }
+            " "$package_file"
+          done
+
+      - name: Validate application contracts
+        run: node scripts/ci/validate-contracts.mjs
