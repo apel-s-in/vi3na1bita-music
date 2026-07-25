@@ -912,17 +912,19 @@ jobs:
           grep -q "display-mode: standalone" scripts/app/pwa-install.js
           grep -q "pwa-install.js" service-worker.js
 
-          if grep -REn \
-            "socials_all_visited|socialVisitAll|social_visit_all|Подписчик всего" \
-            scripts data; then
-            echo "Removed social achievement found"
-            exit 2
-          fi
-
           if grep -En \
             "\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(" \
             scripts/app/pwa-install.js; then
             echo "PWA install bridge must not control playback"
+            exit 2
+          fi
+
+      - name: Reject removed social achievement
+        run: |
+          if grep -REn \
+            "socials_all_visited|socialVisitAll|social_visit_all|Подписчик всего" \
+            scripts data; then
+            echo "Removed social achievement found"
             exit 2
           fi
 
@@ -947,7 +949,7 @@ jobs:
         run: |
           grep -q "getCompletedCount" scripts/analytics/achievement-engine.js
           grep -q "rewardAwarded" scripts/app/profile/achievements-view.js
-          grep -q "server_catalog" scripts/app/shards/view.js
+          grep -q "getRewardCatalog" scripts/app/shards/view.js
 
           if grep -REn \
             "1 XP = 1 Осколок|\+[[:space:]]*.*XP|xpReward" \
@@ -1048,7 +1050,7 @@ jobs:
           grep -q "favorite_state_reconcile" scripts/analytics/favorite-mirror.js
           grep -q "favoriteMirror:outbox:v1" scripts/analytics/account-data-boundary.js
           grep -q "favorite-mirror.js" service-worker.js
-          grep -q "fav_total_" scripts/app/shards/view.js
+          grep -q "serverRewardMap" scripts/app/shards/view.js
 
           if grep -En \
             '(^|[^[:alnum:]_])signature\(item\)' \
