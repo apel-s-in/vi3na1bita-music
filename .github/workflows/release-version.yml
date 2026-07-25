@@ -12,7 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - {name: Checkout music repository, uses: actions/checkout@v5, with: {path: music, fetch-depth: 0, token: "${{ github.token }}"}}
+      - {name: Checkout music repository, uses: actions/checkout@v5, with: {path: music, fetch-depth: 0, token: "${{ secrets.CROSS_REPO_RELEASE_TOKEN }}"}}
       - {name: Checkout Friends repository, uses: actions/checkout@v5, with: {repository: apel-s-in/vi3na1bita-friends, ref: main, path: friends, fetch-depth: 0, token: "${{ secrets.CROSS_REPO_RELEASE_TOKEN }}"}}
       - {name: Checkout Game Center repository, uses: actions/checkout@v5, with: {repository: apel-s-in/vi3na1bita-games, ref: main, path: games, fetch-depth: 0, token: "${{ secrets.CROSS_REPO_RELEASE_TOKEN }}"}}
       - {name: Checkout War Hearts repository, uses: actions/checkout@v5, with: {repository: apel-s-in/vi3na1bita_war_hearts, ref: main, path: war_hearts, fetch-depth: 0, token: "${{ secrets.CROSS_REPO_RELEASE_TOKEN }}"}}
