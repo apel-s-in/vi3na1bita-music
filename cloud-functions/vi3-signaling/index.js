@@ -1,13 +1,3 @@
-Название репозитория: vi3na1bita-music
-Адрес репозитория: https://github.com/apel-s-in/vi3na1bita-music
-Контекст: Yandex Cloud Function vi3-signaling.
-Публикация функции выполняется вручную. Переменные окружения и секреты в этот контекст не входят.
-
-СТРУКТУРА CLOUD FUNCTION vi3-signaling:
-[/] index.js, package.json
-
-//=================================================
-// FILE: /index.js
 'use strict';
 
 const crypto = require('crypto');
