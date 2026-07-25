@@ -40,11 +40,12 @@ const TEXT_EXTS = new Set([
 ]);
 
 const EXCLUDE_FILES_RAW = [
-  'node_modules/**',
-  '.git/**',
-  '.meta/**',
+  'node_modules',
+  '.git',
+  '.meta',
   'cloud-functions',
-  'assets/**',
+  'scripts/vendor',
+  'assets',
   '.next/**',
   'dist/**',
   'build/**',
@@ -76,7 +77,6 @@ const EXCLUDE_TREE_RAW = [
   'node_modules/**',
   '.git/**',
   '.meta/**',
-  'cloud-functions',
   '.next/**',
   'dist/**',
   'build/**',
