@@ -6331,7 +6331,7 @@ async function actionSleepTimerComplete(event, body) {
     const observedListeningSec =
       await getSleepTimerObservedSeconds(timer);
     const requiredObservedSec = Math.max(
-      13,
+      LISTEN_VALID_MIN_SEC,
       Math.floor(
         timer.requestedMinutes * 60 * 0.5
       )
