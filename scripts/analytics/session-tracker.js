@@ -134,12 +134,12 @@ export class SessionTracker {
     const progress = duration > 0
       ? Math.max(0, Math.min(1, lastPos / duration))
       : 0;
-    const valid = listenedSeconds >= 13;
+    const valid = listenedSeconds >= 25;
     const full =
       endedNaturally &&
       progress >= 0.9 &&
       listenedSeconds >= Math.max(
-        13,
+        25,
         Math.floor(duration * 0.8)
       );
 
