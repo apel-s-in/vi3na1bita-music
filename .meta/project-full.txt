@@ -156,7 +156,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-24 22:41:48 UTC
+Сгенерировано: 2026-07-25 08:17:08 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -2664,10 +2664,24 @@ export const AchievementDictionary = {
   // ==========================================
   "play_total": {
     id: "play_total", type: "scalable", category: "listening",
-    ui: { name: "В потоке ур. {level}", short: "Соберите {target} валидных прослушиваний.", desc: "Любые треки — главное валидное время.", howTo: "Слушайте регулярно, используйте Shuffle. Засчитывается ≥13 сек.", icon: "🎧", color: "#4daaff" },
-    reward: { xpBase: 10, xpMultiplier: 1.5, tierBase: 1 },
+    ui: {
+      name: "В потоке ур. {level}",
+      short: "{target} валидных прослушиваний.",
+      desc: "Каждый уровень начинается с нуля.",
+      howTo: "Слушайте любой трек не менее 25 секунд подтверждённого времени.",
+      icon: "🎧",
+      color: "#4daaff"
+    },
+    reward: {
+      steps: [10, 15, 20, 25, 35, 50, 75, 100, 150, 200, 300, 400, 500],
+      tierBase: 1
+    },
     trigger: { conditions: [{ metric: "validPlays", operator: "gte" }] },
-    scaling: { math: "custom", steps: [1, 25, 100, 500, 1000, 5000] }
+    scaling: {
+      math: "custom",
+      resetEachLevel: true,
+      steps: [1, 10, 25, 50, 70, 100, 250, 500, 1000, 5000, 10000, 15000, 20000]
+    }
   },
   "full_total": {
     id: "full_total", type: "scalable", category: "listening",
