@@ -115,9 +115,7 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/05/] 05-cover-01.jpg, 05-cover-01.png, 05-cover-01.webp, 05-cover-02.jpg, 05-cover-02.png, 05-cover-02.webp, 05-cover-03.jpg, 05-cover-03.png, 05-cover-03.webp, 05-cover-04.jpg, 05-cover-04.png, 05-cover-04.webp, index.json
 [/albums/gallery/06/] 06-cover-01.jpg, 06-cover-01.png, 06-cover-01.webp, 06-cover-02.jpg, 06-cover-02.png, 06-cover-02.webp, 06-cover-03.jpg, 06-cover-03.png, 06-cover-03.webp, 06-cover-04.jpg, 06-cover-04.png, 06-cover-04.webp, index.json
 [/audio/] silence.mp3
-[/cloud-functions/vi3-signaling/] index.js, package.json
-[/cloud-functions/vi3-webpush/] index.js, package.json
-[/cloud-functions/vi3na1bita-backup-proxy/] index.js, package.json
+[/cloud-functions/] (пусто)
 [/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.json, taxonomy.json, track-profiles-index.json
 [/data/track-profiles/] _stub.profile.json, README.txt
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
@@ -159,7 +157,7 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-25 08:59:19 UTC
+Сгенерировано: 2026-07-25 09:02:21 UTC
 
 //=================================================
 // FILE: /.github/workflows/deploy.yml
@@ -16756,6 +16754,2609 @@ export default { openTrackStatisticsModal };
   "friendsBuild": "9.0.9",
   "gamesBuild": "9.0.9",
   "warHeartsBuild": "9.0.9"
+}
+
+//=================================================
+// FILE: /data/custom_achievements.json
+{}
+
+//=================================================
+// FILE: /data/listen-track-catalog.env.json
+{"GD-01":[217.056,"golos-dushi"],"GD-02":[249.048,"golos-dushi"],"GD-03":[258.408,"golos-dushi"],"GD-04":[316.08,"golos-dushi"],"GD-05":[271.056,"golos-dushi"],"GD-06":[207.936,"golos-dushi"],"GD-07":[288.384,"golos-dushi"],"GD-08":[232.056,"golos-dushi"],"GD-09":[226.848,"golos-dushi"],"GD-10":[263.856,"golos-dushi"],"GD-11":[337.968,"golos-dushi"],"GD-12":[228.048,"golos-dushi"],"GD-13":[251.976,"golos-dushi"],"GD-14":[254.856,"golos-dushi"],"KREV-01":[264.888,"krevetochka"],"KREV-02":[211.488,"krevetochka"],"MZD-01":[210.26,"mezhdu-zlom-i-dobrom"],"MZD-02":[248.976,"mezhdu-zlom-i-dobrom"],"MZD-03":[224.313,"mezhdu-zlom-i-dobrom"],"MZD-04":[220.464,"mezhdu-zlom-i-dobrom"],"MZD-05":[208.17,"mezhdu-zlom-i-dobrom"],"MZD-06":[219.22,"mezhdu-zlom-i-dobrom"],"MZD-07":[237.096,"mezhdu-zlom-i-dobrom"],"MZD-08":[229.248,"mezhdu-zlom-i-dobrom"],"MZD-09":[219.115,"mezhdu-zlom-i-dobrom"],"MZD-10":[295.968,"mezhdu-zlom-i-dobrom"],"MZD-11":[216.816,"mezhdu-zlom-i-dobrom"],"MZD-12":[171.984,"mezhdu-zlom-i-dobrom"],"MZD-13":[215.876,"mezhdu-zlom-i-dobrom"],"MZD-14":[222.407,"mezhdu-zlom-i-dobrom"],"MZD-15":[229.433,"mezhdu-zlom-i-dobrom"],"MZD-16":[200.928,"mezhdu-zlom-i-dobrom"],"IVR-14":[328.224,"ne-vse-ravno"],"NVR-01":[242.064,"ne-vse-ravno"],"NVR-02":[235.944,"ne-vse-ravno"],"NVR-03":[275.208,"ne-vse-ravno"],"NVR-04":[266.208,"ne-vse-ravno"],"NVR-05":[212.256,"ne-vse-ravno"],"NVR-06":[212.784,"ne-vse-ravno"],"NVR-07":[201.648,"ne-vse-ravno"],"NVR-08":[257.088,"ne-vse-ravno"],"NVR-09":[219.576,"ne-vse-ravno"],"NVR-10":[219.528,"ne-vse-ravno"],"NVR-11":[184.536,"ne-vse-ravno"],"NVR-12":[161.736,"ne-vse-ravno"],"NVR-13":[208.584,"ne-vse-ravno"],"NVR-15":[307.368,"ne-vse-ravno"],"NE-01":[273.528,"neizvestniy"],"NE-02":[247.92,"neizvestniy"],"NE-03":[225.144,"neizvestniy"],"NE-04":[284.832,"neizvestniy"],"NE-05":[329.832,"neizvestniy"],"OS-01":[251.616,"odnazhdy-v-skazke"],"OS-02":[236.016,"odnazhdy-v-skazke"],"OS-03":[255.048,"odnazhdy-v-skazke"],"OS-04":[204.936,"odnazhdy-v-skazke"],"OS-05":[232.776,"odnazhdy-v-skazke"],"OS-06":[172.248,"odnazhdy-v-skazke"],"OS-07":[234.984,"odnazhdy-v-skazke"],"OS-08":[294.024,"odnazhdy-v-skazke"],"OS-09":[247.968,"odnazhdy-v-skazke"],"OS-10":[254.448,"odnazhdy-v-skazke"],"OS-11":[259.416,"odnazhdy-v-skazke"],"OS-12":[184.248,"odnazhdy-v-skazke"],"OS-13":[230.856,"odnazhdy-v-skazke"],"OS-14":[212.016,"odnazhdy-v-skazke"],"OS-15":[279.768,"odnazhdy-v-skazke"],"VS-01":[332.28,"v-ssore"],"VS-02":[249.288,"v-ssore"],"VS-03":[321.048,"v-ssore"],"VS-04":[325.656,"v-ssore"],"VS-05":[254.784,"v-ssore"],"VS-06":[306.36,"v-ssore"],"VS-07":[335.856,"v-ssore"],"VS-08":[421.056,"v-ssore"],"VS-09":[303.024,"v-ssore"],"VS-10":[383.88,"v-ssore"]}
+//=================================================
+// FILE: /data/listen-track-catalog.json
+{
+  "version": 1,
+  "generatedAt": "2026-07-21T23:17:39.617Z",
+  "tracks": [
+    {
+      "uid": "GD-01",
+      "title": "Волна",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 217.056,
+      "hi": {
+        "duration": 217.032,
+        "bytes": 8875762,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/01.mp3"
+      },
+      "lo": {
+        "duration": 217.056,
+        "bytes": 5401883,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/01.mp3"
+      }
+    },
+    {
+      "uid": "GD-02",
+      "title": "Цена Счастья",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 249.048,
+      "hi": {
+        "duration": 249.024,
+        "bytes": 10155674,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/02.mp3"
+      },
+      "lo": {
+        "duration": 249.048,
+        "bytes": 6169904,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/02.mp3"
+      }
+    },
+    {
+      "uid": "GD-03",
+      "title": "Гадкая",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 258.408,
+      "hi": {
+        "duration": 258.384,
+        "bytes": 10529486,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/03.mp3"
+      },
+      "lo": {
+        "duration": 258.408,
+        "bytes": 6393987,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/03.mp3"
+      }
+    },
+    {
+      "uid": "GD-04",
+      "title": "Голос Души",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 316.08,
+      "hi": {
+        "duration": 316.056,
+        "bytes": 12838006,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/04.mp3"
+      },
+      "lo": {
+        "duration": 316.08,
+        "bytes": 7779565,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/04.mp3"
+      }
+    },
+    {
+      "uid": "GD-05",
+      "title": "Ангел",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 271.056,
+      "hi": {
+        "duration": 271.032,
+        "bytes": 11036102,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/05.mp3"
+      },
+      "lo": {
+        "duration": 271.056,
+        "bytes": 6698163,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/05.mp3"
+      }
+    },
+    {
+      "uid": "GD-06",
+      "title": "Завтра Настанет Всегда",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 207.936,
+      "hi": {
+        "duration": 207.912,
+        "bytes": 8509860,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/06.mp3"
+      },
+      "lo": {
+        "duration": 207.936,
+        "bytes": 5182021,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/06.mp3"
+      }
+    },
+    {
+      "uid": "GD-07",
+      "title": "Упала Слеза",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 288.384,
+      "hi": {
+        "duration": 288.36,
+        "bytes": 11730128,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/07.mp3"
+      },
+      "lo": {
+        "duration": 288.384,
+        "bytes": 7114864,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/07.mp3"
+      }
+    },
+    {
+      "uid": "GD-08",
+      "title": "Путеводная Звезда",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 232.056,
+      "hi": {
+        "duration": 232.032,
+        "bytes": 9476076,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/08.mp3"
+      },
+      "lo": {
+        "duration": 232.056,
+        "bytes": 5762154,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/08.mp3"
+      }
+    },
+    {
+      "uid": "GD-09",
+      "title": "Мелодии Дождей",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 226.848,
+      "hi": {
+        "duration": 226.824,
+        "bytes": 9266276,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/09.mp3"
+      },
+      "lo": {
+        "duration": 226.848,
+        "bytes": 5635855,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/09.mp3"
+      }
+    },
+    {
+      "uid": "GD-10",
+      "title": "Прекрасная Ложь",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 263.856,
+      "hi": {
+        "duration": 263.832,
+        "bytes": 10746954,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/10.mp3"
+      },
+      "lo": {
+        "duration": 263.856,
+        "bytes": 6524344,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/10.mp3"
+      }
+    },
+    {
+      "uid": "GD-11",
+      "title": "Одиночество",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 337.968,
+      "hi": {
+        "duration": 337.944,
+        "bytes": 13712424,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/11.mp3"
+      },
+      "lo": {
+        "duration": 337.968,
+        "bytes": 8303925,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/11.mp3"
+      }
+    },
+    {
+      "uid": "GD-12",
+      "title": "Колыбельная",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 228.048,
+      "hi": {
+        "duration": 228.024,
+        "bytes": 9314048,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/12.mp3"
+      },
+      "lo": {
+        "duration": 228.048,
+        "bytes": 5664429,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/12.mp3"
+      }
+    },
+    {
+      "uid": "GD-13",
+      "title": "Улыбка Весны",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 251.976,
+      "hi": {
+        "duration": 251.952,
+        "bytes": 10271512,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/13.mp3"
+      },
+      "lo": {
+        "duration": 251.976,
+        "bytes": 6239026,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/13.mp3"
+      }
+    },
+    {
+      "uid": "GD-14",
+      "title": "Лёд",
+      "album": "golos-dushi",
+      "albumTitle": "Голос Души",
+      "duration": 254.856,
+      "hi": {
+        "duration": 254.832,
+        "bytes": 10387828,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/14.mp3"
+      },
+      "lo": {
+        "duration": 254.856,
+        "bytes": 6309115,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/14.mp3"
+      }
+    },
+    {
+      "uid": "KREV-01",
+      "title": "Упала Слеза",
+      "album": "krevetochka",
+      "albumTitle": "КРЕВЕツTOCHKA",
+      "duration": 264.888,
+      "hi": {
+        "duration": 264.864,
+        "bytes": 10727831,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/audio/%D0%9A%D0%A0%D0%95%D0%92%D0%95%E3%83%84TOCHKA%20-%20%D0%A3%D0%BF%D0%B0%D0%BB%D0%B0%20%D0%A1%D0%BB%D0%B5%D0%B7%D0%B0.mp3"
+      },
+      "lo": {
+        "duration": 264.888,
+        "bytes": 6489140,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/audio_low/%D0%9A%D0%A0%D0%95%D0%92%D0%95%E3%83%84TOCHKA%20-%20%D0%A3%D0%BF%D0%B0%D0%BB%D0%B0%20%D0%A1%D0%BB%D0%B5%D0%B7%D0%B0.mp3"
+      }
+    },
+    {
+      "uid": "KREV-02",
+      "title": "Принц",
+      "album": "krevetochka",
+      "albumTitle": "КРЕВЕツTOCHKA",
+      "duration": 211.488,
+      "hi": {
+        "duration": 211.464,
+        "bytes": 8591819,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/audio/%D0%9A%D0%A0%D0%95%D0%92%D0%95%E3%83%84TOCHKA%20-%20%D0%9F%D1%80%D0%B8%D0%BD%D1%86.mp3"
+      },
+      "lo": {
+        "duration": 211.488,
+        "bytes": 5207529,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/audio_low/%D0%9A%D0%A0%D0%95%D0%92%D0%95%E3%83%84TOCHKA%20-%20%D0%9F%D1%80%D0%B8%D0%BD%D1%86.mp3"
+      }
+    },
+    {
+      "uid": "MZD-01",
+      "title": "Рулетка",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 210.26,
+      "hi": {
+        "duration": 210.233,
+        "bytes": 8565497,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/01.mp3"
+      },
+      "lo": {
+        "duration": 210.26,
+        "bytes": 5200551,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/01.mp3"
+      }
+    },
+    {
+      "uid": "MZD-02",
+      "title": "Дыхание 24/7",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 248.976,
+      "hi": {
+        "duration": 248.952,
+        "bytes": 10114026,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/02.mp3"
+      },
+      "lo": {
+        "duration": 248.976,
+        "bytes": 6129537,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/02.mp3"
+      }
+    },
+    {
+      "uid": "MZD-03",
+      "title": "Витрина разбита",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 224.313,
+      "hi": {
+        "duration": 224.287,
+        "bytes": 9127294,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/03.mp3"
+      },
+      "lo": {
+        "duration": 224.313,
+        "bytes": 5537495,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/03.mp3"
+      }
+    },
+    {
+      "uid": "MZD-04",
+      "title": "Кошки-мышки",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 220.464,
+      "hi": {
+        "duration": 220.44,
+        "bytes": 8973414,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/04.mp3"
+      },
+      "lo": {
+        "duration": 220.464,
+        "bytes": 5445127,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/04.mp3"
+      }
+    },
+    {
+      "uid": "MZD-05",
+      "title": "Всё включено",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 208.17,
+      "hi": {
+        "duration": 208.144,
+        "bytes": 8481332,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/05.mp3"
+      },
+      "lo": {
+        "duration": 208.17,
+        "bytes": 5149866,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/05.mp3"
+      }
+    },
+    {
+      "uid": "MZD-06",
+      "title": "Вырвать сердце",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 219.22,
+      "hi": {
+        "duration": 219.193,
+        "bytes": 8923065,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/06.mp3"
+      },
+      "lo": {
+        "duration": 219.22,
+        "bytes": 5414838,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/06.mp3"
+      }
+    },
+    {
+      "uid": "MZD-07",
+      "title": "Все там будем",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 237.096,
+      "hi": {
+        "duration": 237.072,
+        "bytes": 9638422,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/07.mp3"
+      },
+      "lo": {
+        "duration": 237.096,
+        "bytes": 5844052,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/07.mp3"
+      }
+    },
+    {
+      "uid": "MZD-08",
+      "title": "Зачем цветы с корнями вырываем",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 229.248,
+      "hi": {
+        "duration": 229.224,
+        "bytes": 9324928,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/08.mp3"
+      },
+      "lo": {
+        "duration": 229.248,
+        "bytes": 5656075,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/08.mp3"
+      }
+    },
+    {
+      "uid": "MZD-09",
+      "title": "Память",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 219.115,
+      "hi": {
+        "duration": 219.089,
+        "bytes": 8919334,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/09.mp3"
+      },
+      "lo": {
+        "duration": 219.115,
+        "bytes": 5412708,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/09.mp3"
+      }
+    },
+    {
+      "uid": "MZD-10",
+      "title": "Маша",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 295.968,
+      "hi": {
+        "duration": 295.944,
+        "bytes": 11995033,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/10.mp3"
+      },
+      "lo": {
+        "duration": 295.968,
+        "bytes": 7258461,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/10.mp3"
+      }
+    },
+    {
+      "uid": "MZD-11",
+      "title": "Остановись, Планета",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 216.816,
+      "hi": {
+        "duration": 216.79,
+        "bytes": 8827673,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/11.mp3"
+      },
+      "lo": {
+        "duration": 216.816,
+        "bytes": 5357790,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/11.mp3"
+      }
+    },
+    {
+      "uid": "MZD-12",
+      "title": "Прости, я не фейк",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 171.984,
+      "hi": {
+        "duration": 171.96,
+        "bytes": 7034096,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/12.mp3"
+      },
+      "lo": {
+        "duration": 171.984,
+        "bytes": 4281497,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/12.mp3"
+      }
+    },
+    {
+      "uid": "MZD-13",
+      "title": "Оля у моря",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 215.876,
+      "hi": {
+        "duration": 215.85,
+        "bytes": 8789932,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/13.mp3"
+      },
+      "lo": {
+        "duration": 215.876,
+        "bytes": 5335098,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/13.mp3"
+      }
+    },
+    {
+      "uid": "MZD-14",
+      "title": "Лови свой миг",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 222.407,
+      "hi": {
+        "duration": 222.38,
+        "bytes": 9050773,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/14.mp3"
+      },
+      "lo": {
+        "duration": 222.407,
+        "bytes": 5491523,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/14.mp3"
+      }
+    },
+    {
+      "uid": "MZD-15",
+      "title": "Призрак",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 229.433,
+      "hi": {
+        "duration": 229.407,
+        "bytes": 9331238,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/15.mp3"
+      },
+      "lo": {
+        "duration": 229.433,
+        "bytes": 5659619,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/15.mp3"
+      }
+    },
+    {
+      "uid": "MZD-16",
+      "title": "Между злом и добром",
+      "album": "mezhdu-zlom-i-dobrom",
+      "albumTitle": "Между Злом и Добром",
+      "duration": 200.928,
+      "hi": {
+        "duration": 200.904,
+        "bytes": 8190862,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio/16.mp3"
+      },
+      "lo": {
+        "duration": 200.928,
+        "bytes": 4975300,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/audio_low/16.mp3"
+      }
+    },
+    {
+      "uid": "IVR-14",
+      "title": "Кораблик",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 328.224,
+      "hi": {
+        "duration": 328.2,
+        "bytes": 13277979,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/14.mp3"
+      },
+      "lo": {
+        "duration": 328.224,
+        "bytes": 8025620,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/14.mp3"
+      }
+    },
+    {
+      "uid": "NVR-01",
+      "title": "Манифест",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 242.064,
+      "hi": {
+        "duration": 242.04,
+        "bytes": 9834229,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/01.mp3"
+      },
+      "lo": {
+        "duration": 242.064,
+        "bytes": 5960135,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/01.mp3"
+      }
+    },
+    {
+      "uid": "NVR-02",
+      "title": "Страх перемен",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 235.944,
+      "hi": {
+        "duration": 235.92,
+        "bytes": 9586279,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/02.mp3"
+      },
+      "lo": {
+        "duration": 235.944,
+        "bytes": 5810461,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/02.mp3"
+      }
+    },
+    {
+      "uid": "NVR-03",
+      "title": "Им всё равно",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 275.208,
+      "hi": {
+        "duration": 275.184,
+        "bytes": 11157851,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/03.mp3"
+      },
+      "lo": {
+        "duration": 275.208,
+        "bytes": 6753663,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/03.mp3"
+      }
+    },
+    {
+      "uid": "NVR-04",
+      "title": "Дремлют дети",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 266.208,
+      "hi": {
+        "duration": 266.184,
+        "bytes": 10798027,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/04.mp3"
+      },
+      "lo": {
+        "duration": 266.208,
+        "bytes": 6537861,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/04.mp3"
+      }
+    },
+    {
+      "uid": "NVR-05",
+      "title": "Сквозь века",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 212.256,
+      "hi": {
+        "duration": 212.232,
+        "bytes": 8640465,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/05.mp3"
+      },
+      "lo": {
+        "duration": 212.256,
+        "bytes": 5243418,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/05.mp3"
+      }
+    },
+    {
+      "uid": "NVR-06",
+      "title": "Ромашка",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 212.784,
+      "hi": {
+        "duration": 212.76,
+        "bytes": 8660995,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/06.mp3"
+      },
+      "lo": {
+        "duration": 212.784,
+        "bytes": 5255571,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/06.mp3"
+      }
+    },
+    {
+      "uid": "NVR-07",
+      "title": "От взмаха крыла",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 201.648,
+      "hi": {
+        "duration": 201.624,
+        "bytes": 8216133,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/07.mp3"
+      },
+      "lo": {
+        "duration": 201.648,
+        "bytes": 4988837,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/07.mp3"
+      }
+    },
+    {
+      "uid": "NVR-08",
+      "title": "Геракл",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 257.088,
+      "hi": {
+        "duration": 257.064,
+        "bytes": 10434249,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/08.mp3"
+      },
+      "lo": {
+        "duration": 257.088,
+        "bytes": 6319878,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/08.mp3"
+      }
+    },
+    {
+      "uid": "NVR-09",
+      "title": "Муха",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 219.576,
+      "hi": {
+        "duration": 219.552,
+        "bytes": 8931765,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/09.mp3"
+      },
+      "lo": {
+        "duration": 219.576,
+        "bytes": 5417794,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/09.mp3"
+      }
+    },
+    {
+      "uid": "NVR-10",
+      "title": "Хайп",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 219.528,
+      "hi": {
+        "duration": 219.504,
+        "bytes": 8931387,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/10.mp3"
+      },
+      "lo": {
+        "duration": 219.528,
+        "bytes": 5417990,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/10.mp3"
+      }
+    },
+    {
+      "uid": "NVR-11",
+      "title": "Злюка",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 184.536,
+      "hi": {
+        "duration": 184.512,
+        "bytes": 7530689,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/11.mp3"
+      },
+      "lo": {
+        "duration": 184.536,
+        "bytes": 4577297,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/11.mp3"
+      }
+    },
+    {
+      "uid": "NVR-12",
+      "title": "Прыщик",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 161.736,
+      "hi": {
+        "duration": 161.712,
+        "bytes": 6617885,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/12.mp3"
+      },
+      "lo": {
+        "duration": 161.736,
+        "bytes": 4029380,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/12.mp3"
+      }
+    },
+    {
+      "uid": "NVR-13",
+      "title": "ЗвёзДочка",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 208.584,
+      "hi": {
+        "duration": 208.56,
+        "bytes": 8491895,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/13.mp3"
+      },
+      "lo": {
+        "duration": 208.584,
+        "bytes": 5153836,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/13.mp3"
+      }
+    },
+    {
+      "uid": "NVR-15",
+      "title": "Рецепт любви",
+      "album": "ne-vse-ravno",
+      "albumTitle": "Не всё равно",
+      "duration": 307.368,
+      "hi": {
+        "duration": 307.344,
+        "bytes": 12444359,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio/15.mp3"
+      },
+      "lo": {
+        "duration": 307.368,
+        "bytes": 7525619,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/audio_low/15.mp3"
+      }
+    },
+    {
+      "uid": "NE-01",
+      "title": "4145",
+      "album": "neizvestniy",
+      "albumTitle": "Неизвестный",
+      "duration": 273.528,
+      "hi": {
+        "duration": 273.528,
+        "bytes": 11048962,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio/01.mp3"
+      },
+      "lo": {
+        "duration": 273.528,
+        "bytes": 6669190,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio_low/01.mp3"
+      }
+    },
+    {
+      "uid": "NE-02",
+      "title": "А где-то там война",
+      "album": "neizvestniy",
+      "albumTitle": "Неизвестный",
+      "duration": 247.92,
+      "hi": {
+        "duration": 247.92,
+        "bytes": 10024152,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio/02.mp3"
+      },
+      "lo": {
+        "duration": 247.92,
+        "bytes": 6054626,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio_low/02.mp3"
+      }
+    },
+    {
+      "uid": "NE-03",
+      "title": "Живи, Герой",
+      "album": "neizvestniy",
+      "albumTitle": "Неизвестный",
+      "duration": 225.144,
+      "hi": {
+        "duration": 225.144,
+        "bytes": 9113124,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio/03.mp3"
+      },
+      "lo": {
+        "duration": 225.144,
+        "bytes": 5507988,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio_low/03.mp3"
+      }
+    },
+    {
+      "uid": "NE-04",
+      "title": "Путь к победе",
+      "album": "neizvestniy",
+      "albumTitle": "Неизвестный",
+      "duration": 284.832,
+      "hi": {
+        "duration": 284.832,
+        "bytes": 11500130,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio/04.mp3"
+      },
+      "lo": {
+        "duration": 284.832,
+        "bytes": 6940504,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio_low/04.mp3"
+      }
+    },
+    {
+      "uid": "NE-05",
+      "title": "Добро и Зло",
+      "album": "neizvestniy",
+      "albumTitle": "Неизвестный",
+      "duration": 329.832,
+      "hi": {
+        "duration": 329.832,
+        "bytes": 13301114,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio/05.mp3"
+      },
+      "lo": {
+        "duration": 329.832,
+        "bytes": 8020500,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/audio_low/05.mp3"
+      }
+    },
+    {
+      "uid": "OS-01",
+      "title": "Как Гермиона Грейнджер",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 251.616,
+      "hi": {
+        "duration": 251.592,
+        "bytes": 10285623,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/01.mp3"
+      },
+      "lo": {
+        "duration": 251.616,
+        "bytes": 6258845,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/01.mp3"
+      }
+    },
+    {
+      "uid": "OS-02",
+      "title": "Трусливый Парень",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 236.016,
+      "hi": {
+        "duration": 235.992,
+        "bytes": 9661499,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/02.mp3"
+      },
+      "lo": {
+        "duration": 236.016,
+        "bytes": 5884464,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/02.mp3"
+      }
+    },
+    {
+      "uid": "OS-03",
+      "title": "Заклинание Добра",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 255.048,
+      "hi": {
+        "duration": 255.024,
+        "bytes": 10423599,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/03.mp3"
+      },
+      "lo": {
+        "duration": 255.048,
+        "bytes": 6341991,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/03.mp3"
+      }
+    },
+    {
+      "uid": "OS-04",
+      "title": "Последний День",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 204.936,
+      "hi": {
+        "duration": 204.912,
+        "bytes": 8417751,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/04.mp3"
+      },
+      "lo": {
+        "duration": 204.936,
+        "bytes": 5138064,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/04.mp3"
+      }
+    },
+    {
+      "uid": "OS-05",
+      "title": "Зазеркалье Души",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 232.776,
+      "hi": {
+        "duration": 232.752,
+        "bytes": 9533093,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/05.mp3"
+      },
+      "lo": {
+        "duration": 232.776,
+        "bytes": 5807765,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/05.mp3"
+      }
+    },
+    {
+      "uid": "OS-06",
+      "title": "Мумия",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 172.248,
+      "hi": {
+        "duration": 172.224,
+        "bytes": 7110901,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/06.mp3"
+      },
+      "lo": {
+        "duration": 172.248,
+        "bytes": 4354154,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/06.mp3"
+      }
+    },
+    {
+      "uid": "OS-07",
+      "title": "Коварство",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 234.984,
+      "hi": {
+        "duration": 234.96,
+        "bytes": 9620961,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/07.mp3"
+      },
+      "lo": {
+        "duration": 234.984,
+        "bytes": 5860371,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/07.mp3"
+      }
+    },
+    {
+      "uid": "OS-08",
+      "title": "Сумерки",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 294.024,
+      "hi": {
+        "duration": 294,
+        "bytes": 11982557,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/08.mp3"
+      },
+      "lo": {
+        "duration": 294.024,
+        "bytes": 7277305,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/08.mp3"
+      }
+    },
+    {
+      "uid": "OS-09",
+      "title": "Лунный Круг",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 247.968,
+      "hi": {
+        "duration": 247.944,
+        "bytes": 10139169,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/09.mp3"
+      },
+      "lo": {
+        "duration": 247.968,
+        "bytes": 6170967,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/09.mp3"
+      }
+    },
+    {
+      "uid": "OS-10",
+      "title": "Нити Судьбы",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 254.448,
+      "hi": {
+        "duration": 254.424,
+        "bytes": 10399617,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/10.mp3"
+      },
+      "lo": {
+        "duration": 254.448,
+        "bytes": 6327573,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/10.mp3"
+      }
+    },
+    {
+      "uid": "OS-11",
+      "title": "Две Души",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 259.416,
+      "hi": {
+        "duration": 259.392,
+        "bytes": 10597383,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/11.mp3"
+      },
+      "lo": {
+        "duration": 259.416,
+        "bytes": 6445970,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/11.mp3"
+      }
+    },
+    {
+      "uid": "OS-12",
+      "title": "Ветерок",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 184.248,
+      "hi": {
+        "duration": 184.224,
+        "bytes": 7591063,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/12.mp3"
+      },
+      "lo": {
+        "duration": 184.248,
+        "bytes": 4642292,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/12.mp3"
+      }
+    },
+    {
+      "uid": "OS-13",
+      "title": "Уроки Музыки",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 230.856,
+      "hi": {
+        "duration": 230.832,
+        "bytes": 9455929,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/13.mp3"
+      },
+      "lo": {
+        "duration": 230.856,
+        "bytes": 5761369,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/13.mp3"
+      }
+    },
+    {
+      "uid": "OS-14",
+      "title": "Однажды в Сказке",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 212.016,
+      "hi": {
+        "duration": 211.992,
+        "bytes": 8702871,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/14.mp3"
+      },
+      "lo": {
+        "duration": 212.016,
+        "bytes": 5309685,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/14.mp3"
+      }
+    },
+    {
+      "uid": "OS-15",
+      "title": "Снежинка",
+      "album": "odnazhdy-v-skazke",
+      "albumTitle": "Однажды в Сказке",
+      "duration": 279.768,
+      "hi": {
+        "duration": 279.744,
+        "bytes": 11413017,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio/15.mp3"
+      },
+      "lo": {
+        "duration": 279.768,
+        "bytes": 6935814,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/audio_low/15.mp3"
+      }
+    },
+    {
+      "uid": "VS-01",
+      "title": "Живой",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 332.28,
+      "hi": {
+        "duration": 332.256,
+        "bytes": 13360786,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/01.mp3"
+      },
+      "lo": {
+        "duration": 332.28,
+        "bytes": 8043232,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/01.mp3"
+      }
+    },
+    {
+      "uid": "VS-02",
+      "title": "Клаустрофобия",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 249.288,
+      "hi": {
+        "duration": 249.264,
+        "bytes": 10040696,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/02.mp3"
+      },
+      "lo": {
+        "duration": 249.288,
+        "bytes": 6051040,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/02.mp3"
+      }
+    },
+    {
+      "uid": "VS-03",
+      "title": "В ссоре",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 321.048,
+      "hi": {
+        "duration": 321.024,
+        "bytes": 12911332,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/03.mp3"
+      },
+      "lo": {
+        "duration": 321.048,
+        "bytes": 7773474,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/03.mp3"
+      }
+    },
+    {
+      "uid": "VS-04",
+      "title": "Тише",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 325.656,
+      "hi": {
+        "duration": 325.632,
+        "bytes": 13095886,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/04.mp3"
+      },
+      "lo": {
+        "duration": 325.656,
+        "bytes": 7884244,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/04.mp3"
+      }
+    },
+    {
+      "uid": "VS-05",
+      "title": "Мирись",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 254.784,
+      "hi": {
+        "duration": 254.76,
+        "bytes": 10259972,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/05.mp3"
+      },
+      "lo": {
+        "duration": 254.784,
+        "bytes": 6182454,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/05.mp3"
+      }
+    },
+    {
+      "uid": "VS-06",
+      "title": "Monsieur Жор",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 306.36,
+      "hi": {
+        "duration": 306.336,
+        "bytes": 12319664,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/06.mp3"
+      },
+      "lo": {
+        "duration": 306.36,
+        "bytes": 7417345,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/06.mp3"
+      }
+    },
+    {
+      "uid": "VS-07",
+      "title": "Закатай губу",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 335.856,
+      "hi": {
+        "duration": 335.832,
+        "bytes": 13504026,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/07.mp3"
+      },
+      "lo": {
+        "duration": 335.856,
+        "bytes": 8129192,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/07.mp3"
+      }
+    },
+    {
+      "uid": "VS-08",
+      "title": "Царевна",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 421.056,
+      "hi": {
+        "duration": 421.032,
+        "bytes": 16907608,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/08.mp3"
+      },
+      "lo": {
+        "duration": 421.056,
+        "bytes": 10170115,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/08.mp3"
+      }
+    },
+    {
+      "uid": "VS-09",
+      "title": "Печаль",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 303.024,
+      "hi": {
+        "duration": 303,
+        "bytes": 12186212,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/09.mp3"
+      },
+      "lo": {
+        "duration": 303.024,
+        "bytes": 7337278,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/09.mp3"
+      }
+    },
+    {
+      "uid": "VS-10",
+      "title": "Любовь и Ненависть",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "duration": 383.88,
+      "hi": {
+        "duration": 383.856,
+        "bytes": 15424894,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio/10.mp3"
+      },
+      "lo": {
+        "duration": 383.88,
+        "bytes": 9281753,
+        "url": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/audio_low/10.mp3"
+      }
+    }
+  ]
+}
+
+//=================================================
+// FILE: /data/taxonomy.json
+{
+  "taxonomyVersion": "taxonomy-v2",
+  "scales": {
+    "weight_0_1": {
+      "name": "Универсальный вес соответствия",
+      "range": [0.0, 1.0],
+      "meaning": {
+        "0.0": "точно не подходит",
+        "0.01": "почти не подходит (по умолчанию для неуказанного)",
+        "0.05": "едва заметно/слабый признак",
+        "0.1": "слегка выражено",
+        "0.25": "заметно присутствует",
+        "0.5": "сильно выражено",
+        "0.75": "доминирует",
+        "1.0": "максимально соответствует"
+      },
+      "storageRule": "В JSON храни только значения >= threshold_store (например 0.05). Неуказанное считай как default_unset (например 0.01)."
+    }
+  },
+  "groups": {
+    "genres": {
+      "description": "Музыкальная принадлежность (жанры и поджанры). Опирается в первую очередь на аудио.",
+      "items": {
+        "pop": "Поп-музыка: акцент на мелодии/хуке, массовое звучание.",
+        "rock": "Рок: гитары/барабаны, драйв, роковая подача.",
+        "alternative_rock": "Альтернативный рок: рок с нестандартной эстетикой/аранжировками, часто мрачнее/смелее мейнстрима.",
+        "indie_rock": "Инди-рок: независимая эстетика, часто более «домашний»/авторский саунд.",
+        "hard_rock": "Хард-рок: более тяжёлые гитары, мощные риффы, напор.",
+        "punk": "Панк (общая зона): прямолинейность, скорость/напор, протестная эстетика.",
+        "punk_rock": "Панк-рок: быстрый рок с панковской энергетикой и простыми риффами.",
+        "hardcore_punk": "Хардкор-панк: ещё быстрее/жёстче, часто агрессивнее и плотнее.",
+        "post_punk": "Пост-панк: холодная/угловатая ритмика, мрачная атмосфера, минимализм/арт-подача.",
+        "ska_punk": "Ска-панк: быстрый рок с панковской энергетикой и с яркими трубами.",
+        "metal": "Метал (общая зона): тяжёлые гитары, плотность, агрессия/эпичность.",
+        "heavy_metal": "Хэви-метал: классический метал, героическая/силовая подача, риффы и соло.",
+        "nu_metal": "Ню-метал: метал + грув/рэп-элементы, приземлённый кач.",
+        "metalcore": "Металкор: метал + хардкор, брейкдауны, контраст чистого/экстрим вокала.",
+        "doom_metal": "Дум-метал: медленно, тяжело, гнетущая атмосфера.",
+        "hip_hop": "Хип-хоп/рэп: речитатив, биты, акцент на тексте/флоу.",
+        "trap": "Трэп: 808-бас, хэты, современный рэп-саунд, кач.",
+        "rnb": "R&B: соуловая вокальная подача, грув, романтика/чувственность.",
+        "electronic": "Электронная музыка (общая): синтезаторы, электронные ритмы/саунд-дизайн.",
+        "dance": "Танцевальная музыка (общая): создана для танца, стабильный грув, клубная подача.",
+        "edm": "EDM: фестивально-клубная электроника с яркими дропами/хуками.",
+        "house": "Хаус: ровный 4/4, клубный грув, тёплый/фанковый вайб.",
+        "techno": "Техно: более жёсткий/минималистичный электронный драйв, гипнотичность.",
+        "trance": "Транс: воздушные синты, подъёмы, эмоциональные «лифты».",
+        "drum_and_bass": "D&B: быстрый темп, ломанные барабаны, басовая энергия.",
+        "dubstep": "Дабстеп: тяжёлый бас, «качели» грува, резкие дропы.",
+        "ambient": "Эмбиент: атмосферная, часто без явного бита, для фона/погружения.",
+        "folk": "Фолк: народные мотивы, акустика, традиционная мелодика.",
+        "country": "Кантри: гитары, сторителлинг, «дорожная» американская эстетика.",
+        "jazz": "Джаз: импровизация, сложные гармонии/ритмика.",
+        "blues": "Блюз: блюзовая гармония, «тоска/душа», гитара/вокал.",
+        "classical": "Классика/академическая музыка.",
+        "soundtrack": "Саундтрек/кино-музыка: оркестровость/атмосферность, «сценичность».",
+        "reggae": "Регги: расслабленный оффбит-грув, ямайская эстетика.",
+        "latin": "Латино: латинские ритмы, танцевальность (обобщающий тег).",
+        "world": "World: этнические/региональные стили (обобщающий тег).",
+        "chanson": "Шансон/городская песня: характерная подача, «жизненные» сюжеты (в широком смысле).",
+        "kids": "Детские песни/контент для детей.",
+        "romance": "Романс: лирическая камерная песня (русская традиция), часто про любовь/печаль/судьбу.",
+        "ballad_pop": "Поп-баллада: мягкая лирическая поп-песня (важно отличать от рок-баллады).",
+        "synthwave": "Синтвейв: ретро-синтезаторы, «80-е», неон/ночь/драйв.",
+        "synthpop": "Синти-поп: поп-структура + синтезаторное звучание.",
+        "indie_pop": "Инди-поп: авторская поп-эстетика, лёгкость, нестандартная гармония/интонация.",
+        "orchestral_pop": "Оркестровый поп: поп-песня с выраженной оркестровкой/струнными.",
+        "darkwave": "Дарквейв: мрачная синт-эстетика (пост-панк/электроника), холодный вайб.",
+        "gothic_rock": "Готик-рок: мрачный рок с мистикой/романтикой тьмы.",
+        "experimental": "Экспериментальная музыка: нестандартные формы/звуки, трудно отнести к обычным жанрам."
+      }
+    },
+    "styles": {
+      "description": "Форма/подача/аранжировочная эстетика. Это не жанр: помогает точнее рекомендовать (баллада vs гимн vs сказка, кинематографично, акустично и т.п.).",
+      "items": {
+        "ballad": "Баллада: медленнее/эмоциональнее, лирическая подача, часто кульминация в припеве.",
+        "anthemic": "Гимновый/стадионный: широкий припев, ощущение «вместе», скандирование/подпев.",
+        "cinematic": "Кинематографично/саундтречно: оркестровость, драматургия, «как в кино».",
+        "orchestral": "Оркестровая эстетика: струнные/духовые/хор как основа аранжировки.",
+        "acoustic": "Акустическая подача: натуральные инструменты, минимум электронного саунд-дизайна.",
+        "lofi": "Лоу-фай: намеренно «шероховатый» звук, уют/домашность, нестерильность.",
+        "live": "Похоже на живое выступление: сценическая энергия, «концертность».",
+        "story_song": "Песнь-история: повествовательная форма, сюжет/персонажи/сцены.",
+        "fairytale": "Сказочная эстетика: сказочные образы, магия, персонажи/мистика.",
+        "horror_gothic": "Хоррор/готика: мрачная мистическая атмосфера, кладбища/призраки/ночь.",
+        "kids_style": "Детская/семейная подача: простая лексика, доброта, сказки/считалки."
+      }
+    },
+    "moods": {
+      "description": "Эмоциональные состояния/настроения. Могут выводиться из музыки и из текста.",
+      "items": {
+        "happy": "Радостно, светло, улыбчиво.",
+        "joyful": "Очень радостно, празднично, «ликующе».",
+        "playful": "Игриво, задорно, шалость/флирт.",
+        "uplifting": "Воодушевляюще, поднимает дух.",
+        "hopeful": "Надежда, ощущение «всё может стать лучше».",
+        "peaceful": "Мирно, спокойно, без внутреннего напряжения.",
+        "calm": "Спокойно, уравновешенно (может быть и без «умиротворения»).",
+        "relaxed": "Расслабляюще, отпускает напряжение.",
+        "dreamy": "Сонно-мечтательно, «в облаках».",
+        "romantic": "Романтично, про любовь/нежность.",
+        "tender": "Нежно, трогательно, мягко.",
+        "sad": "Грусть, печаль.",
+        "heartbroken": "Разбитое сердце, сильная любовная боль/расставание.",
+        "melancholic": "Меланхолия: тихая, глубокая грусть без истерики.",
+        "lonely": "Одиночество, отстранённость.",
+        "nostalgic": "Ностальгия: тоска по прошлому/воспоминаниям.",
+        "anxious": "Тревожно, беспокойно.",
+        "fearful": "Страх, ощущение угрозы.",
+        "dark": "Мрачно, тяжело, «без света».",
+        "tense": "Напряжённо, сжатость/ожидание.",
+        "angry": "Злость, ярость, негодование.",
+        "bitter": "Горечь, обида, цинизм после разочарования.",
+        "energetic": "Энергично, бодро, хочется двигаться.",
+        "aggressive": "Жёстко, напористо, «давит».",
+        "rebellious": "Бунтарски, протестно, вызов.",
+        "confident": "Уверенно, «я могу», самоутверждение.",
+        "motivational": "Мотивирует действовать/тренироваться/не сдаваться.",
+        "epic": "Эпично, масштабно, «героически/киношно».",
+        "funny": "Смешно, юморно (без обязательной иронии).",
+        "ironic": "Иронично: смысл через насмешку/двойное дно.",
+        "sarcastic": "Саркастично: жёсткая/колкая насмешка.",
+        "bittersweet": "Светлая грусть: одновременно красиво и печально (сладко-горькое чувство).",
+        "compassionate": "Сострадание/поддержка: бережное, утешающее настроение.",
+        "inspirational": "Вдохновляющее: про веру в себя, свет, смысл, рост.",
+        "festive": "Праздничное: новогодний/торжественный вайб, ощущение праздника.",
+        "whimsical": "Причудливо/сказочно: лёгкая странность, магический оттенок, игровая фантазия."       
+      }
+    },
+    "themes": {
+      "description": "Темы/сюжеты/смыслы. Обычно сильнее зависят от текста, но могут быть и у инструментала по настроению.",
+      "items": {
+        "love": "Любовь в целом (без уточнения).",
+        "romance": "Романтическая история/романтика как сюжет.",
+        "flirting": "Флирт, игра чувств, заигрывания.",
+        "breakup": "Расставание как факт/сюжет.",
+        "heartbreak": "Сильная боль после расставания/безответной любви.",
+        "jealousy": "Ревность, собственничество, подозрения.",
+        "wedding_love": "Любовь в контексте свадьбы/обещаний/семьи.",
+        "sex_sensuality": "Секс/чувственность/эротика (без порнографии).",
+        "family": "Семья, родители/дети, дом, родственные связи.",
+        "friendship": "Дружба, поддержка, товарищество.",
+        "self_reflection": "Самоанализ, внутренний разговор, поиск себя.",
+        "growing_up": "Взросление, переходы этапов жизни.",
+        "mental_health": "Психическое состояние: депрессия, тревога, внутренние демоны.",
+        "addiction": "Зависимости: алкоголь/наркотики/игры/соцсети и т.п.",
+        "loss_grief": "Потеря, траур, смерть, горевание.",
+        "faith_spirituality": "Вера, духовность, религиозные образы/поиск смысла.",
+        "dreams_goals": "Мечты, цели, путь к ним.",
+        "success_money": "Деньги, успех, статус, богатство/карьера.",
+        "work_routine": "Работа, быт, рутина, выгорание.",
+        "party": "Тусовка, вечеринки (без обязательной зависимости).",
+        "dance": "Танец как тема/призыв/образ.",
+        "sports": "Спорт/соревнование/тренировки/победа.",
+        "travel": "Путешествия в целом (поезда, самолёты, новые места).",
+        "road_trip": "Дорога, поездка на машине, трасса, путь.",
+        "adventure": "Приключение, риск, исследование.",
+        "summer_vibes": "Летний вайб как смысл: жара, море, каникулы.",
+        "nature": "Природа: лес, море, небо, сезоны как образы.",
+        "city_life": "Городская жизнь: улицы, районы, бетон, скорость.",
+        "night_life": "Ночь, клубы, фонари, ночные разговоры/город.",
+        "social_critique": "Социальная критика: устройство общества, несправедливость, «система».",
+        "politics": "Политика/власть/государство как предмет текста.",
+        "inequality": "Неравенство: бедные/богатые, классы, отсутствие лифтов.",
+        "corruption": "Коррупция, продажность, «всё куплено».",
+        "control_surveillance": "Контроль, тотальная слежка, манипуляции, несвобода.",
+        "protest": "Протест как действие/позиция.",
+        "rebellion_uprising": "Восстание/бунт/революционная энергия.",
+        "war": "Война: фронт, солдаты, боевые действия, травма.",
+        "historical": "Историческая тематика: события прошлого, эпохи, герои.",
+        "patriotism": "Патриотическая тема (гордость/служение/образ Родины).",
+        "heroism": "Героизм, подвиг, самопожертвование.",
+        "humor": "Юмор как основной смысл/задача текста.",
+        "satire": "Сатира: высмеивание общества/пороков через юмор.",
+        "parody": "Пародия: намеренное копирование/переигрывание стиля ради смеха.",
+        "storytelling": "Сторителлинг: повествование/сюжет (персонажи, сцены).",
+        "ballad_form": "Балладная подача: медленно/эмоционально/драматично (не обязательно про любовь).",
+        "anthem_chant": "Гимновость/скандирование: «вместе», «хором», лозунговая энергия.",
+        "magic_fantasy": "Магия/фэнтези: заклинания, волшебники, сказочные силы/миры.",
+        "mythology": "Мифология/легенды: герои, древние сюжеты (например, Геракл), архаические образы.",
+        "horror_supernatural": "Мистика/хоррор: призраки, упыри, кладбища, древние проклятия.",
+        "monsters_creatures": "Монстры/существа: гоблины, демоны, вампиры, оборотни и т.п.",
+        "time_fate": "Время/судьба: фатум, выбор пути, необратимость, «лови миг», нити судьбы.",
+        "childhood": "Детство: игрушки, детские воспоминания, детская боль/радость.",
+        "coming_of_age": "Взросление/переход: уход детского мира, взрослая реальность, перемены.",
+        "social_media": "Соцсети/интернет-культура: лайки, тренды, хайп, репосты, токсичность.",
+        "technology_ai": "Технологии/ИИ: цифровой контроль, алгоритмы, подписки, ИИ, оцифровка жизни.",
+        "consumerism": "Потребительство/реклама/маркетинг: «плати», кредиты, манипуляции покупками.",
+        "ecology_nature_protection": "Экология/защита природы: сохранение природы, этика отношения к живому.",
+        "space_cosmos": "Космос: звёзды, галактики, полёты, вселенная, межзвёздные мотивы.",
+        "kindness_morality": "Добро/нравственный выбор: честность, воспитание, моральный урок.",
+        "lullaby_like": "Колыбельность: убаюкивающее ощущение, мягкая простота."
+      }
+    },
+    "use_cases": {
+      "description": "Ситуации/сценарии прослушивания: что «делать под эту музыку».",
+      "items": {
+        "relax": "Расслабиться, снять напряжение.",
+        "sleep": "Заснуть/уснуть; спокойная музыка без резких всплесков.",
+        "study_focus": "Учёба/концентрация; не отвлекает, держит фон.",
+        "meditation": "Медитация/практики; устойчивое спокойствие/атмосфера.",
+        "background": "Фоновое прослушивание (не требует внимания).",
+        "driving": "Для поездки за рулём; держит «дорожный» ритм/настроение.",
+        "road_trip": "Для длинной дороги/путешествия; «путь» и смена картинок.",
+        "walking": "Для прогулки; ровный темп или настроение «в пути».",
+        "gym": "Тренировка в зале; толкает, заряжает.",
+        "running": "Бег; устойчивый темп и энергия.",
+        "training_motivation": "Мотивация/самодисциплина; «вставай и делай».",
+        "dance_floor": "Танцпол/клуб; выраженный бит и грув.",
+        "party": "Вечеринка; общая праздничность/энергия.",
+        "karaoke": "Караоке/пение; удобная вокальная линия/куплет-припев.",
+        "date_night": "Свидание; романтический/интимный настрой.",
+        "sex": "Интимный контекст; чувственный грув/атмосфера.",
+        "crying": "«Порыдать»; сильная грусть/эмоциональный катарсис.",
+        "healing_after_breakup": "Пережить расставание; грусть + принятие/поддержка.",
+        "work_productivity": "Работа/продуктивность; помогает держать темп дел.",
+        "concert_moshpit": "Слэм/концертная агрессия; жёсткий драйв и напор.",
+        "kids_time": "Для детей/семейного прослушивания; безопасно и понятно.",
+        "protest": "Плейлист протеста/активизма; объединяющая/вызовная энергия.",
+        "wedding_first_dance": "Первый танец/романтичная часть свадьбы (медленно, красиво, трогательно).",
+        "family_evening": "Семейный вечер: мягко, уютно, безопасно для совместного прослушивания.",
+        "kids_bedtime": "Детям перед сном: спокойная сказочная/колыбельная атмосфера.",
+        "fairytale_mood": "Сказочное настроение: магия/приключения/фэнтези-вайб.",
+        "memorial_reflection": "Память/размышления: для тихого осмысления жизни, потерь, времени.",
+        "patriotic_event": "Патриотическое событие/митинг/памятная дата: торжественно, собранно."
+      }
+    },
+    "events": {
+      "description": "Конкретные праздники/торжества. Часто нужны для подборок и рекомендаций по датам.",
+      "items": {
+        "birthday": "День рождения: поздравление/праздник/веселье.",
+        "wedding": "Свадьба: церемония/первый танец/романтическая торжественность.",
+        "anniversary": "Годовщина: зрелая романтика/воспоминания/тепло.",
+        "graduation": "Выпускной: прощание с этапом, старт нового.",
+        "new_year": "Новый год: праздничный зимний вайб, ожидание, куранты.",
+        "christmas": "Рождество: семейность, уют, светлый праздник.",
+        "valentines_day": "14 февраля: любовь, признания, романтика.",
+        "womens_day_8march": "8 марта: поздравления женщинам, весна, нежность.",
+        "mens_day_23feb": "23 февраля: мужской праздник/служба/поздравления.",
+        "funeral_memorial": "Поминальные/траурные: скорбь, память (использовать аккуратно).",
+        "victory_day_9may": "9 мая: День Победы (военные/памятные песни, торжественность).",
+        "family_day": "День семьи/семейный праздник: тёплые, добрые песни.",
+        "childrens_day_1june": "1 июня: День защиты детей (детские/семейные песни)."
+      }
+    },
+    "seasonality": {
+      "description": "Ассоциация с сезоном. Может идти из текста (снег/жара) или из атмосферы (холодно/светло).",
+      "items": {
+        "spring": "Весна: обновление, воздух, надежда, «просыпается».",
+        "summer": "Лето: тепло, свобода, отпуск, море, драйв.",
+        "autumn": "Осень: меланхолия, дождь, размышления, зрелость.",
+        "winter": "Зима: холод, уют, снег, праздники или мрак."
+      }
+    },
+    "time_of_day": {
+      "description": "Ассоциация с временем суток (атмосфера/тематика).",
+      "items": {
+        "morning": "Утро: лёгкий старт, свежесть, пробуждение.",
+        "day": "День: активность, ясность, повседневность.",
+        "evening": "Вечер: расслабление, подведение итогов, свидания.",
+        "night": "Ночь: интимность, клубность, мистика или одиночество."
+      }
+    },
+    "axes": {
+      "description": "Непрерывные шкалы 0..1. Это не теги, а «координаты» трека для рекомендаций.",
+      "items": {
+        "energy": "Энергия/напор. 0=очень спокойно, 1=максимально драйвово.",
+        "valence": "Позитивность. 0=мрачно/негативно, 1=светло/радостно.",
+        "arousal": "Возбуждение/напряжение. 0=сонно, 1=на пределе/на взводе.",
+        "danceability": "Насколько удобно танцевать. 0=не для танца, 1=прямо танцпол.",
+        "acousticness": "Акустичность. 0=полностью электронно/искажённо, 1=акустика/натуральные тембры.",
+        "instrumentalness": "Инструментальность. 0=вокал доминирует, 1=почти нет вокала.",
+        "aggressiveness": "Жёсткость/атакующесть. 0=мягко, 1=очень жёстко.",
+        "melancholy": "Меланхоличность. 0=не про это, 1=глубокая меланхолия.",
+        "romance_intensity": "Романтическая/любовная окраска. 0=нет, 1=ядро трека.",
+        "humor": "Юморность. 0=серьёзно, 1=главная задача — смешить.",
+        "socialness": "Социальность. 0=личное/интимное, 1=про общество/систему/политику.",
+        "epicness": "Эпичность/кинематографичность. 0=камерно, 1=максимально масштабно.",
+        "warmth": "Теплота/доброта звучания и смысла. 0=холодно/колко, 1=очень тёпло и заботливо.",
+        "brightness": "Яркость тембра/атмосферы. 0=тёмно/приглушённо, 1=ярко/светло/звонко.",
+        "tension": "Напряжение. 0=расслабленно, 1=ощущение давления/саспенса/тревоги.",
+        "storytelling": "Сюжетность. 0=почти нет истории, 1=чёткий сюжет/персонажи/сцены.",
+        "spookiness": "Мистика/страшность. 0=нет, 1=сильно хоррор/сверхъестественное.",
+        "family_friendly": "Семейность/безопасность. 0=не для детей/жёстко, 1=идеально для семьи и детей."
+      }
+    },
+    "content_warnings": {
+      "description": "Предупреждения о контенте (не эмоции, а потенциально чувствительные темы).",
+      "items": {
+        "explicit_language": "Ненормативная лексика/мат.",
+        "violence": "Насилие (описания/призывы/натурализм).",
+        "self_harm": "Самоповреждение/суицидальные мотивы.",
+        "hate_speech": "Язык ненависти/дискриминация.",
+        "sexual_content": "Сексуальный контент (явные описания).",
+        "war_trauma": "Тяжёлые сцены войны/травмы.",
+        "strong_horror": "Сильно страшные образы/хоррор (могилы, монстры, кошмары) — может быть не для детей.",
+        "psychological_distress": "Тяжёлые психологические состояния (панические атаки, сильная тревога, депрессивные образы)."
+      }
+    },
+    "recommendation_controls": {
+      "description": "Фиксированные фильтры/переключатели для рекомендательной системы (не теги трека, а параметры подбора).",
+      "items": {
+        "no_explicit": "Не рекомендовать треки с explicit_language/sexual_content.",
+        "no_politics": "Снижать/исключать треки с politics/social_critique/protest.",
+        "no_horror": "Снижать/исключать треки с strong_horror/spookiness.",
+        "family_mode": "Режим для семьи/детей: повышать family_friendly, kids_time, kids_bedtime.",
+        "sleep_mode": "Режим сна: повышать sleep/relax, понижать energy/tension."
+      }
+    }
+  },
+  "defaults": {
+    "threshold_store": 0.05,
+    "default_unset": 0.01,
+    "max_items_recommended": {
+      "genres": 8,
+      "moods": 12,
+      "themes": 12,
+      "use_cases": 10,
+      "events": 8
+    }
+  }
+}
+
+//=================================================
+// FILE: /data/track-profiles-index.json
+{
+  "version": "track-profiles-index-v1",
+  "generatedAt": null,
+  "taxonomyVersion": "taxonomy-v2",
+  "items": {}
+}
+
+//=================================================
+// FILE: /data/track-profiles/_stub.profile.json
+{
+  "version": "track-profile-v1",
+  "uid": "__STUB__",
+  "musicAnalysis": null,
+  "lyricAnalysis": null,
+  "finalProfile": null,
+  "presentation": {
+    "tagline_ru": "",
+    "hook_ru": "",
+    "mini_description_ru": "",
+    "hero_quote_ru": ""
+  },
+  "relations": {
+    "similar_tracks": [],
+    "relation_types": {}
+  }
+}
+
+//=================================================
+// FILE: /generate-context.js
+/* eslint-disable no-console */
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+const argv = Object.fromEntries(process.argv.slice(2).map(a => {
+  const [k, ...r] = a.replace(/^--/, '').split('=');
+  return [k, r.join('=') === '' ? true : r.join('=')];
+}));
+
+const ROOT = path.resolve(argv.root || __dirname);
+const META_DIR = path.resolve(argv['out-dir'] || path.join(ROOT, '.meta'));
+const CLOUD_FUNCTIONS_DIR = path.join(ROOT, 'cloud-functions');
+const MODE = String(argv.mode || 'both').toLowerCase();
+const MAX_LINES = Number(argv['max-lines'] || 20000);
+const CLOUD_FUNCTIONS = Object.freeze([
+  'vi3-signaling',
+  'vi3na1bita-backup-proxy',
+  'vi3-webpush'
+]);
+
+if (!fs.existsSync(META_DIR)) fs.mkdirSync(META_DIR, { recursive: true });
+
+const FULL_FILE = path.join(META_DIR, 'project-full.txt');
+const ADAPTIVE_FILE = path.join(META_DIR, 'project-adaptive.txt');
+const MUSIC_GAMES_FILE = path.join(META_DIR, 'project-music-games.txt');
+
+const toUnix = p => String(p || '').replace(/\\/g, '/');
+const SELF_FULL_REL = toUnix(path.relative(ROOT, FULL_FILE));
+const SELF_ADAPT_REL = toUnix(path.relative(ROOT, ADAPTIVE_FILE));
+const SELF_MUSIC_GAMES_REL = toUnix(path.relative(ROOT, MUSIC_GAMES_FILE));
+
+const TEXT_EXTS = new Set([
+  '.html', '.htm', '.css', '.js', '.mjs', '.cjs', '.ts', '.tsx',
+  '.json', '.webmanifest', '.md', '.txt', '.yml', '.yaml'
+]);
+
+const EXCLUDE_FILES_RAW = [
+  'node_modules/**',
+  '.git/**',
+  '.meta/**',
+  'cloud-functions/**',
+  'assets/**',
+  '.next/**',
+  'dist/**',
+  'build/**',
+  'out/**',
+  'coverage/**',
+  '.cache/**',
+  '.vscode/**',
+  '.idea/**',
+  '.husky/**',
+  '**/*.log',
+  '.DS_Store',
+  'ai-rules.txt',
+  '**/ai-rules.txt',
+  'data/lyrics-index-v1.json',
+  'qwen-code-*',
+  '**/qwen-code-*',
+  '.aider*',
+  '**/.aider*',
+  '.continue/**',
+  '.copilot/**',
+  '**/*.orig',
+  '**/*.rej',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml'
+];
+
+const EXCLUDE_TREE_RAW = [
+  'node_modules/**',
+  '.git/**',
+  '.meta/**',
+  'cloud-functions/**',
+  '.next/**',
+  'dist/**',
+  'build/**',
+  'out/**',
+  'coverage/**',
+  '.cache/**',
+  '.vscode/**',
+  '.idea/**',
+  '.husky/**',
+  '**/*.log',
+  '.DS_Store',
+  'data/lyrics-index-v1.json',
+  'qwen-code-*',
+  '**/qwen-code-*',
+  '.aider*',
+  '**/.aider*',
+  '.continue/**',
+  '.copilot/**',
+  '**/*.orig',
+  '**/*.rej',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml'
+];
+
+const MUSIC_GAMES_FILES = [
+  '.github/workflows/deploy.yml',
+  '.github/workflows/generate-context.yml',
+  'index.html',
+  'manifest.json',
+  'service-worker.js',
+  'generate-context.js',
+  'scripts/app.js',
+  'scripts/app/albums.js',
+  'scripts/app/albums/specials.js',
+  'scripts/app/games/host.js',
+  'scripts/app/games/bridge-host.js',
+  'scripts/app/games/config.js',
+  'scripts/app/friends/friends-block.js',
+  'scripts/app/push/web-push.js',
+  'scripts/core/config.js',
+  'scripts/utils/sw-manager.js',
+  'styles/games.css',
+  'styles/main.css'
+];
+
+const PRIORITY = {
+  critical: [
+    /^index\.html?$/i,
+    /^service-worker\.js$/i,
+    /^manifest\.json$/i,
+    /^albums\.json$/i,
+    /^news\.html?$/i,
+    /^generate-index\.(js|mjs|cjs)$/i,
+    /^albums\/gallery\/[^/]+\/index\.json$/i,
+    /^\.github\/workflows\/.*\.ya?ml$/i
+  ],
+  high: [
+    /^AudioController\.(js|mjs|cjs|ts)$/i,
+    /^GlobalState\.(js|mjs|cjs|ts)$/i,
+    /^scripts\/.*\.(mjs|js|ts)$/i,
+    /^performance\/.*\.(js|ts)$/i,
+    /^.*\.(ya?ml)$/i
+  ],
+  medium: [
+    /^.*\.(js|mjs|cjs|ts|tsx|json|html?|css)$/i
+  ]
+};
+
+const globToRegExp = p => {
+  const hasPath = p.includes('/') || p.includes('**');
+  const esc = p
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '___GLOBSTAR___')
+    .replace(/\*/g, '[^/]*')
+    .replace(/___GLOBSTAR___/g, '.*');
+  return hasPath ? new RegExp(`^${esc}$`) : new RegExp(`(^|/)${esc}(/|$)`);
+};
+
+const EXCLUDE_FILES_PATTERNS = EXCLUDE_FILES_RAW.map(globToRegExp);
+const EXCLUDE_TREE_PATTERNS = EXCLUDE_TREE_RAW.map(globToRegExp);
+const ALWAYS_EXCLUDE = new Set(['ai-rules.txt']);
+
+const isExcluded = (rel, patterns) => {
+  const u = toUnix(rel);
+  if (
+    !u ||
+    u === SELF_FULL_REL ||
+    u === SELF_ADAPT_REL ||
+    u === SELF_MUSIC_GAMES_REL ||
+    ALWAYS_EXCLUDE.has(u) ||
+    ALWAYS_EXCLUDE.has(path.basename(u))
+  ) {
+    return true;
+  }
+  return patterns.some(re => re.test(u));
+};
+
+const isTextFile = rel => TEXT_EXTS.has(path.extname(rel).toLowerCase());
+
+const readText = rel => {
+  try {
+    return fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  } catch (e) {
+    return `// read error: ${e.message}`;
+  }
+};
+
+const countLines = s => (String(s || '').match(/\n/g) || []).length + (String(s || '').length ? 1 : 0);
+
+const listAllEntries = (includeFiles = true, forTree = false) => {
+  const out = [];
+  const stack = [ROOT];
+
+  while (stack.length) {
+    const dir = stack.pop();
+    let entries = [];
+
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const item of entries) {
+      const full = path.join(dir, item.name);
+      const rel = toUnix(path.relative(ROOT, full)) || '.';
+      if (isExcluded(rel, forTree ? EXCLUDE_TREE_PATTERNS : EXCLUDE_FILES_PATTERNS)) continue;
+
+      if (item.isDirectory()) {
+        out.push({ rel, full, dir: true });
+        stack.push(full);
+      } else if (item.isFile() && includeFiles) {
+        out.push({ rel, full, dir: false });
+      }
+    }
+  }
+
+  return out.sort((a, b) => a.dir !== b.dir ? (a.dir ? -1 : 1) : a.rel.localeCompare(b.rel));
+};
+
+const getPriority = rel => {
+  const u = toUnix(rel);
+  return Object.keys(PRIORITY).find(level => PRIORITY[level].some(re => re.test(u))) || 'low';
+};
+
+const readRepoUrl = () => {
+  try {
+    const cfg = path.join(ROOT, '.git', 'config');
+    if (!fs.existsSync(cfg)) return '';
+    return (fs.readFileSync(cfg, 'utf8').match(/url\s*=\s*(.+)\n/) || [])[1]?.trim() || '';
+  } catch {
+    return '';
+  }
+};
+
+const renderTree = () => {
+  const lines = ['СТРУКТУРА ПРОЕКТА (компактная):'];
+  const walk = (dir, relDir) => {
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    const visible = entries.filter(x => !isExcluded(toUnix(path.relative(ROOT, path.join(dir, x.name))), EXCLUDE_TREE_PATTERNS)).sort((a, b) => a.name.localeCompare(b.name));
+    const files = visible.filter(x => !x.isDirectory()).map(x => x.name), subdirs = visible.filter(x => x.isDirectory());
+    const p = relDir ? `/${relDir}/` : '/';
+    if (files.length) lines.push(`[${p}] ${files.join(', ')}`);
+    else if (!subdirs.length) lines.push(`[${p}] (пусто)`);
+    subdirs.forEach(x => walk(path.join(dir, x.name), relDir ? `${relDir}/${x.name}` : x.name));
+  };
+  walk(ROOT, '');
+  return lines.join('\n');
+};
+
+const headerBlock = ({ purpose = '' } = {}) => {
+  const rulesPath = path.join(ROOT, 'ai-rules.txt');
+  const rules = fs.existsSync(rulesPath) ? `${fs.readFileSync(rulesPath, 'utf8').trim()}\n\n` : '';
+  const repoName = String(argv['repo-name'] || path.basename(ROOT));
+  const repoUrl = String(argv['repo-url'] || readRepoUrl() || 'https://github.com/apel-s-in/vi3na1bita-music');
+
+  return `${rules}Название репозитория: ${repoName}
+Адрес репозитория: ${repoUrl}
+Назначение: основное музыкальное приложение vi3na1bita-music.
+${purpose ? `Контекст: ${purpose}\n` : ''}Проект делается и обслуживается средствами https://github.com/ (GitHub Pages + GitHub Actions).
+
+${renderTree()}
+
+Сгенерировано: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
+
+`;
+};
+
+const fileBlock = rel => `//=================================================
+// FILE: /${toUnix(rel)}
+${readText(rel)}
+`;
+
+const generate = mode => {
+  let out = headerBlock();
+  let lines = countLines(out);
+
+  const groups = listAllEntries(true, false)
+    .filter(e => !e.dir && isTextFile(e.rel))
+    .reduce((acc, e) => {
+      acc[getPriority(e.rel)].push(e.rel);
+      return acc;
+    }, { critical: [], high: [], medium: [], low: [] });
+
+  const order = mode === 'adaptive' ? ['critical', 'high', 'medium'] : ['critical', 'high', 'medium', 'low'];
+
+  for (const level of order) {
+    for (const rel of groups[level]) {
+      const block = fileBlock(rel);
+      const blockLines = countLines(block);
+      if (mode === 'adaptive' && lines + blockLines > MAX_LINES) {
+        return `${out}\n// ... (truncate)\n`;
+      }
+      out += block;
+      lines += blockLines;
+    }
+  }
+
+  return out;
+};
+
+const generateMusicGames = () => {
+  let out = headerBlock({
+    purpose: 'точечный контекст Game Center / iframe host / postMessage bridge / service worker / запуск /Games/'
+  });
+
+  out += `ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
+${MUSIC_GAMES_FILES.map(x => `- /${x}`).join('\n')}
+
+`;
+
+  MUSIC_GAMES_FILES.forEach(rel => {
+    const full = path.join(ROOT, rel);
+    if (fs.existsSync(full) && isTextFile(rel)) out += fileBlock(rel);
+    else out += `//=================================================
+// FILE: /${toUnix(rel)}
+// missing or non-text file
+`;
+  });
+
+  return out;
+};
+
+const listFunctionEntries = functionName => {
+  const functionRoot = path.join(CLOUD_FUNCTIONS_DIR, functionName);
+  const entries = [];
+  const stack = [functionRoot];
+
+  while (stack.length) {
+    const dir = stack.pop();
+    let rows = [];
+
+    try {
+      rows = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    rows
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach(item => {
+        if (item.name === 'node_modules') return;
+
+        const full = path.join(dir, item.name);
+        const rel = toUnix(path.relative(functionRoot, full));
+
+        if (item.isDirectory()) {
+          entries.push({ rel, full, dir: true });
+          stack.push(full);
+        } else if (item.isFile()) {
+          entries.push({ rel, full, dir: false });
+        }
+      });
+  }
+
+  return entries.sort((a, b) =>
+    a.dir !== b.dir
+      ? a.dir ? -1 : 1
+      : a.rel.localeCompare(b.rel)
+  );
+};
+
+const renderFunctionTree = functionName => {
+  const functionRoot = path.join(CLOUD_FUNCTIONS_DIR, functionName);
+  const lines = [`СТРУКТУРА CLOUD FUNCTION ${functionName}:`];
+
+  const walk = (dir, relDir = '') => {
+    let entries = [];
+
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const visible = entries
+      .filter(item => item.name !== 'node_modules')
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const files = visible
+      .filter(item => item.isFile())
+      .map(item => item.name);
+    const directories = visible
+      .filter(item => item.isDirectory());
+
+    const displayPath = relDir ? `/${relDir}/` : '/';
+
+    if (files.length) {
+      lines.push(`[${displayPath}] ${files.join(', ')}`);
+    } else if (!directories.length) {
+      lines.push(`[${displayPath}] (пусто)`);
+    }
+
+    directories.forEach(item =>
+      walk(
+        path.join(dir, item.name),
+        relDir ? `${relDir}/${item.name}` : item.name
+      )
+    );
+  };
+
+  walk(functionRoot);
+  return lines.join('\n');
+};
+
+const functionHeaderBlock = functionName => {
+  const rulesPath = path.join(ROOT, 'ai-rules.txt');
+  const rules = fs.existsSync(rulesPath)
+    ? `${fs.readFileSync(rulesPath, 'utf8').trim()}\n\n`
+    : '';
+  const repoName = String(argv['repo-name'] || path.basename(ROOT));
+  const repoUrl = String(
+    argv['repo-url'] ||
+    readRepoUrl() ||
+    'https://github.com/apel-s-in/vi3na1bita-music'
+  );
+
+  return `${rules}Название репозитория: ${repoName}
+Адрес репозитория: ${repoUrl}
+Контекст: Yandex Cloud Function ${functionName}.
+Публикация функции выполняется вручную. Переменные окружения и секреты в этот контекст не входят.
+
+${renderFunctionTree(functionName)}
+
+Сгенерировано: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
+
+`;
+};
+
+const functionFileBlock = (functionRoot, rel) => {
+  let content;
+
+  try {
+    content = fs.readFileSync(path.join(functionRoot, rel), 'utf8');
+  } catch (error) {
+    content = `// read error: ${error.message}`;
+  }
+
+  return `//=================================================
+// FILE: /${toUnix(rel)}
+${content}
+`;
+};
+
+const generateFunctionContext = functionName => {
+  const functionRoot = path.join(CLOUD_FUNCTIONS_DIR, functionName);
+
+  if (!fs.existsSync(functionRoot)) {
+    throw new Error(`Cloud Function directory not found: ${functionName}`);
+  }
+
+  ['index.js', 'package.json'].forEach(requiredFile => {
+    if (!fs.existsSync(path.join(functionRoot, requiredFile))) {
+      throw new Error(
+        `Cloud Function file not found: ${functionName}/${requiredFile}`
+      );
+    }
+  });
+
+  let out = functionHeaderBlock(functionName);
+
+  listFunctionEntries(functionName)
+    .filter(entry => !entry.dir && isTextFile(entry.rel))
+    .forEach(entry => {
+      out += functionFileBlock(functionRoot, entry.rel);
+    });
+
+  return out;
+};
+
+const writeFunctionContexts = () => {
+  CLOUD_FUNCTIONS.forEach(functionName => {
+    const outputFile = path.join(
+      META_DIR,
+      `${functionName}.txt`
+    );
+
+    fs.writeFileSync(
+      outputFile,
+      generateFunctionContext(functionName),
+      'utf8'
+    );
+
+    console.log(`✅ ${outputFile}`);
+  });
+};
+
+try {
+  if (MODE === 'full' || MODE === 'both') {
+    fs.writeFileSync(FULL_FILE, generate('full'), 'utf8');
+    console.log(`✅ ${FULL_FILE}`);
+  }
+
+  if (MODE === 'adaptive' || MODE === 'both') {
+    fs.writeFileSync(ADAPTIVE_FILE, generate('adaptive'), 'utf8');
+    console.log(`✅ ${ADAPTIVE_FILE}`);
+  }
+
+  if (MODE === 'music-games' || MODE === 'games' || MODE === 'both') {
+    fs.writeFileSync(MUSIC_GAMES_FILE, generateMusicGames(), 'utf8');
+    console.log(`✅ ${MUSIC_GAMES_FILE}`);
+  }
+
+  if (
+    MODE === 'functions' ||
+    MODE === 'cloud-functions' ||
+    MODE === 'both'
+  ) {
+    writeFunctionContexts();
+  }
+} catch (e) {
+  console.error('❌', e);
+  process.exit(1);
+}
+
+//=================================================
+// FILE: /news/news.json
+{
+  "items": [
+    {
+      "id": "2025-12-18-release",
+      "title": "Новый релиз — Однажды в Сказке",
+      "date": "2025-12-18",
+      "text": "Доступен новый альбом. Слушайте онлайн и офлайн в нашем приложении.",
+      "image": "albums/gallery/03/03-cover-01.webp",
+      "tags": ["релиз", "альбом"]
+    },
+    {
+      "id": "2025-08-02-video",
+      "title": "Клип КРЕВЕツTOCHKA на трек «Упала Слеза»",
+      "date": "2025-08-02",
+      "youtubeUrl": "https://www.youtube.com/watch?v=0rJMP2jwegk",
+      "youtubeThumb": "albums/gallery/00/00-cover-02.webp",
+      "tags": ["клип", "видео"]
+    },
+    {
+      "id": "2025-07-21-video",
+      "title": "Клип КРЕВЕツTOCHKA на трек «Принц»",
+      "date": "2025-07-21",
+      "youtubeUrl": "https://www.youtube.com/watch?v=jfYplnj6DbA",
+      "youtubeThumb": "albums/gallery/00/00-cover-01.webp",
+      "tags": ["клип", "видео"]
+    },
+    {
+      "id": "2025-10-05-tour",
+      "title": "Тур: зимние концерты",
+      "date": "2025-10-05",
+      "text": "НЕ ПЛАНИРУЮТСЯ.",
+      "tags": ["концерты"]
+    }
+  ]
+}
+
+//=================================================
+// FILE: /oauth-callback.html
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Авторизация...</title><style>body{background:#0f1218;color:#eaf2ff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:16px}.msg{text-align:center;opacity:.7}</style></head><body><div class="msg">Авторизация... Окно закроется автоматически.</div><script>(()=>{try{const h=new URLSearchParams(window.location.hash.replace('#','')),t=h.get('access_token'),e=h.get('expires_in'),err=h.get('error'),s=h.get('scope')||'';if(window.opener&&!window.opener.closed)window.opener.postMessage({type:'YANDEX_OAUTH_CALLBACK',token:t||null,expiresIn:e||'0',error:err||null,scope:s},window.location.origin);}catch{if(window.opener&&!window.opener.closed)window.opener.postMessage({type:'YANDEX_OAUTH_CALLBACK',token:null,error:'callback_error'},window.location.origin);}finally{setTimeout(()=>window.close(),300);}})();</script></body></html>
+
+//=================================================
+// FILE: /src/player-core/ios-audio-keeper.js
+// src/player-core/ios-audio-keeper.js
+// Универсальный Audio Session Keeper:
+// — iOS: тихий зацикленный файл + watchdog AudioContext + recovery
+// — Android: MediaSession lockscreen + setCameraActive(false) для Chrome 120+
+
+const SILENCE_URL = './audio/silence.mp3';
+const ua = navigator.userAgent;
+const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+const isAndroid = /Android/i.test(ua);
+const isChrome = /Chrome\/(\d+)/.test(ua);
+const chromeVer = isChrome ? Number(ua.match(/Chrome\/(\d+)/)?.[1] || 0) : 0;
+
+let _el = null, _started = false, _bound = false;
+let _watchdogInterval = null, _retryTimer = null, _retryCount = 0;
+let _playbackIntent = false;
+let _lastKnownPosition = 0;
+let _recoveryGeneration = 0;
+const MAX_RETRY = 5;
+
+// ─── silence <audio> ────────────────────────────────────────────────────────
+function _createEl() {
+  if (_el) return _el;
+  _el = document.createElement('audio');
+  _el.src = SILENCE_URL;
+  _el.loop = true;
+  _el.volume = 0.001;
+  _el.preload = 'auto';
+  _el.setAttribute('playsinline', '');
+  _el.setAttribute('webkit-playsinline', '');
+  // Для надёжности переподключаемся при ошибке
+  _el.onerror = () => {
+    _started = false;
+    _scheduleRetry();
+  };
+  return _el;
+}
+
+function _scheduleRetry() {
+  if (_retryCount >= MAX_RETRY || !_playbackIntent) return;
+  clearTimeout(_retryTimer);
+  const delay = Math.min(30000, 1000 * Math.pow(2, _retryCount));
+  _retryCount++;
+  _retryTimer = setTimeout(() => startKeeper(), delay);
+}
+
+export function startKeeper() {
+  if (!isIOS) return;
+  if (_started) return;
+  const el = _createEl();
+  el.play().then(() => {
+    _started = true;
+    _retryCount = 0;
+  }).catch(() => {
+    _started = false;
+    _scheduleRetry();
+  });
+}
+
+export function stopKeeper() {
+  if (!isIOS || !_el) return;
+  _started = false;
+  clearTimeout(_retryTimer);
+  _retryCount = 0;
+  try { _el.pause(); _el.currentTime = 0; } catch {}
+}
+
+// ─── AudioContext recovery ────────────────────────────────────────────────────
+function _resumeCtx() {
+  const c = window.Howler?.ctx;
+  if (c && (c.state === 'suspended' || c.state === 'interrupted')) {
+    c.resume().catch(() => {});
+  }
+}
+
+function _bindCtxWatcher() {
+  const c = window.Howler?.ctx;
+  if (c && !c._keeperWatching) {
+    c._keeperWatching = true;
+    c.addEventListener('statechange', () => {
+      if (_playbackIntent) _resumeCtx();
+    });
+  }
+}
+
+function _invalidateRecovery() {
+  _recoveryGeneration++;
+}
+
+function _captureRecovery(position = 0) {
+  const player = window.playerCore;
+  const sound = player?.sound || null;
+
+  return {
+    generation: _recoveryGeneration,
+    player,
+    sound,
+    uid: String(player?.getCurrentTrackUid?.() || ''),
+    position: Math.max(
+      0,
+      Number(position || _lastKnownPosition || 0)
+    )
+  };
+}
+
+function _recoverIfCurrent(snapshot) {
+  if (
+    !_playbackIntent ||
+    !snapshot?.player ||
+    !snapshot.sound ||
+    snapshot.generation !== _recoveryGeneration
+  ) return false;
+
+  const player = window.playerCore;
+
+  if (
+    player !== snapshot.player ||
+    player.sound !== snapshot.sound ||
+    String(player.getCurrentTrackUid?.() || '') !== snapshot.uid
+  ) return false;
+
+  try {
+    if (snapshot.sound.playing()) return false;
+    snapshot.sound.seek(snapshot.position);
+    snapshot.sound.play();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─── iOS watchdog — каждые 10 сек (быстрее чем было 25) ────────────────────
+function _startWatchdog() {
+  if (_watchdogInterval) return;
+  _watchdogInterval = setInterval(() => {
+    if (!_playbackIntent) return;
+
+    _resumeCtx();
+
+    // Keeper упал — перезапускаем
+    if (isIOS && _el && _el.paused && _started) {
+      _el.play().catch(() => { _started = false; _scheduleRetry(); });
+    }
+
+    // iOS завис (звук не движется)
+    if (isIOS) {
+      const player = window.playerCore;
+
+      if (player?.sound && !player.sound.playing()) {
+        const recovery = _captureRecovery(
+          player.getPosition?.() ||
+          _lastKnownPosition ||
+          0
+        );
+
+        setTimeout(() => {
+          _recoverIfCurrent(recovery);
+        }, 600);
+      }
+    }
+  }, 10000);
+}
+
+function _stopWatchdog() {
+  if (_watchdogInterval) { clearInterval(_watchdogInterval); _watchdogInterval = null; }
+}
+
+// ─── Android: MediaSession lockscreen ────────────────────────────────────────
+function _updateAndroidMediaSession() {
+  if (!isAndroid) return;
+  const ms = navigator.mediaSession;
+  if (!ms) return;
+
+  // Chrome 120+: отключаем запрос камеры для корректного отображения в шторке
+  try {
+    if (chromeVer >= 120 && typeof ms.setCameraActive === 'function') {
+      ms.setCameraActive(false);
+    }
+  } catch {}
+
+  const t = window.playerCore?.getCurrentTrack?.();
+  if (!t) return;
+  const art = String(t.cover || '').trim();
+
+  try {
+    ms.metadata = new MediaMetadata({
+      title: t.title || 'Витрина Разбита',
+      artist: t.artist || 'Витрина Разбита',
+      album: t.album || '',
+      artwork: art
+        ? [96, 128, 192, 256, 384, 512].map(s => ({
+            src: art,
+            sizes: `${s}x${s}`,
+            type: art.endsWith('.png') ? 'image/png' : 'image/jpeg'
+          }))
+        : []
+    });
+    ms.playbackState = 'playing';
+  } catch {}
+}
+
+function _updateMediaSessionPaused() {
+  const ms = navigator.mediaSession;
+  if (!ms) return;
+  try { ms.playbackState = 'paused'; } catch {}
+}
+
+// ─── Главная инициализация ────────────────────────────────────────────────────
+export function initIosAudioKeeper() {
+  if (_bound) return;
+  _bound = true;
+
+  window.addEventListener('player:play', () => {
+    _invalidateRecovery();
+    _playbackIntent = true;
+    _lastKnownPosition = window.playerCore?.getPosition?.() || _lastKnownPosition;
+    _bindCtxWatcher();
+    _resumeCtx();
+    if (isIOS) {
+      startKeeper();
+      _startWatchdog();
+    }
+    if (isAndroid || isIOS) _updateAndroidMediaSession();
+  });
+
+  window.addEventListener('player:pause', () => {
+    _invalidateRecovery();
+    _playbackIntent = false;
+    _lastKnownPosition = window.playerCore?.getPosition?.() || _lastKnownPosition;
+    if (isIOS) {
+      stopKeeper();
+      _stopWatchdog();
+    }
+    _updateMediaSessionPaused();
+  });
+
+  window.addEventListener('player:stop', () => {
+    _invalidateRecovery();
+    _playbackIntent = false;
+    _lastKnownPosition = 0;
+    if (isIOS) {
+      stopKeeper();
+      _stopWatchdog();
+    }
+    _updateMediaSessionPaused();
+  });
+
+  window.addEventListener('player:trackChanged', () => {
+    if (isAndroid || isIOS) _updateAndroidMediaSession();
+    if (isIOS) _resumeCtx();
+  });
+
+  window.addEventListener('player:transportReloaded', () => {
+    _bindCtxWatcher();
+    if (isIOS && _playbackIntent) {
+      _resumeCtx();
+      if (!_started) startKeeper();
+    }
+  });
+
+  // ── visibilitychange: главный recovery ─────────────────────────────────────
+  let _lastPos = 0, _wasPlaying = false;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      _lastPos = window.playerCore?.getPosition?.() || 0;
+      _lastKnownPosition = _lastPos;
+      _wasPlaying = _playbackIntent;
+      return;
+    }
+
+    // Вернулись в приложение
+    _bindCtxWatcher();
+    _resumeCtx();
+
+    if (isIOS) {
+      if (!_started && _playbackIntent) startKeeper();
+
+      if (_wasPlaying) {
+        // Даём 500мс и восстанавливаем только тот же UID и тот же Howl.
+        const recovery = _captureRecovery(_lastPos || 0);
+
+        setTimeout(() => {
+          _recoverIfCurrent(recovery);
+        }, 500);
+      }
+    }
+
+    if ((isAndroid || isIOS) && _wasPlaying) {
+      _updateAndroidMediaSession();
+    }
+
+    _wasPlaying = false;
+  });
+
+  // ── Сохраняем позицию каждые 4 сек ──────────────────────────────────────────
+  setInterval(() => {
+    if (_playbackIntent) {
+      _lastPos = window.playerCore?.getPosition?.() || _lastKnownPosition || 0;
+      _lastKnownPosition = _lastPos;
+    }
+  }, 4000);
+
+  // ── Android: начальная установка setCameraActive ──────────────────────────
+  if (isAndroid && chromeVer >= 120) {
+    try {
+      if (navigator.mediaSession && typeof navigator.mediaSession.setCameraActive === 'function') {
+        navigator.mediaSession.setCameraActive(false);
+      }
+    } catch {}
+  }
+}
+
+export default { initIosAudioKeeper, startKeeper, stopKeeper };
+
+//=================================================
+// FILE: /src/player-core/media-session.js
+// UID.001_(Playback safety invariant)_(не допустить обходного управления воспроизведением)_(Media Session может вызывать только безопасные handlers PlayerCore, но не владеть playback truth) UID.008_(No playback mutation by intel)_(не допустить второго центра управления плеером)_(intel/provider/ui слой не должен подменять Media Session handlers своей логикой) UID.012_(Quality dimension)_(не смешивать качество и системные media controls)_(Media Session управляет transport controls, а не quality/source logic) UID.050_(Session profile)_(оставить Media Session только источником transport actions)_(session intelligence может читать эффекты play/pause/seek, но не внедряться сюда) UID.079_(VK social/media actions)_(не смешивать внешние provider media actions и OS media controls)_(provider bridge не должен переписывать Media Session ownership) UID.094_(No-paralysis rule)_(даже при сбоях расширенных слоёв системные media controls должны работать)_(этот bridge остаётся тонким адаптером между ОС и PlayerCore)
+export function ensureMediaSession(h = {}) {
+  const ms = navigator.mediaSession;
+  if (!ms) return null;
+  let l = 0;
+
+  if (!ms.__bound) {
+    ms.__bound = true;
+    const sf = fn => d => { try { fn?.(d); } catch {} };
+    for (const [k, fn] of Object.entries({
+      play: h.onPlay, pause: h.onPause, stop: h.onStop,
+      previoustrack: h.onPrev, nexttrack: h.onNext,
+      seekbackward: d => h.onSeekBy?.(-(Number(d?.seekOffset) || 10)),
+      seekforward:  d => h.onSeekBy?.(Number(d?.seekOffset) || 10),
+      seekto: d => Number.isFinite(d?.seekTime) && h.onSeekTo?.(d.seekTime)
+    })) ms.setActionHandler(k, sf(fn));
+  }
+
+  return {
+    updateMetadata({ title = 'Без названия', artist = '', album = '', artworkUrl: src, playing } = {}) {
+      try {
+        const artSrc = String(src || '').trim();
+        // Всегда обновляем при смене трека или состояния воспроизведения
+        const artwork = artSrc
+          ? [96, 128, 192, 256, 384, 512].map(s => ({
+              src: artSrc, sizes: `${s}x${s}`,
+              type: artSrc.endsWith('.png') ? 'image/png' : 'image/jpeg'
+            }))
+          : [];
+        ms.metadata = new MediaMetadata({ title, artist, album, artwork });
+        ms.playbackState = playing ? 'playing' : 'paused';
+      } catch {}
+    },
+    updatePositionState({ force = false } = {}) {
+      try {
+        const n = Date.now();
+        if (!force && n - l < 900) return;
+        const st = h.getPositionState?.();
+        if (!st || !ms.setPositionState) return;
+        ms.setPositionState({
+          duration: Number(st.duration) || 0,
+          playbackRate: Number(st.playbackRate) || 1,
+          position: Number(st.position) || 0
+        });
+        l = n;
+      } catch {}
+    }
+  };
 }
 
 
