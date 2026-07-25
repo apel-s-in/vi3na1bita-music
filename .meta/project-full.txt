@@ -19167,7 +19167,12 @@ const listFunctionEntries = functionName => {
       });
   }
 
-  return entries.sort((a, b) =>
+  return [...new Map(
+    entries.map(entry => [
+      `${entry.dir ? 'dir' : 'file'}:${entry.rel}`,
+      entry
+    ])
+  ).values()].sort((a, b) =>
     a.dir !== b.dir
       ? a.dir ? -1 : 1
       : a.rel.localeCompare(b.rel)
