@@ -44,6 +44,41 @@ jobs:
               | sort
           )
 
+      - name: Validate Cloud Function sources
+        run: |
+          set -euo pipefail
+
+          functions=(
+            "vi3-signaling"
+            "vi3na1bita-backup-proxy"
+            "vi3-webpush"
+          )
+
+          for function_name in "${functions[@]}"; do
+            function_dir="cloud-functions/$function_name"
+            index_file="$function_dir/index.js"
+            package_file="$function_dir/package.json"
+
+            test -s "$index_file"
+            test -s "$package_file"
+
+            echo "CHECK $index_file"
+            node --check "$index_file"
+
+            echo "CHECK $package_file"
+            node -e "
+              const fs = require('fs');
+              const file = process.argv[1];
+              const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+              if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                throw new Error('package_json_object_required');
+              }
+              if (value.main && value.main !== 'index.js') {
+                throw new Error('package_json_main_must_be_index_js');
+              }
+            " "$package_file"
+          done
+
       - name: Validate listening receipts shadow layer
         run: |
           node --input-type=module --check < scripts/analytics/listening-receipts.js
