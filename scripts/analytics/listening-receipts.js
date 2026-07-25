@@ -4,7 +4,7 @@
 import { requestSocialAction } from '../core/social-session.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 
-const HEARTBEAT_MS = 15000;
+const HEARTBEAT_MS = 10000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
 const COMPLETION_OUTBOX_TTL_MS =
@@ -507,6 +507,28 @@ class ListeningReceiptService {
         sessionId: this.session.sessionId
       })
     );
+
+    if (result?.progress) {
+      this.lastProgress = result.progress;
+    }
+
+    if (Array.isArray(result?.rewardItems)) {
+      const merged = new Map(
+        this.rewardCatalog.map(item => [
+          safe(item?.id),
+          item
+        ])
+      );
+
+      result.rewardItems.forEach(item => {
+        const id = safe(item?.id);
+        if (id) merged.set(id, { ...item });
+      });
+
+      this.rewardCatalog = [...merged.values()];
+    }
+
+    applyShardRewardResult(result);
 
     if (result?.accepted) {
       await this.flushPendingFeatures()
