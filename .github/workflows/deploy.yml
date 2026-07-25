@@ -8,6 +8,17 @@ on:
       - 'cloud-functions/**'
       - '.github/workflows/generate-context.yml'
   workflow_dispatch:
+    inputs:
+      full_sync:
+        description: 'Полностью синхронизировать публичные файлы'
+        required: false
+        default: false
+        type: boolean
+      configure_cors:
+        description: 'Повторно записать CORS bucket'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: yc-s3-deploy-${{ github.ref }}
@@ -19,10 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Configure CORS
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.configure_cors
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
@@ -39,6 +50,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: 'ru-central1'
           BEFORE_SHA: ${{ github.event.before }}
+          FULL_SYNC: ${{ inputs.full_sync || false }}
           BUCKET: vi3na1bita
         run: |
           set -euo pipefail
@@ -70,8 +82,13 @@ jobs:
             aws --endpoint-url=https://storage.yandexcloud.net s3 rm "s3://$BUCKET/$f" --only-show-errors || true
           }
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "${BEFORE_SHA:-}" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
-            echo "Manual/initial deploy: full public sync"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$FULL_SYNC" != "true" ]; then
+            BEFORE_SHA="$(git rev-parse "${GITHUB_SHA}^" 2>/dev/null || true)"
+            echo "Manual incremental deploy: ${BEFORE_SHA:-missing} -> $GITHUB_SHA"
+          fi
+
+          if [ "$FULL_SYNC" = "true" ] || [ -z "${BEFORE_SHA:-}" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "Explicit/initial deploy: full public sync"
             aws --endpoint-url=https://storage.yandexcloud.net s3 sync ./ "s3://$BUCKET/" --delete --only-show-errors \
               --exclude "*" \
               --include "index.html" \
@@ -103,11 +120,41 @@ jobs:
             exit 0
           fi
 
-          git diff --name-status "$BEFORE_SHA" "$GITHUB_SHA" | while IFS=$'\t' read -r status a b; do
-            file="${b:-$a}"
-            if [[ "$status" == D* ]]; then
-              delete_file "$a"
-            else
-              upload_file "$file"
-            fi
-          done
+          deploy_service_worker=0
+
+          while IFS=$'\t' read -r status a b; do
+            case "$status" in
+              D*)
+                delete_file "$a"
+                ;;
+              R*)
+                delete_file "$a"
+                if [ "$b" = "service-worker.js" ]; then
+                  deploy_service_worker=1
+                else
+                  upload_file "$b"
+                fi
+                ;;
+              C*)
+                if [ "$b" = "service-worker.js" ]; then
+                  deploy_service_worker=1
+                else
+                  upload_file "$b"
+                fi
+                ;;
+              *)
+                if [ "$a" = "service-worker.js" ]; then
+                  deploy_service_worker=1
+                else
+                  upload_file "$a"
+                fi
+                ;;
+            esac
+          done < <(
+            git diff --name-status "$BEFORE_SHA" "$GITHUB_SHA"
+          )
+
+          if [ "$deploy_service_worker" = "1" ]; then
+            echo "Publishing service-worker.js last"
+            upload_file "service-worker.js"
+          fi
