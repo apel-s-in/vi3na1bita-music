@@ -116,7 +116,6 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/05/] 05-cover-01.jpg, 05-cover-01.png, 05-cover-01.webp, 05-cover-02.jpg, 05-cover-02.png, 05-cover-02.webp, 05-cover-03.jpg, 05-cover-03.png, 05-cover-03.webp, 05-cover-04.jpg, 05-cover-04.png, 05-cover-04.webp, index.json
 [/albums/gallery/06/] 06-cover-01.jpg, 06-cover-01.png, 06-cover-01.webp, 06-cover-02.jpg, 06-cover-02.png, 06-cover-02.webp, 06-cover-03.jpg, 06-cover-03.png, 06-cover-03.webp, 06-cover-04.jpg, 06-cover-04.png, 06-cover-04.webp, index.json
 [/audio/] silence.mp3
-[/cloud-functions/] (пусто)
 [/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.json, taxonomy.json, track-profiles-index.json
 [/data/track-profiles/] _stub.profile.json, README.txt
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
@@ -158,8 +157,6 @@ F всегда относится к playing-context, а не к просто о
 [/src/player-core/] ios-audio-keeper.js, media-session.js
 [/styles/] album-carousel.css, base.css, games.css, main.css, offline.css, player.css, profile.css, shards.css, showcase.css, ui-core.css
 
-Сгенерировано: 2026-07-25 09:02:21 UTC
-
 ВАЖНЫЕ ФАЙЛЫ ЭТОГО КОНТЕКСТА:
 - /.github/workflows/deploy.yml
 - /.github/workflows/generate-context.yml
@@ -189,8 +186,21 @@ on:
     branches: [main, master]
     paths-ignore:
       - '.meta/**'
+      - 'cloud-functions/**'
+      - 'generate-context.js'
       - '.github/workflows/generate-context.yml'
   workflow_dispatch:
+    inputs:
+      full_sync:
+        description: 'Полностью синхронизировать публичные файлы'
+        required: false
+        default: false
+        type: boolean
+      configure_cors:
+        description: 'Повторно записать CORS bucket'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: yc-s3-deploy-${{ github.ref }}
@@ -202,10 +212,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Configure CORS
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.configure_cors
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
@@ -222,13 +232,14 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: 'ru-central1'
           BEFORE_SHA: ${{ github.event.before }}
+          FULL_SYNC: ${{ inputs.full_sync || false }}
           BUCKET: vi3na1bita
         run: |
           set -euo pipefail
 
           is_public_file() {
             case "$1" in
-              .git/*|.github/*|.meta/*|albums/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
+              .git/*|.github/*|.meta/*|cloud-functions/*|albums/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
               albums/gallery/*|audio/*|data/*|icons/*|img/*|news/*|scripts/*|src/*|styles/*) return 0 ;;
               index.html|oauth-callback.html|manifest.json|albums.json|service-worker.js) return 0 ;;
               *) return 1 ;;
@@ -253,8 +264,13 @@ jobs:
             aws --endpoint-url=https://storage.yandexcloud.net s3 rm "s3://$BUCKET/$f" --only-show-errors || true
           }
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "${BEFORE_SHA:-}" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
-            echo "Manual/initial deploy: full public sync"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$FULL_SYNC" != "true" ]; then
+            BEFORE_SHA="$(git rev-parse "${GITHUB_SHA}^" 2>/dev/null || true)"
+            echo "Manual incremental deploy: ${BEFORE_SHA:-missing} -> $GITHUB_SHA"
+          fi
+
+          if [ "$FULL_SYNC" = "true" ] || [ -z "${BEFORE_SHA:-}" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "Explicit/initial deploy: full public sync"
             aws --endpoint-url=https://storage.yandexcloud.net s3 sync ./ "s3://$BUCKET/" --delete --only-show-errors \
               --exclude "*" \
               --include "index.html" \
@@ -278,39 +294,149 @@ jobs:
               --include "albums/gallery/**" \
               --exclude ".meta/*" \
               --exclude ".github/*" \
+              --exclude "cloud-functions/*" \
+              --exclude "cloud-functions/**" \
               --exclude "scripts/ci/*" \
               --exclude "scripts/e2e/*" \
-              --exclude "generate-context.js"
+              --exclude "generate-context.js" \
+              --exclude "service-worker.js"
+
+            echo "Publishing service-worker.js last"
+            upload_file "service-worker.js"
             exit 0
           fi
 
-          git diff --name-status "$BEFORE_SHA" "$GITHUB_SHA" | while IFS=$'\t' read -r status a b; do
-            file="${b:-$a}"
-            if [[ "$status" == D* ]]; then
-              delete_file "$a"
-            else
-              upload_file "$file"
-            fi
-          done
+          deploy_service_worker=0
+
+          while IFS=$'\t' read -r status a b; do
+            case "$status" in
+              D*)
+                delete_file "$a"
+                ;;
+              R*)
+                delete_file "$a"
+                if [ "$b" = "service-worker.js" ]; then
+                  deploy_service_worker=1
+                else
+                  upload_file "$b"
+                fi
+                ;;
+              C*)
+                if [ "$b" = "service-worker.js" ]; then
+                  deploy_service_worker=1
+                else
+                  upload_file "$b"
+                fi
+                ;;
+              *)
+                if [ "$a" = "service-worker.js" ]; then
+                  deploy_service_worker=1
+                else
+                  upload_file "$a"
+                fi
+                ;;
+            esac
+          done < <(
+            git diff --name-status "$BEFORE_SHA" "$GITHUB_SHA"
+          )
+
+          if [ "$deploy_service_worker" = "1" ]; then
+            echo "Publishing service-worker.js last"
+            upload_file "service-worker.js"
+          fi
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
 name: Generate .meta context
+
 on:
   push:
     branches: [main, master]
-    paths-ignore: ['.meta/**']
+    paths-ignore:
+      - '.meta/**'
   workflow_dispatch:
-permissions: { contents: write }
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-meta-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   meta:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v5
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@v5
-        with: { node-version: '24' }
-      - run: node generate-context.js --mode=both --max-lines=20000 && ls -la .meta || true
+        with:
+          node-version: '24'
+
+      - name: Generate current contexts
+        run: |
+          set -euo pipefail
+
+          rm -f \
+            .meta/project-adaptive.txt \
+            .meta/vi3-signaling.txt \
+            .meta/vi3-webpush.txt \
+            .meta/vi3na1bita-backup-proxy.txt
+
+          node generate-context.js --mode=both
+
+          test -s .meta/project-full.txt
+          test -s .meta/project-music-games.txt
+          test -s .meta/functions/vi3-signaling.txt
+          test -s .meta/functions/vi3-webpush.txt
+          test -s .meta/functions/vi3na1bita-backup-proxy.txt
+
+          test ! -e .meta/project-adaptive.txt
+          test ! -e .meta/vi3-signaling.txt
+          test ! -e .meta/vi3-webpush.txt
+          test ! -e .meta/vi3na1bita-backup-proxy.txt
+
+          if grep -q "ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ" .meta/functions/*.txt; then
+            echo "ai-rules leaked into Cloud Function context"
+            exit 2
+          fi
+
+          if awk '
+            $1 == "//" &&
+            $2 == "FILE:" &&
+            $3 ~ /^\/cloud-functions\// {
+              found = 1
+            }
+
+            /^\[\/cloud-functions\// {
+              found = 1
+            }
+
+            END {
+              exit found ? 0 : 1
+            }
+          ' .meta/project-full.txt; then
+            echo "Cloud Function contents leaked into project-full.txt"
+            exit 2
+          fi
+
+          if grep -Eq '^// \.\.\. \(truncate\)$' .meta/project-full.txt; then
+            echo "project-full.txt was truncated"
+            exit 2
+          fi
+
+          grep -q "FILE: /index.js" .meta/functions/vi3-signaling.txt
+          grep -q "FILE: /package.json" .meta/functions/vi3-signaling.txt
+          grep -q "FILE: /index.js" .meta/functions/vi3-webpush.txt
+          grep -q "FILE: /package.json" .meta/functions/vi3-webpush.txt
+          grep -q "FILE: /index.js" .meta/functions/vi3na1bita-backup-proxy.txt
+          grep -q "FILE: /package.json" .meta/functions/vi3na1bita-backup-proxy.txt
+
+          find .meta -maxdepth 2 -type f -print | sort
+
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: generate .meta context"
@@ -664,9 +790,9 @@ const argv = Object.fromEntries(process.argv.slice(2).map(a => {
 
 const ROOT = path.resolve(argv.root || __dirname);
 const META_DIR = path.resolve(argv['out-dir'] || path.join(ROOT, '.meta'));
+const FUNCTIONS_META_DIR = path.join(META_DIR, 'functions');
 const CLOUD_FUNCTIONS_DIR = path.join(ROOT, 'cloud-functions');
 const MODE = String(argv.mode || 'both').toLowerCase();
-const MAX_LINES = Number(argv['max-lines'] || 20000);
 const CLOUD_FUNCTIONS = Object.freeze([
   'vi3-signaling',
   'vi3na1bita-backup-proxy',
@@ -674,14 +800,17 @@ const CLOUD_FUNCTIONS = Object.freeze([
 ]);
 
 if (!fs.existsSync(META_DIR)) fs.mkdirSync(META_DIR, { recursive: true });
+if (!fs.existsSync(FUNCTIONS_META_DIR)) fs.mkdirSync(FUNCTIONS_META_DIR, { recursive: true });
 
 const FULL_FILE = path.join(META_DIR, 'project-full.txt');
-const ADAPTIVE_FILE = path.join(META_DIR, 'project-adaptive.txt');
 const MUSIC_GAMES_FILE = path.join(META_DIR, 'project-music-games.txt');
+const STALE_META_FILES = [
+  path.join(META_DIR, 'project-adaptive.txt'),
+  ...CLOUD_FUNCTIONS.map(name => path.join(META_DIR, `${name}.txt`))
+];
 
 const toUnix = p => String(p || '').replace(/\\/g, '/');
 const SELF_FULL_REL = toUnix(path.relative(ROOT, FULL_FILE));
-const SELF_ADAPT_REL = toUnix(path.relative(ROOT, ADAPTIVE_FILE));
 const SELF_MUSIC_GAMES_REL = toUnix(path.relative(ROOT, MUSIC_GAMES_FILE));
 
 const TEXT_EXTS = new Set([
@@ -693,7 +822,7 @@ const EXCLUDE_FILES_RAW = [
   'node_modules/**',
   '.git/**',
   '.meta/**',
-  'cloud-functions/**',
+  'cloud-functions',
   'assets/**',
   '.next/**',
   'dist/**',
@@ -726,7 +855,7 @@ const EXCLUDE_TREE_RAW = [
   'node_modules/**',
   '.git/**',
   '.meta/**',
-  'cloud-functions/**',
+  'cloud-functions',
   '.next/**',
   'dist/**',
   'build/**',
@@ -812,16 +941,19 @@ const ALWAYS_EXCLUDE = new Set(['ai-rules.txt']);
 
 const isExcluded = (rel, patterns) => {
   const u = toUnix(rel);
+
   if (
     !u ||
+    u === 'cloud-functions' ||
+    u.startsWith('cloud-functions/') ||
     u === SELF_FULL_REL ||
-    u === SELF_ADAPT_REL ||
     u === SELF_MUSIC_GAMES_REL ||
     ALWAYS_EXCLUDE.has(u) ||
     ALWAYS_EXCLUDE.has(path.basename(u))
   ) {
     return true;
   }
+
   return patterns.some(re => re.test(u));
 };
 
@@ -834,8 +966,6 @@ const readText = rel => {
     return `// read error: ${e.message}`;
   }
 };
-
-const countLines = s => (String(s || '').match(/\n/g) || []).length + (String(s || '').length ? 1 : 0);
 
 const listAllEntries = (includeFiles = true, forTree = false) => {
   const out = [];
@@ -912,8 +1042,6 @@ ${purpose ? `Контекст: ${purpose}\n` : ''}Проект делается 
 
 ${renderTree()}
 
-Сгенерировано: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
-
 `;
 };
 
@@ -922,29 +1050,18 @@ const fileBlock = rel => `//=================================================
 ${readText(rel)}
 `;
 
-const generate = mode => {
+const generateFull = () => {
   let out = headerBlock();
-  let lines = countLines(out);
 
   const groups = listAllEntries(true, false)
-    .filter(e => !e.dir && isTextFile(e.rel))
-    .reduce((acc, e) => {
-      acc[getPriority(e.rel)].push(e.rel);
+    .filter(entry => !entry.dir && isTextFile(entry.rel))
+    .reduce((acc, entry) => {
+      acc[getPriority(entry.rel)].push(entry.rel);
       return acc;
     }, { critical: [], high: [], medium: [], low: [] });
 
-  const order = mode === 'adaptive' ? ['critical', 'high', 'medium'] : ['critical', 'high', 'medium', 'low'];
-
-  for (const level of order) {
-    for (const rel of groups[level]) {
-      const block = fileBlock(rel);
-      const blockLines = countLines(block);
-      if (mode === 'adaptive' && lines + blockLines > MAX_LINES) {
-        return `${out}\n// ... (truncate)\n`;
-      }
-      out += block;
-      lines += blockLines;
-    }
+  for (const level of ['critical', 'high', 'medium', 'low']) {
+    for (const rel of groups[level]) out += fileBlock(rel);
   }
 
   return out;
@@ -1054,10 +1171,6 @@ const renderFunctionTree = functionName => {
 };
 
 const functionHeaderBlock = functionName => {
-  const rulesPath = path.join(ROOT, 'ai-rules.txt');
-  const rules = fs.existsSync(rulesPath)
-    ? `${fs.readFileSync(rulesPath, 'utf8').trim()}\n\n`
-    : '';
   const repoName = String(argv['repo-name'] || path.basename(ROOT));
   const repoUrl = String(
     argv['repo-url'] ||
@@ -1065,14 +1178,12 @@ const functionHeaderBlock = functionName => {
     'https://github.com/apel-s-in/vi3na1bita-music'
   );
 
-  return `${rules}Название репозитория: ${repoName}
+  return `Название репозитория: ${repoName}
 Адрес репозитория: ${repoUrl}
 Контекст: Yandex Cloud Function ${functionName}.
 Публикация функции выполняется вручную. Переменные окружения и секреты в этот контекст не входят.
 
 ${renderFunctionTree(functionName)}
-
-Сгенерировано: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
 
 `;
 };
@@ -1119,9 +1230,11 @@ const generateFunctionContext = functionName => {
 };
 
 const writeFunctionContexts = () => {
+  fs.mkdirSync(FUNCTIONS_META_DIR, { recursive: true });
+
   CLOUD_FUNCTIONS.forEach(functionName => {
     const outputFile = path.join(
-      META_DIR,
+      FUNCTIONS_META_DIR,
       `${functionName}.txt`
     );
 
@@ -1136,17 +1249,21 @@ const writeFunctionContexts = () => {
 };
 
 try {
-  if (MODE === 'full' || MODE === 'both') {
-    fs.writeFileSync(FULL_FILE, generate('full'), 'utf8');
+  STALE_META_FILES.forEach(file => {
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+  });
+
+  if (MODE === 'full' || MODE === 'both' || MODE === 'all') {
+    fs.writeFileSync(FULL_FILE, generateFull(), 'utf8');
     console.log(`✅ ${FULL_FILE}`);
   }
 
-  if (MODE === 'adaptive' || MODE === 'both') {
-    fs.writeFileSync(ADAPTIVE_FILE, generate('adaptive'), 'utf8');
-    console.log(`✅ ${ADAPTIVE_FILE}`);
-  }
-
-  if (MODE === 'music-games' || MODE === 'games' || MODE === 'both') {
+  if (
+    MODE === 'music-games' ||
+    MODE === 'games' ||
+    MODE === 'both' ||
+    MODE === 'all'
+  ) {
     fs.writeFileSync(MUSIC_GAMES_FILE, generateMusicGames(), 'utf8');
     console.log(`✅ ${MUSIC_GAMES_FILE}`);
   }
@@ -1154,12 +1271,13 @@ try {
   if (
     MODE === 'functions' ||
     MODE === 'cloud-functions' ||
-    MODE === 'both'
+    MODE === 'both' ||
+    MODE === 'all'
   ) {
     writeFunctionContexts();
   }
-} catch (e) {
-  console.error('❌', e);
+} catch (error) {
+  console.error('❌', error);
   process.exit(1);
 }
 
