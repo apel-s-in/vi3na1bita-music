@@ -143,9 +143,9 @@ export class SessionTracker {
         Math.floor(duration * 0.8)
       );
 
-    if (!valid && !full) {
+    if (listenedSeconds <= 0) {
       eventLogger.log('LISTEN_SKIP', uid, {
-        listenedSeconds
+        listenedSeconds: 0
       });
       return;
     }
