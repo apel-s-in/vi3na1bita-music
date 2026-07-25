@@ -190,7 +190,19 @@ jobs:
           grep -q "resetEachLevel: true" scripts/analytics/achievements-dict.js
           grep -q "steps: \[1, 10, 25, 50, 70, 100, 250, 500, 1000, 5000, 10000, 15000, 20000\]" scripts/analytics/achievements-dict.js
           grep -q "listenedSeconds >= 25" scripts/analytics/session-tracker.js
-          grep -q "liveAccumulatedMs / 1000) >= 25" scripts/analytics/live-stats.js
+          grep -q "totalListenMs" cloud-functions/vi3-signaling/index.js
+          grep -q "listenTimeBySession" cloud-functions/vi3-signaling/index.js
+          grep -q "applyVerifiedListenTimeProgress" cloud-functions/vi3-signaling/index.js
+          grep -q "repeatAfterLevel: 14" scripts/analytics/achievements-dict.js
+          grep -q "repeatStep: 3600000" scripts/analytics/achievements-dict.js
+          grep -q "const HEARTBEAT_MS = 10000" scripts/analytics/listening-receipts.js
+
+          if grep -En \
+            "projectedTotalSec \|\| rawCurrent|toggleableTimer: true" \
+            scripts/analytics/achievement-engine.js; then
+            echo "Legacy local or toggleable time achievement timer found"
+            exit 2
+          fi
 
           if grep -REn \
             "Засчитывается ≥13 сек|listenedSeconds >= 13|liveAccumulatedMs / 1000\) >= 13|Math\.max\([[:space:]]*13," \
