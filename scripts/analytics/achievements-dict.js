@@ -37,11 +37,51 @@ export const AchievementDictionary = {
   },
   "time_total": {
     id: "time_total", type: "scalable", category: "time",
-    ui: { name: "Хранитель времени ур. {level}", short: "Накопите {target_hours} ч. прослушивания.", desc: "Суммарное валидное время.", howTo: "Слушайте музыку, время учитывается автоматически.", icon: "⏳", color: "#ffb74d" },
-    reward: { xpBase: 25, xpMultiplier: 2.0, tierBase: 2 },
+    ui: {
+      name: "Хранитель времени ур. {level}",
+      short: "Слушайте музыку ещё {target_hours} ч.",
+      desc: "Сервер суммирует фактическое время воспроизведения без пауз, перемоток, mute и нулевой программной громкости.",
+      howTo: "Продолжайте слушать музыку. Фоновое воспроизведение учитывается после серверного подтверждения.",
+      icon: "⏳",
+      color: "#ffb74d"
+    },
+    reward: {
+      steps: [25, 30, 35, 40, 50, 100, 150, 200, 300, 400, 500, 500, 500, 500],
+      repeatAmount: 500,
+      tierBase: 2
+    },
     trigger: { conditions: [{ metric: "totalSec", operator: "gte" }] },
-    scaling: { math: "custom", steps: [3600, 18000, 36000, 86400, 360000] },
-    formatters: { target_hours: val => Math.floor(val / 3600) || 1 }
+    scaling: {
+      math: "custom",
+      resetEachLevel: true,
+      cumulativeSteps: true,
+      steps: [
+        3600,
+        7200,
+        10800,
+        14400,
+        18000,
+        36000,
+        86400,
+        180000,
+        360000,
+        720000,
+        1800000,
+        3600000,
+        7200000,
+        10800000
+      ],
+      repeatAfterLevel: 14,
+      repeatStep: 3600000
+    },
+    formatters: {
+      target_hours: value => {
+        const hours = Number(value || 0) / 3600;
+        return Number.isInteger(hours)
+          ? hours
+          : Math.round(hours * 10) / 10;
+      }
+    }
   },
   "streak_base": {
     id: "streak_base", type: "scalable", category: "loyalty",
