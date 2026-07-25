@@ -166,9 +166,30 @@ export class AchievementEngine {
       if (r.type === 'static' && !this.unlocked[k]) {
         if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) { unlock(k, r.ui.name, r.ui.icon); chg = true; }
       } else if (r.type === 'scalable') {
-        let lvl = 1, sft = 50; while (this.unlocked[`${k}_${lvl}`]) lvl++;
-        while (sft-- > 0 && (!r.scaling.maxLevel || lvl <= r.scaling.maxLevel) && (!r.scaling.steps || lvl <= r.scaling.steps.length)) {
-          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: this._getSc(r, lvl, false) }, agg))) { const id = `${k}_${lvl}`; unlock(id, r.ui.name.replace('{level}', lvl), r.ui.icon); chg = true; lvl++; } else break;
+        let lvl = 1, safety = 50;
+        while (this.unlocked[`${k}_${lvl}`]) lvl++;
+
+        while (
+          safety-- > 0 &&
+          this._hasScalableLevel(r, lvl)
+        ) {
+          const completed = r.trigger.conditions.every(
+            condition => this._evalCondition({
+              ...condition,
+              target: this._getSc(r, lvl, false)
+            }, agg)
+          );
+
+          if (!completed) break;
+
+          const id = `${k}_${lvl}`;
+          unlock(
+            id,
+            r.ui.name.replace('{level}', lvl),
+            r.ui.icon
+          );
+          chg = true;
+          lvl++;
         }
       }
     }
