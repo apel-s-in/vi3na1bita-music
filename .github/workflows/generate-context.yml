@@ -13,7 +13,31 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v5
         with: { node-version: '24' }
-      - run: node generate-context.js --mode=both --max-lines=20000 && ls -la .meta || true
+      - name: Generate application and Cloud Function contexts
+        run: |
+          set -euo pipefail
+          node generate-context.js --mode=both --max-lines=20000
+
+          test -s .meta/project-full.txt
+          test -s .meta/project-adaptive.txt
+          test -s .meta/project-music-games.txt
+          test -s .meta/vi3-signaling.txt
+          test -s .meta/vi3na1bita-backup-proxy.txt
+          test -s .meta/vi3-webpush.txt
+
+          if grep -q "cloud-functions/" .meta/project-full.txt; then
+            echo "cloud-functions leaked into project-full.txt"
+            exit 2
+          fi
+
+          grep -q "FILE: /index.js" .meta/vi3-signaling.txt
+          grep -q "FILE: /package.json" .meta/vi3-signaling.txt
+          grep -q "FILE: /index.js" .meta/vi3na1bita-backup-proxy.txt
+          grep -q "FILE: /package.json" .meta/vi3na1bita-backup-proxy.txt
+          grep -q "FILE: /index.js" .meta/vi3-webpush.txt
+          grep -q "FILE: /package.json" .meta/vi3-webpush.txt
+
+          ls -la .meta
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: generate .meta context"
