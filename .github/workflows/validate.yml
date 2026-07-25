@@ -192,9 +192,10 @@ jobs:
           grep -q "listenedSeconds >= 25" scripts/analytics/session-tracker.js
           grep -q "liveAccumulatedMs / 1000) >= 25" scripts/analytics/live-stats.js
 
-          if grep -En \
-            "Засчитывается ≥13 сек|listenedSeconds >= 13|liveAccumulatedMs / 1000\) >= 13" \
-            scripts/analytics; then
+          if grep -REn \
+            "Засчитывается ≥13 сек|listenedSeconds >= 13|liveAccumulatedMs / 1000\) >= 13|Math\.max\([[:space:]]*13," \
+            scripts/analytics \
+            cloud-functions/vi3-signaling; then
             echo "Legacy 13-second valid-listen threshold found"
             exit 2
           fi
