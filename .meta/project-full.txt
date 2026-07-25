@@ -2893,7 +2893,7 @@ export const AchievementDictionary = {
   },
   "full_total": {
     id: "full_total", type: "scalable", category: "listening",
-    ui: { name: "Верное ухо ур. {level}", short: "{target} полных прослушиваний.", desc: "Полное прослушивание — до конца или ≥90%.", howTo: "Сохраняйте концентрацию и дослушивайте треки.", icon: "🏆", color: "#ff9800" },
+    ui: { name: "Верное ухо ур. {level}", short: "{target} полных прослушиваний.", desc: "Трек должен завершиться естественно; сервер проверяет не менее 90% позиции и 80% подтверждённого времени.", howTo: "Дослушивайте треки без перемоток до естественного завершения.", icon: "🏆", color: "#ff9800" },
     reward: { xpBase: 15, xpMultiplier: 1.8, tierBase: 2 },
     trigger: { conditions: [{ metric: "fullPlays", operator: "gte" }] },
     scaling: { math: "custom", steps: [1, 10, 50, 100, 500, 1000] }
