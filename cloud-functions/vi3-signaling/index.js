@@ -1,3 +1,13 @@
+Название репозитория: vi3na1bita-music
+Адрес репозитория: https://github.com/apel-s-in/vi3na1bita-music
+Контекст: Yandex Cloud Function vi3-signaling.
+Публикация функции выполняется вручную. Переменные окружения и секреты в этот контекст не входят.
+
+СТРУКТУРА CLOUD FUNCTION vi3-signaling:
+[/] index.js, package.json
+
+//=================================================
+// FILE: /index.js
 'use strict';
 
 const crypto = require('crypto');
@@ -427,8 +437,77 @@ const buildSequentialRewards = ({
     };
   });
 };
+const TIME_REWARD_BASE_HOURS = Object.freeze([
+  1,
+  2,
+  3,
+  4,
+  5,
+  10,
+  24,
+  50,
+  100,
+  200,
+  500,
+  1000,
+  2000,
+  3000
+]);
 
-const ACHIEVEMENT_REWARD_CATALOG = Object.freeze([
+const TIME_REWARD_BASE_AMOUNTS = Object.freeze([
+  25,
+  30,
+  35,
+  40,
+  50,
+  100,
+  150,
+  200,
+  300,
+  400,
+  500,
+  500,
+  500,
+  500
+]);
+
+const buildTimeRewards = totalSec => {
+  const confirmedHours = Math.max(0, num(totalSec) / 3600);
+  const highestRequiredHour = Math.max(
+    3000,
+    (Math.floor(confirmedHours / 1000) + 1) * 1000
+  );
+  const cumulativeHours = [...TIME_REWARD_BASE_HOURS];
+
+  for (
+    let hour = 4000;
+    hour <= highestRequiredHour;
+    hour += 1000
+  ) {
+    cumulativeHours.push(hour);
+  }
+
+  let previousHour = 0;
+
+  return cumulativeHours.map((hour, index) => {
+    const progressOffsetHour = previousHour;
+    const displayTargetHour = hour - previousHour;
+    previousHour = hour;
+
+    return {
+      id: `time_total_${index + 1}`,
+      metric: 'totalSec',
+      channel: 'listening',
+      target: hour * 3600,
+      displayTarget: displayTargetHour * 3600,
+      progressOffset: progressOffsetHour * 3600,
+      progression: 'sequential',
+      amount: TIME_REWARD_BASE_AMOUNTS[index] ?? 500,
+      validatorVersion: 3
+    };
+  });
+};
+const BASE_ACHIEVEMENT_REWARD_CATALOG = Object.freeze([
   ...buildSequentialRewards({
     id: 'play_total',
     metric: 'validPlays',
@@ -469,13 +548,6 @@ const ACHIEVEMENT_REWARD_CATALOG = Object.freeze([
     targets: [1, 10, 50, 100, 500, 1000],
     xpBase: 15,
     xpMultiplier: 1.8
-  }),
-  ...buildScaledRewards({
-    id: 'time_total',
-    metric: 'totalSec',
-    targets: [3600, 18000, 36000, 86400, 360000],
-    xpBase: 25,
-    xpMultiplier: 2
   }),
   ...buildScaledRewards({
     id: 'streak_base',
@@ -628,7 +700,30 @@ const ACHIEVEMENT_REWARD_CATALOG = Object.freeze([
     validatorVersion: 1
   }))
 ]);
+function achievementRewardCatalog(progress = {}) {
+  const normalized = normalizeAchievementProgress(
+    progress,
+    progress?.playerId
+  );
 
+  const timeRewards = buildTimeRewards(normalized.totalSec);
+  const insertionIndex = BASE_ACHIEVEMENT_REWARD_CATALOG.findIndex(
+    reward => reward.id.startsWith('streak_base_')
+  );
+
+  if (insertionIndex < 0) {
+    return [
+      ...BASE_ACHIEVEMENT_REWARD_CATALOG,
+      ...timeRewards
+    ];
+  }
+
+  return [
+    ...BASE_ACHIEVEMENT_REWARD_CATALOG.slice(0, insertionIndex),
+    ...timeRewards,
+    ...BASE_ACHIEVEMENT_REWARD_CATALOG.slice(insertionIndex)
+  ];
+}
 function payload(row) {
   try {
     return row?.payload_json ? JSON.parse(row.payload_json) : {};
@@ -4289,7 +4384,11 @@ function normalizeListenSession(raw = {}) {
     lastHeartbeatAt: num(raw.lastHeartbeatAt),
     completedAt: num(raw.completedAt),
     lastPosition: Math.max(0, num(raw.lastPosition)),
-    observedMs: Math.max(0, num(raw.observedMs)),
+    observedMs: Math.max(0, Math.floor(num(raw.observedMs))),
+    timeProgressSyncedMs: Math.max(
+      0,
+      Math.floor(num(raw.timeProgressSyncedMs))
+    ),
     acceptedHeartbeats: Math.max(
       0,
       Math.floor(num(raw.acceptedHeartbeats))
@@ -4482,7 +4581,46 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
     raw.perTrackFull && typeof raw.perTrackFull === 'object'
       ? raw.perTrackFull
       : {};
+  const listenTimeBySessionSource =
+    raw.listenTimeBySession &&
+    typeof raw.listenTimeBySession === 'object' &&
+    !Array.isArray(raw.listenTimeBySession)
+      ? raw.listenTimeBySession
+      : {};
 
+  const listenTimeBySession = Object.fromEntries(
+    Object.entries(listenTimeBySessionSource)
+      .map(([sessionId, value]) => {
+        const id = sanitizeId(sessionId, 120);
+        const observedMs = Math.max(
+          0,
+          Math.floor(num(value?.observedMs ?? value))
+        );
+        const updatedAt = Math.max(
+          0,
+          num(value?.updatedAt)
+        );
+
+        return id
+          ? [id, { observedMs, updatedAt }]
+          : null;
+      })
+      .filter(Boolean)
+      .sort((left, right) =>
+        num(left[1].updatedAt) - num(right[1].updatedAt)
+      )
+      .slice(-LISTEN_PROGRESS_RECEIPT_LIMIT)
+  );
+
+  const migratedTotalListenMs = Math.max(
+    0,
+    Math.floor(
+      num(
+        raw.totalListenMs,
+        num(raw.totalSec) * 1000
+      )
+    )
+  );
   return {
     version: 1,
     playerId: sanitizeId(
@@ -4498,10 +4636,9 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
       0,
       Math.floor(num(raw.fullPlays))
     ),
-    totalSec: Math.max(
-      0,
-      Math.floor(num(raw.totalSec))
-    ),
+    totalListenMs: migratedTotalListenMs,
+    totalSec: Math.floor(migratedTotalListenMs / 1000),
+    listenTimeBySession,
     backupSaves: Math.max(
       0,
       Math.floor(num(raw.backupSaves))
@@ -4722,7 +4859,10 @@ function publicAchievementProgress(progress) {
     rewardsEnabled: !CFG.listeningReceiptsShadow,
     validPlays: data.validPlays,
     fullPlays: data.fullPlays,
+    totalListenMs: data.totalListenMs,
     totalSec: data.totalSec,
+    trackedTimeSessions:
+      Object.keys(data.listenTimeBySession).length,
     backupSaves: data.backupSaves,
     lyricsUsed: data.lyricsUsed,
     pwaInstalled: data.pwaInstalled,
@@ -4920,6 +5060,98 @@ function applyListenObservation(
       updatedAt: at
     }
   };
+}
+
+async function applyVerifiedListenTimeProgress(
+  playerId,
+  sessionId,
+  observedMs
+) {
+  const cleanSessionId = sanitizeId(sessionId, 120);
+  const targetObservedMs = Math.max(
+    0,
+    Math.floor(num(observedMs))
+  );
+
+  if (!cleanSessionId) {
+    throw new Error('listen_time_session_required');
+  }
+
+  const key = achievementProgressKey(playerId);
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let row = await kvGet(key);
+
+    if (!row) {
+      try {
+        await kvInsert({
+          pk: key,
+          type: 'achievementProgress',
+          owner: playerId,
+          data: normalizeAchievementProgress({}, playerId)
+        });
+      } catch {}
+
+      row = await kvGet(key);
+      if (!row) continue;
+    }
+
+    const progress = normalizeAchievementProgress(
+      payload(row),
+      playerId
+    );
+    const previousObservedMs = Math.max(
+      0,
+      Math.floor(
+        num(
+          progress.listenTimeBySession?.[cleanSessionId]
+            ?.observedMs
+        )
+      )
+    );
+    const deltaMs = Math.max(
+      0,
+      targetObservedMs - previousObservedMs
+    );
+
+    if (deltaMs <= 0) {
+      return {
+        duplicate: true,
+        creditedMs: 0,
+        progress
+      };
+    }
+
+    const next = normalizeAchievementProgress({
+      ...progress,
+      totalListenMs: progress.totalListenMs + deltaMs,
+      listenTimeBySession: {
+        ...progress.listenTimeBySession,
+        [cleanSessionId]: {
+          observedMs: targetObservedMs,
+          updatedAt: now()
+        }
+      },
+      updatedAt: now()
+    }, playerId);
+
+    if (!await kvCompareAndPut({
+      row,
+      type: 'achievementProgress',
+      owner: playerId,
+      data: next
+    })) {
+      continue;
+    }
+
+    return {
+      duplicate: false,
+      creditedMs: deltaMs,
+      progress: next
+    };
+  }
+
+  throw new Error('listen_time_progress_conflict');
 }
 
 async function applyListenReceiptProgress(receipt) {
@@ -5237,9 +5469,6 @@ async function applyListenReceiptProgress(receipt) {
       fullPlays:
         progress.fullPlays +
         (receipt.full ? 1 : 0),
-      totalSec:
-        progress.totalSec +
-        (receipt.valid ? receipt.observedSec : 0),
       hiFullPlays:
         progress.hiFullPlays +
         (
@@ -5396,6 +5625,11 @@ async function applyVerifiedFeatureProgress(playerId, {
 
 async function finalizeListenSession(session) {
   const data = normalizeListenSession(session);
+  await applyVerifiedListenTimeProgress(
+    data.playerId,
+    data.sessionId,
+    data.observedMs
+  );
   const receiptId =
     data.receiptId ||
     `lr_${hash([
@@ -5755,12 +5989,44 @@ async function actionListenSessionHeartbeat(event, body) {
       observation.session
     ).catch(() => null);
 
+    const appliedTime =
+      await applyVerifiedListenTimeProgress(
+        playerId,
+        observation.session.sessionId,
+        observation.session.observedMs
+      );
+
+    const rewards = await reconcileAchievementRewards(
+      playerId,
+      appliedTime.progress
+    );
+    const favoriteState = normalizeFavoriteState(
+      payload(await kvGet(
+        favoriteStateKey(playerId)
+      )),
+      playerId
+    );
+
     return {
       ok: true,
       throttled: false,
       accepted: observation.accepted,
-      creditedMs: observation.creditMs,
+      creditedMs: appliedTime.creditedMs,
       shadow: CFG.listeningReceiptsShadow,
+      rewardsEnabled: !CFG.listeningReceiptsShadow,
+      rewards: rewards.grants,
+      wallet: rewards.wallet
+        ? publicShardWallet(rewards.wallet)
+        : null,
+      rewardItems: publicAchievementRewardItems({
+        playerId,
+        progress: appliedTime.progress,
+        favoriteState,
+        wallet: rewards.wallet
+      }).filter(item => item.metric === 'totalSec'),
+      progress: publicAchievementProgress(
+        appliedTime.progress
+      ),
       session: publicListenSession(
         observation.session
       )
@@ -6895,7 +7161,7 @@ async function actionAchievementRewardStatus(event, body) {
     catalog: {
       configured: LISTEN_TRACK_CATALOG.size > 0,
       tracks: LISTEN_TRACK_CATALOG.size,
-      rewards: ACHIEVEMENT_REWARD_CATALOG.length,
+      rewards: achievementRewardCatalog(progress).length,
       rewardItems: publicAchievementRewardItems({
         playerId,
         progress,
@@ -7457,7 +7723,7 @@ function publicAchievementRewardItems({
       : []
   );
 
-  return ACHIEVEMENT_REWARD_CATALOG.map(reward => {
+  return achievementRewardCatalog(progress).map(reward => {
     const metricCurrent = achievementMetricValue(
       progress,
       reward,
@@ -7517,7 +7783,7 @@ async function reconcileAchievementRewards(
     playerId
   );
 
-  for (const reward of ACHIEVEMENT_REWARD_CATALOG) {
+  for (const reward of achievementRewardCatalog(progress)) {
     if (!achievementRewardEnabled(reward)) {
       continue;
     }
@@ -10780,7 +11046,7 @@ exports.handler = async event => {
           catalogTracks:
             LISTEN_TRACK_CATALOG.size,
           rewardEntries:
-            ACHIEVEMENT_REWARD_CATALOG.length,
+            achievementRewardCatalog({}).length,
           heartbeatMinMs:
             CFG.listenHeartbeatMinMs,
           heartbeatMaxGapMs:
@@ -10909,3 +11175,17 @@ exports.handler = async event => {
     });
   }
 };
+
+//=================================================
+// FILE: /package.json
+{
+  "name": "vi3-signaling",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "ydb-sdk": "^5.9.0",
+    "@yandex-cloud/nodejs-sdk": "^2.6.0"
+  }
+}
+
