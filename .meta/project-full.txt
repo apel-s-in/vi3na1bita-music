@@ -544,22 +544,15 @@ jobs:
             exit 2
           fi
 
-          if awk '
-            $1 == "//" &&
-            $2 == "FILE:" &&
-            $3 ~ /^\/cloud-functions\// {
-              found = 1
-            }
+          cloud_function_leaks="$(
+            grep -En \
+              '^(// FILE: /cloud-functions/|\[/cloud-functions/)' \
+              .meta/project-full.txt || true
+          )"
 
-            /^\[\/cloud-functions\// {
-              found = 1
-            }
-
-            END {
-              exit found ? 0 : 1
-            }
-          ' .meta/project-full.txt; then
-            echo "Cloud Function contents leaked into project-full.txt"
+          if [ -n "$cloud_function_leaks" ]; then
+            echo "Cloud Function paths leaked into project-full.txt:"
+            printf '%s\n' "$cloud_function_leaks"
             exit 2
           fi
 
