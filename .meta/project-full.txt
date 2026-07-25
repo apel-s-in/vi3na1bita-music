@@ -2237,7 +2237,12 @@ export class AchievementEngine {
   _getSc(r, lvl, isXp) {
     if (isXp) {
       if (Array.isArray(r.reward?.steps)) {
-        return Number(r.reward.steps[lvl - 1] ?? r.reward.steps[r.reward.steps.length - 1] ?? 0);
+        return Number(
+          r.reward.steps[lvl - 1] ??
+          r.reward.repeatAmount ??
+          r.reward.steps[r.reward.steps.length - 1] ??
+          0
+        );
       }
 
       return Math.floor(
@@ -2247,13 +2252,61 @@ export class AchievementEngine {
     }
 
     const scaling = r.scaling;
-    return scaling.math === 'custom'
-      ? scaling.steps[lvl - 1] ?? scaling.steps[scaling.steps.length - 1]
-      : r.trigger.conditions[0].startTarget * Math.pow(scaling.factor, lvl - 1);
+
+    if (
+      scaling.math === 'custom' &&
+      lvl <= scaling.steps.length
+    ) {
+      return Number(scaling.steps[lvl - 1] || 0);
+    }
+
+    if (
+      scaling.math === 'custom' &&
+      Number(scaling.repeatAfterLevel) > 0 &&
+      Number(scaling.repeatStep) > 0 &&
+      lvl > Number(scaling.repeatAfterLevel)
+    ) {
+      const base = Number(
+        scaling.steps[
+          Number(scaling.repeatAfterLevel) - 1
+        ] || 0
+      );
+
+      return base +
+        (
+          lvl - Number(scaling.repeatAfterLevel)
+        ) * Number(scaling.repeatStep);
+    }
+
+    if (scaling.math === 'custom') {
+      return Number(
+        scaling.steps[scaling.steps.length - 1] || 0
+      );
+    }
+
+    return r.trigger.conditions[0].startTarget *
+      Math.pow(scaling.factor, lvl - 1);
+  }
+
+  _hasScalableLevel(rule, level) {
+    if (rule?.scaling?.maxLevel) {
+      return level <= Number(rule.scaling.maxLevel);
+    }
+
+    if (Number(rule?.scaling?.repeatAfterLevel) > 0) {
+      return true;
+    }
+
+    return !rule?.scaling?.steps ||
+      level <= rule.scaling.steps.length;
   }
 
   _getLevelOffset(rule, level) {
     if (!rule?.scaling?.resetEachLevel || level <= 1) return 0;
+
+    if (rule.scaling.cumulativeSteps) {
+      return this._getSc(rule, level - 1, false);
+    }
 
     return rule.scaling.steps
       .slice(0, level - 1)
@@ -2440,14 +2493,27 @@ export class AchievementEngine {
 
       if (!completed && !hidden && rawTarget > 0) {
         if (r.id === 'time_total') {
-          effectiveCurrent = Number(lv?.projectedTotalSec || rawCurrent);
-          pct = Math.min(100, Math.max(0, (effectiveCurrent / rawTarget) * 100));
+          effectiveCurrent = rawCurrent;
+          pct = Math.min(
+            100,
+            Math.max(
+              0,
+              (effectiveCurrent / rawTarget) * 100
+            )
+          );
           progressMeta = {
             kind: 'time_accum',
-            live: true,
-            toggleableTimer: true,
-            remainingMs: Math.max(0, (rawTarget - effectiveCurrent) * 1000),
-            elapsedMs: Math.max(0, effectiveCurrent * 1000),
+            live: false,
+            serverConfirmed: true,
+            toggleableTimer: false,
+            remainingMs: Math.max(
+              0,
+              (rawTarget - effectiveCurrent) * 1000
+            ),
+            elapsedMs: Math.max(
+              0,
+              effectiveCurrent * 1000
+            ),
             targetMs: rawTarget * 1000,
             currentRaw: effectiveCurrent,
             targetRaw: rawTarget
@@ -2570,8 +2636,7 @@ export class AchievementEngine {
         }
 
         if (
-          (!r.scaling.maxLevel || level <= r.scaling.maxLevel) &&
-          (!r.scaling.steps || level <= r.scaling.steps.length)
+          this._hasScalableLevel(r, level)
         ) {
           add(
             `${k}_${level}`,
@@ -2901,11 +2966,51 @@ export const AchievementDictionary = {
   },
   "time_total": {
     id: "time_total", type: "scalable", category: "time",
-    ui: { name: "Хранитель времени ур. {level}", short: "Накопите {target_hours} ч. прослушивания.", desc: "Суммарное валидное время.", howTo: "Слушайте музыку, время учитывается автоматически.", icon: "⏳", color: "#ffb74d" },
-    reward: { xpBase: 25, xpMultiplier: 2.0, tierBase: 2 },
+    ui: {
+      name: "Хранитель времени ур. {level}",
+      short: "Слушайте музыку ещё {target_hours} ч.",
+      desc: "Сервер суммирует фактическое время воспроизведения без пауз, перемоток, mute и нулевой программной громкости.",
+      howTo: "Продолжайте слушать музыку. Фоновое воспроизведение учитывается после серверного подтверждения.",
+      icon: "⏳",
+      color: "#ffb74d"
+    },
+    reward: {
+      steps: [25, 30, 35, 40, 50, 100, 150, 200, 300, 400, 500, 500, 500, 500],
+      repeatAmount: 500,
+      tierBase: 2
+    },
     trigger: { conditions: [{ metric: "totalSec", operator: "gte" }] },
-    scaling: { math: "custom", steps: [3600, 18000, 36000, 86400, 360000] },
-    formatters: { target_hours: val => Math.floor(val / 3600) || 1 }
+    scaling: {
+      math: "custom",
+      resetEachLevel: true,
+      cumulativeSteps: true,
+      steps: [
+        3600,
+        7200,
+        10800,
+        14400,
+        18000,
+        36000,
+        86400,
+        180000,
+        360000,
+        720000,
+        1800000,
+        3600000,
+        7200000,
+        10800000
+      ],
+      repeatAfterLevel: 14,
+      repeatStep: 3600000
+    },
+    formatters: {
+      target_hours: value => {
+        const hours = Number(value || 0) / 3600;
+        return Number.isInteger(hours)
+          ? hours
+          : Math.round(hours * 10) / 10;
+      }
+    }
   },
   "streak_base": {
     id: "streak_base", type: "scalable", category: "loyalty",
@@ -5429,7 +5534,7 @@ export default {
 import { requestSocialAction } from '../core/social-session.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 
-const HEARTBEAT_MS = 15000;
+const HEARTBEAT_MS = 10000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
 const COMPLETION_OUTBOX_TTL_MS =
@@ -5932,6 +6037,28 @@ class ListeningReceiptService {
         sessionId: this.session.sessionId
       })
     );
+
+    if (result?.progress) {
+      this.lastProgress = result.progress;
+    }
+
+    if (Array.isArray(result?.rewardItems)) {
+      const merged = new Map(
+        this.rewardCatalog.map(item => [
+          safe(item?.id),
+          item
+        ])
+      );
+
+      result.rewardItems.forEach(item => {
+        const id = safe(item?.id);
+        if (id) merged.set(id, { ...item });
+      });
+
+      this.rewardCatalog = [...merged.values()];
+    }
+
+    applyShardRewardResult(result);
 
     if (result?.accepted) {
       await this.flushPendingFeatures()
@@ -6670,9 +6797,9 @@ export class SessionTracker {
         Math.floor(duration * 0.8)
       );
 
-    if (!valid && !full) {
+    if (listenedSeconds <= 0) {
       eventLogger.log('LISTEN_SKIP', uid, {
-        listenedSeconds
+        listenedSeconds: 0
       });
       return;
     }
@@ -6841,14 +6968,28 @@ export class StatsAggregator {
               s.lastPlayedAt = ev.timestamp;
               s.featuresUsed = s.featuresUsed || {};
 
-              if (isV) {
-                const activityAt = Number(ev.data.startedAt || ev.timestamp);
+              if (lSec > 0) {
+                const activityAt = Number(
+                  ev.data.startedAt || ev.timestamp
+                );
                 const date = new Date(activityAt);
+
                 s.globalListenSeconds += lSec;
+                (s.byHour ??= Array(24).fill(0))[
+                  date.getHours()
+                ] += lSec;
+                (s.byWeekday ??= Array(7).fill(0))[
+                  (date.getDay() + 6) % 7
+                ] += lSec;
+              }
+
+              if (isV) {
+                const activityAt = Number(
+                  ev.data.startedAt || ev.timestamp
+                );
+
                 s.globalValidListenCount++;
                 activeDays.add(localDayKey(activityAt));
-                (s.byHour ??= Array(24).fill(0))[date.getHours()]++;
-                (s.byWeekday ??= Array(7).fill(0))[(date.getDay() + 6) % 7]++;
               }
 
               if (isF && isV && v !== 'short') {
@@ -6875,7 +7016,6 @@ export class StatsAggregator {
           else if (ev.type === 'FEATURE_USED') {
             await metaDB.updateStat(ev.uid || 'global', s => {
               s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1; s.lastPlayedAt = ev.timestamp;
-              try { const d = new Date(ev.timestamp); (s.byHour ??= Array(24).fill(0))[d.getHours()]++; (s.byWeekday ??= Array(7).fill(0))[(d.getDay() + 6) % 7]++; } catch {}
               if (['sleep_timer_set', 'sleep_timer_extend', 'sleep_timer_cancel', 'sleep_timer'].includes(f)) { s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + Math.max(0, Number(ev.data.minutes || 0)); if (ev.data.mode) s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] = (s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] || 0) + 1; }
               return s;
             });
@@ -10804,7 +10944,7 @@ export default { renderAccountDevicesBlock, bindAccountDevicesBlock };
 import { fmtAchTimerText } from '../../ui/progress-formatters.js';
 
 export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) => {
-  const tM = ctx._achTimerMode ??= new Map(), esc = v => CSS.escape(String(v || '')), hEsc = v => window.Utils?.escapeHtml?.(String(v || '')) || String(v || ''), eng = () => window.achievementEngine || e;
+  const esc = v => CSS.escape(String(v || '')), hEsc = v => window.Utils?.escapeHtml?.(String(v || '')) || String(v || ''), eng = () => window.achievementEngine || e;
   const rewardText = a => {
     if (a?.isHidden && !a?.isUnlocked) return 'Секретное';
     if (a?.rewardAwarded) return `+${a.shardReward} ♦ получено`;
@@ -10826,7 +10966,12 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
       : `+${a.shardReward} ♦ · награда готовится`;
   };
   const unlockInfo = a => { const m = a?.unlockMeta || {}, ts = Number(m.unlockedAt || a?.unlockedAt || 0), dt = ts > 0 ? new Date(ts).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—', dev = [m.deviceLabel, m.deviceClass || m.platform, m.devicePwa ? 'PWA' : ''].filter(Boolean).join(' · '); return hEsc(`Открыто: ${dt}${dev ? ` · ${dev}` : ''}`); };
-  const gM = id => tM.get(id) || 'remaining', tH = a => { const t = fmtAchTimerText(a, gM(a.id)); return t ? `<button class="ach-timer" type="button" data-ach-timer="${a.id}" title="Нажмите для переключения режима">${t}</button>` : ''; };
+  const tH = a => {
+    const text = fmtAchTimerText(a);
+    return text
+      ? `<span class="ach-timer" data-ach-timer-view="${hEsc(a.id)}">${hEsc(text)}</span>`
+      : '';
+  };
   const flt = f => (eng()?.achievements || []).filter(a => f === 'secret' ? (a.isSecret || a.isHidden) : f === 'done' ? a.isUnlocked : f === 'available' ? !a.isUnlocked && !a.isHidden : !a.isHidden || a.isUnlocked);
 
   return {
@@ -10835,8 +10980,23 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
       const it = flt(ctx._achCurrentFilter = f);
       c.innerHTML = it.length ? it.map(a => `<div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${a.id}"><div class="ach-top"><div class="ach-title" style="color:${a.isUnlocked ? '#fff' : a.color || '#fff'}">${hEsc(a.icon)} ${hEsc(a.name)}</div></div><div class="ach-sub">${a.isUnlocked && a.unlockedAt ? unlockInfo(a) : a.isHidden ? 'Откроется при особых условиях' : hEsc(a.short)}</div>${!a.isUnlocked && !a.isHidden && a.progress ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" data-ach-fill="${a.id}" style="width:${a.progress.pct}%"></div></div></div>` : ''}<div class="ach-bottom"><div class="ach-reward">${rewardText(a)}</div><div class="ach-remaining" data-ach-remaining="${a.id}">${tH(a)}</div><button class="ach-more" type="button">Подробнее</button></div><div class="ach-details" style="display:none"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${hEsc(a.howTo || 'Выполните условия.')}</div>${a.desc ? `<div class="ach-details-desc">${hEsc(a.desc)}</div>` : ''}</div></div>`).join('') : '<div class="fav-empty">По данному фильтру ничего нет</div>';
     },
-    updateLiveNodes: () => { if (!c || !eng()?.achievements) return; flt(ctx._achCurrentFilter || 'all').forEach(a => { const rem = c.querySelector(`[data-ach-remaining="${esc(a.id)}"]`), fil = c.querySelector(`[data-ach-fill="${esc(a.id)}"]`); if (rem) rem.innerHTML = tH(a); if (fil && a.progress) fil.style.width = `${a.progress.pct}%`; }); },
-    toggleTimerMode: id => { tM.set(id, gM(id) === 'remaining' ? 'elapsed' : 'remaining'); ctx._achCurrentFilter && flt(ctx._achCurrentFilter).length; const r = c?.querySelector(`[data-ach-remaining="${esc(id)}"]`); if (r) r.innerHTML = tH((eng()?.achievements || []).find(a => a.id === id)); }
+    updateLiveNodes: () => {
+      if (!c || !eng()?.achievements) return;
+
+      flt(ctx._achCurrentFilter || 'all').forEach(a => {
+        const remaining = c.querySelector(
+          `[data-ach-remaining="${esc(a.id)}"]`
+        );
+        const fill = c.querySelector(
+          `[data-ach-fill="${esc(a.id)}"]`
+        );
+
+        if (remaining) remaining.innerHTML = tH(a);
+        if (fill && a.progress) {
+          fill.style.width = `${a.progress.pct}%`;
+        }
+      });
+    }
   };
 };
 
@@ -10867,7 +11027,6 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, reloadProfi
   const handlers = [
     { sel: '.ach-classic-tab', run: ({ el }) => { const p = el.closest('.profile-tab-content'); if (!p) return; p.querySelectorAll('.ach-classic-tab').forEach(x => x.classList.remove('active')); el.classList.add('active'); if (p.id === 'tab-achievements') ctx._profileAchievementsView?.render?.(el.dataset.filter); else if (p.id === 'tab-settings') { p.querySelectorAll('.settings-content').forEach(x => x.classList.remove('active')); p.querySelector(`#set-${el.dataset.setTab}`)?.classList.add('active'); } bindTabStripPhysics(p); setTimeout(() => el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 20); } },
     { sel: '.ach-more, .ach-main', run: ({ el }) => { const d = el.closest('.ach-item')?.querySelector('.ach-details'), b = el.closest('.ach-item')?.querySelector('.ach-more'); if (!d) return; const open = d.style.display === 'none'; d.style.display = open ? 'block' : 'none'; if (b) b.textContent = open ? 'Свернуть' : 'Подробнее'; } },
-    { sel: '[data-ach-timer]', run: ({ el }) => ctx._profileAchievementsView?.toggleTimerMode?.(el.dataset.achTimer) },
     { sel: '.chart-title', run: ({ el }) => { const box = c.querySelector('#' + el.dataset.tg); if (!box) return; const vis = box.style.display !== 'none'; box.style.display = vis ? 'none' : ''; localStorage.setItem(el.dataset.ls, vis ? '0' : '1'); } },
     { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
     { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
@@ -11850,7 +12009,11 @@ export default { renderProfileSettings };
 import { buildStatsViewModel } from '../../analytics/stats-state.js';
 const esc = s => window.Utils?.escapeHtml?.(String(s||'')) || String(s||''), dur = s => window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(s||0) : `${Math.floor((s||0)/60)}м`, tT = u => esc(window.TrackRegistry?.getTrackByUid(u)?.title || u);
 const rL = (a,f) => a.length ? `<ul class="stat-list">${a.map(s=>`<li data-uid="${esc(s.uid)}"><span>${tT(s.uid)}</span><span>${esc(f(s))}</span></li>`).join('')}</ul>` : '<div class="stat-sub">Недостаточно данных</div>';
-const rC = (id,t,d,lsK,lbls=null) => { const m=Math.max(1,...d); return `<div class="chart-block" id="${id}"><div class="chart-title chart-title--click" data-tg="${id}-bars" data-ls="${lsK}">${esc(t)}</div><div class="chart-bars ${localStorage.getItem(lsK)==='0'?'chart-bars--hidden':''}" id="${id}-bars">${d.map((v,i)=>`<div class="chart-row"><div class="label">${esc(lbls?lbls[i]:String(i).padStart(2,'0'))}</div><div class="bar"><div class="fill" style="width:${Math.round((v/m)*100)}%"></div></div><div class="val">${esc(v)}</div></div>`).join('')}</div></div>`; };
+const rC = (id, title, data, storageKey, labels = null) => {
+  const max = Math.max(1, ...data);
+
+  return `<div class="chart-block" id="${id}"><div class="chart-title chart-title--click" data-tg="${id}-bars" data-ls="${storageKey}">${esc(title)}</div><div class="chart-bars ${localStorage.getItem(storageKey) === '0' ? 'chart-bars--hidden' : ''}" id="${id}-bars">${data.map((value, index) => `<div class="chart-row"><div class="label">${esc(labels ? labels[index] : String(index).padStart(2, '0'))}</div><div class="bar"><div class="fill" style="width:${Math.round((value / max) * 100)}%"></div></div><div class="val">${esc(dur(value))}</div></div>`).join('')}</div></div>`;
+};
 export const renderProfileStats = ({ container: c, all, vm = null }) => { const el = c?.querySelector('#prof-top-tracks'); if(!el)return; const m=vm||buildStatsViewModel(all||[]), s=m.summary, f=m.globalFeatures; el.innerHTML=`<div class="stats-grid-compact"><div class="stat-box"><b>${s.uniqueTracks}</b><span>Уникальных</span></div><div class="stat-box"><b>${s.totalFull}</b><span>Полных</span></div><div class="stat-box"><b>${s.totalValid}</b><span>Валидных</span></div><div class="stat-box"><b>${dur(s.totalSec)}</b><span>Время</span></div></div><div class="stats-grid-compact"><div class="stat-box"><b>${String(m.peakHour).padStart(2,'0')}:00</b><span>Пик часа</span></div><div class="stat-box"><b>${esc(m.peakDaypart)}</b><span>Время суток</span></div><div class="stat-box"><b>${f.sleep_timer||0}</b><span>Таймер сна</span></div><div class="stat-box"><b>${f.backup||0}</b><span>Backup</span></div></div>${rC('chart-hours','По часам суток',m.byHour,'myStatsHoursOpen')}${rC('chart-week','По дням недели',m.byWeekday,'myStatsWeekOpen',['Пн','Вт','Ср','Чт','Пт','Сб','Вс'])}${rC('chart-dayparts','По времени суток',m.dayparts.map(x=>x.value),'myStatsDayPartsOpen',m.dayparts.map(x=>x.label))}<div class="stat-card stat-card--mb10"><div class="stat-title">Топ‑5 по полным прослушиваниям</div>${rL(m.topFull, x=>x.globalFullListenCount||0)}</div><div class="stat-card stat-card--mb10"><div class="stat-title">Топ‑5 по валидным прослушиваниям</div>${rL(m.topValid, x=>x.globalValidListenCount||0)}</div><div class="stat-card stat-card--mb15"><div class="stat-title">Топ‑5 по времени</div>${rL(m.topTime, x=>dur(x.globalListenSeconds||0))}</div>`; };
 export default { renderProfileStats };
 
@@ -11905,7 +12068,7 @@ export default { bindTabStripPhysics };
 
 //=================================================
 // FILE: /scripts/app/profile/template.js
-export const getProfileTemplateHtml = () => `<div class="profile-wrap"><div class="profile-tab-content active" id="tab-stats"><div class="stats-grid-compact"><div class="stat-box"><b id="prof-stat-tracks">0</b><span>Треков</span></div><div class="stat-box"><b id="prof-stat-time">0м</b><span>В пути</span></div><div class="stat-box"><b id="prof-stat-streak">0</b><span>Стрик (дней)</span></div><div class="stat-box"><b id="prof-stat-ach">0</b><span>Ачивок</span></div></div><div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div><div id="prof-top-tracks"></div></div><div class="profile-tab-content" id="tab-achievements"><div class="ach-classic-tabs" id="ach-inner-tabs"><div class="ach-classic-tab active" data-filter="available">Доступные</div><div class="ach-classic-tab" data-filter="done">Выполненные</div><div class="ach-classic-tab" data-filter="secret">Секретные</div></div><div id="prof-ach-list"></div></div><div class="profile-tab-content" id="tab-recs"><div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div><div id="prof-recs-list"></div></div><div class="profile-tab-content" id="tab-logs"><div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div><div id="prof-logs-list">Загрузка...</div></div><div class="profile-tab-content" id="tab-settings"></div><div class="profile-tab-content" id="tab-account"><div class="prof-account-card"><button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button><div class="prof-account-info"><div class="prof-name-row"><input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly><button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button></div><div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div><div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div><div class="prof-meta-row" id="prof-meta-shards">♦ Осколки: —</div></div></div><div class="profile-auth-grid profile-auth-grid--full" id="prof-auth-grid"></div></div></div>`;
+export const getProfileTemplateHtml = () => `<div class="profile-wrap"><div class="profile-tab-content active" id="tab-stats"><div class="stats-grid-compact"><div class="stat-box"><b id="prof-stat-tracks">0</b><span>Треков</span></div><div class="stat-box"><b id="prof-stat-time">0м</b><span>Время музыки</span></div><div class="stat-box"><b id="prof-stat-streak">0</b><span>Стрик (дней)</span></div><div class="stat-box"><b id="prof-stat-ach">0</b><span>Ачивок</span></div></div><div class="profile-section-title">🏆 ТОП-5 ТРЕКОВ</div><div id="prof-top-tracks"></div></div><div class="profile-tab-content" id="tab-achievements"><div class="ach-classic-tabs" id="ach-inner-tabs"><div class="ach-classic-tab active" data-filter="available">Доступные</div><div class="ach-classic-tab" data-filter="done">Выполненные</div><div class="ach-classic-tab" data-filter="secret">Секретные</div></div><div id="prof-ach-list"></div></div><div class="profile-tab-content" id="tab-recs"><div class="profile-section-title">💡 МЫ РЕКОМЕНДУЕМ</div><div id="prof-recs-list"></div></div><div class="profile-tab-content" id="tab-logs"><div class="profile-section-title">📜 ИСТОРИЯ АКТИВНОСТИ</div><div id="prof-logs-list">Загрузка...</div></div><div class="profile-tab-content" id="tab-settings"></div><div class="profile-tab-content" id="tab-account"><div class="prof-account-card"><button class="prof-ava-sq" id="prof-avatar-btn" title="Изменить аватар (нажмите для смены)"></button><div class="prof-account-info"><div class="prof-name-row"><input type="text" id="prof-name-inp" class="prof-name-inp-flat" maxlength="15" autocomplete="off" spellcheck="false" readonly><button class="prof-name-pencil" id="prof-name-edit" title="Изменить имя">✏️</button></div><div class="prof-meta-row" id="prof-meta-since">📅 Слушаю с: —</div><div class="prof-meta-row" id="prof-meta-days">🎵 Дней с нами: —</div><div class="prof-meta-row" id="prof-meta-shards">♦ Осколки: —</div></div></div><div class="profile-auth-grid profile-auth-grid--full" id="prof-auth-grid"></div></div></div>`;
 export default { getProfileTemplateHtml };
 
 //=================================================
@@ -16587,9 +16750,70 @@ export default { initOfflineModal, openOfflineModal, closeOfflineModal };
 
 //=================================================
 // FILE: /scripts/ui/progress-formatters.js
-export const fmtClockMs = ms => { const s = Math.max(0, Math.floor((Number(ms)||0) / 1000)), m = Math.floor((s % 3600) / 60), h = Math.floor((s % 86400) / 3600), d = Math.floor(s / 86400); return d > 0 ? `${d}д ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; };
-export const fmtAchTimerText = (a, mode = 'remaining') => { const pm = a?.progressMeta; if (!pm || a?.isUnlocked || a?.isHidden) return ''; if (pm.kind === 'time_accum') return fmtClockMs(mode === 'elapsed' ? pm.elapsedMs : pm.remainingMs); if (pm.kind === 'streak_days') return mode === 'elapsed' ? `${pm.elapsedDays} / ${pm.targetDays} дн` : `ещё ${pm.remainingDays} дн`; return a?.progress ? `Осталось: ${Math.max(0, (a.progress.target || 0) - (a.progress.current || 0))}` : ''; };
-export const fmtAchBubbleText = a => { const nm = String(a?.name || '').replace(/ ур\. \d+/, ''), pm = a?.progressMeta; if (pm?.kind === 'time_accum') return `✨ До «${nm}»: ${fmtClockMs(pm.remainingMs)}`; if (pm?.kind === 'streak_days') return `✨ До «${nm}»: ${pm.remainingDays} дн`; return `✨ До «${nm}»: осталось ${Math.max(0, (a?.progress?.target || 0) - (a?.progress?.current || 0))}`; };
+export const fmtClockMs = ms => {
+  const seconds = Math.max(
+    0,
+    Math.floor((Number(ms) || 0) / 1000)
+  );
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+
+  if (days > 0) {
+    return `${days} дн ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+  }
+
+  return `${String(Math.floor(seconds / 3600)).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+};
+
+export const fmtAchTimerText = achievement => {
+  const meta = achievement?.progressMeta;
+
+  if (
+    !meta ||
+    achievement?.isUnlocked ||
+    achievement?.isHidden
+  ) {
+    return '';
+  }
+
+  if (meta.kind === 'time_accum') {
+    return `Осталось ${fmtClockMs(meta.remainingMs)}`;
+  }
+
+  if (meta.kind === 'streak_days') {
+    return `Осталось ${meta.remainingDays} дн`;
+  }
+
+  return achievement?.progress
+    ? `Осталось: ${Math.max(
+        0,
+        Number(achievement.progress.target || 0) -
+        Number(achievement.progress.current || 0)
+      )}`
+    : '';
+};
+
+export const fmtAchBubbleText = achievement => {
+  const name = String(achievement?.name || '')
+    .replace(/ ур\. \d+/, '');
+  const meta = achievement?.progressMeta;
+
+  if (meta?.kind === 'time_accum') {
+    return `✨ До «${name}»: ${fmtClockMs(meta.remainingMs)}`;
+  }
+
+  if (meta?.kind === 'streak_days') {
+    return `✨ До «${name}»: ${meta.remainingDays} дн`;
+  }
+
+  return `✨ До «${name}»: осталось ${Math.max(
+    0,
+    Number(achievement?.progress?.target || 0) -
+    Number(achievement?.progress?.current || 0)
+  )}`;
+};
 
 //=================================================
 // FILE: /scripts/ui/sleep-timer.js
@@ -21350,7 +21574,7 @@ body.news-view #cover-wrap{display:none!important}
 .chart-row .label{width:45px;text-align:right;flex-shrink:0}
 .chart-row .bar{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
 .chart-row .fill{height:100%;background:var(--grad-blue);border-radius:4px}
-.chart-row .val{width:30px;text-align:left;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+.chart-row .val{width:58px;text-align:left;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* 7. ВСПЛЫВАЮЩИЕ МЕНЮ */
 .cloud-menu{position:fixed;background:rgba(20,24,32,.98);border:1px solid rgba(77,170,255,.4);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999}
