@@ -34,7 +34,31 @@ export class AchievementEngine {
   }
 
   _evalCondition(c, agg) { const v = agg[c.metric] || 0; return c.operator === 'gte' ? v >= c.target : v === c.target; }
-  _getSc(r, lvl, isXp) { if (isXp) return Math.floor(r.reward.xpBase * Math.pow(r.reward.xpMultiplier, lvl - 1)); const s = r.scaling; return s.math === 'custom' ? (s.steps[lvl - 1] ?? s.steps[s.steps.length - 1]) : r.trigger.conditions[0].startTarget * Math.pow(s.factor, lvl - 1); }
+  _getSc(r, lvl, isXp) {
+    if (isXp) {
+      if (Array.isArray(r.reward?.steps)) {
+        return Number(r.reward.steps[lvl - 1] ?? r.reward.steps[r.reward.steps.length - 1] ?? 0);
+      }
+
+      return Math.floor(
+        Number(r.reward?.xpBase || 0) *
+        Math.pow(Number(r.reward?.xpMultiplier || 1), lvl - 1)
+      );
+    }
+
+    const scaling = r.scaling;
+    return scaling.math === 'custom'
+      ? scaling.steps[lvl - 1] ?? scaling.steps[scaling.steps.length - 1]
+      : r.trigger.conditions[0].startTarget * Math.pow(scaling.factor, lvl - 1);
+  }
+
+  _getLevelOffset(rule, level) {
+    if (!rule?.scaling?.resetEachLevel || level <= 1) return 0;
+
+    return rule.scaling.steps
+      .slice(0, level - 1)
+      .reduce((sum, target) => sum + Number(target || 0), 0);
+  }
   _requiresServerVerification(rule) { return !!rule?.reward; }
 
   async check({ force = false, reason = '' } = {}) {
@@ -191,11 +215,21 @@ export class AchievementEngine {
         ? this._getSc(r, lvl, true)
         : Number(r.reward?.xp || 0);
       const shardReward = Number(reward?.amount ?? legacyAmount);
+      const localTarget = Number(target || 0);
+      const localCurrent = lvl && r.scaling?.resetEachLevel
+        ? Math.max(
+            0,
+            Math.min(
+              localTarget,
+              Number(current || 0) - this._getLevelOffset(r, lvl)
+            )
+          )
+        : Number(current || 0);
       const rawCurrent = Number(
-        reward?.current ?? current ?? 0
+        reward?.current ?? localCurrent
       );
       const rawTarget = Number(
-        reward?.target ?? target ?? 0
+        reward?.target ?? localTarget
       );
       const hidden = !completed && !!r.hidden;
       let effectiveCurrent = rawCurrent;
@@ -272,8 +306,14 @@ export class AchievementEngine {
         serverCompleted: rewardEligible || rewardAwarded,
         isHidden: hidden,
         isSecret: !!r.hidden || r.category === 'secret',
-        unlockedAt: unlockedAt || null,
-        unlockMeta: this.unlockMeta?.[id] || null,
+        unlockedAt: Number(reward?.awardedAt || unlockedAt || 0) || null,
+        unlockMeta: reward?.awardedAt
+          ? {
+              id,
+              unlockedAt: Number(reward.awardedAt),
+              source: 'server_wallet'
+            }
+          : this.unlockMeta?.[id] || null,
         shardReward,
         rewardEligible,
         rewardAwarded,
