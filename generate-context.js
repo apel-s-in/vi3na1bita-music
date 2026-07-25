@@ -11,9 +11,9 @@ const argv = Object.fromEntries(process.argv.slice(2).map(a => {
 
 const ROOT = path.resolve(argv.root || __dirname);
 const META_DIR = path.resolve(argv['out-dir'] || path.join(ROOT, '.meta'));
+const FUNCTIONS_META_DIR = path.join(META_DIR, 'functions');
 const CLOUD_FUNCTIONS_DIR = path.join(ROOT, 'cloud-functions');
 const MODE = String(argv.mode || 'both').toLowerCase();
-const MAX_LINES = Number(argv['max-lines'] || 20000);
 const CLOUD_FUNCTIONS = Object.freeze([
   'vi3-signaling',
   'vi3na1bita-backup-proxy',
@@ -21,14 +21,17 @@ const CLOUD_FUNCTIONS = Object.freeze([
 ]);
 
 if (!fs.existsSync(META_DIR)) fs.mkdirSync(META_DIR, { recursive: true });
+if (!fs.existsSync(FUNCTIONS_META_DIR)) fs.mkdirSync(FUNCTIONS_META_DIR, { recursive: true });
 
 const FULL_FILE = path.join(META_DIR, 'project-full.txt');
-const ADAPTIVE_FILE = path.join(META_DIR, 'project-adaptive.txt');
 const MUSIC_GAMES_FILE = path.join(META_DIR, 'project-music-games.txt');
+const STALE_META_FILES = [
+  path.join(META_DIR, 'project-adaptive.txt'),
+  ...CLOUD_FUNCTIONS.map(name => path.join(META_DIR, `${name}.txt`))
+];
 
 const toUnix = p => String(p || '').replace(/\\/g, '/');
 const SELF_FULL_REL = toUnix(path.relative(ROOT, FULL_FILE));
-const SELF_ADAPT_REL = toUnix(path.relative(ROOT, ADAPTIVE_FILE));
 const SELF_MUSIC_GAMES_REL = toUnix(path.relative(ROOT, MUSIC_GAMES_FILE));
 
 const TEXT_EXTS = new Set([
@@ -162,7 +165,6 @@ const isExcluded = (rel, patterns) => {
   if (
     !u ||
     u === SELF_FULL_REL ||
-    u === SELF_ADAPT_REL ||
     u === SELF_MUSIC_GAMES_REL ||
     ALWAYS_EXCLUDE.has(u) ||
     ALWAYS_EXCLUDE.has(path.basename(u))
@@ -181,8 +183,6 @@ const readText = rel => {
     return `// read error: ${e.message}`;
   }
 };
-
-const countLines = s => (String(s || '').match(/\n/g) || []).length + (String(s || '').length ? 1 : 0);
 
 const listAllEntries = (includeFiles = true, forTree = false) => {
   const out = [];
@@ -269,29 +269,18 @@ const fileBlock = rel => `//=================================================
 ${readText(rel)}
 `;
 
-const generate = mode => {
+const generateFull = () => {
   let out = headerBlock();
-  let lines = countLines(out);
 
   const groups = listAllEntries(true, false)
-    .filter(e => !e.dir && isTextFile(e.rel))
-    .reduce((acc, e) => {
-      acc[getPriority(e.rel)].push(e.rel);
+    .filter(entry => !entry.dir && isTextFile(entry.rel))
+    .reduce((acc, entry) => {
+      acc[getPriority(entry.rel)].push(entry.rel);
       return acc;
     }, { critical: [], high: [], medium: [], low: [] });
 
-  const order = mode === 'adaptive' ? ['critical', 'high', 'medium'] : ['critical', 'high', 'medium', 'low'];
-
-  for (const level of order) {
-    for (const rel of groups[level]) {
-      const block = fileBlock(rel);
-      const blockLines = countLines(block);
-      if (mode === 'adaptive' && lines + blockLines > MAX_LINES) {
-        return `${out}\n// ... (truncate)\n`;
-      }
-      out += block;
-      lines += blockLines;
-    }
+  for (const level of ['critical', 'high', 'medium', 'low']) {
+    for (const rel of groups[level]) out += fileBlock(rel);
   }
 
   return out;
@@ -401,10 +390,6 @@ const renderFunctionTree = functionName => {
 };
 
 const functionHeaderBlock = functionName => {
-  const rulesPath = path.join(ROOT, 'ai-rules.txt');
-  const rules = fs.existsSync(rulesPath)
-    ? `${fs.readFileSync(rulesPath, 'utf8').trim()}\n\n`
-    : '';
   const repoName = String(argv['repo-name'] || path.basename(ROOT));
   const repoUrl = String(
     argv['repo-url'] ||
@@ -412,7 +397,7 @@ const functionHeaderBlock = functionName => {
     'https://github.com/apel-s-in/vi3na1bita-music'
   );
 
-  return `${rules}Название репозитория: ${repoName}
+  return `Название репозитория: ${repoName}
 Адрес репозитория: ${repoUrl}
 Контекст: Yandex Cloud Function ${functionName}.
 Публикация функции выполняется вручную. Переменные окружения и секреты в этот контекст не входят.
@@ -466,9 +451,11 @@ const generateFunctionContext = functionName => {
 };
 
 const writeFunctionContexts = () => {
+  fs.mkdirSync(FUNCTIONS_META_DIR, { recursive: true });
+
   CLOUD_FUNCTIONS.forEach(functionName => {
     const outputFile = path.join(
-      META_DIR,
+      FUNCTIONS_META_DIR,
       `${functionName}.txt`
     );
 
@@ -483,17 +470,21 @@ const writeFunctionContexts = () => {
 };
 
 try {
-  if (MODE === 'full' || MODE === 'both') {
-    fs.writeFileSync(FULL_FILE, generate('full'), 'utf8');
+  STALE_META_FILES.forEach(file => {
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+  });
+
+  if (MODE === 'full' || MODE === 'both' || MODE === 'all') {
+    fs.writeFileSync(FULL_FILE, generateFull(), 'utf8');
     console.log(`✅ ${FULL_FILE}`);
   }
 
-  if (MODE === 'adaptive' || MODE === 'both') {
-    fs.writeFileSync(ADAPTIVE_FILE, generate('adaptive'), 'utf8');
-    console.log(`✅ ${ADAPTIVE_FILE}`);
-  }
-
-  if (MODE === 'music-games' || MODE === 'games' || MODE === 'both') {
+  if (
+    MODE === 'music-games' ||
+    MODE === 'games' ||
+    MODE === 'both' ||
+    MODE === 'all'
+  ) {
     fs.writeFileSync(MUSIC_GAMES_FILE, generateMusicGames(), 'utf8');
     console.log(`✅ ${MUSIC_GAMES_FILE}`);
   }
@@ -501,11 +492,12 @@ try {
   if (
     MODE === 'functions' ||
     MODE === 'cloud-functions' ||
-    MODE === 'both'
+    MODE === 'both' ||
+    MODE === 'all'
   ) {
     writeFunctionContexts();
   }
-} catch (e) {
-  console.error('❌', e);
+} catch (error) {
+  console.error('❌', error);
   process.exit(1);
 }
