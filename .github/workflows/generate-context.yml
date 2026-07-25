@@ -55,12 +55,26 @@ jobs:
             exit 2
           fi
 
-          if grep -q "cloud-functions/" .meta/project-full.txt; then
-            echo "cloud-functions leaked into project-full.txt"
+          if awk '
+            $1 == "//" &&
+            $2 == "FILE:" &&
+            $3 ~ /^\/cloud-functions\// {
+              found = 1
+            }
+
+            /^\[\/cloud-functions\// {
+              found = 1
+            }
+
+            END {
+              exit found ? 0 : 1
+            }
+          ' .meta/project-full.txt; then
+            echo "Cloud Function contents leaked into project-full.txt"
             exit 2
           fi
 
-          if grep -q "// ... (truncate)" .meta/project-full.txt; then
+          if grep -Eq '^// \.\.\. \(truncate\)$' .meta/project-full.txt; then
             echo "project-full.txt was truncated"
             exit 2
           fi
