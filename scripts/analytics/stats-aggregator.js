@@ -73,14 +73,28 @@ export class StatsAggregator {
               s.lastPlayedAt = ev.timestamp;
               s.featuresUsed = s.featuresUsed || {};
 
-              if (isV) {
-                const activityAt = Number(ev.data.startedAt || ev.timestamp);
+              if (lSec > 0) {
+                const activityAt = Number(
+                  ev.data.startedAt || ev.timestamp
+                );
                 const date = new Date(activityAt);
+
                 s.globalListenSeconds += lSec;
+                (s.byHour ??= Array(24).fill(0))[
+                  date.getHours()
+                ] += lSec;
+                (s.byWeekday ??= Array(7).fill(0))[
+                  (date.getDay() + 6) % 7
+                ] += lSec;
+              }
+
+              if (isV) {
+                const activityAt = Number(
+                  ev.data.startedAt || ev.timestamp
+                );
+
                 s.globalValidListenCount++;
                 activeDays.add(localDayKey(activityAt));
-                (s.byHour ??= Array(24).fill(0))[date.getHours()]++;
-                (s.byWeekday ??= Array(7).fill(0))[(date.getDay() + 6) % 7]++;
               }
 
               if (isF && isV && v !== 'short') {
@@ -107,7 +121,6 @@ export class StatsAggregator {
           else if (ev.type === 'FEATURE_USED') {
             await metaDB.updateStat(ev.uid || 'global', s => {
               s.featuresUsed = s.featuresUsed || {}; const f = ev.data.feature; s.featuresUsed[f] = (s.featuresUsed[f] || 0) + 1; s.lastPlayedAt = ev.timestamp;
-              try { const d = new Date(ev.timestamp); (s.byHour ??= Array(24).fill(0))[d.getHours()]++; (s.byWeekday ??= Array(7).fill(0))[(d.getDay() + 6) % 7]++; } catch {}
               if (['sleep_timer_set', 'sleep_timer_extend', 'sleep_timer_cancel', 'sleep_timer'].includes(f)) { s.featuresUsed.sleep_timer_minutes_total = (s.featuresUsed.sleep_timer_minutes_total || 0) + Math.max(0, Number(ev.data.minutes || 0)); if (ev.data.mode) s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] = (s.featuresUsed[`sleep_timer_mode_${String(ev.data.mode).toLowerCase()}`] || 0) + 1; }
               return s;
             });
