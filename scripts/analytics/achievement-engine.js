@@ -37,7 +37,12 @@ export class AchievementEngine {
   _getSc(r, lvl, isXp) {
     if (isXp) {
       if (Array.isArray(r.reward?.steps)) {
-        return Number(r.reward.steps[lvl - 1] ?? r.reward.steps[r.reward.steps.length - 1] ?? 0);
+        return Number(
+          r.reward.steps[lvl - 1] ??
+          r.reward.repeatAmount ??
+          r.reward.steps[r.reward.steps.length - 1] ??
+          0
+        );
       }
 
       return Math.floor(
@@ -47,13 +52,61 @@ export class AchievementEngine {
     }
 
     const scaling = r.scaling;
-    return scaling.math === 'custom'
-      ? scaling.steps[lvl - 1] ?? scaling.steps[scaling.steps.length - 1]
-      : r.trigger.conditions[0].startTarget * Math.pow(scaling.factor, lvl - 1);
+
+    if (
+      scaling.math === 'custom' &&
+      lvl <= scaling.steps.length
+    ) {
+      return Number(scaling.steps[lvl - 1] || 0);
+    }
+
+    if (
+      scaling.math === 'custom' &&
+      Number(scaling.repeatAfterLevel) > 0 &&
+      Number(scaling.repeatStep) > 0 &&
+      lvl > Number(scaling.repeatAfterLevel)
+    ) {
+      const base = Number(
+        scaling.steps[
+          Number(scaling.repeatAfterLevel) - 1
+        ] || 0
+      );
+
+      return base +
+        (
+          lvl - Number(scaling.repeatAfterLevel)
+        ) * Number(scaling.repeatStep);
+    }
+
+    if (scaling.math === 'custom') {
+      return Number(
+        scaling.steps[scaling.steps.length - 1] || 0
+      );
+    }
+
+    return r.trigger.conditions[0].startTarget *
+      Math.pow(scaling.factor, lvl - 1);
+  }
+
+  _hasScalableLevel(rule, level) {
+    if (rule?.scaling?.maxLevel) {
+      return level <= Number(rule.scaling.maxLevel);
+    }
+
+    if (Number(rule?.scaling?.repeatAfterLevel) > 0) {
+      return true;
+    }
+
+    return !rule?.scaling?.steps ||
+      level <= rule.scaling.steps.length;
   }
 
   _getLevelOffset(rule, level) {
     if (!rule?.scaling?.resetEachLevel || level <= 1) return 0;
+
+    if (rule.scaling.cumulativeSteps) {
+      return this._getSc(rule, level - 1, false);
+    }
 
     return rule.scaling.steps
       .slice(0, level - 1)
@@ -240,14 +293,27 @@ export class AchievementEngine {
 
       if (!completed && !hidden && rawTarget > 0) {
         if (r.id === 'time_total') {
-          effectiveCurrent = Number(lv?.projectedTotalSec || rawCurrent);
-          pct = Math.min(100, Math.max(0, (effectiveCurrent / rawTarget) * 100));
+          effectiveCurrent = rawCurrent;
+          pct = Math.min(
+            100,
+            Math.max(
+              0,
+              (effectiveCurrent / rawTarget) * 100
+            )
+          );
           progressMeta = {
             kind: 'time_accum',
-            live: true,
-            toggleableTimer: true,
-            remainingMs: Math.max(0, (rawTarget - effectiveCurrent) * 1000),
-            elapsedMs: Math.max(0, effectiveCurrent * 1000),
+            live: false,
+            serverConfirmed: true,
+            toggleableTimer: false,
+            remainingMs: Math.max(
+              0,
+              (rawTarget - effectiveCurrent) * 1000
+            ),
+            elapsedMs: Math.max(
+              0,
+              effectiveCurrent * 1000
+            ),
             targetMs: rawTarget * 1000,
             currentRaw: effectiveCurrent,
             targetRaw: rawTarget
@@ -370,8 +436,7 @@ export class AchievementEngine {
         }
 
         if (
-          (!r.scaling.maxLevel || level <= r.scaling.maxLevel) &&
-          (!r.scaling.steps || level <= r.scaling.steps.length)
+          this._hasScalableLevel(r, level)
         ) {
           add(
             `${k}_${level}`,
