@@ -150,6 +150,17 @@ jobs:
           grep -q "_requiresServerVerification" scripts/analytics/achievement-engine.js
           grep -q "legacy_local_unverified" scripts/analytics/achievement-engine.js
           grep -q "if (this._requiresServerVerification(r)) continue" scripts/analytics/achievement-engine.js
+          grep -q "resetEachLevel: true" scripts/analytics/achievements-dict.js
+          grep -q "steps: \[1, 10, 25, 50, 70, 100, 250, 500, 1000, 5000, 10000, 15000, 20000\]" scripts/analytics/achievements-dict.js
+          grep -q "listenedSeconds >= 25" scripts/analytics/session-tracker.js
+          grep -q "liveAccumulatedMs / 1000) >= 25" scripts/analytics/live-stats.js
+
+          if grep -En \
+            "Засчитывается ≥13 сек|listenedSeconds >= 13|liveAccumulatedMs / 1000\) >= 13" \
+            scripts/analytics; then
+            echo "Legacy 13-second valid-listen threshold found"
+            exit 2
+          fi
 
       - name: Validate verified shard reward client
         run: |
