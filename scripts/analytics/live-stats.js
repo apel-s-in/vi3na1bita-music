@@ -52,7 +52,7 @@ class LiveStatsTracker {
   _stopTickerIfIdle() { if (!this.state.playing && this._tick) { clearInterval(this._tick); this._tick = null; } }
   _emit() { window.dispatchEvent(new CustomEvent('analytics:liveTick', { detail: this.getSnapshot() })); }
   getSnapshot() {
-    const hasTdy = this.state.streakLastActiveDate === dayKeyLocal(), wdCnt = !hasTdy && Math.floor(this.state.liveAccumulatedMs / 1000) >= 13;
+    const hasTdy = this.state.streakLastActiveDate === dayKeyLocal(), wdCnt = !hasTdy && Math.floor(this.state.liveAccumulatedMs / 1000) >= 25;
     return { playing: this.state.playing, uid: this.state.uid, projectedTotalSec: this.state.baseTotalSec + Math.floor(this.state.liveAccumulatedMs / 1000), liveAccumulatedMs: this.state.liveAccumulatedMs, streak: this.state.globalStreak, projectedStreak: hasTdy ? this.state.globalStreak : (wdCnt ? this.state.globalStreak + 1 : this.state.globalStreak), streakLastActiveDate: this.state.streakLastActiveDate, hasTodayPersistent: hasTdy, wouldCountToday: wdCnt, sleepTargetAt: this.state.sleepTargetAt, sleepRemainingMs: Math.max(0, this.state.sleepTargetAt - Date.now()) };
   }
 }
