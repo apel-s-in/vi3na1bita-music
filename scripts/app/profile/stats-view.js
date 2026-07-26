@@ -1,5 +1,34 @@
 import { buildStatsViewModel, getCanonicalFullListenCount } from '../../analytics/stats-state.js';
-const esc = s => window.Utils?.escapeHtml?.(String(s||'')) || String(s||''), dur = s => window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(s||0) : `${Math.floor((s||0)/60)}м`, tT = u => esc(window.TrackRegistry?.getTrackByUid(u)?.title || u);
+
+const esc = value =>
+  window.Utils?.escapeHtml?.(String(value || '')) ||
+  String(value || '');
+
+const dur = seconds => {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  if (total === 0) return '0м';
+  if (total < 60) return '<1м';
+
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+
+  if (days > 0) {
+    return hours > 0 ? `${days}д ${hours}ч` : `${days}д`;
+  }
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}ч ${minutes}м` : `${hours}ч`;
+  }
+
+  return `${minutes}м`;
+};
+
+const tT = uid =>
+  esc(
+    window.TrackRegistry?.getTrackByUid(uid)?.title ||
+    uid
+  );
 const rL = (a,f) => a.length ? `<ul class="stat-list">${a.map(s=>`<li data-uid="${esc(s.uid)}"><span>${tT(s.uid)}</span><span>${esc(f(s))}</span></li>`).join('')}</ul>` : '<div class="stat-sub">Недостаточно данных</div>';
 const rC = (id, title, data, storageKey, labels = null) => {
   const max = Math.max(1, ...data);
