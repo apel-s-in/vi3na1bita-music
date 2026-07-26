@@ -9632,6 +9632,8 @@ W.GalleryManager = new GalleryManager(); export default W.GalleryManager;
 // UID.094_(No-paralysis rule)_(ошибка iframe не ломает приложение)_(bridge можно уничтожить без влияния на музыку)
 // UID.095_(Ownership boundary)_(parent остаётся владельцем профиля/stat/auth/backup/player)_(game-app только читает snapshot)
 import { requestSocialAction } from '../../core/social-session.js';
+import { getConfirmedListeningStats } from '../../analytics/confirmed-listening-stats.js';
+import { getLoyaltyState } from '../../analytics/loyalty-state.js';
 import {
   getEmbeddedFriendsRpcMethod
 } from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.1.2';
@@ -9778,7 +9780,7 @@ const confirmEmbeddedFriendsAction = descriptor =>
     });
   });
 const buildSnapshot = ({ config = {} } = {}) => {
-  const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), live = W.liveStatsTracker?.getSnapshot?.() || {};
+  const a = W.achievementEngine, ya = W.YandexAuth, t = W.playerCore?.getCurrentTrack?.(), confirmed = getConfirmedListeningStats(), loyalty = getLoyaltyState();
   const gcId = localStorage.getItem('intel:internal-user-id') || localStorage.getItem('deviceHash') || 'local';
   const unlocked = a?.getCompletedCount?.() ??
     Object.keys(a?.unlocked || {}).length;
@@ -9812,8 +9814,12 @@ const buildSnapshot = ({ config = {} } = {}) => {
       xp: n(a?.profile?.xp || 0),
       achievementsUnlocked: unlocked,
       achievementsTotal: total,
-      streak: n(live.projectedStreak || live.streak || 0),
-      totalListenSec: n(live.projectedTotalSec || 0)
+      streak: loyalty.available
+        ? n(loyalty.currentDays)
+        : 0,
+      totalListenSec: confirmed.available
+        ? Math.floor(n(confirmed.totalListenMs) / 1000)
+        : 0
     },
     wallet: W.ShardWallet?.getSnapshot?.() || {
       available: false,
