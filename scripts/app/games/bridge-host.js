@@ -7,7 +7,7 @@ import { getConfirmedListeningStats } from '../../analytics/confirmed-listening-
 import { getLoyaltyState } from '../../analytics/loyalty-state.js';
 import {
   getEmbeddedFriendsRpcMethod
-} from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.1.2';
+} from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.1.3';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
