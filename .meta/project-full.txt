@@ -1258,7 +1258,12 @@ self.addEventListener('push', e => {
     silent: false,
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
-    requireInteraction: data.requireInteraction === true || kind === 'CHAT_MESSAGE' || kind === 'GAME_INVITE' || kind === 'VOICE_CALL'
+    requireInteraction:
+      data.requireInteraction === true ||
+      kind === 'CHAT_MESSAGE' ||
+      kind === 'GAME_INVITE' ||
+      kind === 'VOICE_CALL' ||
+      kind === 'LOYALTY_VACATION_ENDED'
   }));
 });
 
@@ -1282,7 +1287,15 @@ self.addEventListener('notificationclick', e => {
     if (data.fromFriendId) target.searchParams.set('voiceWith', data.fromFriendId);
     if (data.callId) target.searchParams.set('callId', data.callId);
   }
-
+  if (
+    [
+      'LOYALTY_REMINDER',
+      'LOYALTY_VACATION_ENDING',
+      'LOYALTY_VACATION_ENDED'
+    ].includes(data.kind)
+  ) {
+    target.searchParams.set('openLoyalty', '1');
+  }
   const targetUrl = target.href;
 
   e.waitUntil((async () => {
