@@ -52,8 +52,14 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     setTimeout(renderStats, 140);
   });
   window.addEventListener('profile:main-tab-selected', event => {
-    if (event.detail?.tabId === 'achievements') setTimeout(renderAchievements, 40);
-    if (event.detail?.tabId === 'stats') setTimeout(renderStats, 40);
+    if (event.detail?.tabId === 'achievements') {
+      ctx._profileAchievementsView?.resetDetails?.();
+      setTimeout(renderAchievements, 40);
+    }
+
+    if (event.detail?.tabId === 'stats') {
+      setTimeout(renderStats, 40);
+    }
   });
 };
 
