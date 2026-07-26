@@ -5276,7 +5276,7 @@ export default {
 import { requestSocialAction } from '../core/social-session.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 
-const HEARTBEAT_MS = 10000;
+const HEARTBEAT_MS = 20000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
 const COMPLETION_OUTBOX_TTL_MS =
