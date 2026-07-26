@@ -34,6 +34,16 @@ export const rebuildStatsFromEvents = async (db = defaultMetaDB, events = [], { 
   window.dispatchEvent(new CustomEvent('stats:rebuilt', { detail: { reason, events: warm.length } })); return true;
 };
 export const rebuildStatsFromLocalEventLog = async (db = defaultMetaDB, opts = {}) => rebuildStatsFromEvents(db, await readLocalEventLog(db, opts), opts);
+export const getCanonicalFullListenCount = localTotal => {
+  const serverTotal = Number(
+    window.ListeningReceipts?.lastProgress?.fullPlays
+  );
+
+  return Number.isFinite(serverTotal)
+    ? Math.max(0, Math.floor(serverTotal))
+    : Math.max(0, Math.floor(n(localTotal)));
+};
+
 export const getStatsSummary = (rows = []) => {
   const vs = (Array.isArray(rows) ? rows : []).filter(s => s?.uid && s.uid !== 'global');
   return { rows: Array.isArray(rows) ? rows : [], tracks: vs, totalFull: vs.reduce((a, s) => a + n(s.globalFullListenCount), 0), totalValid: vs.reduce((a, s) => a + n(s.globalValidListenCount), 0), totalSec: vs.reduce((a, s) => a + n(s.globalListenSeconds), 0), uniqueTracks: vs.filter(s => n(s.globalValidListenCount) > 0).length, statsCount: vs.length };
