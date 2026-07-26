@@ -437,6 +437,85 @@ const buildSequentialRewards = ({
     };
   });
 };
+const FULL_REWARD_BASE_TARGETS = Object.freeze([
+  1,
+  2,
+  5,
+  10,
+  50,
+  100,
+  150,
+  200,
+  250,
+  300,
+  400,
+  500,
+  1000,
+  1500,
+  2000,
+  2500
+]);
+
+const FULL_REWARD_BASE_AMOUNTS = Object.freeze([
+  5,
+  10,
+  15,
+  30,
+  50,
+  75,
+  85,
+  100,
+  125,
+  150,
+  200,
+  250,
+  500,
+  250,
+  250,
+  250
+]);
+
+const buildFullListenRewards = fullPlays => {
+  const completed = Math.max(
+    0,
+    Math.floor(num(fullPlays))
+  );
+  const targets = [...FULL_REWARD_BASE_TARGETS];
+
+  if (completed >= 2500) {
+    const highestRequired = 2500 +
+      (Math.floor((completed - 2500) / 500) + 1) * 500;
+
+    for (
+      let target = 3000;
+      target <= highestRequired;
+      target += 500
+    ) {
+      targets.push(target);
+    }
+  }
+
+  let previousTarget = 0;
+
+  return targets.map((target, index) => {
+    const progressOffset = previousTarget;
+    const displayTarget = target - previousTarget;
+    previousTarget = target;
+
+    return {
+      id: `full_total_${index + 1}`,
+      metric: 'fullPlays',
+      channel: 'listening',
+      target,
+      displayTarget,
+      progressOffset,
+      progression: 'sequential',
+      amount: FULL_REWARD_BASE_AMOUNTS[index] ?? 250,
+      validatorVersion: 4
+    };
+  });
+};
+
 const TIME_REWARD_BASE_HOURS = Object.freeze([
   1,
   2,
@@ -541,13 +620,6 @@ const BASE_ACHIEVEMENT_REWARD_CATALOG = Object.freeze([
       400,
       500
     ]
-  }),
-  ...buildScaledRewards({
-    id: 'full_total',
-    metric: 'fullPlays',
-    targets: [1, 10, 50, 100, 500, 1000],
-    xpBase: 15,
-    xpMultiplier: 1.8
   }),
   ...buildScaledRewards({
     id: 'streak_base',
@@ -706,7 +778,10 @@ function achievementRewardCatalog(progress = {}) {
     progress?.playerId
   );
 
-  const timeRewards = buildTimeRewards(normalized.totalSec);
+  const progressiveRewards = [
+    ...buildFullListenRewards(normalized.fullPlays),
+    ...buildTimeRewards(normalized.totalSec)
+  ];
   const insertionIndex = BASE_ACHIEVEMENT_REWARD_CATALOG.findIndex(
     reward => reward.id.startsWith('streak_base_')
   );
@@ -714,13 +789,13 @@ function achievementRewardCatalog(progress = {}) {
   if (insertionIndex < 0) {
     return [
       ...BASE_ACHIEVEMENT_REWARD_CATALOG,
-      ...timeRewards
+      ...progressiveRewards
     ];
   }
 
   return [
     ...BASE_ACHIEVEMENT_REWARD_CATALOG.slice(0, insertionIndex),
-    ...timeRewards,
+    ...progressiveRewards,
     ...BASE_ACHIEVEMENT_REWARD_CATALOG.slice(insertionIndex)
   ];
 }
