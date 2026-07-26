@@ -612,13 +612,6 @@ const BASE_ACHIEVEMENT_REWARD_CATALOG = Object.freeze([
     ]
   }),
   ...buildScaledRewards({
-    id: 'streak_base',
-    metric: 'streak',
-    targets: [3, 7, 14, 30, 100, 365],
-    xpBase: 30,
-    xpMultiplier: 1.8
-  }),
-  ...buildScaledRewards({
     id: 'unique_tracks',
     metric: 'uniqueTracks',
     targets: [5, 10, 16, 50, 100],
@@ -768,25 +761,10 @@ function achievementRewardCatalog(progress = {}) {
     progress?.playerId
   );
 
-  const progressiveRewards = [
-    ...buildFullListenRewards(normalized.fullPlays),
-    ...buildTimeRewards(normalized.totalSec)
-  ];
-  const insertionIndex = BASE_ACHIEVEMENT_REWARD_CATALOG.findIndex(
-    reward => reward.id.startsWith('streak_base_')
-  );
-
-  if (insertionIndex < 0) {
-    return [
-      ...BASE_ACHIEVEMENT_REWARD_CATALOG,
-      ...progressiveRewards
-    ];
-  }
-
   return [
-    ...BASE_ACHIEVEMENT_REWARD_CATALOG.slice(0, insertionIndex),
-    ...progressiveRewards,
-    ...BASE_ACHIEVEMENT_REWARD_CATALOG.slice(insertionIndex)
+    ...buildFullListenRewards(normalized.fullPlays),
+    ...buildTimeRewards(normalized.totalSec),
+    ...BASE_ACHIEVEMENT_REWARD_CATALOG
   ];
 }
 function payload(row) {
@@ -8101,11 +8079,6 @@ function achievementMetricValue(
     );
   }
 
-  if (reward.metric === 'streak') {
-    return calculateServerStreakSummary(
-      progress.activeDaysLocal
-    ).longest;
-  }
   if (reward.metric === 'favCount') {
     return favoriteRewardCount(
       context.favoriteState || {}
