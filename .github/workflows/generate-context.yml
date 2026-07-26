@@ -35,7 +35,8 @@ jobs:
             .meta/project-adaptive.txt \
             .meta/vi3-signaling.txt \
             .meta/vi3-webpush.txt \
-            .meta/vi3na1bita-backup-proxy.txt
+            .meta/vi3na1bita-backup-proxy.txt \
+            .meta/vi3-loyalty-reminder.txt
 
           node generate-context.js --mode=both
 
@@ -44,11 +45,13 @@ jobs:
           test -s .meta/functions/vi3-signaling.txt
           test -s .meta/functions/vi3-webpush.txt
           test -s .meta/functions/vi3na1bita-backup-proxy.txt
+          test -s .meta/functions/vi3-loyalty-reminder.txt
 
           test ! -e .meta/project-adaptive.txt
           test ! -e .meta/vi3-signaling.txt
           test ! -e .meta/vi3-webpush.txt
           test ! -e .meta/vi3na1bita-backup-proxy.txt
+          test ! -e .meta/vi3-loyalty-reminder.txt
 
           if grep -q "ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ" .meta/functions/*.txt; then
             echo "ai-rules leaked into Cloud Function context"
@@ -72,12 +75,21 @@ jobs:
             exit 2
           fi
 
-          grep -q "FILE: /index.js" .meta/functions/vi3-signaling.txt
-          grep -q "FILE: /package.json" .meta/functions/vi3-signaling.txt
-          grep -q "FILE: /index.js" .meta/functions/vi3-webpush.txt
-          grep -q "FILE: /package.json" .meta/functions/vi3-webpush.txt
-          grep -q "FILE: /index.js" .meta/functions/vi3na1bita-backup-proxy.txt
-          grep -q "FILE: /package.json" .meta/functions/vi3na1bita-backup-proxy.txt
+          for context in \
+            .meta/functions/vi3-signaling.txt \
+            .meta/functions/vi3-webpush.txt \
+            .meta/functions/vi3na1bita-backup-proxy.txt \
+            .meta/functions/vi3-loyalty-reminder.txt; do
+            test "$(grep -c '^// FILE: /index\.js$' "$context")" -eq 1
+            test "$(grep -c '^// FILE: /package\.json$' "$context")" -eq 1
+          done
+
+          if grep -RFn \
+            '// FILE: /package.json' \
+            cloud-functions/*/index.js; then
+            echo "Generated context was pasted into Cloud Function index.js"
+            exit 2
+          fi
 
           find .meta -maxdepth 2 -type f -print | sort
 
