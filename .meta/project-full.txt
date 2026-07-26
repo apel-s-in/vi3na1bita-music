@@ -6485,6 +6485,25 @@ export const normalizeLoyaltyState = raw => {
     lastQualifiedAt: Math.floor(n(source.lastQualifiedAt)),
     deadlineAt: Math.floor(n(source.deadlineAt)),
     nextDailyAmount: Math.floor(n(source.nextDailyAmount)),
+    daysToNextMilestone: Math.floor(
+      n(source.daysToNextMilestone)
+    ),
+    reminderEnabled: source.reminderEnabled === true,
+    vacation: {
+      active: source.vacation?.active === true,
+      startedAt: Math.floor(n(source.vacation?.startedAt)),
+      endsAt: Math.floor(n(source.vacation?.endsAt)),
+      resumeDeadlineAt: Math.floor(
+        n(source.vacation?.resumeDeadlineAt)
+      ),
+      allowanceMs: Math.floor(
+        n(source.vacation?.allowanceMs)
+      ),
+      usedMs: Math.floor(n(source.vacation?.usedMs)),
+      remainingMs: Math.floor(
+        n(source.vacation?.remainingMs)
+      )
+    },
     nextMilestone: source.nextMilestone
       ? {
           day: Math.floor(n(source.nextMilestone.day)),
@@ -6522,11 +6541,23 @@ export const formatLoyaltyDeadline = loyalty => {
 
   return `${hours}ч ${String(minutes).padStart(2, '0')}м`;
 };
+export const formatLoyaltyVacation = loyalty => {
+  const state = normalizeLoyaltyState(loyalty);
+  const remainingMs = state.vacation.active
+    ? Math.max(0, state.vacation.endsAt - Date.now())
+    : state.vacation.remainingMs;
+  const days = Math.floor(remainingMs / 86400000);
+  const hours = Math.floor(
+    (remainingMs % 86400000) / 3600000
+  );
 
+  return `${days}д ${String(hours).padStart(2, '0')}ч`;
+};
 export default {
   normalizeLoyaltyState,
   getLoyaltyState,
-  formatLoyaltyDeadline
+  formatLoyaltyDeadline,
+  formatLoyaltyVacation
 };
 
 //=================================================
