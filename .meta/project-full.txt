@@ -744,13 +744,16 @@ jobs:
 
 //=================================================
 // FILE: /.github/workflows/validate.yml
-name: Validate manifest and SW
+name: Validate application contracts
+
 on:
   push:
     branches: [main, master]
-    paths-ignore: ['.meta/**']
+    paths-ignore:
+      - '.meta/**'
   pull_request:
-    paths-ignore: ['.meta/**']
+    paths-ignore:
+      - '.meta/**'
   workflow_dispatch:
 
 permissions:
@@ -764,20 +767,29 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     steps:
       - uses: actions/checkout@v5
+
       - uses: actions/setup-node@v5
-        with: { node-version: '24' }
+        with:
+          node-version: '24'
+
       - name: Validate web manifest
         run: node scripts/ci/validate-manifest.mjs
+
       - name: Validate Service Worker contract
         run: node scripts/ci/lint-sw.mjs
+
       - name: Validate local content indexes
         run: node scripts/ci/validate-content.mjs
 
-      - name: Validate all first-party JavaScript
+      - name: Validate first-party JavaScript syntax
         run: |
+          set -euo pipefail
+
           node --check service-worker.js
+          node --check generate-context.js
 
           while IFS= read -r file; do
             echo "CHECK $file"
@@ -785,7 +797,7 @@ jobs:
           done < <(
             find scripts src \
               -type f \
-              -name '*.js' \
+              \( -name '*.js' -o -name '*.mjs' \) \
               ! -path 'scripts/vendor/*' \
               | sort
           )
@@ -808,6 +820,11 @@ jobs:
             test -s "$index_file"
             test -s "$package_file"
 
+            if grep -Fq 'FILE: /package.json' "$index_file"; then
+              echo "Generated context was pasted into $index_file"
+              exit 2
+            fi
+
             echo "CHECK $index_file"
             node --check "$index_file"
 
@@ -815,359 +832,33 @@ jobs:
             node -e "
               const fs = require('fs');
               const file = process.argv[1];
-              const value = JSON.parse(fs.readFileSync(file, 'utf8'));
-              if (!value || typeof value !== 'object' || Array.isArray(value)) {
-                throw new Error('package_json_object_required');
+              const value = JSON.parse(
+                fs.readFileSync(file, 'utf8')
+              );
+
+              if (
+                !value ||
+                typeof value !== 'object' ||
+                Array.isArray(value)
+              ) {
+                throw new Error(
+                  'package_json_object_required'
+                );
               }
-              if (value.main && value.main !== 'index.js') {
-                throw new Error('package_json_main_must_be_index_js');
+
+              if (
+                value.main &&
+                value.main !== 'index.js'
+              ) {
+                throw new Error(
+                  'package_json_main_must_be_index_js'
+                );
               }
             " "$package_file"
           done
 
-      - name: Validate listening receipts shadow layer
-        run: |
-          node --input-type=module --check < scripts/analytics/listening-receipts.js
-          grep -q "listen_session_start" scripts/analytics/listening-receipts.js
-          grep -q "listen_session_heartbeat" scripts/analytics/listening-receipts.js
-          grep -q "listen_session_complete" scripts/analytics/listening-receipts.js
-          grep -q "achievement_reward_status" scripts/analytics/listening-receipts.js
-          grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/listening-receipts.js
-          grep -q "flushCompletionOutbox" scripts/analytics/listening-receipts.js
-          grep -q "COMPLETION_OUTBOX_TTL_MS" scripts/analytics/listening-receipts.js
-          grep -q "isTerminalCompletionError" scripts/analytics/listening-receipts.js
-          grep -q "flushCompletionOutbox().catch" scripts/analytics/listening-receipts.js
-          grep -q "complete('replaced').catch" scripts/analytics/listening-receipts.js
-          grep -q "ownerYandexId: currentYandexId()" scripts/analytics/listening-receipts.js
-          grep -q "timezoneOffsetMin" scripts/analytics/listening-receipts.js
-          grep -q "favoritesOnly" scripts/analytics/listening-receipts.js
-          grep -q "favoriteAtStart" scripts/analytics/listening-receipts.js
-          grep -q "queueMicrotask" scripts/analytics/listening-receipts.js
-          grep -q "music_feature_use" scripts/analytics/listening-receipts.js
-          grep -q "sleep_timer_start" scripts/analytics/listening-receipts.js
-          grep -q "sleep_timer_complete" scripts/analytics/listening-receipts.js
-          grep -q "sleep_timer_cancel" scripts/analytics/listening-receipts.js
-          grep -q "recordFeature" scripts/app/player-ui.js
-          grep -q "completeSleepTimer" scripts/ui/sleep-timer.js
-          grep -q "listeningReceipts:completionOutbox:v1" scripts/analytics/account-data-boundary.js
-          if grep -En "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" scripts/analytics/listening-receipts.js; then
-            echo "Listening receipts must not control playback"
-            exit 2
-          fi
-
-      - name: Reject user-facing global progress reset
-        run: |
-          test ! -f scripts/app/profile/actions-reset.js
-
-          if grep -REn \
-            "stats-reset-open-btn|resetProfileData|ОЧИСТИТЬ СТАТИСТИКУ|Только достижения|Сбросить всё" \
-            scripts/app/profile \
-            scripts/core/utils.js \
-            service-worker.js; then
-            echo "User-facing statistics or achievement reset found"
-            exit 2
-          fi
-
-      - name: Validate truthful local listening statistics
-        run: |
-          grep -q "const activeDays = new Set" scripts/analytics/stats-aggregator.js
-          grep -q "if (isV)" scripts/analytics/stats-aggregator.js
-          grep -q "s.globalListenSeconds += lSec" scripts/analytics/stats-aggregator.js
-          grep -q "calculateStreakSummary" scripts/analytics/stats-aggregator.js
-          grep -q "activeDays: \[\]" scripts/analytics/stats-state.js
-
-          if grep -En \
-            "lastFullListens|isRateLimited|comboUpdate|favOrderedRun|favShuffleEvents|midnightTripleTrack|midnightTripleCount|setTimeout\(async \(\) => await metaDB\.updateStat\('global'" \
-            scripts/analytics/stats-aggregator.js; then
-            echo "Legacy local listening validator found"
-            exit 2
-          fi
-
-          if grep -En \
-            "_speedRunnerMs|_speedRunnerAwarded|feature:[[:space:]]*['\"]speed_runner['\"]" \
-            scripts/analytics/session-tracker.js; then
-            echo "Legacy local speed runner validator found"
-            exit 2
-          fi
-
-      - name: Validate shared shard reward notifier
-        run: |
-          node --input-type=module --check < scripts/app/shards/reward-notifier.js
-          grep -q "applyShardRewardResult" scripts/analytics/listening-receipts.js
-          grep -q "applyShardRewardResult" scripts/analytics/favorite-mirror.js
-          grep -q "reward-notifier.js" service-worker.js
-
-          if grep -En \
-            "\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(" \
-            scripts/app/shards/reward-notifier.js; then
-            echo "Reward notifier must not control playback"
-            exit 2
-          fi
-
-      - name: Validate PWA achievement bridge
-        run: |
-          node --input-type=module --check < scripts/app/pwa-install.js
-          grep -q "pwa_install_intent" scripts/app/pwa-install.js
-          grep -q "pwa_launch_verify" scripts/app/pwa-install.js
-          grep -q "display-mode: standalone" scripts/app/pwa-install.js
-          grep -q "pwa-install.js" service-worker.js
-
-          if grep -En \
-            "\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(" \
-            scripts/app/pwa-install.js; then
-            echo "PWA install bridge must not control playback"
-            exit 2
-          fi
-
-      - name: Reject removed social achievement
-        run: |
-          if grep -REn \
-            "socials_all_visited|socialVisitAll|social_visit_all|Подписчик всего" \
-            scripts data; then
-            echo "Removed social achievement found"
-            exit 2
-          fi
-
-      - name: Validate server-authoritative achievements
-        run: |
-          grep -q "_requiresServerVerification" scripts/analytics/achievement-engine.js
-          grep -q "legacy_local_unverified" scripts/analytics/achievement-engine.js
-          grep -q "if (this._requiresServerVerification(r)) continue" scripts/analytics/achievement-engine.js
-          grep -q "resetEachLevel: true" scripts/analytics/achievements-dict.js
-          grep -q "steps: \[1, 10, 25, 50, 70, 100, 250, 500, 1000, 5000, 10000, 15000, 20000\]" scripts/analytics/achievements-dict.js
-          grep -q "listenedSeconds >= 25" scripts/analytics/session-tracker.js
-          grep -q "totalListenMs" cloud-functions/vi3-signaling/index.js
-          grep -q "listenTimeBySession" cloud-functions/vi3-signaling/index.js
-          grep -q "applyVerifiedListenTimeProgress" cloud-functions/vi3-signaling/index.js
-          grep -q "repeatAfterLevel: 14" scripts/analytics/achievements-dict.js
-          grep -q "repeatStep: 3600000" scripts/analytics/achievements-dict.js
-          grep -q "const HEARTBEAT_MS = 10000" scripts/analytics/listening-receipts.js
-
-          if grep -En \
-            "projectedTotalSec \|\| rawCurrent|toggleableTimer: true" \
-            scripts/analytics/achievement-engine.js; then
-            echo "Legacy local or toggleable time achievement timer found"
-            exit 2
-          fi
-
-          if grep -REn \
-            "Засчитывается ≥13 сек|listenedSeconds >= 13|liveAccumulatedMs / 1000\) >= 13|Math\.max\([[:space:]]*13," \
-            scripts/analytics \
-            cloud-functions/vi3-signaling; then
-            echo "Legacy 13-second valid-listen threshold found"
-            exit 2
-          fi
-
-      - name: Validate verified shard reward client
-        run: |
-          grep -q "getCompletedCount" scripts/analytics/achievement-engine.js
-          grep -q "rewardAwarded" scripts/app/profile/achievements-view.js
-          grep -q "getRewardCatalog" scripts/app/shards/view.js
-
-          if grep -REn \
-            "1 XP = 1 Осколок|\+[[:space:]]*.*XP|xpReward" \
-            scripts/app \
-            scripts/ui \
-            styles; then
-            echo "Legacy visible XP reward presentation found"
-            exit 2
-          fi
-
-          if grep -En \
-            "Object\.keys\(.*achievementEngine.*unlocked|Object\.keys\(engine\?\.unlocked" \
-            scripts/app/profile/view.js \
-            scripts/ui/statistics-modal.js; then
-            echo "Local-only achievement count found"
-            exit 2
-          fi
-
-      - name: Validate deterministic recommendations
-        run: |
-          node --input-type=module --check < scripts/app/profile/recs-view.js
-          grep -q "stableScore" scripts/app/profile/recs-view.js
-
-          if grep -En \
-            "sort\([[:space:]]*\(\)[[:space:]]*=>[[:space:]]*Math\.random" \
-            scripts/app/profile/recs-view.js; then
-            echo "Random comparator found in recommendations"
-            exit 2
-          fi
-
-          if grep -q "oldTabs" scripts/app/profile/carousel-flat.js; then
-            echo "Removed legacy profile-tabs fallback found"
-            exit 2
-          fi
-
-      - name: Validate backup reward boundary
-        run: |
-          grep -q "backup_saves" scripts/analytics/achievements-dict.js
-          grep -q "BACKUP_CREATED" scripts/analytics/stats-aggregator.js
-
-          if grep -REn \
-            "grant_shards|wallet_restore|achievement_claim" \
-            scripts/analytics/backup-* \
-            scripts/core/yandex-*; then
-            echo "Backup client must not grant or restore shards"
-            exit 2
-          fi
-          
-      - name: Validate account-local vault
-        run: |
-          node --input-type=module --check < scripts/analytics/account-data-boundary.js
-          node --input-type=module --check < scripts/analytics/meta-db.js
-          node --input-type=module --check < scripts/offline/cache-db.js
-          grep -q "cachedYandexId" scripts/core/social-session.js
-          grep -q "Vi3AccountVault_v1" scripts/analytics/account-data-boundary.js
-          grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-builders.js
-          grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-upload-runner.js
-          grep -q "AccountDataContext.requireCurrentOwner" scripts/analytics/backup-importers.js
-          grep -q "exportAccountCachePolicies" scripts/offline/cache-db.js
-          grep -q "applyAccountCachePolicies" scripts/offline/cache-db.js
-          grep -q "eventLedger:chainId:v1" scripts/analytics/account-data-boundary.js
-          grep -q "waitForIdle" scripts/analytics/stats-aggregator.js
-          grep -q "W.statsAggregator" scripts/app.js
-          grep -q "adoptLocalData" scripts/analytics/account-data-boundary.js
-          grep -q "account-data-boundary.js" service-worker.js
-
-          if grep -REn "assertLocalDataOwner" \
-            scripts/analytics/backup-builders.js \
-            scripts/analytics/backup-upload-runner.js \
-            scripts/analytics/backup-importers.js; then
-            echo "Legacy manual owner checks found"
-            exit 2
-          fi
-          if grep -En \
-            "\.(play|pause|stop|seek|setVolume|setMuted)\s*\(" \
-            scripts/analytics/account-data-boundary.js; then
-            echo "Account vault must not control playback"
-            exit 2
-          fi
-      - name: Validate favorite state contract and server mirror
-        run: |
-          node --input-type=module --check < scripts/analytics/favorite-state-contract.js
-          node --input-type=module --check < scripts/analytics/favorite-mirror.js
-          node --input-type=module --check < scripts/analytics/favorites-storage-merge.js
-          node --input-type=module --check < scripts/core/favorites-manager.js
-          grep -q "normalizeFavoriteItem" scripts/analytics/favorite-state-contract.js
-          grep -q "favoriteClock" scripts/analytics/favorite-state-contract.js
-          grep -q "favoriteStatus" scripts/analytics/favorite-state-contract.js
-          grep -q "mergeFavoritePair" scripts/analytics/favorite-state-contract.js
-          grep -q "remoteToLocal" scripts/analytics/favorite-state-contract.js
-          grep -q "localToRemote" scripts/analytics/favorite-state-contract.js
-          grep -q "favorite-state-contract.js" scripts/core/favorites-manager.js
-          grep -q "favorite-state-contract.js" scripts/analytics/favorite-mirror.js
-          grep -q "favorite-state-contract.js" scripts/analytics/favorites-storage-merge.js
-          grep -q "favorite-state-contract.js" service-worker.js
-          grep -q "favorite_state_get" scripts/analytics/favorite-mirror.js
-          grep -q "favorite_state_mutate" scripts/analytics/favorite-mirror.js
-          grep -q "favorite_state_reconcile" scripts/analytics/favorite-mirror.js
-          grep -q "favoriteMirror:outbox:v1" scripts/analytics/account-data-boundary.js
-          grep -q "favorite-mirror.js" service-worker.js
-          grep -q "serverRewardMap" scripts/app/shards/view.js
-
-          if grep -En \
-            '(^|[^[:alnum:]_])signature\(item\)' \
-            scripts/analytics/favorite-mirror.js; then
-            echo "Legacy favorite signature helper found"
-            exit 2
-          fi
-
-          if grep -En \
-            "\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(" \
-            scripts/analytics/favorite-state-contract.js \
-            scripts/analytics/favorite-mirror.js; then
-            echo "Favorite contract/mirror must not control playback"
-            exit 2
-          fi
-
-          if grep -En "\._m(\.|\)|;|\?)" \
-            scripts/analytics/account-data-boundary.js \
-            scripts/app/profile/yandex-runtime-refresh.js; then
-            echo "Private FavoritesManager storage access found"
-            exit 2
-          fi
-      - name: Reject removed backup claim contour
-        run: |
-          if grep -REn \
-            "verified-achievement-state|verified-achievements-view|claim_prepare|claim_validate|claim_index|achievement_verify" \
-            scripts service-worker.js; then
-            echo "Removed backup-based achievement claim contour found"
-            exit 2
-          fi
-
-          test -f scripts/core/yandex-ledger-disk.js
-          test ! -f scripts/core/yandex-verified-disk.js
-          grep -q "YandexLedgerDisk" scripts/core/yandex-disk.js
-          
-      - name: Validate workflow runtime versions
-        run: |
-          if grep -REn "node-version:[[:space:]]*['\"]?20['\"]?" .github/workflows; then
-            echo "Node 20 workflow runtime found; use Node 24"
-            exit 2
-          fi
-
-          if grep -REn "actions/(checkout|setup-node)@v4" .github/workflows; then
-            echo "Legacy GitHub Action major found"
-            exit 2
-          fi
-          
-      - name: Validate E2E workflow contract
-        run: |
-          grep -q "node-version: '24'" .github/workflows/e2e.yml
-          grep -q "npm install --no-save @playwright/test@1.55.0" .github/workflows/e2e.yml
-          grep -q "playwright.config.js --grep-invert \"@remote\"" .github/workflows/e2e.yml
-          grep -q "playwright.config.js --grep \"@remote\"" .github/workflows/e2e.yml
-          grep -q "continue-on-error: true" .github/workflows/e2e.yml
-          grep -q "cancel-in-progress: true" .github/workflows/e2e.yml
-          grep -q "find scripts src" .github/workflows/e2e.yml
-          grep -q "trace: 'retain-on-failure'" scripts/e2e/playwright.config.js
-          grep -q "screenshot: 'only-on-failure'" scripts/e2e/playwright.config.js
-
-          if grep -REn "\.waitForFunction\s*\(" scripts/e2e; then
-            echo "page.waitForFunction conflicts with the production CSP; use expect.poll + page.evaluate"
-            exit 2
-          fi
-
-          if grep -REn "\.click\(\{[[:space:]]*force:[[:space:]]*true" scripts/e2e; then
-            echo "Forced click found: smoke tests must follow a real visible user path"
-            exit 2
-          fi
-          
-      - name: Validate playback ownership boundaries
-        run: |
-          mutation_re='playerCore(\?\.|\.)[[:space:]]*(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist|applyFavoritesOnlyFilter)[[:space:]]*\('
-
-          if grep -REn "$mutation_re" \
-            scripts/app/games \
-            scripts/app/friends \
-            scripts/intel; then
-            echo "Games, Friends and Intel must not mutate PlayerCore"
-            exit 2
-          fi
-
-          if grep -REn "new[[:space:]]+Howl[[:space:]]*\(" \
-            scripts/app/games \
-            scripts/app/friends \
-            scripts/intel \
-            scripts/analytics; then
-            echo "Secondary audio owner found outside PlayerCore"
-            exit 2
-          fi
-
-          grep -q "player:transportReloaded" src/PlayerCore.js
-          grep -q "previousUid" src/PlayerCore.js
-          grep -q "_loadReq" src/PlayerCore.js
-          
-      - name: Reject browser-native dialogs
-        run: |
-          native_dialog_re='(^|[^[:alnum:]_$.])(confirm|alert|prompt)[[:space:]]*\(|(^|[^[:alnum:]_$])(window|self|globalThis)(\.|\?\.)[[:space:]]*(confirm|alert|prompt)[[:space:]]*\('
-
-          if grep -En "$native_dialog_re" \
-            scripts/app/player-ui.js \
-            scripts/ui/offline-modal.js; then
-            echo "Browser-native dialog found; use window.Modals instead"
-            exit 2
-          fi
+      - name: Validate application contracts
+        run: node scripts/ci/validate-contracts.mjs
 
 //=================================================
 // FILE: /albums.json
