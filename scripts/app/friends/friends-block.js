@@ -12,7 +12,7 @@ const W = window;
 const D = document;
 const BASE_FRIENDS =
   'https://vi3na1bita.website.yandexcloud.net/Friends';
-const FRIENDS_BUILD = '9.1.3';
+const FRIENDS_BUILD = '9.1.4';
 const FRIENDS_CORE_URL =
   `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
 const FRIENDS_UI_URL =
