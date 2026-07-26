@@ -37,6 +37,10 @@ const emptyServerSnapshot = () => ({
     byTrackMs: 0,
     classifiedListenMs: 0,
     totalListenMs: 0,
+    fullPlaysByTrack: 0,
+    validPlaysByTrack: 0,
+    fullCountersConsistent: true,
+    validCountersConsistent: true,
     exact: false
   },
   updatedAt: 0
@@ -92,6 +96,16 @@ export const normalizeConfirmedListeningStats = raw => {
       totalListenMs: Math.floor(
         n(source.invariant?.totalListenMs)
       ),
+      fullPlaysByTrack: Math.floor(
+        n(source.invariant?.fullPlaysByTrack)
+      ),
+      validPlaysByTrack: Math.floor(
+        n(source.invariant?.validPlaysByTrack)
+      ),
+      fullCountersConsistent:
+        source.invariant?.fullCountersConsistent !== false,
+      validCountersConsistent:
+        source.invariant?.validCountersConsistent !== false,
       exact: source.invariant?.exact === true
     },
     updatedAt: Math.floor(n(source.updatedAt))
