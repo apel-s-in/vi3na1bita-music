@@ -178,6 +178,30 @@ async function kvDelete(pk) {
     WHERE pk = $pk;
   `, { '$pk': tvUtf8(pk) });
 }
+function notificationTtl(kind) {
+  if (kind === 'CHAT_MESSAGE') return 86400;
+  if (kind === 'LOYALTY_REMINDER') return 10800;
+  if (
+    kind === 'LOYALTY_VACATION_ENDING' ||
+    kind === 'LOYALTY_VACATION_ENDED'
+  ) return 86400;
+  if (
+    kind === 'VOICE_CALL' ||
+    kind === 'GAME_INVITE'
+  ) return 120;
+  return 3600;
+}
+
+function notificationUrgency(kind) {
+  return [
+    'CHAT_MESSAGE',
+    'GAME_INVITE',
+    'VOICE_CALL',
+    'LOYALTY_VACATION_ENDED'
+  ].includes(kind)
+    ? 'high'
+    : 'normal';
+}
 
 async function sendToSubscription(row, notification) {
   const data = payload(row);
@@ -189,11 +213,15 @@ async function sendToSubscription(row, notification) {
     .slice(0, 32);
 
   try {
-    await webpush.sendNotification(sub, JSON.stringify(notification), {
-      TTL: notification.kind === 'CHAT_MESSAGE' ? 86400 : (notification.kind === 'VOICE_CALL' || notification.kind === 'GAME_INVITE' ? 120 : 3600),
-      urgency: notification.kind === 'CHAT_MESSAGE' || notification.kind === 'GAME_INVITE' || notification.kind === 'VOICE_CALL' ? 'high' : 'normal',
-      topic: topic || undefined
-    });
+    await webpush.sendNotification(
+      sub,
+      JSON.stringify(notification),
+      {
+        TTL: notificationTtl(notification.kind),
+        urgency: notificationUrgency(notification.kind),
+        topic: topic || undefined
+      }
+    );
     return { ok: true };
   } catch (err) {
     const status = Number(err.statusCode || err.status || 0);
