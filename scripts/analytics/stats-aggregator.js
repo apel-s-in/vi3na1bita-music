@@ -1,5 +1,6 @@
 // UID.003_(Event log truth)_(сохранить агрегатор единственным строителем stats из событий)_(recs/intel/provider слой не должен писать aggregate truth напрямую) UID.004_(Stats as cache)_(оставить stats производным кэшем)_(любые новые aggregate fields должны быть пересчитываемыми из event log) UID.017_(Launch source stats)_(добавить future агрегирование discovery source)_(источники запуска должны считаться здесь, а не в UI state) UID.018_(Variant and quality stats)_(держать честную аналитику режимов прослушивания)_(variant/quality aggregation должно развиваться именно здесь) UID.045_(Tag preferences)_(подготовить future user taste aggregates)_(tag/theme/style/use-case preferences лучше собирать из stats/events, а не напрямую из UI) UID.046_(Axis preferences)_(подготовить осевую аналитику слушателя)_(в будущем агрегатор может копить lightweight preference buckets для listener profile) UID.062_(Recommendation memory and feedback)_(не смешивать rec feedback и media stats)_(recommendation interactions могут писаться в отдельные stores/events, но не ломать current stats path) UID.094_(No-paralysis rule)_(агрегатор должен продолжать работать без intel слоя)_(новые intel-поля only additive и optional)
 import { metaDB } from './meta-db.js';
+import { temporalPartsFromListenEvent } from './temporal-buckets.js';
 
 const localDayKey = timestamp => {
   const date = new Date(Number(timestamp) || Date.now());
@@ -74,18 +75,26 @@ export class StatsAggregator {
               s.featuresUsed = s.featuresUsed || {};
 
               if (lSec > 0) {
-                const activityAt = Number(
-                  ev.data.startedAt || ev.timestamp
-                );
-                const date = new Date(activityAt);
+                const parts = temporalPartsFromListenEvent(ev);
+                const byHourMs =
+                  s.byHourMs ??= Array(24).fill(0);
+                const byWeekdayMs =
+                  s.byWeekdayMs ??= Array(7).fill(0);
+
+                parts.forEach(part => {
+                  byHourMs[part.hour] += part.creditedMs;
+                  byWeekdayMs[part.weekday] +=
+                    part.creditedMs;
+                });
 
                 s.globalListenSeconds += lSec;
-                (s.byHour ??= Array(24).fill(0))[
-                  date.getHours()
-                ] += lSec;
-                (s.byWeekday ??= Array(7).fill(0))[
-                  (date.getDay() + 6) % 7
-                ] += lSec;
+                s.byHour = byHourMs.map(value =>
+                  value / 1000
+                );
+                s.byWeekday = byWeekdayMs.map(value =>
+                  value / 1000
+                );
+                s.temporalSchemaVersion = 2;
               }
 
               if (isV) {
