@@ -132,7 +132,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/games/] bridge-host.js, config.js, host.js
 [/scripts/app/player/] favorites-only-actions.js, favorites-only-resolver.js, playback-clock.js, playback-context-source.js, restore-gesture.js
 [/scripts/app/player-ui/] lyrics.js
-[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-devices-view.js, achievements-view.js, actions-trash.js, actions.js, archive-maintenance-modal.js, archive-render-kit.js, auth-onboarding-orchestrator.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, cloud-ui-helpers.js, fresh-restore-modal.js, ledger-health-modal.js, live-bindings.js, logs-formatters.js, logs-view.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, restore-backup-runner.js, restore-card-render-kit.js, restore-decision.js, restore-diff.js, restore-preview-modal.js, settings-conflict-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, view.js, yandex-actions.js, yandex-auth-view.js, yandex-auto-sync.js, yandex-preload-cache.js, yandex-runtime-refresh.js
+[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-devices-view.js, achievements-view.js, actions-trash.js, actions.js, archive-maintenance-modal.js, archive-render-kit.js, auth-onboarding-orchestrator.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, cloud-ui-helpers.js, fresh-restore-modal.js, ledger-health-modal.js, live-bindings.js, logs-formatters.js, logs-view.js, loyalty-card.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, restore-backup-runner.js, restore-card-render-kit.js, restore-decision.js, restore-diff.js, restore-preview-modal.js, settings-conflict-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, view.js, yandex-actions.js, yandex-auth-view.js, yandex-auto-sync.js, yandex-preload-cache.js, yandex-runtime-refresh.js
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
@@ -11933,6 +11933,123 @@ export default { LOG_FILTERS, eventDomain, formatEventDate, eventTrackTitle, eve
 import { eventDomain, renderLogFilters, renderEventRow, bindHorizontalWheelScroll } from './logs-formatters.js';
 export const renderProfileLogs = async ({ container: c, metaDB: db }) => { const l = c?.querySelector('#prof-logs-list'); if(!l)return; const d = async (f=l.dataset.filter||'all') => { l.dataset.filter=f; try { const r = [...(await db?.getEvents('events_hot').catch(()=>[])||[]), ...(await db?.getEvents('events_warm').catch(()=>[])||[])].filter(Boolean).sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0)), ls = r.filter(e=>f==='all'||eventDomain(e)===f).slice(0,100); l.innerHTML=`${renderLogFilters(f)}${ls.length?ls.map(renderEventRow).join(''):'<div class="fav-empty">По этому фильтру событий нет</div>'}`; bindHorizontalWheelScroll(l.querySelector('#prof-log-filters')); l.querySelector('#prof-log-filters')?.addEventListener('click',e=>{const x=e.target.closest('[data-log-filter]')?.dataset.logFilter; if(x)d(x)}); } catch { l.innerHTML='<div class="fav-empty">Ошибка загрузки журнала</div>'; } }; await d(); };
 export default { renderProfileLogs };
+
+//=================================================
+// FILE: /scripts/app/profile/loyalty-card.js
+import {
+  formatLoyaltyDeadline,
+  formatLoyaltyVacation,
+  getLoyaltyState
+} from '../../analytics/loyalty-state.js';
+import {
+  setLoyaltyReminderEnabled,
+  setLoyaltyVacationEnabled
+} from '../push/loyalty-reminders.js';
+
+const esc = value =>
+  window.Utils?.escapeHtml?.(String(value || '')) ||
+  String(value || '');
+
+const rewards = [
+  ['1 день', '10 ♦'],
+  ['2 дня', '20 ♦'],
+  ['3 дня', '30 ♦'],
+  ['4–7 дней', '+5 ♦ ежедневно'],
+  ['7 дней', '100 ♦'],
+  ['8–14 дней', '+10 ♦ ежедневно'],
+  ['14 дней', '200 ♦'],
+  ['15–30 дней', '+20 ♦ ежедневно'],
+  ['30 дней', '500 ♦'],
+  ['31–100 дней', '+30 ♦ ежедневно'],
+  ['100 дней', '1000 ♦'],
+  ['101–365 дней', '+50 ♦ ежедневно'],
+  ['365 дней', '10000 ♦'],
+  ['366+ дней', '+100 ♦ ежедневно']
+];
+
+export const renderLoyaltyCard = () => {
+  const state = getLoyaltyState();
+
+  if (state.pending) {
+    return `<div class="ach-item loyalty-card"><div class="ach-title">⚡ Преданность</div><div class="ach-sub">Получаем подтверждённое состояние с сервера…</div></div>`;
+  }
+
+  if (!state.available) {
+    return '';
+  }
+
+  const vacationDisabled =
+    state.currentDays <= 0 ||
+    (
+      !state.vacation.active &&
+      state.vacation.remainingMs <= 0
+    );
+  const timer = state.vacation.active
+    ? `Пауза: ${formatLoyaltyVacation(state)}`
+    : `До потери streak: ${formatLoyaltyDeadline(state)}`;
+  const next = state.nextMilestone
+    ? `${state.daysToNextMilestone} дн. до ${state.nextMilestone.day}-го дня и ${state.nextMilestone.amount} ♦`
+    : 'Ежедневная серия продолжается без ограничения';
+
+  return `<div class="ach-item loyalty-card ${state.vacation.active ? 'is-paused' : ''}" data-loyalty-card><div class="ach-top"><div class="ach-title">⚡ Преданность · ${state.currentDays} день</div></div><div class="ach-sub">${esc(timer)}</div><div class="loyalty-next"><b>Следующий ежедневный бонус: +${state.nextDailyAmount} ♦</b><span>${esc(next)}</span></div><div class="ach-bottom"><div class="ach-reward">Лучший streak: ${state.longestDays}</div><div class="ach-remaining">${esc(timer)}</div></div><div class="ach-details" style="display:block"><div class="ach-details-title">Как сохранить Преданность</div><div class="ach-details-how">Заходите в приложение каждый день и пользуйтесь им: слушайте музыку, отмечайте любимые треки или создавайте плейлисты и сохраняйте прогресс.</div><div class="loyalty-grid">${rewards.map(([day, reward]) => `<div><span>${esc(day)}</span><b>${esc(reward)}</b></div>`).join('')}</div><label class="loyalty-control"><span><b>🔔 Напоминать о Преданности</b><small>Уведомление придёт на авторизованные устройства перед окончанием срока.</small></span><input type="checkbox" data-loyalty-reminder ${state.reminderEnabled ? 'checked' : ''}></label><label class="loyalty-control ${vacationDisabled ? 'is-disabled' : ''}"><span><b>🛡️ Пауза Преданности</b><small>${state.vacation.active ? `Активна · осталось ${formatLoyaltyVacation(state)}` : `Доступно ${formatLoyaltyVacation(state)} за скользящие 365 дней`}</small></span><input type="checkbox" data-loyalty-vacation ${state.vacation.active ? 'checked' : ''} ${vacationDisabled ? 'disabled' : ''}></label><div class="ach-details-desc">Во время паузы streak не растёт и ежедневные награды не начисляются. После окончания у вас будет 24 часа, чтобы продолжить серию.</div></div></div>`;
+};
+
+export const handleLoyaltyControl = async element => {
+  if (element?.matches?.('[data-loyalty-reminder]')) {
+    element.disabled = true;
+
+    try {
+      await setLoyaltyReminderEnabled(element.checked);
+      window.NotificationSystem?.success?.(
+        element.checked
+          ? '🔔 Напоминания Преданности включены'
+          : 'Напоминания Преданности выключены'
+      );
+    } catch (error) {
+      element.checked = !element.checked;
+
+      window.NotificationSystem?.error?.(
+        `Не удалось изменить напоминание: ${error?.message || 'ошибка'}`
+      );
+    } finally {
+      element.disabled = false;
+    }
+
+    return true;
+  }
+
+  if (element?.matches?.('[data-loyalty-vacation]')) {
+    const enabled = element.checked;
+    element.disabled = true;
+
+    try {
+      await setLoyaltyVacationEnabled(enabled);
+
+      window.NotificationSystem?.success?.(
+        enabled
+          ? '🛡️ Преданность поставлена на паузу'
+          : '⚡ Преданность продолжена. У вас есть 24 часа.'
+      );
+    } catch (error) {
+      element.checked = !enabled;
+
+      window.NotificationSystem?.error?.(
+        `Не удалось изменить паузу: ${error?.message || 'ошибка'}`
+      );
+    } finally {
+      element.disabled = false;
+    }
+
+    return true;
+  }
+
+  return false;
+};
+
+export default {
+  renderLoyaltyCard,
+  handleLoyaltyControl
+};
 
 //=================================================
 // FILE: /scripts/app/profile/model.js
