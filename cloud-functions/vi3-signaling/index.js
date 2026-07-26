@@ -4451,10 +4451,6 @@ function normalizeListenSession(raw = {}) {
     startedPosition: Math.max(0, num(raw.startedPosition)),
     lastPosition: Math.max(0, num(raw.lastPosition)),
     observedMs: Math.max(0, Math.floor(num(raw.observedMs))),
-    timeProgressSyncedMs: Math.max(
-      0,
-      Math.floor(num(raw.timeProgressSyncedMs))
-    ),
     acceptedHeartbeats: Math.max(
       0,
       Math.floor(num(raw.acceptedHeartbeats))
