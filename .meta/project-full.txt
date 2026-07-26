@@ -14921,6 +14921,12 @@ const actionRequests = new Map();
 
 const safe = value => String(value == null ? '' : value).trim();
 
+export const getSocialServerBackoffState = () => ({
+  active: Date.now() < serverBackoffUntil,
+  retryAt: serverBackoffUntil,
+  remainingMs: Math.max(0, serverBackoffUntil - Date.now())
+});
+
 const readProfile = () => {
   const auth = window.YandexAuth;
   const active =
@@ -15103,13 +15109,31 @@ export const requestSocialAction = (
 
       const result = await readJson(response);
 
-      if (response.status === 429) {
-        serverBackoffUntil = Date.now() + serverBackoffMs;
+      if (
+        response.status === 429 ||
+        [502, 503, 504].includes(response.status)
+      ) {
+        const retryAfterSec = Number(
+          response.headers.get('Retry-After') || 0
+        );
+        const delayMs = Math.max(
+          serverBackoffMs,
+          retryAfterSec > 0 ? retryAfterSec * 1000 : 0
+        ) + Math.floor(Math.random() * 1000);
+
+        serverBackoffUntil = Math.max(
+          serverBackoffUntil,
+          Date.now() + delayMs
+        );
         serverBackoffMs = Math.min(
           60000,
           serverBackoffMs * 2
         );
-      } else if (response.ok && result.ok !== false) {
+      } else if (
+        response.ok &&
+        result.ok !== false &&
+        Date.now() >= serverBackoffUntil
+      ) {
         serverBackoffUntil = 0;
         serverBackoffMs = 5000;
       }
