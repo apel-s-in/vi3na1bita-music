@@ -4448,6 +4448,7 @@ function normalizeListenSession(raw = {}) {
     startedAt: num(raw.startedAt),
     lastHeartbeatAt: num(raw.lastHeartbeatAt),
     completedAt: num(raw.completedAt),
+    startedPosition: Math.max(0, num(raw.startedPosition)),
     lastPosition: Math.max(0, num(raw.lastPosition)),
     observedMs: Math.max(0, Math.floor(num(raw.observedMs))),
     timeProgressSyncedMs: Math.max(
@@ -4901,6 +4902,7 @@ function publicListenSession(session) {
     startedAt: data.startedAt,
     lastHeartbeatAt: data.lastHeartbeatAt,
     completedAt: data.completedAt,
+    startedPosition: data.startedPosition,
     observedSec: Math.floor(data.observedMs / 1000),
     acceptedHeartbeats: data.acceptedHeartbeats,
     rejectedHeartbeats: data.rejectedHeartbeats,
@@ -5711,13 +5713,20 @@ async function finalizeListenSession(session) {
     ? data.lastPosition / data.duration
     : 0;
   const valid = observedSec >= LISTEN_VALID_MIN_SEC;
+  const fullPositionToleranceSec = 3;
+  const fullObservedMinSec = Math.max(
+    LISTEN_VALID_MIN_SEC,
+    Math.floor(data.duration * 0.95)
+  );
   const full =
     data.completionReason === 'ended' &&
-    progressRatio >= 0.9 &&
-    observedSec >= Math.max(
-      LISTEN_VALID_MIN_SEC,
-      Math.floor(data.duration * 0.8)
-    );
+    data.startedPosition <= 2 &&
+    data.lastPosition >=
+      Math.max(0, data.duration - fullPositionToleranceSec) &&
+    observedSec >= fullObservedMinSec &&
+    data.acceptedHeartbeats > 0 &&
+    data.rejectedHeartbeats === 0 &&
+    data.continuityBroken !== true;
 
   const receipt = {
     version: LISTEN_RECEIPT_VERSION,
@@ -5728,7 +5737,10 @@ async function finalizeListenSession(session) {
     trackUid: data.trackUid,
     album: data.album,
     duration: data.duration,
+    startedPosition: data.startedPosition,
     observedSec,
+    fullObservedMinSec,
+    fullPositionToleranceSec,
     finalPosition: data.lastPosition,
     progressRatio: Math.max(
       0,
@@ -5920,6 +5932,13 @@ async function actionListenSessionStart(event, body) {
       status: 'active',
       startedAt: at,
       lastHeartbeatAt: at,
+      startedPosition: Math.max(
+        0,
+        Math.min(
+          track.duration,
+          num(body.position)
+        )
+      ),
       lastPosition: Math.max(
         0,
         Math.min(
