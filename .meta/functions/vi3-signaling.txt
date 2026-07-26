@@ -4246,6 +4246,7 @@ const LISTEN_SESSION_RETENTION_MS =
   90 * 24 * 60 * 60 * 1000;
 const LISTEN_PROGRESS_RECEIPT_LIMIT = 500;
 const LISTEN_TIME_SESSION_LIMIT = 64;
+const LISTEN_CREDIT_SEGMENT_LIMIT = 64;
 
 function listenActiveKey(playerId, deviceId = '') {
   const base =
@@ -4443,6 +4444,32 @@ function listenLocalParts(timestamp, timezoneOffsetMin = 0) {
     dayKey: date.toISOString().slice(0, 10)
   };
 }
+function normalizeListenCreditSegments(raw) {
+  return (Array.isArray(raw) ? raw : [])
+    .map(segment => ({
+      fromAt: Math.max(0, Math.floor(num(segment?.fromAt))),
+      toAt: Math.max(0, Math.floor(num(segment?.toAt))),
+      creditMs: Math.max(0, Math.floor(num(segment?.creditMs))),
+      fromObservedMs: Math.max(
+        0,
+        Math.floor(num(segment?.fromObservedMs))
+      ),
+      toObservedMs: Math.max(
+        0,
+        Math.floor(num(segment?.toObservedMs))
+      )
+    }))
+    .filter(segment =>
+      segment.fromAt > 0 &&
+      segment.toAt > segment.fromAt &&
+      segment.creditMs > 0 &&
+      segment.toObservedMs > segment.fromObservedMs
+    )
+    .sort((left, right) =>
+      left.fromObservedMs - right.fromObservedMs
+    )
+    .slice(-LISTEN_CREDIT_SEGMENT_LIMIT);
+}
 
 function normalizeListenSession(raw = {}) {
   return {
@@ -4491,6 +4518,9 @@ function normalizeListenSession(raw = {}) {
     startedPosition: Math.max(0, num(raw.startedPosition)),
     lastPosition: Math.max(0, num(raw.lastPosition)),
     observedMs: Math.max(0, Math.floor(num(raw.observedMs))),
+    creditSegments: normalizeListenCreditSegments(
+      raw.creditSegments
+    ),
     acceptedHeartbeats: Math.max(
       0,
       Math.floor(num(raw.acceptedHeartbeats))
@@ -4672,6 +4702,174 @@ function normalizeSpeedRunnerByDevice(raw = {}) {
       .slice(-30)
   );
 }
+function normalizeFixedMsArray(raw, length) {
+  return Array.from(
+    { length },
+    (_, index) => Math.max(
+      0,
+      Math.floor(num(raw?.[index]))
+    )
+  );
+}
+
+function normalizeListenMsByTrack(raw = {}) {
+  const source =
+    raw &&
+    typeof raw === 'object' &&
+    !Array.isArray(raw)
+      ? raw
+      : {};
+
+  return Object.fromEntries(
+    Object.entries(source)
+      .map(([uid, value]) => [
+        sanitizeId(uid, 160),
+        Math.max(0, Math.floor(num(value)))
+      ])
+      .filter(([uid, value]) =>
+        uid &&
+        LISTEN_TRACK_CATALOG.has(uid) &&
+        value > 0
+      )
+  );
+}
+
+function normalizePerTrackCount(raw = {}) {
+  const source =
+    raw &&
+    typeof raw === 'object' &&
+    !Array.isArray(raw)
+      ? raw
+      : {};
+
+  return Object.fromEntries(
+    Object.entries(source)
+      .map(([uid, value]) => [
+        sanitizeId(uid, 160),
+        Math.max(0, Math.floor(num(value)))
+      ])
+      .filter(([uid, value]) =>
+        uid &&
+        LISTEN_TRACK_CATALOG.has(uid) &&
+        value > 0
+      )
+  );
+}
+
+function sumNumbers(values) {
+  return (Array.isArray(values) ? values : [])
+    .reduce(
+      (sum, value) =>
+        sum + Math.max(0, Math.floor(num(value))),
+      0
+    );
+}
+
+function sumObjectNumbers(values) {
+  return Object.values(
+    values && typeof values === 'object'
+      ? values
+      : {}
+  ).reduce(
+    (sum, value) =>
+      sum + Math.max(0, Math.floor(num(value))),
+    0
+  );
+}
+
+function splitListenInterval({
+  fromAt,
+  toAt,
+  creditMs,
+  timezoneOffsetMin
+}) {
+  const start = Math.max(0, Math.floor(num(fromAt)));
+  const end = Math.max(start, Math.floor(num(toAt)));
+  const credit = Math.max(0, Math.floor(num(creditMs)));
+  const offsetMs =
+    normalizeTimezoneOffsetMin(timezoneOffsetMin) * 60000;
+
+  if (!start || end <= start || credit <= 0) return [];
+
+  const pieces = [];
+  let cursor = start;
+
+  while (cursor < end) {
+    const localCursor = cursor - offsetMs;
+    const nextLocalHour =
+      (Math.floor(localCursor / 3600000) + 1) *
+      3600000;
+    const boundary = Math.min(
+      end,
+      nextLocalHour + offsetMs
+    );
+    const localDate = new Date(localCursor);
+
+    pieces.push({
+      fromAt: cursor,
+      toAt: boundary,
+      wallMs: boundary - cursor,
+      hour: localDate.getUTCHours(),
+      weekday:
+        (localDate.getUTCDay() + 6) % 7,
+      creditMs: 0
+    });
+
+    cursor = boundary;
+  }
+
+  const wallTotal = pieces.reduce(
+    (sum, piece) => sum + piece.wallMs,
+    0
+  );
+  let allocated = 0;
+
+  pieces.forEach((piece, index) => {
+    const value = index === pieces.length - 1
+      ? credit - allocated
+      : Math.floor(
+          credit * piece.wallMs / wallTotal
+        );
+
+    piece.creditMs = Math.max(0, value);
+    allocated += piece.creditMs;
+  });
+
+  return pieces.filter(piece => piece.creditMs > 0);
+}
+
+function assertConfirmedListeningInvariants(progress) {
+  const byHour = sumNumbers(progress.listenByHourMs);
+  const byWeekday = sumNumbers(progress.listenByWeekdayMs);
+  const byTrack = sumObjectNumbers(progress.listenMsByTrack);
+  const classified = Math.max(
+    0,
+    Math.floor(num(progress.classifiedListenMs))
+  );
+  const legacy = Math.max(
+    0,
+    Math.floor(num(progress.legacyUnclassifiedMs))
+  );
+  const total = Math.max(
+    0,
+    Math.floor(num(progress.totalListenMs))
+  );
+
+  if (
+    byHour !== classified ||
+    byWeekday !== classified ||
+    byTrack !== classified ||
+    total !== classified + legacy
+  ) {
+    const error = new Error(
+      'confirmed_listening_stats_invariant_failed'
+    );
+    error.httpStatus = 409;
+    throw error;
+  }
+
+  return true;
+}
 
 function normalizeAchievementProgress(raw = {}, playerId = '') {
   const uniqueTracks =
@@ -4682,6 +4880,10 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
   const perTrackFull =
     raw.perTrackFull && typeof raw.perTrackFull === 'object'
       ? raw.perTrackFull
+      : {};
+  const perTrackValid =
+    raw.perTrackValid && typeof raw.perTrackValid === 'object'
+      ? raw.perTrackValid
       : {};
   const listenTimeBySessionSource =
     raw.listenTimeBySession &&
@@ -4723,6 +4925,40 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
       )
     )
   );
+  const listenByHourMs = normalizeFixedMsArray(
+    raw.listenByHourMs,
+    24
+  );
+  const listenByWeekdayMs = normalizeFixedMsArray(
+    raw.listenByWeekdayMs,
+    7
+  );
+  const listenMsByTrack = normalizeListenMsByTrack(
+    raw.listenMsByTrack
+  );
+  const detectedClassifiedListenMs = Math.min(
+    sumNumbers(listenByHourMs),
+    sumNumbers(listenByWeekdayMs),
+    sumObjectNumbers(listenMsByTrack)
+  );
+  const classifiedListenMs = Math.max(
+    0,
+    Math.floor(
+      num(
+        raw.classifiedListenMs,
+        detectedClassifiedListenMs
+      )
+    )
+  );
+  const legacyUnclassifiedMs = Math.max(
+    0,
+    Math.floor(
+      num(
+        raw.legacyUnclassifiedMs,
+        migratedTotalListenMs - classifiedListenMs
+      )
+    )
+  );
   return {
     version: 1,
     playerId: sanitizeId(
@@ -4740,6 +4976,11 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
     ),
     totalListenMs: migratedTotalListenMs,
     totalSec: Math.floor(migratedTotalListenMs / 1000),
+    classifiedListenMs,
+    legacyUnclassifiedMs,
+    listenByHourMs,
+    listenByWeekdayMs,
+    listenMsByTrack,
     listenTimeBySession,
     backupSaves: Math.max(
       0,
@@ -4830,13 +5071,11 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
         ])
         .filter(([uid, at]) => uid && at > 0)
     ),
-    perTrackFull: Object.fromEntries(
-      Object.entries(perTrackFull)
-        .map(([uid, count]) => [
-          sanitizeId(uid, 160),
-          Math.max(0, Math.floor(num(count)))
-        ])
-        .filter(([uid, count]) => uid && count > 0)
+    perTrackFull: normalizePerTrackCount(
+      perTrackFull
+    ),
+    perTrackValid: normalizePerTrackCount(
+      perTrackValid
     ),
     activeDays: [...new Set(
       (Array.isArray(raw.activeDays)
@@ -4946,6 +5185,70 @@ function publicListenSession(session) {
     receiptId: data.receiptId
   };
 }
+function publicConfirmedListeningStats(progressRaw) {
+  const progress = normalizeAchievementProgress(
+    progressRaw,
+    progressRaw?.playerId
+  );
+
+  assertConfirmedListeningInvariants(progress);
+
+  const trackUids = new Set([
+    ...Object.keys(progress.listenMsByTrack),
+    ...Object.keys(progress.perTrackValid),
+    ...Object.keys(progress.perTrackFull)
+  ]);
+
+  return {
+    version: 1,
+    source: 'server_confirmed',
+    available: true,
+    totalListenMs: progress.totalListenMs,
+    classifiedListenMs: progress.classifiedListenMs,
+    legacyUnclassifiedMs: progress.legacyUnclassifiedMs,
+    validPlays: progress.validPlays,
+    fullPlays: progress.fullPlays,
+    uniqueTracks: Object.keys(progress.uniqueTracks).length,
+    byHourMs: [...progress.listenByHourMs],
+    byWeekdayMs: [...progress.listenByWeekdayMs],
+    tracks: [...trackUids]
+      .map(uid => ({
+        uid,
+        listenMs: Math.max(
+          0,
+          Math.floor(num(
+            progress.listenMsByTrack[uid]
+          ))
+        ),
+        validPlays: Math.max(
+          0,
+          Math.floor(num(
+            progress.perTrackValid[uid]
+          ))
+        ),
+        fullPlays: Math.max(
+          0,
+          Math.floor(num(
+            progress.perTrackFull[uid]
+          ))
+        )
+      }))
+      .sort((left, right) =>
+        right.listenMs - left.listenMs ||
+        left.uid.localeCompare(right.uid)
+      ),
+    invariant: {
+      byHourMs: sumNumbers(progress.listenByHourMs),
+      byWeekdayMs: sumNumbers(progress.listenByWeekdayMs),
+      byTrackMs: sumObjectNumbers(progress.listenMsByTrack),
+      classifiedListenMs: progress.classifiedListenMs,
+      totalListenMs: progress.totalListenMs,
+      exact:
+        progress.legacyUnclassifiedMs === 0
+    },
+    updatedAt: progress.updatedAt
+  };
+}
 
 function publicAchievementProgress(progress) {
   const data = normalizeAchievementProgress(
@@ -5006,6 +5309,8 @@ function publicAchievementProgress(progress) {
     legacyUtcActiveDays: data.activeDays.length,
     streakDayMode: 'local_session_start_v1',
     receipts: data.receiptIds.length,
+    confirmedListeningStats:
+      publicConfirmedListeningStats(data),
     updatedAt: data.updatedAt
   };
 }
@@ -5124,6 +5429,20 @@ function applyListenObservation(
         )
       )
     : 0;
+  const nextObservedMs =
+    current.observedMs + creditMs;
+  const creditSegments = creditMs > 0
+    ? normalizeListenCreditSegments([
+        ...current.creditSegments,
+        {
+          fromAt: at - gapMs,
+          toAt: at,
+          creditMs,
+          fromObservedMs: current.observedMs,
+          toObservedMs: nextObservedMs
+        }
+      ])
+    : current.creditSegments;
 
   return {
     changed: true,
@@ -5137,7 +5456,8 @@ function applyListenObservation(
       // становится baseline. Иначе один seek навсегда отравит сессию:
       // каждый следующий heartbeat будет сравниваться со старой позицией.
       lastPosition: position,
-      observedMs: current.observedMs + creditMs,
+      observedMs: nextObservedMs,
+      creditSegments,
       continuousObservedMs: accepted
         ? current.continuousObservedMs + creditMs
         : 0,
@@ -5166,17 +5486,14 @@ function applyListenObservation(
 }
 
 async function applyVerifiedListenTimeProgress(
-  playerId,
-  sessionId,
-  observedMs
+  sessionRaw
 ) {
-  const cleanSessionId = sanitizeId(sessionId, 120);
-  const targetObservedMs = Math.max(
-    0,
-    Math.floor(num(observedMs))
-  );
+  const session = normalizeListenSession(sessionRaw);
+  const playerId = session.playerId;
+  const cleanSessionId = session.sessionId;
+  const targetObservedMs = session.observedMs;
 
-  if (!cleanSessionId) {
+  if (!playerId || !cleanSessionId) {
     throw new Error('listen_time_session_required');
   }
 
@@ -5203,14 +5520,11 @@ async function applyVerifiedListenTimeProgress(
       payload(row),
       playerId
     );
+    const previousMarker =
+      progress.listenTimeBySession?.[cleanSessionId] || {};
     const previousObservedMs = Math.max(
       0,
-      Math.floor(
-        num(
-          progress.listenTimeBySession?.[cleanSessionId]
-            ?.observedMs
-        )
-      )
+      Math.floor(num(previousMarker.observedMs))
     );
     const deltaMs = Math.max(
       0,
@@ -5226,18 +5540,103 @@ async function applyVerifiedListenTimeProgress(
       };
     }
 
+    const segments = session.creditSegments
+      .filter(segment =>
+        segment.toObservedMs > previousObservedMs &&
+        segment.fromObservedMs < targetObservedMs
+      );
+
+    const byHour = [...progress.listenByHourMs];
+    const byWeekday = [...progress.listenByWeekdayMs];
+    const byTrack = { ...progress.listenMsByTrack };
+    let classifiedDeltaMs = 0;
+
+    for (const segment of segments) {
+      const fromObservedMs = Math.max(
+        segment.fromObservedMs,
+        previousObservedMs
+      );
+      const toObservedMs = Math.min(
+        segment.toObservedMs,
+        targetObservedMs
+      );
+      const segmentCreditMs =
+        segment.toObservedMs - segment.fromObservedMs;
+      const appliedCreditMs = Math.max(
+        0,
+        toObservedMs - fromObservedMs
+      );
+
+      if (
+        appliedCreditMs <= 0 ||
+        segmentCreditMs <= 0
+      ) {
+        continue;
+      }
+
+      const wallMs = segment.toAt - segment.fromAt;
+      const skippedCreditMs =
+        fromObservedMs - segment.fromObservedMs;
+      const appliedFromAt =
+        segment.fromAt +
+        Math.floor(
+          wallMs * skippedCreditMs / segmentCreditMs
+        );
+      const appliedToAt =
+        appliedFromAt +
+        Math.max(
+          1,
+          Math.floor(
+            wallMs * appliedCreditMs / segmentCreditMs
+          )
+        );
+
+      const pieces = splitListenInterval({
+        fromAt: appliedFromAt,
+        toAt: Math.min(segment.toAt, appliedToAt),
+        creditMs: appliedCreditMs,
+        timezoneOffsetMin: session.timezoneOffsetMin
+      });
+
+      pieces.forEach(piece => {
+        byHour[piece.hour] += piece.creditMs;
+        byWeekday[piece.weekday] += piece.creditMs;
+        classifiedDeltaMs += piece.creditMs;
+      });
+    }
+
+    if (classifiedDeltaMs !== deltaMs) {
+      const error = new Error(
+        'listen_credit_segments_incomplete'
+      );
+      error.httpStatus = 409;
+      throw error;
+    }
+
+    byTrack[session.trackUid] =
+      Math.max(0, num(byTrack[session.trackUid])) +
+      classifiedDeltaMs;
+
     const next = normalizeAchievementProgress({
       ...progress,
-      totalListenMs: progress.totalListenMs + deltaMs,
+      totalListenMs:
+        progress.totalListenMs + deltaMs,
+      classifiedListenMs:
+        progress.classifiedListenMs + classifiedDeltaMs,
+      listenByHourMs: byHour,
+      listenByWeekdayMs: byWeekday,
+      listenMsByTrack: byTrack,
       listenTimeBySession: {
         ...progress.listenTimeBySession,
         [cleanSessionId]: {
           observedMs: targetObservedMs,
-          updatedAt: now()
+          updatedAt: session.lastHeartbeatAt || now()
         }
       },
       updatedAt: now()
     }, playerId);
+
+    assertConfirmedListeningInvariants(next);
 
     if (!await kvCompareAndPut({
       row,
@@ -5299,6 +5698,9 @@ async function applyListenReceiptProgress(receipt) {
     };
     const perTrackFull = {
       ...progress.perTrackFull
+    };
+    const perTrackValid = {
+      ...progress.perTrackValid
     };
     const activeDays = [...progress.activeDays];
     const activeDaysLocal = [
@@ -5542,6 +5944,13 @@ async function applyListenReceiptProgress(receipt) {
       uniqueTracks[receipt.trackUid] =
         uniqueTracks[receipt.trackUid] ||
         receipt.completedAt;
+      perTrackValid[receipt.trackUid] =
+        Math.max(
+          0,
+          Math.floor(num(
+            perTrackValid[receipt.trackUid]
+          ))
+        ) + 1;
 
       // Legacy UTC completion day сохраняется только для совместимости.
       const day = utcDayKey(receipt.completedAt);
@@ -5618,6 +6027,7 @@ async function applyListenReceiptProgress(receipt) {
       speedRunnerByDevice,
       uniqueTracks,
       perTrackFull,
+      perTrackValid,
       activeDays,
       activeDaysLocal,
       receiptIds: [
@@ -5764,11 +6174,7 @@ async function finalizeListenSession(session) {
     };
   }
 
-  await applyVerifiedListenTimeProgress(
-    data.playerId,
-    data.sessionId,
-    data.observedMs
-  );
+  await applyVerifiedListenTimeProgress(data);
 
   const observedSec = Math.max(
     0,
@@ -6110,9 +6516,7 @@ async function actionListenSessionHeartbeat(event, body) {
 
     const appliedTime =
       await applyVerifiedListenTimeProgress(
-        playerId,
-        observation.session.sessionId,
-        observation.session.observedMs
+        observation.session
       );
 
     const previousTotalSec = Math.floor(
