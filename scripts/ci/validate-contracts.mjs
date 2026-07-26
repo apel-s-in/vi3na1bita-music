@@ -198,6 +198,38 @@ const validateListening = () => {
   contains(receipts, 'deviceId: this.session.deviceId');
   contains(server, 'const LISTEN_PROGRESS_RECEIPT_LIMIT = 500');
   contains(server, 'const LISTEN_TIME_SESSION_LIMIT = 64');
+  contains(server, 'const LISTEN_CREDIT_SEGMENT_LIMIT = 64');
+  contains(server, 'listenByHourMs');
+  contains(server, 'listenByWeekdayMs');
+  contains(server, 'listenMsByTrack');
+  contains(server, 'classifiedListenMs');
+  contains(server, 'legacyUnclassifiedMs');
+  contains(server, 'splitListenInterval');
+  contains(server, 'assertConfirmedListeningInvariants');
+  contains(server, 'publicConfirmedListeningStats');
+  contains(
+    'scripts/analytics/confirmed-listening-stats.js',
+    'resolveListeningStatsViewModel'
+  );
+  contains(
+    'scripts/analytics/temporal-buckets.js',
+    'splitTemporalInterval'
+  );
+  contains(
+    'scripts/analytics/session-tracker.js',
+    'creditedSegments'
+  );
+
+  assertNoMatch(
+    [
+      'scripts/app/profile/model.js',
+      'scripts/app/profile/stats-view.js',
+      'scripts/app/profile/live-bindings.js',
+      'scripts/ui/statistics-modal.js'
+    ],
+    /getCanonicalFullListenCount/g,
+    'Legacy local/server full-count selector удалён'
+  );
 
   assert(
     /resolveListenSessionRow\(\s*playerId,\s*sessionId,\s*body\.deviceId\s*\)/
