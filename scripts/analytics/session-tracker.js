@@ -63,6 +63,7 @@ export class SessionTracker {
       startedAt,
       duration: Number(duration || 0),
       accumulatedMs: 0,
+      creditedSegments: [],
       lastPos: Number(player?.getPosition?.() || 0),
       lastUpdate: startedAt
     };
@@ -90,6 +91,16 @@ export class SessionTracker {
 
     if (creditedMs > 0) {
       this.s.accumulatedMs += creditedMs;
+      this.s.creditedSegments.push({
+        startedAt: rt.prevTickAt,
+        endedAt: rt.now,
+        creditedMs
+      });
+
+      if (this.s.creditedSegments.length > 500) {
+        this.s.creditedSegments =
+          this.s.creditedSegments.slice(-500);
+      }
     }
   }
   _pause() {
@@ -122,6 +133,7 @@ export class SessionTracker {
       timezoneOffsetMin,
       startedAt,
       accumulatedMs,
+      creditedSegments,
       duration,
       lastPos
     } = this.s;
@@ -185,6 +197,8 @@ export class SessionTracker {
       timezoneOffsetMin,
       startedAt,
       listenedSeconds,
+      creditedSegments,
+      temporalSchemaVersion: 2,
       trackDuration: duration,
       progress,
       isFullListen: full,
