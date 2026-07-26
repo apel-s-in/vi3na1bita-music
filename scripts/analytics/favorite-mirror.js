@@ -340,7 +340,11 @@ class FavoriteMirrorService {
           {
             uid: item.uid,
             status: item.status,
-            mutationId: item.mutationId
+            mutationId: item.mutationId,
+            deviceId:
+              localStorage.getItem('deviceStableId') ||
+              localStorage.getItem('deviceHash') ||
+              'web'
           }
         );
 
