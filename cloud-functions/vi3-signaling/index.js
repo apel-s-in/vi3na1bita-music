@@ -7956,10 +7956,14 @@ async function actionMusicFeatureUse(event, body) {
     }
   );
 
-  const rewards = await reconcileAchievementRewards(
-    playerId,
-    applied.progress
-  );
+  const [rewards, loyalty] = await Promise.all([
+    reconcileAchievementRewards(playerId, applied.progress),
+    applyLoyaltyActivity(playerId, {
+      activityId: `loyalty:${receiptId}`,
+      kind: 'feature',
+      deviceId: body.deviceId
+    })
+  ]);
 
   return {
     ok: true,
@@ -7969,7 +7973,11 @@ async function actionMusicFeatureUse(event, body) {
     shadow: CFG.featureRewardsShadow,
     rewardsEnabled: !CFG.featureRewardsShadow,
     rewards: rewards.grants,
-    wallet: publicShardWallet(rewards.wallet),
+    loyaltyRewards: loyalty.loyaltyRewards,
+    loyalty: loyalty.loyalty,
+    wallet: publicShardWallet(
+      loyalty.wallet || rewards.wallet
+    ),
     progress: publicAchievementProgress(applied.progress)
   };
 }
@@ -8032,10 +8040,13 @@ async function actionBackupAchievementReceipt(event, body) {
     );
 
     if (progress.backupReceiptIds.includes(receiptId)) {
-      const rewards = await reconcileAchievementRewards(
-        playerId,
-        progress
-      );
+      const [rewards, loyalty] = await Promise.all([
+        reconcileAchievementRewards(playerId, progress),
+        applyLoyaltyActivity(playerId, {
+          activityId: `loyalty:${receiptId}`,
+          kind: 'backup'
+        })
+      ]);
 
       return {
         ok: true,
@@ -8044,7 +8055,11 @@ async function actionBackupAchievementReceipt(event, body) {
         shadow: CFG.backupRewardsShadow,
         rewardsEnabled: !CFG.backupRewardsShadow,
         rewards: rewards.grants,
-        wallet: publicShardWallet(rewards.wallet),
+        loyaltyRewards: loyalty.loyaltyRewards,
+        loyalty: loyalty.loyalty,
+        wallet: publicShardWallet(
+          loyalty.wallet || rewards.wallet
+        ),
         progress: publicAchievementProgress(progress)
       };
     }
@@ -8068,10 +8083,13 @@ async function actionBackupAchievementReceipt(event, body) {
       continue;
     }
 
-    const rewards = await reconcileAchievementRewards(
-      playerId,
-      next
-    );
+    const [rewards, loyalty] = await Promise.all([
+      reconcileAchievementRewards(playerId, next),
+      applyLoyaltyActivity(playerId, {
+        activityId: `loyalty:${receiptId}`,
+        kind: 'backup'
+      })
+    ]);
 
     return {
       ok: true,
@@ -8080,7 +8098,11 @@ async function actionBackupAchievementReceipt(event, body) {
       shadow: CFG.backupRewardsShadow,
       rewardsEnabled: !CFG.backupRewardsShadow,
       rewards: rewards.grants,
-      wallet: publicShardWallet(rewards.wallet),
+      loyaltyRewards: loyalty.loyaltyRewards,
+      loyalty: loyalty.loyalty,
+      wallet: publicShardWallet(
+        loyalty.wallet || rewards.wallet
+      ),
       progress: publicAchievementProgress(next)
     };
   }
@@ -8136,10 +8158,10 @@ async function actionAchievementRewardStatus(event, body) {
     playerId
   );
 
-  const rewards = await reconcileAchievementRewards(
-    playerId,
-    progress
-  );
+  const [rewards, loyalty] = await Promise.all([
+    reconcileAchievementRewards(playerId, progress),
+    getLoyaltyStatus(playerId)
+  ]);
 
   return {
     ok: true,
@@ -8171,7 +8193,11 @@ async function actionAchievementRewardStatus(event, body) {
     activeSessions:
       activeSessions.map(publicListenSession),
     grants: rewards.grants,
-    wallet: publicShardWallet(rewards.wallet),
+    loyaltyRewards: loyalty.loyaltyRewards,
+    loyalty: loyalty.loyalty,
+    wallet: publicShardWallet(
+      loyalty.wallet || rewards.wallet
+    ),
     favorites: {
       shadow: CFG.favoriteRewardsShadow,
       rewardsEnabled:
