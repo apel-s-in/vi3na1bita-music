@@ -1,7 +1,10 @@
 // Server-observed listening receipts.
 // Режим наград задаёт сервер; клиент никогда не управляет playback.
 
-import { requestSocialAction } from '../core/social-session.js';
+import {
+  getSocialServerBackoffState,
+  requestSocialAction
+} from '../core/social-session.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 
 const HEARTBEAT_MS = 20000;
@@ -114,6 +117,7 @@ class ListeningReceiptService {
     this.flushingOutbox = null;
     this.pendingFeatures = new Map();
     this.sleepTimer = null;
+    this.heartbeatPending = null;
   }
 
   initialize() {
@@ -251,7 +255,7 @@ class ListeningReceiptService {
       'visibilitychange',
       () => {
         if (document.hidden && this.session) {
-          this.enqueue(() => this.heartbeat());
+          this.scheduleHeartbeat();
         }
       }
     );
@@ -785,7 +789,24 @@ class ListeningReceiptService {
   getRewardCatalog() {
     return this.rewardCatalog.map(item => ({ ...item }));
   }
+  scheduleHeartbeat() {
+    if (
+      this.heartbeatPending ||
+      !this.session?.sessionId ||
+      !window.playerCore?.isPlaying?.() ||
+      getSocialServerBackoffState().active
+    ) {
+      return this.heartbeatPending;
+    }
 
+    this.heartbeatPending = this
+      .enqueue(() => this.heartbeat())
+      .finally(() => {
+        this.heartbeatPending = null;
+      });
+
+    return this.heartbeatPending;
+  }
   startTimer() {
     this.clearTimer();
 
@@ -795,7 +816,7 @@ class ListeningReceiptService {
         !window.playerCore?.isPlaying?.()
       ) return;
 
-      this.enqueue(() => this.heartbeat());
+      this.scheduleHeartbeat();
     }, HEARTBEAT_MS);
   }
 
