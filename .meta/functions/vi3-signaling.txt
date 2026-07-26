@@ -4244,7 +4244,8 @@ const LISTEN_RECEIPT_VERSION = 1;
 const LISTEN_VALID_MIN_SEC = 25;
 const LISTEN_SESSION_RETENTION_MS =
   90 * 24 * 60 * 60 * 1000;
-const LISTEN_PROGRESS_RECEIPT_LIMIT = 5000;
+const LISTEN_PROGRESS_RECEIPT_LIMIT = 500;
+const LISTEN_TIME_SESSION_LIMIT = 64;
 
 function listenActiveKey(playerId, deviceId = '') {
   const base =
@@ -4681,7 +4682,7 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
       .sort((left, right) =>
         num(left[1].updatedAt) - num(right[1].updatedAt)
       )
-      .slice(-LISTEN_PROGRESS_RECEIPT_LIMIT)
+      .slice(-LISTEN_TIME_SESSION_LIMIT)
   );
 
   const migratedTotalListenMs = Math.max(
@@ -5191,6 +5192,7 @@ async function applyVerifiedListenTimeProgress(
       return {
         duplicate: true,
         creditedMs: 0,
+        previousTotalListenMs: progress.totalListenMs,
         progress
       };
     }
@@ -5220,6 +5222,7 @@ async function applyVerifiedListenTimeProgress(
     return {
       duplicate: false,
       creditedMs: deltaMs,
+      previousTotalListenMs: progress.totalListenMs,
       progress: next
     };
   }
@@ -6075,10 +6078,6 @@ async function actionListenSessionHeartbeat(event, body) {
       continue;
     }
 
-    await persistListenSession(
-      observation.session
-    ).catch(() => null);
-
     const appliedTime =
       await applyVerifiedListenTimeProgress(
         playerId,
@@ -6086,19 +6085,28 @@ async function actionListenSessionHeartbeat(event, body) {
         observation.session.observedMs
       );
 
-    const rewards = await reconcileAchievementRewards(
-      playerId,
-      appliedTime.progress,
-      {
-        metrics: ['totalSec']
-      }
+    const previousTotalSec = Math.floor(
+      appliedTime.previousTotalListenMs / 1000
     );
-    const favoriteState = normalizeFavoriteState(
-      payload(await kvGet(
-        favoriteStateKey(playerId)
-      )),
-      playerId
+    const currentTotalSec =
+      appliedTime.progress.totalSec;
+    const crossedTimeReward = buildTimeRewards(
+      currentTotalSec
+    ).some(reward =>
+      reward.target > previousTotalSec &&
+      reward.target <= currentTotalSec
     );
+
+    const rewards = crossedTimeReward
+      ? await reconcileAchievementRewards(
+          playerId,
+          appliedTime.progress,
+          { metrics: ['totalSec'] }
+        )
+      : {
+          grants: [],
+          wallet: null
+        };
 
     return {
       ok: true,
@@ -6111,12 +6119,6 @@ async function actionListenSessionHeartbeat(event, body) {
       wallet: rewards.wallet
         ? publicShardWallet(rewards.wallet)
         : null,
-      rewardItems: publicAchievementRewardItems({
-        playerId,
-        progress: appliedTime.progress,
-        favoriteState,
-        wallet: rewards.wallet
-      }).filter(item => item.metric === 'totalSec'),
       progress: publicAchievementProgress(
         appliedTime.progress
       ),
