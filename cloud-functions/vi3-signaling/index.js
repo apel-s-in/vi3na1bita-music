@@ -12707,7 +12707,7 @@ function loyaltyNotificationForDue(due, state) {
   return {
     title: '⚡ Сохраните Преданность',
     body:
-      `Зайдите в приложение и проявите активность. Следующий ежедневный бонус: +${loyaltyDailyAmount(state.currentDays + 1)} ♦`,
+      `До окончания текущего дня Преданности остался один час. Проявите активность, чтобы сохранить серию и получить следующий бонус.`,
     tag: `loyalty-reminder-${state.cycleId}`,
     requireInteraction: false
   };
