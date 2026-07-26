@@ -152,7 +152,19 @@ class ListeningReceiptService {
 
     window.addEventListener(
       'player:ended',
-      () => finish('ended')
+      () => {
+        const duration = Math.max(
+          0,
+          Number(window.playerCore?.getDuration?.() || 0)
+        );
+        const snapshot = this.snapshot({
+          position: duration
+        });
+
+        this.enqueue(() =>
+          this.complete('ended', snapshot)
+        );
+      }
     );
 
     window.addEventListener(
