@@ -1906,6 +1906,7 @@ import { metaDB } from './meta-db.js';
 import { eventLogger } from './event-logger.js';
 import { AchievementDictionary } from './achievements-dict.js';
 import { normalizeAchievementUnlockMeta, normalizeAchievementUnlockMetaRow } from './achievement-state.js';
+import { getConfirmedListeningStats } from './confirmed-listening-stats.js';
 
 export class AchievementEngine {
   constructor() {
@@ -2179,7 +2180,14 @@ export class AchievementEngine {
   }
 
   _buildUIArray() {
-    const arr = [], agg = this.lastAgg || {}, lv = window.liveStatsTracker?.getSnapshot?.() || null;
+    const arr = [], agg = { ...(this.lastAgg || {}) }, lv = window.liveStatsTracker?.getSnapshot?.() || null;
+    const confirmed = getConfirmedListeningStats();
+    if (confirmed.available) {
+      agg.totalSec = confirmed.totalListenMs / 1000;
+      agg.validPlays = confirmed.validPlays;
+      agg.fullPlays = confirmed.fullPlays;
+      agg.uniqueTracks = confirmed.uniqueTracks;
+    }
     const add = (id, r, lvl, localUnlocked, unlockedAt, current, target) => {
       const reward = this._getServerReward(id);
       const rewardEligible = reward?.eligible === true;
