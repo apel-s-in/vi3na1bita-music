@@ -1270,14 +1270,28 @@ async function actionSocialSessionIssue(event, body) {
       error: safe(error?.message)
     }));
 
+  const sessionJti = rid('ss');
   const session = issueSocialSession({
     sub: identity.friendId,
     yidHash: hash(`ya:${identity.yandexId}`),
     iat: issuedAt,
     exp: expiresAt,
-    jti: rid('ss'),
+    jti: sessionJti,
     v: 2
   });
+  const loyalty = await applyLoyaltyActivity(
+    identity.friendId,
+    {
+      activityId: `loyalty:auth:${sessionJti}`,
+      kind: 'authorization',
+      deviceId: body.deviceId
+    }
+  ).catch(error => ({
+    loyalty: null,
+    loyaltyRewards: [],
+    wallet: null,
+    error: safe(error?.message)
+  }));
 
   return {
     ok: true,
@@ -1293,9 +1307,14 @@ async function actionSocialSessionIssue(event, body) {
       ),
       error: safe(registrationGrant.error)
     },
-    wallet: registrationGrant.wallet
-      ? publicShardWallet(registrationGrant.wallet)
-      : null,
+    loyalty: loyalty.loyalty || null,
+    loyaltyRewards: loyalty.loyaltyRewards || [],
+    loyaltyError: safe(loyalty.error),
+    wallet: loyalty.wallet
+      ? publicShardWallet(loyalty.wallet)
+      : registrationGrant.wallet
+        ? publicShardWallet(registrationGrant.wallet)
+        : null,
     profile: {
       friendId: identity.friendId,
       displayName: identity.displayName,
@@ -4262,9 +4281,7 @@ async function actionFavoriteStateReconcile(
 }
 const LOYALTY_VERSION = 2;
 const LOYALTY_WINDOW_MS = 24 * 60 * 60 * 1000;
-const LOYALTY_ADVANCE_MIN_MS = 18 * 60 * 60 * 1000;
-const LOYALTY_GRACE_MS = 5 * 60 * 1000;
-const LOYALTY_NORMAL_REMINDER_BEFORE_MS = 3 * 60 * 60 * 1000;
+const LOYALTY_REMINDER_BEFORE_MS = 60 * 60 * 1000;
 const LOYALTY_VACATION_ALLOWANCE_MS = 30 * 24 * 60 * 60 * 1000;
 const LOYALTY_VACATION_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
 const LOYALTY_VACATION_WARNING_MS = 24 * 60 * 60 * 1000;
@@ -4300,6 +4317,64 @@ function loyaltyDayOrdinal(dayKey) {
   return Number.isFinite(timestamp)
     ? Math.floor(timestamp / 86400000)
     : 0;
+}
+function loyaltyWindowIndex(cycleStartedAt, at = now()) {
+  const startedAt = Math.max(0, num(cycleStartedAt));
+
+  if (!startedAt || at < startedAt) return 0;
+
+  return Math.max(
+    0,
+    Math.floor((at - startedAt) / LOYALTY_WINDOW_MS)
+  );
+}
+
+function loyaltyWindowSnapshot(stateRaw, at = now()) {
+  const state = normalizeLoyaltyState(
+    stateRaw,
+    stateRaw?.playerId
+  );
+  const startedAt = state.cycleStartedAt;
+  const currentDays = state.currentDays;
+
+  if (!startedAt || currentDays <= 0) {
+    return {
+      currentWindowIndex: 0,
+      qualifiedWindowIndex: -1,
+      activityAccounted: false,
+      expired: false,
+      dayChangeAt: 0,
+      nextBoundaryAt: 0,
+      deadlineAt: 0
+    };
+  }
+
+  const effectiveAt = state.vacation.active
+    ? Math.min(at, state.vacation.startedAt || at)
+    : at;
+  const currentWindowIndex = loyaltyWindowIndex(
+    startedAt,
+    effectiveAt
+  );
+  const qualifiedWindowIndex = currentDays - 1;
+  const activityAccounted =
+    currentWindowIndex <= qualifiedWindowIndex;
+  const nextBoundaryAt =
+    startedAt +
+    (currentWindowIndex + 1) * LOYALTY_WINDOW_MS;
+  const deadlineAt =
+    startedAt +
+    (currentDays + 1) * LOYALTY_WINDOW_MS;
+
+  return {
+    currentWindowIndex,
+    qualifiedWindowIndex,
+    activityAccounted,
+    expired: currentWindowIndex > currentDays,
+    dayChangeAt: startedAt,
+    nextBoundaryAt,
+    deadlineAt
+  };
 }
 
 function loyaltyDailyAmount(day) {
@@ -4458,17 +4533,30 @@ function materializeLoyaltyVacation(stateRaw, at = now()) {
     changed: true,
     state: normalizeLoyaltyState({
       ...state,
+      cycleStartedAt:
+        state.cycleStartedAt > 0
+          ? state.cycleStartedAt + frozenMs
+          : 0,
+      firstQualifiedAt:
+        state.firstQualifiedAt > 0
+          ? state.firstQualifiedAt + frozenMs
+          : 0,
       lastAdvancedAt:
         state.lastAdvancedAt > 0
           ? state.lastAdvancedAt + frozenMs
           : 0,
-      deadlineAt: vacation.endsAt + LOYALTY_WINDOW_MS,
+      deadlineAt:
+        state.deadlineAt > 0
+          ? state.deadlineAt + frozenMs
+          : 0,
       vacation: {
         active: false,
         startedAt: 0,
         endsAt: 0,
         resumeDeadlineAt:
-          vacation.endsAt + LOYALTY_WINDOW_MS,
+          state.deadlineAt > 0
+            ? state.deadlineAt + frozenMs
+            : 0,
         usage
       },
       updatedAt: at
@@ -4538,8 +4626,8 @@ async function syncLoyaltyDueIndex(stateRaw) {
           kind: 'LOYALTY_REMINDER',
           targetAt: Math.max(
             now(),
-            state.deadlineAt -
-              LOYALTY_NORMAL_REMINDER_BEFORE_MS
+            loyaltyWindowSnapshot(state).deadlineAt -
+              LOYALTY_REMINDER_BEFORE_MS
           )
         }
       ];
@@ -4645,6 +4733,19 @@ function publicLoyaltyState(raw = {}) {
   const state = normalizeLoyaltyState(raw, raw?.playerId);
   const at = now();
   const nextMilestone = nextLoyaltyMilestone(state.currentDays);
+  const windowState = loyaltyWindowSnapshot(state, at);
+  const nextMilestoneAt = nextMilestone && state.cycleStartedAt
+    ? state.cycleStartedAt +
+      (nextMilestone.day - 1) * LOYALTY_WINDOW_MS
+    : 0;
+  const currentDayRewardAmount =
+    loyaltyDailyAmount(state.currentDays) +
+    Math.max(
+      0,
+      Math.floor(num(
+        LOYALTY_MILESTONES[state.currentDays]
+      ))
+    );
   const vacationUsedMs = loyaltyVacationUsedMs(
     state.vacation,
     at
@@ -4662,11 +4763,18 @@ function publicLoyaltyState(raw = {}) {
     cycleId: state.cycleId,
     currentDays: state.currentDays,
     longestDays: state.longestDays,
+    cycleStartedAt: state.cycleStartedAt,
     lastQualifiedAt: state.lastQualifiedAt,
     lastAdvancedAt: state.lastAdvancedAt,
-    deadlineAt: state.deadlineAt,
+    activityAccounted: windowState.activityAccounted,
+    currentWindowIndex: windowState.currentWindowIndex,
+    dayChangeAt: windowState.dayChangeAt,
+    nextBoundaryAt: windowState.nextBoundaryAt,
+    deadlineAt: windowState.deadlineAt,
+    currentDayRewardAmount,
     nextDailyAmount: loyaltyDailyAmount(state.currentDays + 1),
     nextMilestone,
+    nextMilestoneAt,
     daysToNextMilestone: nextMilestone
       ? Math.max(0, nextMilestone.day - state.currentDays)
       : 0,
@@ -4868,33 +4976,48 @@ async function applyLoyaltyActivity(playerId, {
       };
     }
 
-    const currentDayKey = loyaltyDayKey(at);
-    const expired =
-      state.currentDays > 0 &&
-      state.deadlineAt > 0 &&
-      at > state.deadlineAt + LOYALTY_GRACE_MS;
-    const canAdvance =
-      state.currentDays > 0 &&
-      !expired &&
-      currentDayKey !== state.lastDayKey &&
-      at - state.lastAdvancedAt >=
-        LOYALTY_ADVANCE_MIN_MS;
-
+    const windowState = loyaltyWindowSnapshot(state, at);
     let currentDays = state.currentDays;
     let cycleId = state.cycleId;
     let cycleStartedAt = state.cycleStartedAt;
     let firstQualifiedAt = state.firstQualifiedAt;
     let lastAdvancedAt = state.lastAdvancedAt;
     let advanced = false;
+    let reset = false;
 
-    if (!cycleId || currentDays <= 0 || expired) {
+    if (!cycleId || !cycleStartedAt || currentDays <= 0) {
       cycleId = rid('loyalty');
       cycleStartedAt = at;
       firstQualifiedAt = at;
       lastAdvancedAt = at;
       currentDays = 1;
       advanced = true;
-    } else if (canAdvance) {
+      reset = true;
+    } else if (windowState.expired) {
+      cycleId = rid('loyalty');
+      cycleStartedAt = at;
+      firstQualifiedAt = at;
+      lastAdvancedAt = at;
+      currentDays = 1;
+      advanced = true;
+      reset = true;
+    } else if (windowState.activityAccounted) {
+      const settled =
+        await settleLoyaltyPendingRewards(playerId);
+
+      return {
+        duplicate: false,
+        accounted: true,
+        paused: false,
+        advanced: false,
+        reset: false,
+        loyalty: publicLoyaltyState(settled.state),
+        loyaltyRewards: settled.grants,
+        wallet: settled.wallet
+      };
+    } else if (
+      windowState.currentWindowIndex === currentDays
+    ) {
       currentDays++;
       lastAdvancedAt = at;
       advanced = true;
@@ -4933,6 +5056,9 @@ async function applyLoyaltyActivity(playerId, {
         ]
       : state.pendingRewards;
 
+    const fixedDeadlineAt =
+      cycleStartedAt +
+      (currentDays + 1) * LOYALTY_WINDOW_MS;
     const next = normalizeLoyaltyState({
       ...state,
       cycleId,
@@ -4944,10 +5070,11 @@ async function applyLoyaltyActivity(playerId, {
       firstQualifiedAt,
       lastQualifiedAt: at,
       lastAdvancedAt,
-      lastDayKey: currentDayKey,
-      deadlineAt: at + LOYALTY_WINDOW_MS,
+      lastDayKey: loyaltyDayKey(at),
+      deadlineAt: fixedDeadlineAt,
       cycleStartedAt,
-      scheduleRevision: state.scheduleRevision + 1,
+      scheduleRevision:
+        state.scheduleRevision + (advanced ? 1 : 0),
       activityIds: [
         ...state.activityIds,
         cleanActivityId
@@ -4974,8 +5101,10 @@ async function applyLoyaltyActivity(playerId, {
 
     return {
       duplicate: false,
+      accounted: true,
       paused: false,
       advanced,
+      reset,
       loyalty: publicLoyaltyState(settled.state),
       loyaltyRewards: settled.grants,
       wallet: settled.wallet
@@ -5111,6 +5240,8 @@ async function actionLoyaltyVacationSet(event, body) {
     }
 
     let vacation;
+    let cycleStartedAt = state.cycleStartedAt;
+    let firstQualifiedAt = state.firstQualifiedAt;
     let lastAdvancedAt = state.lastAdvancedAt;
     let deadlineAt = state.deadlineAt;
 
@@ -5135,11 +5266,22 @@ async function actionLoyaltyVacationSet(event, body) {
         }
       ]);
 
+      if (cycleStartedAt > 0) {
+        cycleStartedAt += frozenMs;
+      }
+
+      if (firstQualifiedAt > 0) {
+        firstQualifiedAt += frozenMs;
+      }
+
       if (lastAdvancedAt > 0) {
         lastAdvancedAt += frozenMs;
       }
 
-      deadlineAt = at + LOYALTY_WINDOW_MS;
+      if (deadlineAt > 0) {
+        deadlineAt += frozenMs;
+      }
+
       vacation = {
         active: false,
         startedAt: 0,
@@ -5151,6 +5293,8 @@ async function actionLoyaltyVacationSet(event, body) {
 
     const next = normalizeLoyaltyState({
       ...state,
+      cycleStartedAt,
+      firstQualifiedAt,
       lastAdvancedAt,
       deadlineAt,
       vacation,
@@ -12648,12 +12792,16 @@ async function actionLoyaltyDueRun(event, body) {
 
     const relevant =
       state.reminderEnabled &&
+    const windowState = loyaltyWindowSnapshot(state);
+    const relevant =
+      state.reminderEnabled &&
       due.revision === state.scheduleRevision &&
       (
         (
           due.kind === 'LOYALTY_REMINDER' &&
           !state.vacation.active &&
-          state.deadlineAt > now()
+          !windowState.activityAccounted &&
+          windowState.deadlineAt > now()
         ) ||
         (
           due.kind === 'LOYALTY_VACATION_ENDING' &&
