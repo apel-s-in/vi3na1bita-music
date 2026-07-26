@@ -822,6 +822,7 @@ jobs:
             "vi3-signaling"
             "vi3na1bita-backup-proxy"
             "vi3-webpush"
+            "vi3-loyalty-reminder"
           )
 
           for function_name in "${functions[@]}"; do
