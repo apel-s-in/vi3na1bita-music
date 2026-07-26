@@ -113,6 +113,7 @@ class ListeningReceiptService {
     this.chain = Promise.resolve();
     this.initialized = false;
     this.lastProgress = null;
+    this.lastLoyalty = null;
     this.rewardCatalog = [];
     this.flushingOutbox = null;
     this.pendingFeatures = new Map();
@@ -370,11 +371,40 @@ class ListeningReceiptService {
       };
     });
   }
-  applyCompletionResult(result) {
+  ingestServerResult(result) {
     if (result?.progress) {
       this.lastProgress = result.progress;
+      this.applyServerProgressToCatalog(result.progress);
     }
 
+    if (result?.loyalty) {
+      this.lastLoyalty = { ...result.loyalty };
+    }
+
+    const fullCatalog = result?.catalog?.rewardItems;
+
+    if (Array.isArray(fullCatalog)) {
+      this.rewardCatalog = fullCatalog.map(item => ({ ...item }));
+    } else if (Array.isArray(result?.rewardItems)) {
+      const merged = new Map(
+        this.rewardCatalog.map(item => [
+          safe(item?.id),
+          item
+        ])
+      );
+
+      result.rewardItems.forEach(item => {
+        const id = safe(item?.id);
+        if (id) merged.set(id, { ...item });
+      });
+
+      this.rewardCatalog = [...merged.values()];
+    }
+
+    return result;
+  }
+  applyCompletionResult(result) {
+    this.ingestServerResult(result);
     applyShardRewardResult(result);
     this.emit('completed', result);
 
@@ -542,27 +572,7 @@ class ListeningReceiptService {
       })
     );
 
-    if (result?.progress) {
-      this.lastProgress = result.progress;
-      this.applyServerProgressToCatalog(result.progress);
-    }
-
-    if (Array.isArray(result?.rewardItems)) {
-      const merged = new Map(
-        this.rewardCatalog.map(item => [
-          safe(item?.id),
-          item
-        ])
-      );
-
-      result.rewardItems.forEach(item => {
-        const id = safe(item?.id);
-        if (id) merged.set(id, { ...item });
-      });
-
-      this.rewardCatalog = [...merged.values()];
-    }
-
+    this.ingestServerResult(result);
     applyShardRewardResult(result);
 
     if (result?.accepted) {
@@ -641,10 +651,7 @@ class ListeningReceiptService {
       `${item.feature}:${item.trackUid}`
     );
 
-    if (result?.progress) {
-      this.lastProgress = result.progress;
-    }
-
+    this.ingestServerResult(result);
     applyShardRewardResult(result);
 
     queueMicrotask(() => {
@@ -782,12 +789,7 @@ class ListeningReceiptService {
       {}
     );
 
-    this.lastProgress = result?.progress || null;
-    this.rewardCatalog = Array.isArray(
-      result?.catalog?.rewardItems
-    )
-      ? result.catalog.rewardItems.map(item => ({ ...item }))
-      : [];
+    this.ingestServerResult(result);
 
     if (
       result?.wallet ||
