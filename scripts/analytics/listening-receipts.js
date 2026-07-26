@@ -799,6 +799,7 @@ class ListeningReceiptService {
     );
 
     this.ingestServerResult(result);
+    applyShardRewardResult(result);
 
     if (
       result?.wallet ||
