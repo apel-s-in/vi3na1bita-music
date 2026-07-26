@@ -14283,6 +14283,24 @@ const validateListening = () => {
   contains(receipts, 'heartbeatPending');
   contains(receipts, 'scheduleHeartbeat');
   contains(receipts, 'getSocialServerBackoffState');
+  contains(receipts, 'deviceId: this.session.deviceId');
+  contains(server, 'const LISTEN_PROGRESS_RECEIPT_LIMIT = 500');
+  contains(server, 'const LISTEN_TIME_SESSION_LIMIT = 64');
+
+  assert(
+    /resolveListenSessionRow\(\s*playerId,\s*sessionId,\s*body\.deviceId\s*\)/
+      .test(read(server)),
+    'Listening heartbeat использует direct per-device lookup'
+  );
+
+  assert(
+    read(server).indexOf(
+      'if (oldReceipt.progressApplied === true)'
+    ) < read(server).indexOf(
+      'await applyVerifiedListenTimeProgress(\n    data.playerId'
+    ),
+    'Completion проверяет постоянный receipt до применения времени'
+  );
 
   assert(
     /listenedSeconds\s*>=\s*25/
