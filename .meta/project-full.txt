@@ -11970,6 +11970,21 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     );
     set('#prof-stat-ach', window.achievementEngine?.getCompletedCount?.() ?? 0);
   };
+  const loyaltyClock = setInterval(() => {
+    if (!isProfile() || !achievementsActive()) return;
+
+    ctx._profileAchievementsView?.updateLiveNodes?.();
+  }, 30000);
+
+  window.addEventListener('pagehide', () => {
+    clearInterval(loyaltyClock);
+  }, { once: true });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      ctx._profileAchievementsView?.updateLiveNodes?.();
+    }
+  });
 
   window.addEventListener('achievements:updated', renderAchievements);
   window.addEventListener('stats:updated', () => setTimeout(renderStats, 60));
