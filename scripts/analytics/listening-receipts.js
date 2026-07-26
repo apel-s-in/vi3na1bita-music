@@ -341,7 +341,34 @@ class ListeningReceiptService {
     this.emit('completion_staged', null);
     return payload;
   }
+  applyServerProgressToCatalog(progress) {
+    const totalSec = Number(progress?.totalSec);
 
+    if (!Number.isFinite(totalSec)) return;
+
+    this.rewardCatalog = this.rewardCatalog.map(item => {
+      if (item?.metric !== 'totalSec') return item;
+
+      const target = Math.max(0, Number(item.target || 0));
+      const offset = Math.max(
+        0,
+        Number(item.progressOffset || 0)
+      );
+      const cumulativeTarget = Math.max(
+        target,
+        Number(item.cumulativeTarget || target)
+      );
+
+      return {
+        ...item,
+        current: Math.max(
+          0,
+          Math.min(target, totalSec - offset)
+        ),
+        eligible: totalSec >= cumulativeTarget
+      };
+    });
+  }
   applyCompletionResult(result) {
     if (result?.progress) {
       this.lastProgress = result.progress;
@@ -514,6 +541,7 @@ class ListeningReceiptService {
 
     if (result?.progress) {
       this.lastProgress = result.progress;
+      this.applyServerProgressToCatalog(result.progress);
     }
 
     if (Array.isArray(result?.rewardItems)) {
