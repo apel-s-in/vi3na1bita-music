@@ -254,7 +254,7 @@ class ListeningReceiptService {
     document.addEventListener(
       'visibilitychange',
       () => {
-        if (document.hidden && this.session) {
+        if (this.session) {
           this.scheduleHeartbeat();
         }
       }
@@ -312,6 +312,7 @@ class ListeningReceiptService {
     const payload = this.snapshot({
       ...(finalSnapshot || {}),
       sessionId: current.sessionId,
+      deviceId: current.deviceId || currentDeviceId(),
       reason: safe(reason)
     });
     const ownerYandexId = safe(
@@ -514,6 +515,7 @@ class ListeningReceiptService {
 
     this.session = {
       sessionId: safe(result.session.sessionId),
+      deviceId: safe(result.session.deviceId || currentDeviceId()),
       trackUid,
       ownerYandexId: currentYandexId()
     };
@@ -535,7 +537,8 @@ class ListeningReceiptService {
     const result = await requestSocialAction(
       'listen_session_heartbeat',
       this.snapshot({
-        sessionId: this.session.sessionId
+        sessionId: this.session.sessionId,
+        deviceId: this.session.deviceId || currentDeviceId()
       })
     );
 
