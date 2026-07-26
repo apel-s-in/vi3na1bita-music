@@ -15580,18 +15580,15 @@ const validateLoyaltyReleaseD = () => {
     'activityAccounted',
     'nextBoundaryAt',
     'nextMilestoneAt',
-    'currentDayRewardAmount'
+    'currentDayRewardAmount',
     'materializeLoyaltyVacation',
     'syncLoyaltyDueIndex',
     'actionLoyaltyPreferenceSet',
     'actionLoyaltyVacationSet',
     'actionLoyaltyDueRun',
-    "loyalty_preference_set",
-    "loyalty_vacation_set",
-    "loyalty_due_run",
-    "loyalty_preference_set",
-    "loyalty_vacation_set",
-    "loyalty_due_run"
+    'loyalty_preference_set',
+    'loyalty_vacation_set',
+    'loyalty_due_run'
   ].forEach(marker => contains(server, marker));
 
   assert(
