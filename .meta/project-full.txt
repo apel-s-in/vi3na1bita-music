@@ -11757,7 +11757,6 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     set('#prof-stat-ach', window.achievementEngine?.getCompletedCount?.() ?? 0);
   };
 
-  window.addEventListener('analytics:liveTick', updateAchievements);
   window.addEventListener('achievements:updated', renderAchievements);
   window.addEventListener('stats:updated', () => setTimeout(renderStats, 60));
   window.addEventListener('stats:rebuilt', () => setTimeout(renderStats, 80));
