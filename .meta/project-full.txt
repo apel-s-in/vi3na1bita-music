@@ -15574,6 +15574,13 @@ const validateLoyaltyReleaseD = () => {
     'LOYALTY_VACATION_ALLOWANCE_MS',
     'LOYALTY_VACATION_WINDOW_MS',
     'LOYALTY_DUE_BUCKET_MS',
+    'LOYALTY_REMINDER_BEFORE_MS',
+    'loyaltyWindowIndex',
+    'loyaltyWindowSnapshot',
+    'activityAccounted',
+    'nextBoundaryAt',
+    'nextMilestoneAt',
+    'currentDayRewardAmount'
     'materializeLoyaltyVacation',
     'syncLoyaltyDueIndex',
     'actionLoyaltyPreferenceSet',
@@ -15593,6 +15600,37 @@ const validateLoyaltyReleaseD = () => {
     'Release D scheduler читает ordered loyalty due-index'
   );
 
+  assert(
+    /const\s+LOYALTY_REMINDER_BEFORE_MS\s*=\s*60\s*\*\s*60\s*\*\s*1000/
+      .test(read(server)),
+    'Преданность: напоминание за один час'
+  );
+
+  assertNoMatch(
+    [server],
+    /deadlineAt:\s*at\s*\+\s*LOYALTY_WINDOW_MS/g,
+    'Преданность не сдвигает дедлайн каждой активностью'
+  );
+
+  assertNoMatch(
+    [server],
+    /LOYALTY_ADVANCE_MIN_MS|LOYALTY_NORMAL_REMINDER_BEFORE_MS/g,
+    'Удалена старая плавающая loyalty-логика'
+  );
+
+  contains(
+    'scripts/app/profile/loyalty-card.js',
+    'data-ach="loyalty"'
+  );
+  contains(
+    'scripts/app/profile/loyalty-card.js',
+    'activityAccounted'
+  );
+  contains(
+    'scripts/app/profile/loyalty-card.js',
+    'за один час'
+  );
+  
   [
     'LOYALTY_REMINDER',
     'LOYALTY_VACATION_ENDING',
