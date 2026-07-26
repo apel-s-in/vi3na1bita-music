@@ -1068,27 +1068,32 @@ async function kvPrefix(prefix, limit = 100) {
 }
 async function kvPrefixOrdered(prefix, limit = 100) {
   const to = `${prefix}\uffff`;
+  const at = now();
   const res = await query(`
     DECLARE $from AS Utf8;
     DECLARE $to AS Utf8;
+    DECLARE $at AS Uint64;
     DECLARE $lim AS Uint64;
 
     SELECT pk, type, owner, updated_at, expires_at, payload_json
     FROM ${TABLE}
-    WHERE pk >= $from AND pk < $to
+    WHERE pk >= $from
+      AND pk < $to
+      AND (
+        expires_at IS NULL OR
+        expires_at = 0 OR
+        expires_at >= $at
+      )
     ORDER BY pk
     LIMIT $lim;
   `, {
     '$from': tvUtf8(prefix),
     '$to': tvUtf8(to),
+    '$at': tvUint64(at),
     '$lim': tvUint64(limit)
   });
 
-  const at = now();
-  return rowsOf(res).filter(row =>
-    !num(row.expires_at) ||
-    num(row.expires_at) >= at
-  );
+  return rowsOf(res);
 }
 
 async function enforceRateLimit({
