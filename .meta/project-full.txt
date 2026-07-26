@@ -14243,10 +14243,14 @@ const validateListening = () => {
   ].forEach(marker => contains(receipts, marker));
 
   assert(
-    /const\s+HEARTBEAT_MS\s*=\s*10000\s*;/
+    /const\s+HEARTBEAT_MS\s*=\s*20000\s*;/
       .test(read(receipts)),
-    'Listening heartbeat: 10 секунд'
+    'Listening heartbeat: 20 секунд'
   );
+
+  contains(receipts, 'heartbeatPending');
+  contains(receipts, 'scheduleHeartbeat');
+  contains(receipts, 'getSocialServerBackoffState');
 
   assert(
     /listenedSeconds\s*>=\s*25/
