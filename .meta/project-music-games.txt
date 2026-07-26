@@ -802,7 +802,8 @@ const MODE = String(argv.mode || 'both').toLowerCase();
 const CLOUD_FUNCTIONS = Object.freeze([
   'vi3-signaling',
   'vi3na1bita-backup-proxy',
-  'vi3-webpush'
+  'vi3-webpush',
+  'vi3-loyalty-reminder'
 ]);
 
 if (!fs.existsSync(META_DIR)) fs.mkdirSync(META_DIR, { recursive: true });
