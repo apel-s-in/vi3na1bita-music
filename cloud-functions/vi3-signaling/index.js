@@ -4014,6 +4014,21 @@ async function actionFavoriteStateMutate(event, body) {
     const at = now();
     const old = state.items[uid] || null;
 
+    if (old?.status === requestedStatus) {
+      const loyalty = await getLoyaltyStatus(playerId);
+
+      return {
+        ok: true,
+        duplicate: true,
+        unchanged: true,
+        shadow: CFG.favoriteRewardsShadow,
+        state: publicFavoriteState(state),
+        loyalty: loyalty.loyalty,
+        loyaltyRewards: loyalty.loyaltyRewards,
+        rewards: []
+      };
+    }
+
     const item = normalizeFavoriteItem(uid, {
       ...old,
       uid,
@@ -4068,11 +4083,14 @@ async function actionFavoriteStateMutate(event, body) {
       playerId
     );
 
-    const rewards =
-      await reconcileAchievementRewards(
-        playerId,
-        progress
-      );
+    const [rewards, loyalty] = await Promise.all([
+      reconcileAchievementRewards(playerId, progress),
+      applyLoyaltyActivity(playerId, {
+        activityId: `loyalty:favorite:${mutationId}`,
+        kind: 'favorite',
+        deviceId: body.deviceId
+      })
+    ]);
 
     return {
       ok: true,
@@ -4084,9 +4102,13 @@ async function actionFavoriteStateMutate(event, body) {
       item,
       state: publicFavoriteState(next),
       rewards: rewards.grants,
-      wallet: rewards.wallet
-        ? publicShardWallet(rewards.wallet)
-        : null
+      loyaltyRewards: loyalty.loyaltyRewards,
+      loyalty: loyalty.loyalty,
+      wallet: loyalty.wallet
+        ? publicShardWallet(loyalty.wallet)
+        : rewards.wallet
+          ? publicShardWallet(rewards.wallet)
+          : null
     };
   }
 
@@ -4207,7 +4229,441 @@ async function actionFavoriteStateReconcile(
 
   throw new Error('favorite_reconcile_conflict');
 }
+const LOYALTY_VERSION = 1;
+const LOYALTY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const LOYALTY_GRACE_MS = 5 * 60 * 1000;
+const LOYALTY_ACTIVITY_HISTORY_LIMIT = 500;
+const LOYALTY_PENDING_REWARD_LIMIT = 32;
 
+const LOYALTY_MILESTONES = Object.freeze({
+  1: 10,
+  2: 20,
+  3: 30,
+  7: 100,
+  14: 200,
+  30: 500,
+  100: 1000,
+  365: 10000
+});
+
+function loyaltyStateKey(playerId) {
+  return `loyaltyState:${sanitizeId(playerId, 96)}`;
+}
+
+function loyaltyDayKey(timestamp = now()) {
+  return new Date(num(timestamp) || now())
+    .toISOString()
+    .slice(0, 10);
+}
+
+function loyaltyDayOrdinal(dayKey) {
+  const timestamp = Date.parse(`${safe(dayKey)}T00:00:00Z`);
+  return Number.isFinite(timestamp)
+    ? Math.floor(timestamp / 86400000)
+    : 0;
+}
+
+function loyaltyDailyAmount(day) {
+  const value = Math.max(0, Math.floor(num(day)));
+
+  if (value >= 366) return 100;
+  if (value >= 101) return 50;
+  if (value >= 31) return 30;
+  if (value >= 15) return 20;
+  if (value >= 8) return 10;
+  if (value >= 4) return 5;
+  return 0;
+}
+
+function normalizeLoyaltyReward(raw = {}) {
+  const operationId = sanitizeId(raw.operationId, 180);
+  const kind = ['daily', 'milestone'].includes(safe(raw.kind))
+    ? safe(raw.kind)
+    : '';
+
+  if (!operationId || !kind) return null;
+
+  return {
+    operationId,
+    kind,
+    day: Math.max(1, Math.floor(num(raw.day, 1))),
+    amount: Math.max(0, Math.floor(num(raw.amount))),
+    createdAt: Math.max(0, num(raw.createdAt))
+  };
+}
+
+function normalizeLoyaltyState(raw = {}, playerId = '') {
+  const trustFlags = [...new Map(
+    (Array.isArray(raw.trustFlags) ? raw.trustFlags : [])
+      .map(flag => {
+        const code = sanitizeId(flag?.code, 80);
+        return code
+          ? [code, {
+              code,
+              severity: sanitizeId(flag?.severity || 'low', 20),
+              firstSeenAt: Math.max(0, num(flag?.firstSeenAt)),
+              lastSeenAt: Math.max(0, num(flag?.lastSeenAt)),
+              count: Math.max(1, Math.floor(num(flag?.count, 1)))
+            }]
+          : null;
+      })
+      .filter(Boolean)
+  ).values()].slice(-20);
+
+  const pendingRewards = (Array.isArray(raw.pendingRewards)
+    ? raw.pendingRewards
+    : [])
+    .map(normalizeLoyaltyReward)
+    .filter(Boolean)
+    .slice(-LOYALTY_PENDING_REWARD_LIMIT);
+
+  return {
+    version: LOYALTY_VERSION,
+    playerId: sanitizeId(playerId || raw.playerId, 96),
+    cycleId: sanitizeId(raw.cycleId, 120),
+    currentDays: Math.max(0, Math.floor(num(raw.currentDays))),
+    longestDays: Math.max(0, Math.floor(num(raw.longestDays))),
+    firstQualifiedAt: Math.max(0, num(raw.firstQualifiedAt)),
+    lastQualifiedAt: Math.max(0, num(raw.lastQualifiedAt)),
+    lastDayKey: /^\d{4}-\d{2}-\d{2}$/.test(safe(raw.lastDayKey))
+      ? safe(raw.lastDayKey)
+      : '',
+    deadlineAt: Math.max(0, num(raw.deadlineAt)),
+    cycleStartedAt: Math.max(0, num(raw.cycleStartedAt)),
+    activityIds: [...new Set(
+      (Array.isArray(raw.activityIds) ? raw.activityIds : [])
+        .map(value => sanitizeId(value, 180))
+        .filter(Boolean)
+    )].slice(-LOYALTY_ACTIVITY_HISTORY_LIMIT),
+    deviceIds: [...new Set(
+      (Array.isArray(raw.deviceIds) ? raw.deviceIds : [])
+        .map(value => sanitizeId(value, 120))
+        .filter(Boolean)
+    )].slice(-20),
+    pendingRewards,
+    trustFlags,
+    updatedAt: Math.max(0, num(raw.updatedAt))
+  };
+}
+
+function nextLoyaltyMilestone(day) {
+  const target = Object.keys(LOYALTY_MILESTONES)
+    .map(Number)
+    .sort((left, right) => left - right)
+    .find(value => value > day);
+
+  return target
+    ? {
+        day: target,
+        amount: LOYALTY_MILESTONES[target]
+      }
+    : null;
+}
+
+function publicLoyaltyState(raw = {}) {
+  const state = normalizeLoyaltyState(raw, raw?.playerId);
+  const nextMilestone = nextLoyaltyMilestone(state.currentDays);
+
+  return {
+    version: state.version,
+    available: true,
+    source: 'server_confirmed',
+    cycleId: state.cycleId,
+    currentDays: state.currentDays,
+    longestDays: state.longestDays,
+    lastQualifiedAt: state.lastQualifiedAt,
+    deadlineAt: state.deadlineAt,
+    nextDailyAmount: loyaltyDailyAmount(state.currentDays + 1),
+    nextMilestone,
+    trust: {
+      status: state.trustFlags.length ? 'review' : 'ok',
+      flags: state.trustFlags
+    },
+    updatedAt: state.updatedAt
+  };
+}
+
+function loyaltyRewardsForDay(playerId, cycleId, day, at) {
+  const rewards = [];
+  const dailyAmount = loyaltyDailyAmount(day);
+  const milestoneAmount = Math.max(
+    0,
+    Math.floor(num(LOYALTY_MILESTONES[day]))
+  );
+
+  if (dailyAmount > 0) {
+    rewards.push({
+      operationId: [
+        'grant',
+        'loyalty',
+        'daily',
+        cycleId,
+        day,
+        sanitizeId(playerId, 96)
+      ].join(':'),
+      kind: 'daily',
+      day,
+      amount: dailyAmount,
+      createdAt: at
+    });
+  }
+
+  if (milestoneAmount > 0) {
+    rewards.push({
+      operationId: [
+        'grant',
+        'loyalty',
+        'milestone',
+        cycleId,
+        day,
+        sanitizeId(playerId, 96)
+      ].join(':'),
+      kind: 'milestone',
+      day,
+      amount: milestoneAmount,
+      createdAt: at
+    });
+  }
+
+  return rewards;
+}
+async function getOrCreateLoyaltyState(playerId) {
+  const key = loyaltyStateKey(playerId);
+  let row = await kvGet(key);
+
+  if (!row) {
+    try {
+      await kvInsert({
+        pk: key,
+        type: 'loyaltyState',
+        owner: playerId,
+        data: normalizeLoyaltyState({}, playerId)
+      });
+    } catch {}
+
+    row = await kvGet(key);
+  }
+
+  if (!row) throw new Error('loyalty_state_create_failed');
+
+  return {
+    row,
+    state: normalizeLoyaltyState(payload(row), playerId)
+  };
+}
+
+async function settleLoyaltyPendingRewards(playerId) {
+  const grants = [];
+  let latestWallet = null;
+
+  for (let safety = 0; safety < LOYALTY_PENDING_REWARD_LIMIT; safety++) {
+    const { row, state } =
+      await getOrCreateLoyaltyState(playerId);
+    const reward = state.pendingRewards[0];
+
+    if (!reward) {
+      return {
+        state,
+        grants,
+        wallet: latestWallet
+      };
+    }
+
+    const grant = await applyLoyaltyShardGrant({
+      playerId,
+      reward
+    });
+
+    latestWallet = grant.wallet;
+
+    if (!grant.duplicate) {
+      grants.push({
+        operationId: reward.operationId,
+        kind: reward.kind,
+        day: reward.day,
+        amount: reward.amount
+      });
+    }
+
+    const next = normalizeLoyaltyState({
+      ...state,
+      pendingRewards: state.pendingRewards.filter(
+        item => item.operationId !== reward.operationId
+      ),
+      updatedAt: now()
+    }, playerId);
+
+    if (!await kvCompareAndPut({
+      row,
+      type: 'loyaltyState',
+      owner: playerId,
+      data: next
+    })) {
+      continue;
+    }
+  }
+
+  throw new Error('loyalty_reward_settlement_conflict');
+}
+
+async function applyLoyaltyActivity(playerId, {
+  activityId,
+  kind,
+  deviceId = ''
+} = {}) {
+  const cleanActivityId = sanitizeId(activityId, 180);
+  const cleanKind = sanitizeId(kind, 40);
+  const cleanDeviceId = sanitizeId(deviceId, 120);
+
+  if (!cleanActivityId || !cleanKind) {
+    throw new Error('loyalty_activity_invalid');
+  }
+
+  const key = loyaltyStateKey(playerId);
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { row, state } =
+      await getOrCreateLoyaltyState(playerId);
+
+    if (state.activityIds.includes(cleanActivityId)) {
+      const settled = await settleLoyaltyPendingRewards(playerId);
+
+      return {
+        duplicate: true,
+        advanced: false,
+        loyalty: publicLoyaltyState(settled.state),
+        loyaltyRewards: settled.grants,
+        wallet: settled.wallet
+      };
+    }
+
+    const at = now();
+    const dayKey = loyaltyDayKey(at);
+    const previousDay = loyaltyDayOrdinal(state.lastDayKey);
+    const currentDay = loyaltyDayOrdinal(dayKey);
+    const dayDifference = previousDay > 0
+      ? currentDay - previousDay
+      : 0;
+    const sameDay = state.lastDayKey === dayKey;
+    const continues =
+      !sameDay &&
+      state.currentDays > 0 &&
+      dayDifference === 1 &&
+      at <= state.deadlineAt + LOYALTY_GRACE_MS;
+
+    let currentDays = state.currentDays;
+    let cycleId = state.cycleId;
+    let cycleStartedAt = state.cycleStartedAt;
+    let firstQualifiedAt = state.firstQualifiedAt;
+    let advanced = false;
+
+    if (!sameDay) {
+      advanced = true;
+
+      if (continues) {
+        currentDays += 1;
+      } else {
+        currentDays = 1;
+        cycleId = rid('loyalty');
+        cycleStartedAt = at;
+        firstQualifiedAt = at;
+      }
+    }
+
+    if (!cycleId) {
+      cycleId = rid('loyalty');
+      cycleStartedAt = at;
+      firstQualifiedAt = at;
+      currentDays = Math.max(1, currentDays);
+      advanced = true;
+    }
+
+    const deviceIds = [...new Set([
+      ...state.deviceIds,
+      cleanDeviceId
+    ].filter(Boolean))].slice(-20);
+    const trustFlags = [...state.trustFlags];
+
+    if (
+      deviceIds.length > 10 &&
+      !trustFlags.some(flag => flag.code === 'loyalty_device_churn')
+    ) {
+      trustFlags.push({
+        code: 'loyalty_device_churn',
+        severity: 'low',
+        firstSeenAt: at,
+        lastSeenAt: at,
+        count: 1
+      });
+    }
+
+    const pendingRewards = advanced
+      ? [
+          ...state.pendingRewards,
+          ...loyaltyRewardsForDay(
+            playerId,
+            cycleId,
+            currentDays,
+            at
+          )
+        ]
+      : state.pendingRewards;
+
+    const next = normalizeLoyaltyState({
+      ...state,
+      cycleId,
+      currentDays,
+      longestDays: Math.max(
+        state.longestDays,
+        currentDays
+      ),
+      firstQualifiedAt,
+      lastQualifiedAt: at,
+      lastDayKey: dayKey,
+      deadlineAt: at + LOYALTY_WINDOW_MS,
+      cycleStartedAt,
+      activityIds: [
+        ...state.activityIds,
+        cleanActivityId
+      ],
+      deviceIds,
+      pendingRewards,
+      trustFlags,
+      updatedAt: at
+    }, playerId);
+
+    if (!await kvCompareAndPut({
+      row,
+      type: 'loyaltyState',
+      owner: playerId,
+      data: next
+    })) {
+      continue;
+    }
+
+    const settled = await settleLoyaltyPendingRewards(playerId);
+
+    return {
+      duplicate: false,
+      advanced,
+      loyalty: publicLoyaltyState(settled.state),
+      loyaltyRewards: settled.grants,
+      wallet: settled.wallet
+    };
+  }
+
+  throw new Error('loyalty_state_conflict');
+}
+
+async function getLoyaltyStatus(playerId) {
+  const settled = await settleLoyaltyPendingRewards(playerId);
+
+  return {
+    loyalty: publicLoyaltyState(settled.state),
+    loyaltyRewards: settled.grants,
+    wallet: settled.wallet
+  };
+}
 const LISTEN_RECEIPT_VERSION = 1;
 const LISTEN_VALID_MIN_SEC = 25;
 const LISTEN_SESSION_RETENTION_MS =
@@ -6510,6 +6966,18 @@ async function actionListenSessionHeartbeat(event, body) {
           wallet: null
         };
 
+    const loyalty =
+      observation.accepted === true &&
+      appliedTime.creditedMs > 0 &&
+      observation.session.acceptedHeartbeats === 1
+        ? await applyLoyaltyActivity(playerId, {
+            activityId:
+              `loyalty:listen:${observation.session.sessionId}`,
+            kind: 'listening',
+            deviceId: observation.session.deviceId
+          })
+        : null;
+
     return {
       ok: true,
       throttled: false,
@@ -6518,9 +6986,13 @@ async function actionListenSessionHeartbeat(event, body) {
       shadow: CFG.listeningReceiptsShadow,
       rewardsEnabled: !CFG.listeningReceiptsShadow,
       rewards: rewards.grants,
-      wallet: rewards.wallet
-        ? publicShardWallet(rewards.wallet)
-        : null,
+      loyaltyRewards: loyalty?.loyaltyRewards || [],
+      loyalty: loyalty?.loyalty || null,
+      wallet: loyalty?.wallet
+        ? publicShardWallet(loyalty.wallet)
+        : rewards.wallet
+          ? publicShardWallet(rewards.wallet)
+          : null,
       progress: publicAchievementProgress(
         appliedTime.progress
       ),
@@ -6561,6 +7033,13 @@ async function actionListenSessionComplete(event, body) {
 
     if (current.status === 'completed') {
       const finalized = await finalizeListenSession(current);
+      const loyalty = finalized.receipt.observedSec > 0
+        ? await applyLoyaltyActivity(playerId, {
+            activityId: `loyalty:listen:${sessionId}`,
+            kind: 'listening',
+            deviceId: current.deviceId
+          })
+        : null;
 
       return {
         ok: true,
@@ -6570,9 +7049,13 @@ async function actionListenSessionComplete(event, body) {
         rewardChannels: publicRewardChannels(),
         receipt: finalized.receipt,
         rewards: finalized.rewards?.grants || [],
-        wallet: finalized.rewards?.wallet
-          ? publicShardWallet(finalized.rewards.wallet)
-          : null,
+        loyaltyRewards: loyalty?.loyaltyRewards || [],
+        loyalty: loyalty?.loyalty || null,
+        wallet: loyalty?.wallet
+          ? publicShardWallet(loyalty.wallet)
+          : finalized.rewards?.wallet
+            ? publicShardWallet(finalized.rewards.wallet)
+            : null,
         progress: publicAchievementProgress(
           finalized.progress
         )
@@ -6631,6 +7114,13 @@ async function actionListenSessionComplete(event, body) {
     }
 
     const finalized = await finalizeListenSession(completed);
+    const loyalty = finalized.receipt.observedSec > 0
+      ? await applyLoyaltyActivity(playerId, {
+          activityId: `loyalty:listen:${sessionId}`,
+          kind: 'listening',
+          deviceId: completed.deviceId
+        })
+      : null;
 
     return {
       ok: true,
@@ -6642,9 +7132,13 @@ async function actionListenSessionComplete(event, body) {
       rewardChannels: publicRewardChannels(),
       receipt: finalized.receipt,
       rewards: finalized.rewards?.grants || [],
-      wallet: finalized.rewards?.wallet
-        ? publicShardWallet(finalized.rewards.wallet)
-        : null,
+      loyaltyRewards: loyalty?.loyaltyRewards || [],
+      loyalty: loyalty?.loyalty || null,
+      wallet: loyalty?.wallet
+        ? publicShardWallet(loyalty.wallet)
+        : finalized.rewards?.wallet
+          ? publicShardWallet(finalized.rewards.wallet)
+          : null,
       progress: publicAchievementProgress(
         finalized.progress
       )
@@ -7962,6 +8456,69 @@ async function ensureRegistrationShardGrant(playerId) {
   }
 
   throw new Error('wallet_registration_grant_conflict');
+}
+async function applyLoyaltyShardGrant({
+  playerId,
+  reward
+}) {
+  const item = normalizeLoyaltyReward(reward);
+
+  if (!item || item.amount <= 0) {
+    throw new Error('loyalty_reward_invalid');
+  }
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { row, wallet } =
+      await getOrCreateShardWallet(playerId);
+
+    if (wallet.grantIds.includes(item.operationId)) {
+      return {
+        ok: true,
+        duplicate: true,
+        ...item,
+        wallet
+      };
+    }
+
+    const at = now();
+    const next = {
+      ...wallet,
+      balance: wallet.balance + item.amount,
+      earned: wallet.earned + item.amount,
+      grantIds: [...new Set([
+        ...wallet.grantIds,
+        item.operationId
+      ])],
+      operations: trimWalletOperations({
+        ...wallet.operations,
+        [item.operationId]: {
+          kind: 'loyalty_grant',
+          matchId: `${item.kind}:${item.day}`,
+          amount: item.amount,
+          at
+        }
+      }),
+      updatedAt: at
+    };
+
+    if (!await kvCompareAndPut({
+      row,
+      type: 'wallet',
+      owner: playerId,
+      data: next
+    })) {
+      continue;
+    }
+
+    return {
+      ok: true,
+      duplicate: false,
+      ...item,
+      wallet: next
+    };
+  }
+
+  throw new Error('loyalty_reward_grant_conflict');
 }
 function achievementRewardOperationId(
   playerId,
