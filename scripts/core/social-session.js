@@ -131,7 +131,11 @@ export const getSocialSession = async ({ force = false } = {}) => {
       body: JSON.stringify({
         action: 'social_session_issue',
         displayName: profile.displayName,
-        avatarUrl: profile.avatar
+        avatarUrl: profile.avatar,
+        deviceId:
+          localStorage.getItem('deviceStableId') ||
+          localStorage.getItem('deviceHash') ||
+          'web'
       })
     });
 
@@ -162,6 +166,22 @@ export const getSocialSession = async ({ force = false } = {}) => {
 
     cachedSession = result;
     cachedYandexId = yandexId;
+
+    window.ListeningReceipts
+      ?.ingestServerResult?.(result);
+
+    if (
+      result?.wallet ||
+      (Array.isArray(result?.loyaltyRewards) &&
+        result.loyaltyRewards.length)
+    ) {
+      import('../app/shards/reward-notifier.js')
+        .then(module =>
+          module.applyShardRewardResult?.(result)
+        )
+        .catch(() => null);
+    }
+
     return result;
   })();
 
