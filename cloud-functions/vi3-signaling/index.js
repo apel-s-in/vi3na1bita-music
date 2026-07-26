@@ -6082,7 +6082,10 @@ async function actionListenSessionHeartbeat(event, body) {
 
     const rewards = await reconcileAchievementRewards(
       playerId,
-      appliedTime.progress
+      appliedTime.progress,
+      {
+        metrics: ['totalSec']
+      }
     );
     const favoriteState = normalizeFavoriteState(
       payload(await kvGet(
@@ -7851,12 +7854,18 @@ function publicAchievementRewardItems({
 
 async function reconcileAchievementRewards(
   playerId,
-  progressRaw
+  progressRaw,
+  {
+    metrics = null
+  } = {}
 ) {
   const progress = normalizeAchievementProgress(
     progressRaw,
     playerId
   );
+  const metricFilter = Array.isArray(metrics)
+    ? new Set(metrics.map(value => safe(value)).filter(Boolean))
+    : null;
   const grants = [];
   let latestWallet = null;
 
@@ -7868,6 +7877,13 @@ async function reconcileAchievementRewards(
   );
 
   for (const reward of achievementRewardCatalog(progress)) {
+    if (
+      metricFilter &&
+      !metricFilter.has(reward.metric)
+    ) {
+      continue;
+    }
+
     if (!achievementRewardEnabled(reward)) {
       continue;
     }
