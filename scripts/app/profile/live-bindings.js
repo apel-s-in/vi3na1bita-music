@@ -1,4 +1,4 @@
-import { getCanonicalFullListenCount, readStatsViewModel } from '../../analytics/stats-state.js';
+import { resolveListeningStatsViewModel } from '../../analytics/confirmed-listening-stats.js';
 import { renderProfileStats } from './stats-view.js';
 
 export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaDB } = {}) => {
@@ -24,7 +24,8 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
   const renderStats = async () => {
     if (!isProfile() || !statsActive() || !metaDB) return;
     const container = getContainer();
-    const vm = await readStatsViewModel(metaDB);
+    const rows = await metaDB.getAllStats().catch(() => []);
+    const vm = resolveListeningStatsViewModel(rows);
     const summary = vm.summary;
     const streak = (await metaDB.getGlobal('global_streak').catch(() => null))?.value?.current || 0;
     const set = (selector, value) => {
@@ -33,10 +34,7 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     };
 
     renderProfileStats({ container, vm });
-    set(
-      '#prof-stat-tracks',
-      getCanonicalFullListenCount(summary.totalFull)
-    );
+    set('#prof-stat-tracks', summary.totalFull);
     set('#prof-stat-time', window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(summary.totalSec) : `${Math.floor(summary.totalSec / 60)}м`);
     set('#prof-stat-streak', streak);
     set('#prof-stat-ach', window.achievementEngine?.getCompletedCount?.() ?? 0);
@@ -46,6 +44,10 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
   window.addEventListener('achievements:updated', renderAchievements);
   window.addEventListener('stats:updated', () => setTimeout(renderStats, 60));
   window.addEventListener('stats:rebuilt', () => setTimeout(renderStats, 80));
+  window.addEventListener(
+    'listening-receipts:updated',
+    () => setTimeout(renderStats, 40)
+  );
   window.addEventListener('backup:restore:applied', () => {
     setTimeout(renderAchievements, 120);
     setTimeout(renderStats, 140);
