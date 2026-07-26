@@ -15048,11 +15048,19 @@ const readJson = async response => {
   }
 };
 
-export const invalidateSocialSession = () => {
+export const invalidateSocialSession = ({
+  resetBackoff = false
+} = {}) => {
   cachedSession = null;
   cachedYandexId = '';
   pendingSession = null;
   pendingYandexId = '';
+
+  if (resetBackoff) {
+    serverBackoffUntil = 0;
+    serverBackoffMs = 5000;
+    actionRequests.clear();
+  }
 };
 
 export const getSocialSession = async ({ force = false } = {}) => {
@@ -15269,7 +15277,9 @@ export const requestSocialAction = (
 };
 window.addEventListener(
   'yandex:auth:changed',
-  () => invalidateSocialSession()
+  () => invalidateSocialSession({
+    resetBackoff: true
+  })
 );
 
 export default {
