@@ -22795,13 +22795,25 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 .ach-details-desc{color:#9aa8c4;font-size:12px;line-height:1.35}
 .loyalty-card{border-color:rgba(255,193,7,.28);background:linear-gradient(180deg,rgba(255,193,7,.08),rgba(255,255,255,.025))}
 .loyalty-card.is-paused{border-color:rgba(77,170,255,.3);background:linear-gradient(180deg,rgba(77,170,255,.09),rgba(255,255,255,.025))}
+.loyalty-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.loyalty-summary>div{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}
+.loyalty-summary span{color:#8ea8cc;font-size:10px}
+.loyalty-summary b{color:#ffd54f;font-size:13px;font-variant-numeric:tabular-nums}
+.loyalty-activity{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;font-size:11px;font-weight:800}
+.loyalty-activity b{width:20px;height:20px;display:grid;place-items:center;border-radius:50%;flex:0 0 auto}
+.loyalty-activity.is-accounted{color:#b8f5c8;background:rgba(76,175,80,.09);border:1px solid rgba(76,175,80,.22)}
+.loyalty-activity.is-accounted b{background:rgba(76,175,80,.2);color:#81c784}
+.loyalty-activity.is-required{color:#ffd39b;background:rgba(255,152,0,.09);border:1px solid rgba(255,152,0,.24)}
+.loyalty-activity.is-required b{background:rgba(255,152,0,.2);color:#ffb74d}
 .loyalty-next{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:11px;background:rgba(255,193,7,.07);border:1px solid rgba(255,193,7,.15)}
-.loyalty-next b{color:#ffd54f;font-size:12px}
-.loyalty-next span{color:#9db7dd;font-size:11px;line-height:1.35}
-.loyalty-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
-.loyalty-grid>div{display:flex;flex-direction:column;gap:2px;padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}
-.loyalty-grid span{color:#8ea8cc;font-size:10px}
-.loyalty-grid b{color:#ffd54f;font-size:11px}
+.loyalty-next b{color:#ffd54f;font-size:11px;text-transform:uppercase;letter-spacing:.45px}
+.loyalty-next span{color:#eaf2ff;font-size:12px;font-weight:800}
+.loyalty-next strong{color:#9db7dd;font-size:11px;font-variant-numeric:tabular-nums}
+.loyalty-reward-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:12px 0}
+.loyalty-reward-cell{display:flex;min-width:0;flex-direction:column;gap:2px;padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}
+.loyalty-reward-cell span{color:#8ea8cc;font-size:10px}
+.loyalty-reward-cell b{color:#ffd54f;font-size:12px}
+.loyalty-reward-cell small{color:#b69b51;font-size:9px;line-height:1.2}
 .loyalty-control{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid rgba(255,255,255,.07);cursor:pointer}
 .loyalty-control>span{display:flex;min-width:0;flex-direction:column;gap:3px}
 .loyalty-control b{color:#eaf2ff;font-size:12px}
