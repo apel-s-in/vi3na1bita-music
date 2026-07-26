@@ -129,7 +129,9 @@ const daypartsFromHours = byHour => [
 ];
 
 const buildServerViewModel = (server, localRows) => {
-  const local = buildStatsViewModel(localRows);
+  const localGlobal =
+    (Array.isArray(localRows) ? localRows : [])
+      .find(row => row?.uid === 'global') || {};
   const tracks = server.tracks.map(row => ({
     uid: row.uid,
     globalListenSeconds: row.listenMs / 1000,
@@ -167,8 +169,8 @@ const buildServerViewModel = (server, localRows) => {
       uniqueTracks: server.uniqueTracks,
       statsCount: tracks.length
     },
-    global: local.global,
-    globalFeatures: local.globalFeatures,
+    global: localGlobal,
+    globalFeatures: localGlobal.featuresUsed || {},
     byHour,
     byWeekday,
     dayparts,
