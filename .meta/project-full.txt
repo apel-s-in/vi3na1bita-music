@@ -125,7 +125,7 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
@@ -6447,6 +6447,83 @@ class LiveStatsTracker {
   }
 }
 export const liveStatsTracker = new LiveStatsTracker(); window.liveStatsTracker = liveStatsTracker;
+
+//=================================================
+// FILE: /scripts/analytics/loyalty-state.js
+// Read-only серверное состояние «Преданности».
+// Не управляет playback и не входит в пользовательский backup.
+
+const n = value =>
+  Number.isFinite(Number(value))
+    ? Math.max(0, Number(value))
+    : 0;
+
+const authorized = () =>
+  window.YandexAuth?.getSessionStatus?.() === 'active' &&
+  window.YandexAuth?.isTokenAlive?.();
+
+export const normalizeLoyaltyState = raw => {
+  const source =
+    raw &&
+    typeof raw === 'object' &&
+    !Array.isArray(raw)
+      ? raw
+      : {};
+
+  return {
+    version: Math.max(1, Math.floor(n(source.version) || 1)),
+    source: 'server_confirmed',
+    available: source.available === true,
+    pending: authorized() && source.available !== true,
+    cycleId: String(source.cycleId || ''),
+    currentDays: Math.floor(n(source.currentDays)),
+    longestDays: Math.floor(n(source.longestDays)),
+    lastQualifiedAt: Math.floor(n(source.lastQualifiedAt)),
+    deadlineAt: Math.floor(n(source.deadlineAt)),
+    nextDailyAmount: Math.floor(n(source.nextDailyAmount)),
+    nextMilestone: source.nextMilestone
+      ? {
+          day: Math.floor(n(source.nextMilestone.day)),
+          amount: Math.floor(n(source.nextMilestone.amount))
+        }
+      : null,
+    trust: {
+      status: String(source.trust?.status || 'ok'),
+      flags: Array.isArray(source.trust?.flags)
+        ? source.trust.flags.map(flag => ({ ...flag }))
+        : []
+    },
+    updatedAt: Math.floor(n(source.updatedAt))
+  };
+};
+
+export const getLoyaltyState = () =>
+  normalizeLoyaltyState(
+    window.ListeningReceipts?.lastLoyalty
+  );
+
+export const formatLoyaltyDeadline = loyalty => {
+  const state = normalizeLoyaltyState(loyalty);
+
+  if (!state.available || !state.deadlineAt) return '—';
+
+  const remainingMs = Math.max(
+    0,
+    state.deadlineAt - Date.now()
+  );
+  const hours = Math.floor(remainingMs / 3600000);
+  const minutes = Math.floor(
+    (remainingMs % 3600000) / 60000
+  );
+
+  return `${hours}ч ${String(minutes).padStart(2, '0')}м`;
+};
+
+export default {
+  normalizeLoyaltyState,
+  getLoyaltyState,
+  formatLoyaltyDeadline
+};
 
 //=================================================
 // FILE: /scripts/analytics/meta-db.js
