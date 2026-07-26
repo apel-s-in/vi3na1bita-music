@@ -1,5 +1,5 @@
 import { fmtAchTimerText } from '../../ui/progress-formatters.js';
-import { renderLoyaltyCard } from './loyalty-card.js';
+import { renderLoyaltyCard, updateLoyaltyCardTimers } from './loyalty-card.js';
 
 export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) => {
   const expanded = new Set();
@@ -40,7 +40,9 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
 
       const loyaltyHtml =
         ['available', 'all'].includes(f)
-          ? renderLoyaltyCard()
+          ? renderLoyaltyCard({
+              expanded: expanded.has('loyalty')
+            })
           : '';
 
       c.innerHTML = loyaltyHtml + (items.length
@@ -55,6 +57,8 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
     },
     updateLiveNodes: () => {
       if (!c || !eng()?.achievements) return;
+
+      updateLoyaltyCardTimers(c);
 
       flt(ctx._achCurrentFilter || 'all').forEach(a => {
         const remaining = c.querySelector(
