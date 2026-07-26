@@ -33,6 +33,43 @@ export const rebuildStatsFromEvents = async (db = defaultMetaDB, events = [], { 
   }
   window.dispatchEvent(new CustomEvent('stats:rebuilt', { detail: { reason, events: warm.length } })); return true;
 };
+export const migrateLocalTemporalV2 = async (
+  db = defaultMetaDB
+) => {
+  const key = 'local_temporal_schema_v2';
+  const current = (
+    await db.getGlobal(key).catch(() => null)
+  )?.value;
+
+  if (Number(current?.version || 0) >= 2) {
+    return {
+      migrated: false,
+      version: 2
+    };
+  }
+
+  const events = await readLocalEventLog(db, {
+    forceFlush: true
+  });
+
+  await rebuildStatsFromEvents(db, events, {
+    reason: 'local_temporal_v2'
+  });
+
+  await db.setGlobal(key, {
+    version: 2,
+    migratedAt: Date.now(),
+    events: events.length,
+    legacyMode:
+      'linear_interval_for_events_without_segments'
+  });
+
+  return {
+    migrated: true,
+    version: 2,
+    events: events.length
+  };
+};
 export const rebuildStatsFromLocalEventLog = async (db = defaultMetaDB, opts = {}) => rebuildStatsFromEvents(db, await readLocalEventLog(db, opts), opts);
 export const getCanonicalFullListenCount = localTotal => {
   const serverTotal = Number(
@@ -57,4 +94,4 @@ export const buildStatsViewModel = (rows = []) => {
 };
 export const readStatsSummary = async (db = defaultMetaDB) => getStatsSummary(await db.getAllStats().catch(() => []));
 export const readStatsViewModel = async (db = defaultMetaDB) => buildStatsViewModel(await db.getAllStats().catch(() => []));
-export default { readLocalEventLog, mergeEventLogs, rebuildStatsFromEvents, rebuildStatsFromLocalEventLog, getStatsSummary, buildStatsViewModel, readStatsSummary, readStatsViewModel };
+export default { readLocalEventLog, mergeEventLogs, rebuildStatsFromEvents, rebuildStatsFromLocalEventLog, migrateLocalTemporalV2, getStatsSummary, buildStatsViewModel, readStatsSummary, readStatsViewModel };
