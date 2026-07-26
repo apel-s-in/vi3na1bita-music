@@ -14804,12 +14804,22 @@ const validateListening = () => {
     'Listening heartbeat использует direct per-device lookup'
   );
 
+  const finalizeStart = read(server).indexOf(
+    'async function finalizeListenSession(session)'
+  );
+  const duplicateCheck = read(server).indexOf(
+    'if (oldReceipt.progressApplied === true)',
+    finalizeStart
+  );
+  const timeApply = read(server).indexOf(
+    'await applyVerifiedListenTimeProgress(data);',
+    finalizeStart
+  );
+
   assert(
-    read(server).indexOf(
-      'if (oldReceipt.progressApplied === true)'
-    ) < read(server).indexOf(
-      'await applyVerifiedListenTimeProgress(\n    data.playerId'
-    ),
+    finalizeStart >= 0 &&
+      duplicateCheck > finalizeStart &&
+      timeApply > duplicateCheck,
     'Completion проверяет постоянный receipt до применения времени'
   );
 
