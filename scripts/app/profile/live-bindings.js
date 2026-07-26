@@ -1,4 +1,4 @@
-import { readStatsViewModel } from '../../analytics/stats-state.js';
+import { getCanonicalFullListenCount, readStatsViewModel } from '../../analytics/stats-state.js';
 import { renderProfileStats } from './stats-view.js';
 
 export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaDB } = {}) => {
@@ -33,7 +33,10 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     };
 
     renderProfileStats({ container, vm });
-    set('#prof-stat-tracks', summary.totalFull);
+    set(
+      '#prof-stat-tracks',
+      getCanonicalFullListenCount(summary.totalFull)
+    );
     set('#prof-stat-time', window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(summary.totalSec) : `${Math.floor(summary.totalSec / 60)}м`);
     set('#prof-stat-streak', streak);
     set('#prof-stat-ach', window.achievementEngine?.getCompletedCount?.() ?? 0);
