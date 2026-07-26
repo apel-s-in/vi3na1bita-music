@@ -5960,8 +5960,16 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
       : {};
 
   const perTrackFull =
-    raw.perTrackFull && typeof raw.perTrackFull === 'object'
+    raw.perTrackFull &&
+    typeof raw.perTrackFull === 'object' &&
+    !Array.isArray(raw.perTrackFull)
       ? raw.perTrackFull
+      : {};
+  const perTrackValid =
+    raw.perTrackValid &&
+    typeof raw.perTrackValid === 'object' &&
+    !Array.isArray(raw.perTrackValid)
+      ? raw.perTrackValid
       : {};
   const normalizedPerTrackFull =
     normalizePerTrackCount(perTrackFull);
@@ -12806,8 +12814,6 @@ async function actionLoyaltyDueRun(event, body) {
       }
     }
 
-    const relevant =
-      state.reminderEnabled &&
     const windowState = loyaltyWindowSnapshot(state);
     const relevant =
       state.reminderEnabled &&
