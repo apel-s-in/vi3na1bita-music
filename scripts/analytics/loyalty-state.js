@@ -26,9 +26,18 @@ export const normalizeLoyaltyState = raw => {
     cycleId: String(source.cycleId || ''),
     currentDays: Math.floor(n(source.currentDays)),
     longestDays: Math.floor(n(source.longestDays)),
+    cycleStartedAt: Math.floor(n(source.cycleStartedAt)),
     lastQualifiedAt: Math.floor(n(source.lastQualifiedAt)),
+    activityAccounted: source.activityAccounted === true,
+    currentWindowIndex: Math.floor(n(source.currentWindowIndex)),
+    dayChangeAt: Math.floor(n(source.dayChangeAt)),
+    nextBoundaryAt: Math.floor(n(source.nextBoundaryAt)),
     deadlineAt: Math.floor(n(source.deadlineAt)),
+    currentDayRewardAmount: Math.floor(
+      n(source.currentDayRewardAmount)
+    ),
     nextDailyAmount: Math.floor(n(source.nextDailyAmount)),
+    nextMilestoneAt: Math.floor(n(source.nextMilestoneAt)),
     daysToNextMilestone: Math.floor(
       n(source.daysToNextMilestone)
     ),
@@ -68,6 +77,33 @@ export const getLoyaltyState = () =>
   normalizeLoyaltyState(
     window.ListeningReceipts?.lastLoyalty
   );
+export const formatLoyaltyTime = timestamp => {
+  const value = Math.floor(n(timestamp));
+
+  return value > 0
+    ? new Date(value).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    : '—';
+};
+
+export const formatLoyaltyCountdown = timestamp => {
+  const remainingMs = Math.max(
+    0,
+    Math.floor(n(timestamp)) - Date.now()
+  );
+  const totalMinutes = Math.floor(remainingMs / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return `${days}д ${String(hours).padStart(2, '0')}ч ${String(minutes).padStart(2, '0')}м`;
+  }
+
+  return `${hours}ч ${String(minutes).padStart(2, '0')}м`;
+};
 
 export const formatLoyaltyDeadline = loyalty => {
   const state = normalizeLoyaltyState(loyalty);
@@ -100,6 +136,8 @@ export const formatLoyaltyVacation = loyalty => {
 export default {
   normalizeLoyaltyState,
   getLoyaltyState,
+  formatLoyaltyTime,
+  formatLoyaltyCountdown,
   formatLoyaltyDeadline,
   formatLoyaltyVacation
 };
