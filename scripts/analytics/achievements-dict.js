@@ -30,10 +30,28 @@ export const AchievementDictionary = {
   },
   "full_total": {
     id: "full_total", type: "scalable", category: "listening",
-    ui: { name: "Верное ухо ур. {level}", short: "{target} полных прослушиваний.", desc: "Трек должен завершиться естественно; сервер проверяет не менее 90% позиции и 80% подтверждённого времени.", howTo: "Дослушивайте треки без перемоток до естественного завершения.", icon: "🏆", color: "#ff9800" },
-    reward: { xpBase: 15, xpMultiplier: 1.8, tierBase: 2 },
+    ui: {
+      name: "Верное ухо ур. {level}",
+      short: "Осталось полных прослушиваний: {target}.",
+      desc: "Сервер засчитывает только естественное завершение трека без пауз, остановок, ручного переключения, перемоток, mute и нулевой программной громкости.",
+      howTo: "Запустите трек с начала и дождитесь его естественного завершения. Автоматический повтор трека разрешён: каждый естественно завершённый круг создаёт отдельное полное прослушивание.",
+      icon: "🏆",
+      color: "#ff9800"
+    },
+    reward: {
+      steps: [5, 10, 15, 30, 50, 75, 85, 100, 125, 150, 200, 250, 500, 250, 250, 250],
+      repeatAmount: 250,
+      tierBase: 2
+    },
     trigger: { conditions: [{ metric: "fullPlays", operator: "gte" }] },
-    scaling: { math: "custom", steps: [1, 10, 50, 100, 500, 1000] }
+    scaling: {
+      math: "custom",
+      resetEachLevel: true,
+      cumulativeSteps: true,
+      steps: [1, 2, 5, 10, 50, 100, 150, 200, 250, 300, 400, 500, 1000, 1500, 2000, 2500],
+      repeatAfterLevel: 16,
+      repeatStep: 500
+    }
   },
   "time_total": {
     id: "time_total", type: "scalable", category: "time",
