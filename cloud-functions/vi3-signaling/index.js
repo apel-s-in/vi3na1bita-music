@@ -4458,6 +4458,7 @@ function materializeLoyaltyVacation(stateRaw, at = now()) {
           ? state.lastAdvancedAt + frozenMs
           : 0,
       deadlineAt: vacation.endsAt + LOYALTY_WINDOW_MS,
+      vacation: {
         active: false,
         startedAt: 0,
         endsAt: 0,
