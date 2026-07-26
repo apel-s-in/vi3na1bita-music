@@ -2762,13 +2762,6 @@ export const AchievementDictionary = {
       }
     }
   },
-  "streak_base": {
-    id: "streak_base", type: "scalable", category: "loyalty",
-    ui: { name: "Преданность ур. {level}", short: "Слушайте музыку {target} дней подряд.", desc: "Хотя бы одно прослушивание в сутки.", howTo: "Открывайте приложение каждый день.", icon: "⚡", color: "#ff9800" },
-    reward: { xpBase: 30, xpMultiplier: 1.8, tierBase: 1 },
-    trigger: { conditions: [{ metric: "streak", operator: "gte" }] },
-    scaling: { math: "custom", steps: [3, 7, 14, 30, 100, 365] }
-  },
   "unique_tracks": {
     id: "unique_tracks", type: "scalable", category: "collection",
     ui: { name: "Коллекционер ур. {level}", short: "Послушайте {target} разных треков.", desc: "Засчитывается валидное прослушивание.", howTo: "Включайте разные треки, не повторяясь.", icon: "💿", color: "#9c27b0" },
