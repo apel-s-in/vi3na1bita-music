@@ -125,7 +125,7 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, meta-db.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
@@ -6759,6 +6759,7 @@ export class SessionTracker {
       startedAt,
       duration: Number(duration || 0),
       accumulatedMs: 0,
+      creditedSegments: [],
       lastPos: Number(player?.getPosition?.() || 0),
       lastUpdate: startedAt
     };
@@ -6786,6 +6787,16 @@ export class SessionTracker {
 
     if (creditedMs > 0) {
       this.s.accumulatedMs += creditedMs;
+      this.s.creditedSegments.push({
+        startedAt: rt.prevTickAt,
+        endedAt: rt.now,
+        creditedMs
+      });
+
+      if (this.s.creditedSegments.length > 500) {
+        this.s.creditedSegments =
+          this.s.creditedSegments.slice(-500);
+      }
     }
   }
   _pause() {
@@ -6818,6 +6829,7 @@ export class SessionTracker {
       timezoneOffsetMin,
       startedAt,
       accumulatedMs,
+      creditedSegments,
       duration,
       lastPos
     } = this.s;
@@ -6881,6 +6893,8 @@ export class SessionTracker {
       timezoneOffsetMin,
       startedAt,
       listenedSeconds,
+      creditedSegments,
+      temporalSchemaVersion: 2,
       trackDuration: duration,
       progress,
       isFullListen: full,
@@ -7314,6 +7328,110 @@ export const markSyncReady = raw => {
   window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: r } }));
 };
 export default { isSyncEnabled, isSyncReady, isRestoreOrSkipDone, canUpload, getLastUploadAt, setLastUploadAt, shouldMarkStatsDirty, emitSyncState, suspendSyncForAccountSwitch, markRestoreOrSkipDone, setSyncEnabledState, markSyncReady };
+
+//=================================================
+// FILE: /scripts/analytics/temporal-buckets.js
+const n = value =>
+  Number.isFinite(Number(value))
+    ? Number(value)
+    : 0;
+
+export const splitTemporalInterval = ({
+  startedAt,
+  endedAt,
+  creditedMs,
+  timezoneOffsetMin = new Date(
+    n(startedAt) || Date.now()
+  ).getTimezoneOffset()
+} = {}) => {
+  const start = Math.max(0, Math.floor(n(startedAt)));
+  const end = Math.max(start, Math.floor(n(endedAt)));
+  const credit = Math.max(0, Math.floor(n(creditedMs)));
+  const offsetMs = n(timezoneOffsetMin) * 60000;
+
+  if (!start || end <= start || credit <= 0) return [];
+
+  const parts = [];
+  let cursor = start;
+
+  while (cursor < end) {
+    const localCursor = cursor - offsetMs;
+    const nextLocalHour =
+      (Math.floor(localCursor / 3600000) + 1) *
+      3600000;
+    const boundary = Math.min(
+      end,
+      nextLocalHour + offsetMs
+    );
+    const date = new Date(localCursor);
+
+    parts.push({
+      hour: date.getUTCHours(),
+      weekday: (date.getUTCDay() + 6) % 7,
+      wallMs: boundary - cursor,
+      creditedMs: 0
+    });
+
+    cursor = boundary;
+  }
+
+  const wallTotal = parts.reduce(
+    (sum, part) => sum + part.wallMs,
+    0
+  );
+  let allocated = 0;
+
+  parts.forEach((part, index) => {
+    part.creditedMs = index === parts.length - 1
+      ? credit - allocated
+      : Math.floor(
+          credit * part.wallMs / wallTotal
+        );
+
+    allocated += part.creditedMs;
+  });
+
+  return parts.filter(part => part.creditedMs > 0);
+};
+
+export const temporalPartsFromListenEvent = event => {
+  const data = event?.data || {};
+  const segments = Array.isArray(data.creditedSegments)
+    ? data.creditedSegments
+    : [];
+
+  if (segments.length) {
+    return segments.flatMap(segment =>
+      splitTemporalInterval({
+        startedAt: segment.startedAt,
+        endedAt: segment.endedAt,
+        creditedMs: segment.creditedMs,
+        timezoneOffsetMin: data.timezoneOffsetMin
+      })
+    );
+  }
+
+  const listenedMs = Math.max(
+    0,
+    Math.floor(n(data.listenedSeconds) * 1000)
+  );
+  const startedAt = Math.max(
+    0,
+    Math.floor(n(data.startedAt || event?.timestamp))
+  );
+
+  return splitTemporalInterval({
+    startedAt,
+    endedAt: startedAt + listenedMs,
+    creditedMs: listenedMs,
+    timezoneOffsetMin: data.timezoneOffsetMin
+  });
+};
+
+export default {
+  splitTemporalInterval,
+  temporalPartsFromListenEvent
+};
 
 //=================================================
 // FILE: /scripts/analytics/tombstone-contract.js
