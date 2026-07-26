@@ -68,6 +68,8 @@ const CFG = {
     safe(process.env.FEATURE_REWARDS_SHADOW || '1') === '1',
   backupReceiptSecret:
     safe(process.env.BACKUP_RECEIPT_SECRET || ''),
+  schedulerSecret:
+    safe(process.env.SCHEDULER_SECRET || ''),
   listenHeartbeatMinMs: Math.max(
     5000,
     Math.min(
@@ -4239,11 +4241,19 @@ async function actionFavoriteStateReconcile(
 
   throw new Error('favorite_reconcile_conflict');
 }
-const LOYALTY_VERSION = 1;
+const LOYALTY_VERSION = 2;
 const LOYALTY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const LOYALTY_ADVANCE_MIN_MS = 18 * 60 * 60 * 1000;
 const LOYALTY_GRACE_MS = 5 * 60 * 1000;
+const LOYALTY_NORMAL_REMINDER_BEFORE_MS = 3 * 60 * 60 * 1000;
+const LOYALTY_VACATION_ALLOWANCE_MS = 30 * 24 * 60 * 60 * 1000;
+const LOYALTY_VACATION_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
+const LOYALTY_VACATION_WARNING_MS = 24 * 60 * 60 * 1000;
+const LOYALTY_DUE_BUCKET_MS = 5 * 60 * 1000;
 const LOYALTY_ACTIVITY_HISTORY_LIMIT = 500;
 const LOYALTY_PENDING_REWARD_LIMIT = 32;
+const LOYALTY_VACATION_HISTORY_LIMIT = 64;
+const LOYALTY_DUE_RETRY_LIMIT = 12;
 
 const LOYALTY_MILESTONES = Object.freeze({
   1: 10,
@@ -4301,7 +4311,240 @@ function normalizeLoyaltyReward(raw = {}) {
     createdAt: Math.max(0, num(raw.createdAt))
   };
 }
+function normalizeLoyaltyVacationUsage(raw) {
+  return (Array.isArray(raw) ? raw : [])
+    .map(item => ({
+      startedAt: Math.max(0, Math.floor(num(item?.startedAt))),
+      endedAt: Math.max(0, Math.floor(num(item?.endedAt)))
+    }))
+    .filter(item =>
+      item.startedAt > 0 &&
+      item.endedAt > item.startedAt
+    )
+    .sort((left, right) => left.startedAt - right.startedAt)
+    .slice(-LOYALTY_VACATION_HISTORY_LIMIT);
+}
 
+function normalizeLoyaltyVacation(raw = {}) {
+  return {
+    active: raw.active === true,
+    startedAt: Math.max(0, Math.floor(num(raw.startedAt))),
+    endsAt: Math.max(0, Math.floor(num(raw.endsAt))),
+    resumeDeadlineAt: Math.max(
+      0,
+      Math.floor(num(raw.resumeDeadlineAt))
+    ),
+    usage: normalizeLoyaltyVacationUsage(raw.usage)
+  };
+}
+
+function loyaltyVacationUsedMs(vacationRaw, at = now()) {
+  const vacation = normalizeLoyaltyVacation(vacationRaw);
+  const cutoff = at - LOYALTY_VACATION_WINDOW_MS;
+  let used = vacation.usage.reduce((sum, item) => {
+    const from = Math.max(cutoff, item.startedAt);
+    const to = Math.min(at, item.endedAt);
+    return sum + Math.max(0, to - from);
+  }, 0);
+
+  if (vacation.active && vacation.startedAt > 0) {
+    used += Math.max(
+      0,
+      Math.min(at, vacation.endsAt || at) -
+        Math.max(cutoff, vacation.startedAt)
+    );
+  }
+
+  return Math.min(
+    LOYALTY_VACATION_ALLOWANCE_MS,
+    Math.max(0, Math.floor(used))
+  );
+}
+
+function loyaltyVacationRemainingMs(vacation, at = now()) {
+  return Math.max(
+    0,
+    LOYALTY_VACATION_ALLOWANCE_MS -
+      loyaltyVacationUsedMs(vacation, at)
+  );
+}
+
+function loyaltyDueBucket(timestamp) {
+  return String(
+    Math.ceil(
+      Math.max(0, num(timestamp)) /
+      LOYALTY_DUE_BUCKET_MS
+    )
+  ).padStart(13, '0');
+}
+
+function loyaltyDueKey({
+  targetAt,
+  playerId,
+  kind,
+  revision
+}) {
+  return [
+    'loyaltyDue',
+    loyaltyDueBucket(targetAt),
+    sanitizeId(playerId, 96),
+    sanitizeId(kind, 40),
+    Math.max(0, Math.floor(num(revision)))
+  ].join(':');
+}
+
+function normalizeLoyaltyDue(raw = {}) {
+  return {
+    playerId: sanitizeId(raw.playerId, 96),
+    kind: sanitizeId(raw.kind, 40),
+    targetAt: Math.max(0, Math.floor(num(raw.targetAt))),
+    revision: Math.max(0, Math.floor(num(raw.revision))),
+    attempts: Math.max(0, Math.floor(num(raw.attempts))),
+    createdAt: Math.max(0, num(raw.createdAt))
+  };
+}
+
+function materializeLoyaltyVacation(stateRaw, at = now()) {
+  const state = normalizeLoyaltyState(
+    stateRaw,
+    stateRaw?.playerId
+  );
+  const vacation = state.vacation;
+
+  if (
+    !vacation.active ||
+    !vacation.startedAt ||
+    !vacation.endsAt ||
+    vacation.endsAt > at
+  ) {
+    return {
+      changed: false,
+      state
+    };
+  }
+
+  const frozenMs = Math.max(
+    0,
+    vacation.endsAt - vacation.startedAt
+  );
+  const usage = normalizeLoyaltyVacationUsage([
+    ...vacation.usage,
+    {
+      startedAt: vacation.startedAt,
+      endedAt: vacation.endsAt
+    }
+  ]);
+
+  return {
+    changed: true,
+    state: normalizeLoyaltyState({
+      ...state,
+      lastAdvancedAt:
+        state.lastAdvancedAt > 0
+          ? state.lastAdvancedAt + frozenMs
+          : 0,
+      deadlineAt: vacation.endsAt + LOYALTY_WINDOW_MS,
+      scheduleRevision: state.scheduleRevision + 1,
+      vacation: {
+        active: false,
+        startedAt: 0,
+        endsAt: 0,
+        resumeDeadlineAt:
+          vacation.endsAt + LOYALTY_WINDOW_MS,
+        usage
+      },
+      updatedAt: at
+    }, state.playerId)
+  };
+}
+
+async function writeLoyaltyDueEntry(state, kind, targetAt) {
+  if (
+    !state.reminderEnabled ||
+    !state.playerId ||
+    !targetAt
+  ) {
+    return false;
+  }
+
+  const due = normalizeLoyaltyDue({
+    playerId: state.playerId,
+    kind,
+    targetAt,
+    revision: state.scheduleRevision,
+    attempts: 0,
+    createdAt: now()
+  });
+
+  await kvPut({
+    pk: loyaltyDueKey(due),
+    type: 'loyaltyDue',
+    owner: state.playerId,
+    expiresAt: targetAt + 7 * 24 * 60 * 60 * 1000,
+    data: due
+  });
+
+  return true;
+}
+
+async function syncLoyaltyDueIndex(stateRaw) {
+  const state = normalizeLoyaltyState(
+    stateRaw,
+    stateRaw?.playerId
+  );
+
+  if (!state.reminderEnabled || !state.currentDays) {
+    return {
+      scheduled: 0,
+      revision: state.scheduleRevision
+    };
+  }
+
+  const targets = state.vacation.active
+    ? [
+        {
+          kind: 'LOYALTY_VACATION_ENDING',
+          targetAt: Math.max(
+            now(),
+            state.vacation.endsAt -
+              LOYALTY_VACATION_WARNING_MS
+          )
+        },
+        {
+          kind: 'LOYALTY_VACATION_ENDED',
+          targetAt: state.vacation.endsAt
+        }
+      ]
+    : [
+        {
+          kind: 'LOYALTY_REMINDER',
+          targetAt: Math.max(
+            now(),
+            state.deadlineAt -
+              LOYALTY_NORMAL_REMINDER_BEFORE_MS
+          )
+        }
+      ];
+
+  let scheduled = 0;
+
+  for (const target of targets) {
+    if (target.targetAt <= 0) continue;
+
+    await writeLoyaltyDueEntry(
+      state,
+      target.kind,
+      target.targetAt
+    );
+
+    scheduled++;
+  }
+
+  return {
+    scheduled,
+    revision: state.scheduleRevision
+  };
+}
 function normalizeLoyaltyState(raw = {}, playerId = '') {
   const trustFlags = [...new Map(
     (Array.isArray(raw.trustFlags) ? raw.trustFlags : [])
@@ -4335,11 +4578,21 @@ function normalizeLoyaltyState(raw = {}, playerId = '') {
     longestDays: Math.max(0, Math.floor(num(raw.longestDays))),
     firstQualifiedAt: Math.max(0, num(raw.firstQualifiedAt)),
     lastQualifiedAt: Math.max(0, num(raw.lastQualifiedAt)),
+    lastAdvancedAt: Math.max(
+      0,
+      num(raw.lastAdvancedAt, raw.lastQualifiedAt)
+    ),
     lastDayKey: /^\d{4}-\d{2}-\d{2}$/.test(safe(raw.lastDayKey))
       ? safe(raw.lastDayKey)
       : '',
     deadlineAt: Math.max(0, num(raw.deadlineAt)),
     cycleStartedAt: Math.max(0, num(raw.cycleStartedAt)),
+    reminderEnabled: raw.reminderEnabled === true,
+    scheduleRevision: Math.max(
+      0,
+      Math.floor(num(raw.scheduleRevision))
+    ),
+    vacation: normalizeLoyaltyVacation(raw.vacation),
     activityIds: [...new Set(
       (Array.isArray(raw.activityIds) ? raw.activityIds : [])
         .map(value => sanitizeId(value, 180))
@@ -4372,7 +4625,17 @@ function nextLoyaltyMilestone(day) {
 
 function publicLoyaltyState(raw = {}) {
   const state = normalizeLoyaltyState(raw, raw?.playerId);
+  const at = now();
   const nextMilestone = nextLoyaltyMilestone(state.currentDays);
+  const vacationUsedMs = loyaltyVacationUsedMs(
+    state.vacation,
+    at
+  );
+  const vacationRemainingMs = Math.max(
+    0,
+    LOYALTY_VACATION_ALLOWANCE_MS -
+      vacationUsedMs
+  );
 
   return {
     version: state.version,
@@ -4382,9 +4645,24 @@ function publicLoyaltyState(raw = {}) {
     currentDays: state.currentDays,
     longestDays: state.longestDays,
     lastQualifiedAt: state.lastQualifiedAt,
+    lastAdvancedAt: state.lastAdvancedAt,
     deadlineAt: state.deadlineAt,
     nextDailyAmount: loyaltyDailyAmount(state.currentDays + 1),
     nextMilestone,
+    daysToNextMilestone: nextMilestone
+      ? Math.max(0, nextMilestone.day - state.currentDays)
+      : 0,
+    reminderEnabled: state.reminderEnabled,
+    vacation: {
+      active: state.vacation.active,
+      startedAt: state.vacation.startedAt,
+      endsAt: state.vacation.endsAt,
+      resumeDeadlineAt:
+        state.vacation.resumeDeadlineAt,
+      allowanceMs: LOYALTY_VACATION_ALLOWANCE_MS,
+      usedMs: vacationUsedMs,
+      remainingMs: vacationRemainingMs
+    },
     trust: {
       status: state.trustFlags.length ? 'review' : 'ok',
       flags: state.trustFlags
@@ -4529,14 +4807,20 @@ async function applyLoyaltyActivity(playerId, {
     throw new Error('loyalty_activity_invalid');
   }
 
-  const key = loyaltyStateKey(playerId);
-
   for (let attempt = 0; attempt < 10; attempt++) {
-    const { row, state } =
+    const { row, state: storedState } =
       await getOrCreateLoyaltyState(playerId);
+    const at = now();
+    const materialized =
+      materializeLoyaltyVacation(storedState, at);
+    const state = materialized.state;
 
     if (state.activityIds.includes(cleanActivityId)) {
-      const settled = await settleLoyaltyPendingRewards(playerId);
+      const settled =
+        await settleLoyaltyPendingRewards(playerId);
+
+      await syncLoyaltyDueIndex(settled.state)
+        .catch(() => null);
 
       return {
         duplicate: true,
@@ -4547,44 +4831,55 @@ async function applyLoyaltyActivity(playerId, {
       };
     }
 
-    const at = now();
-    const dayKey = loyaltyDayKey(at);
-    const previousDay = loyaltyDayOrdinal(state.lastDayKey);
-    const currentDay = loyaltyDayOrdinal(dayKey);
-    const dayDifference = previousDay > 0
-      ? currentDay - previousDay
-      : 0;
-    const sameDay = state.lastDayKey === dayKey;
-    const continues =
-      !sameDay &&
+    if (state.vacation.active) {
+      if (materialized.changed) {
+        await kvCompareAndPut({
+          row,
+          type: 'loyaltyState',
+          owner: playerId,
+          data: state
+        }).catch(() => false);
+      }
+
+      await syncLoyaltyDueIndex(state).catch(() => null);
+
+      return {
+        duplicate: false,
+        paused: true,
+        advanced: false,
+        loyalty: publicLoyaltyState(state),
+        loyaltyRewards: [],
+        wallet: null
+      };
+    }
+
+    const expired =
       state.currentDays > 0 &&
-      dayDifference === 1 &&
-      at <= state.deadlineAt + LOYALTY_GRACE_MS;
+      state.deadlineAt > 0 &&
+      at > state.deadlineAt + LOYALTY_GRACE_MS;
+    const canAdvance =
+      state.currentDays > 0 &&
+      !expired &&
+      at - state.lastAdvancedAt >=
+        LOYALTY_ADVANCE_MIN_MS;
 
     let currentDays = state.currentDays;
     let cycleId = state.cycleId;
     let cycleStartedAt = state.cycleStartedAt;
     let firstQualifiedAt = state.firstQualifiedAt;
+    let lastAdvancedAt = state.lastAdvancedAt;
     let advanced = false;
 
-    if (!sameDay) {
-      advanced = true;
-
-      if (continues) {
-        currentDays += 1;
-      } else {
-        currentDays = 1;
-        cycleId = rid('loyalty');
-        cycleStartedAt = at;
-        firstQualifiedAt = at;
-      }
-    }
-
-    if (!cycleId) {
+    if (!cycleId || currentDays <= 0 || expired) {
       cycleId = rid('loyalty');
       cycleStartedAt = at;
       firstQualifiedAt = at;
-      currentDays = Math.max(1, currentDays);
+      lastAdvancedAt = at;
+      currentDays = 1;
+      advanced = true;
+    } else if (canAdvance) {
+      currentDays++;
+      lastAdvancedAt = at;
       advanced = true;
     }
 
@@ -4596,7 +4891,9 @@ async function applyLoyaltyActivity(playerId, {
 
     if (
       deviceIds.length > 10 &&
-      !trustFlags.some(flag => flag.code === 'loyalty_device_churn')
+      !trustFlags.some(flag =>
+        flag.code === 'loyalty_device_churn'
+      )
     ) {
       trustFlags.push({
         code: 'loyalty_device_churn',
@@ -4629,9 +4926,11 @@ async function applyLoyaltyActivity(playerId, {
       ),
       firstQualifiedAt,
       lastQualifiedAt: at,
-      lastDayKey: dayKey,
+      lastAdvancedAt,
+      lastDayKey: loyaltyDayKey(at),
       deadlineAt: at + LOYALTY_WINDOW_MS,
       cycleStartedAt,
+      scheduleRevision: state.scheduleRevision + 1,
       activityIds: [
         ...state.activityIds,
         cleanActivityId
@@ -4651,10 +4950,14 @@ async function applyLoyaltyActivity(playerId, {
       continue;
     }
 
-    const settled = await settleLoyaltyPendingRewards(playerId);
+    await syncLoyaltyDueIndex(next).catch(() => null);
+
+    const settled =
+      await settleLoyaltyPendingRewards(playerId);
 
     return {
       duplicate: false,
+      paused: false,
       advanced,
       loyalty: publicLoyaltyState(settled.state),
       loyaltyRewards: settled.grants,
@@ -4665,14 +4968,201 @@ async function applyLoyaltyActivity(playerId, {
   throw new Error('loyalty_state_conflict');
 }
 
+async function materializeStoredLoyaltyState(playerId) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { row, state } =
+      await getOrCreateLoyaltyState(playerId);
+    const materialized =
+      materializeLoyaltyVacation(state);
+
+    if (!materialized.changed) {
+      return materialized.state;
+    }
+
+    if (await kvCompareAndPut({
+      row,
+      type: 'loyaltyState',
+      owner: playerId,
+      data: materialized.state
+    })) {
+      await syncLoyaltyDueIndex(materialized.state)
+        .catch(() => null);
+
+      return materialized.state;
+    }
+  }
+
+  throw new Error('loyalty_materialize_conflict');
+}
+
 async function getLoyaltyStatus(playerId) {
+  await materializeStoredLoyaltyState(playerId);
+
   const settled = await settleLoyaltyPendingRewards(playerId);
+
+  await syncLoyaltyDueIndex(settled.state)
+    .catch(() => null);
 
   return {
     loyalty: publicLoyaltyState(settled.state),
     loyaltyRewards: settled.grants,
     wallet: settled.wallet
   };
+}
+async function actionLoyaltyPreferenceSet(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  const enabled = body.reminderEnabled === true;
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { row, state: stored } =
+      await getOrCreateLoyaltyState(playerId);
+    const state =
+      materializeLoyaltyVacation(stored).state;
+
+    const next = normalizeLoyaltyState({
+      ...state,
+      reminderEnabled: enabled,
+      scheduleRevision: state.scheduleRevision + 1,
+      updatedAt: now()
+    }, playerId);
+
+    if (!await kvCompareAndPut({
+      row,
+      type: 'loyaltyState',
+      owner: playerId,
+      data: next
+    })) {
+      continue;
+    }
+
+    if (enabled) {
+      await syncLoyaltyDueIndex(next).catch(() => null);
+    }
+
+    return {
+      ok: true,
+      loyalty: publicLoyaltyState(next)
+    };
+  }
+
+  throw new Error('loyalty_preference_conflict');
+}
+async function actionLoyaltyVacationSet(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  const enabled = body.enabled === true;
+
+  await enforceRateLimit({
+    scope: 'loyalty_vacation',
+    actor: playerId,
+    limit: 20,
+    windowMs: 24 * 60 * 60 * 1000
+  });
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { row, state: stored } =
+      await getOrCreateLoyaltyState(playerId);
+    const at = now();
+    const state =
+      materializeLoyaltyVacation(stored, at).state;
+
+    if (enabled === state.vacation.active) {
+      await syncLoyaltyDueIndex(state).catch(() => null);
+
+      return {
+        ok: true,
+        duplicate: true,
+        loyalty: publicLoyaltyState(state)
+      };
+    }
+
+    if (enabled && state.currentDays <= 0) {
+      const error = new Error(
+        'loyalty_vacation_requires_active_streak'
+      );
+      error.httpStatus = 409;
+      throw error;
+    }
+
+    const remainingMs = loyaltyVacationRemainingMs(
+      state.vacation,
+      at
+    );
+
+    if (enabled && remainingMs <= 0) {
+      const error = new Error(
+        'loyalty_vacation_allowance_exhausted'
+      );
+      error.httpStatus = 409;
+      throw error;
+    }
+
+    let vacation;
+    let lastAdvancedAt = state.lastAdvancedAt;
+    let deadlineAt = state.deadlineAt;
+
+    if (enabled) {
+      vacation = {
+        ...state.vacation,
+        active: true,
+        startedAt: at,
+        endsAt: at + remainingMs,
+        resumeDeadlineAt: 0
+      };
+    } else {
+      const frozenMs = Math.max(
+        0,
+        at - state.vacation.startedAt
+      );
+      const usage = normalizeLoyaltyVacationUsage([
+        ...state.vacation.usage,
+        {
+          startedAt: state.vacation.startedAt,
+          endedAt: at
+        }
+      ]);
+
+      if (lastAdvancedAt > 0) {
+        lastAdvancedAt += frozenMs;
+      }
+
+      deadlineAt = at + LOYALTY_WINDOW_MS;
+      vacation = {
+        active: false,
+        startedAt: 0,
+        endsAt: 0,
+        resumeDeadlineAt: deadlineAt,
+        usage
+      };
+    }
+
+    const next = normalizeLoyaltyState({
+      ...state,
+      lastAdvancedAt,
+      deadlineAt,
+      vacation,
+      scheduleRevision: state.scheduleRevision + 1,
+      updatedAt: at
+    }, playerId);
+
+    if (!await kvCompareAndPut({
+      row,
+      type: 'loyaltyState',
+      owner: playerId,
+      data: next
+    })) {
+      continue;
+    }
+
+    await syncLoyaltyDueIndex(next).catch(() => null);
+
+    return {
+      ok: true,
+      duplicate: false,
+      loyalty: publicLoyaltyState(next)
+    };
+  }
+
+  throw new Error('loyalty_vacation_conflict');
 }
 const LISTEN_RECEIPT_VERSION = 1;
 const LISTEN_VALID_MIN_SEC = 25;
@@ -12019,6 +12509,184 @@ return {
   expiresAt: data.expiresAt
 };
 }
+function loyaltyNotificationForDue(due, state) {
+  if (due.kind === 'LOYALTY_VACATION_ENDING') {
+    return {
+      title: '🛡️ Пауза скоро закончится',
+      body:
+        'Остались сутки. После окончания у вас будет 24 часа, чтобы сохранить Преданность ⚡',
+      tag: `loyalty-vacation-ending-${state.cycleId}`,
+      requireInteraction: false
+    };
+  }
+
+  if (due.kind === 'LOYALTY_VACATION_ENDED') {
+    return {
+      title: '⚡ Преданность снова активна',
+      body:
+        'Пауза закончилась. Зайдите в течение 24 часов и проявите активность, чтобы сохранить прогресс.',
+      tag: `loyalty-vacation-ended-${state.cycleId}`,
+      requireInteraction: true
+    };
+  }
+
+  return {
+    title: '⚡ Сохраните Преданность',
+    body:
+      `Зайдите в приложение и проявите активность. Следующий ежедневный бонус: +${loyaltyDailyAmount(state.currentDays + 1)} ♦`,
+    tag: `loyalty-reminder-${state.cycleId}`,
+    requireInteraction: false
+  };
+}
+
+async function retryLoyaltyDue(row, due) {
+  if (due.attempts >= LOYALTY_DUE_RETRY_LIMIT) {
+    await kvDelete(row.pk).catch(() => null);
+    return false;
+  }
+
+  const retryAt = now() + LOYALTY_DUE_BUCKET_MS;
+
+  await kvPut({
+    pk: loyaltyDueKey({
+      ...due,
+      targetAt: retryAt
+    }),
+    type: 'loyaltyDue',
+    owner: due.playerId,
+    expiresAt: retryAt + 24 * 60 * 60 * 1000,
+    data: {
+      ...due,
+      targetAt: retryAt,
+      attempts: due.attempts + 1
+    }
+  });
+
+  await kvDelete(row.pk).catch(() => null);
+  return true;
+}
+
+async function actionLoyaltyDueRun(event, body) {
+  const secret =
+    headerValue(event, 'x-vi3-scheduler') ||
+    safe(body.schedulerSecret);
+
+  if (
+    !CFG.schedulerSecret ||
+    !timingSafeEqualText(secret, CFG.schedulerSecret)
+  ) {
+    throw new Error('bad_scheduler_secret');
+  }
+
+  const currentBucket = Math.ceil(
+    now() / LOYALTY_DUE_BUCKET_MS
+  );
+  const rows = [];
+
+  for (let offset = 0; offset <= 12; offset++) {
+    const bucket = String(
+      currentBucket - offset
+    ).padStart(13, '0');
+
+    rows.push(
+      ...await kvPrefix(
+        `loyaltyDue:${bucket}:`,
+        500
+      )
+    );
+  }
+
+  let sent = 0;
+  let stale = 0;
+  let retried = 0;
+
+  for (const row of rows) {
+    const due = normalizeLoyaltyDue(payload(row));
+
+    if (
+      !due.playerId ||
+      due.targetAt > now()
+    ) {
+      continue;
+    }
+
+    const { row: stateRow, state: stored } =
+      await getOrCreateLoyaltyState(due.playerId);
+    const materialized =
+      materializeLoyaltyVacation(stored);
+    let state = materialized.state;
+
+    if (materialized.changed) {
+      const changed = await kvCompareAndPut({
+        row: stateRow,
+        type: 'loyaltyState',
+        owner: due.playerId,
+        data: state
+      });
+
+      if (!changed) {
+        await retryLoyaltyDue(row, due);
+        retried++;
+        continue;
+      }
+    }
+
+    const relevant =
+      state.reminderEnabled &&
+      due.revision === state.scheduleRevision &&
+      (
+        (
+          due.kind === 'LOYALTY_REMINDER' &&
+          !state.vacation.active &&
+          state.deadlineAt > now()
+        ) ||
+        (
+          due.kind === 'LOYALTY_VACATION_ENDING' &&
+          state.vacation.active &&
+          state.vacation.endsAt > now()
+        ) ||
+        (
+          due.kind === 'LOYALTY_VACATION_ENDED' &&
+          !state.vacation.active &&
+          state.vacation.resumeDeadlineAt > 0
+        )
+      );
+
+    if (!relevant) {
+      await kvDelete(row.pk).catch(() => null);
+      stale++;
+      continue;
+    }
+
+    const message = loyaltyNotificationForDue(
+      due,
+      state
+    );
+    const push = await sendSystemWebPush({
+      toPlayerId: due.playerId,
+      ...message,
+      url: './?openLoyalty=1',
+      kind: due.kind
+    });
+
+    if (push?.ok === true) {
+      await kvDelete(row.pk).catch(() => null);
+      sent++;
+    } else {
+      await retryLoyaltyDue(row, due);
+      retried++;
+    }
+  }
+
+  return {
+    ok: true,
+    scanned: rows.length,
+    sent,
+    stale,
+    retried,
+    bucket: currentBucket
+  };
+}
 const ACTIONS = {
   social_session_issue: actionSocialSessionIssue,
   player_register: actionPlayerRegister,
@@ -12058,6 +12726,12 @@ const ACTIONS = {
   listen_session_complete: actionListenSessionComplete,
   achievement_reward_status:
     actionAchievementRewardStatus,
+  loyalty_preference_set:
+    actionLoyaltyPreferenceSet,
+  loyalty_vacation_set:
+    actionLoyaltyVacationSet,
+  loyalty_due_run:
+    actionLoyaltyDueRun,
   music_feature_use:
     actionMusicFeatureUse,
   pwa_install_intent:
