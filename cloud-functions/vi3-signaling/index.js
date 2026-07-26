@@ -4257,8 +4257,56 @@ function listenSessionKey(playerId, sessionId) {
 
 async function resolveListenSessionRow(
   playerId,
-  sessionId
+  sessionId,
+  deviceId = ''
 ) {
+  const cleanDeviceId = sanitizeId(deviceId, 120);
+
+  if (cleanDeviceId) {
+    const activeKey = listenActiveKey(
+      playerId,
+      cleanDeviceId
+    );
+    const activeRow = await kvGet(activeKey);
+    const active = normalizeListenSession(
+      payload(activeRow)
+    );
+
+    if (
+      activeRow &&
+      active.playerId === playerId &&
+      active.sessionId === sessionId &&
+      active.deviceId === cleanDeviceId
+    ) {
+      return {
+        row: activeRow,
+        key: activeKey,
+        session: active,
+        active: true
+      };
+    }
+  }
+
+  // Совместимость с клиентами и сессиями до per-device migration.
+  const legacyKey = listenActiveKey(playerId);
+  const legacyRow = await kvGet(legacyKey);
+  const legacy = normalizeListenSession(
+    payload(legacyRow)
+  );
+
+  if (
+    legacyRow &&
+    legacy.playerId === playerId &&
+    legacy.sessionId === sessionId
+  ) {
+    return {
+      row: legacyRow,
+      key: legacyKey,
+      session: legacy,
+      active: true
+    };
+  }
+
   const historyKey = listenSessionKey(
     playerId,
     sessionId
@@ -4272,7 +4320,8 @@ async function resolveListenSessionRow(
     historyRow &&
     history.playerId === playerId &&
     history.sessionId === sessionId &&
-    history.deviceId
+    history.deviceId &&
+    history.deviceId !== cleanDeviceId
   ) {
     const activeKey = listenActiveKey(
       playerId,
@@ -4295,26 +4344,6 @@ async function resolveListenSessionRow(
         active: true
       };
     }
-  }
-
-  // Совместимость с сессиями, созданными до per-device migration.
-  const legacyKey = listenActiveKey(playerId);
-  const legacyRow = await kvGet(legacyKey);
-  const legacy = normalizeListenSession(
-    payload(legacyRow)
-  );
-
-  if (
-    legacyRow &&
-    legacy.playerId === playerId &&
-    legacy.sessionId === sessionId
-  ) {
-    return {
-      row: legacyRow,
-      key: legacyKey,
-      session: legacy,
-      active: true
-    };
   }
 
   return {
@@ -5691,11 +5720,6 @@ async function applyVerifiedFeatureProgress(playerId, {
 
 async function finalizeListenSession(session) {
   const data = normalizeListenSession(session);
-  await applyVerifiedListenTimeProgress(
-    data.playerId,
-    data.sessionId,
-    data.observedMs
-  );
   const receiptId =
     data.receiptId ||
     `lr_${hash([
@@ -5703,6 +5727,38 @@ async function finalizeListenSession(session) {
       data.sessionId,
       data.completedAt
     ].join(':')).slice(0, 28)}`;
+  const receiptPk = listenReceiptKey(
+    data.playerId,
+    receiptId
+  );
+  const oldReceiptRow = await kvGet(receiptPk);
+  const oldReceipt = payload(oldReceiptRow);
+
+  if (oldReceipt.progressApplied === true) {
+    const progress = normalizeAchievementProgress(
+      payload(await kvGet(
+        achievementProgressKey(data.playerId)
+      )),
+      data.playerId
+    );
+
+    return {
+      receipt: oldReceipt,
+      progress,
+      rewards: {
+        enabled: true,
+        grants: [],
+        wallet: null
+      },
+      duplicate: true
+    };
+  }
+
+  await applyVerifiedListenTimeProgress(
+    data.playerId,
+    data.sessionId,
+    data.observedMs
+  );
 
   const observedSec = Math.max(
     0,
@@ -5771,33 +5827,6 @@ async function finalizeListenSession(session) {
     shadow: true,
     rewardGranted: false
   };
-
-  const receiptPk = listenReceiptKey(
-    data.playerId,
-    receiptId
-  );
-  const oldReceiptRow = await kvGet(receiptPk);
-  const oldReceipt = payload(oldReceiptRow);
-
-  if (oldReceipt.progressApplied === true) {
-    const progress = normalizeAchievementProgress(
-      payload(await kvGet(
-        achievementProgressKey(data.playerId)
-      )),
-      data.playerId
-    );
-    const rewards = await reconcileAchievementRewards(
-      data.playerId,
-      progress
-    );
-
-    return {
-      receipt: oldReceipt,
-      progress,
-      rewards,
-      duplicate: true
-    };
-  }
 
   if (!oldReceiptRow) {
     try {
@@ -6024,7 +6053,8 @@ async function actionListenSessionHeartbeat(event, body) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const resolved = await resolveListenSessionRow(
       playerId,
-      sessionId
+      sessionId,
+      body.deviceId
     );
     const { row, session } = resolved;
 
@@ -6132,7 +6162,8 @@ async function actionListenSessionComplete(event, body) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const resolved = await resolveListenSessionRow(
       playerId,
-      sessionId
+      sessionId,
+      body.deviceId
     );
     const row = resolved.row;
     const current = resolved.session;
@@ -6394,7 +6425,8 @@ async function getSleepTimerObservedSeconds(timerRaw) {
   ) {
     const resolved = await resolveListenSessionRow(
       timer.playerId,
-      timer.baselineSessionId
+      timer.baselineSessionId,
+      timer.deviceId
     );
     const session = resolved.session;
 
@@ -7009,7 +7041,8 @@ async function actionMusicFeatureUse(event, body) {
 
   const resolved = await resolveListenSessionRow(
     playerId,
-    sessionId
+    sessionId,
+    body.deviceId
   );
   const session = resolved.session;
 
