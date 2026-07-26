@@ -7177,15 +7177,6 @@ export const migrateLocalTemporalV2 = async (
   };
 };
 export const rebuildStatsFromLocalEventLog = async (db = defaultMetaDB, opts = {}) => rebuildStatsFromEvents(db, await readLocalEventLog(db, opts), opts);
-export const getCanonicalFullListenCount = localTotal => {
-  const serverTotal = Number(
-    window.ListeningReceipts?.lastProgress?.fullPlays
-  );
-
-  return Number.isFinite(serverTotal)
-    ? Math.max(0, Math.floor(serverTotal))
-    : Math.max(0, Math.floor(n(localTotal)));
-};
 
 export const getStatsSummary = (rows = []) => {
   const vs = (Array.isArray(rows) ? rows : []).filter(s => s?.uid && s.uid !== 'global');
