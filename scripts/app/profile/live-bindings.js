@@ -1,4 +1,5 @@
 import { resolveListeningStatsViewModel } from '../../analytics/confirmed-listening-stats.js';
+import { getLoyaltyState } from '../../analytics/loyalty-state.js';
 import { renderProfileStats } from './stats-view.js';
 
 export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaDB } = {}) => {
@@ -27,7 +28,7 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     const rows = await metaDB.getAllStats().catch(() => []);
     const vm = resolveListeningStatsViewModel(rows);
     const summary = vm.summary;
-    const streak = (await metaDB.getGlobal('global_streak').catch(() => null))?.value?.current || 0;
+    const loyalty = getLoyaltyState();
     const set = (selector, value) => {
       const element = container?.querySelector(selector);
       if (element) element.textContent = String(value);
@@ -36,7 +37,12 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     renderProfileStats({ container, vm });
     set('#prof-stat-tracks', summary.totalFull);
     set('#prof-stat-time', window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(summary.totalSec) : `${Math.floor(summary.totalSec / 60)}м`);
-    set('#prof-stat-streak', streak);
+    set(
+      '#prof-stat-streak',
+      loyalty.available
+        ? loyalty.currentDays
+        : '—'
+    );
     set('#prof-stat-ach', window.achievementEngine?.getCompletedCount?.() ?? 0);
   };
 
