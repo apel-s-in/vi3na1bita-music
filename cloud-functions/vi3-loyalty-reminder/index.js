@@ -87,7 +87,8 @@ exports.handler = async () => {
     const result = await postJson(
       SIGNALING_URL,
       {
-        action: 'loyalty_due_run'
+        action: 'loyalty_due_run',
+        limit: 50
       },
       {
         'X-Vi3-Scheduler': SCHEDULER_SECRET
