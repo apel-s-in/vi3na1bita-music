@@ -755,10 +755,7 @@ class ListeningReceiptService {
         this.sleepTimer = null;
       }
 
-      if (result?.progress) {
-        this.lastProgress = result.progress;
-      }
-
+      this.ingestServerResult(result);
       applyShardRewardResult(result);
 
       queueMicrotask(() => {
