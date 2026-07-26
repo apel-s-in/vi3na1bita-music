@@ -12019,7 +12019,8 @@ export default { renderProfileLogs };
 //=================================================
 // FILE: /scripts/app/profile/loyalty-card.js
 import {
-  formatLoyaltyDeadline,
+  formatLoyaltyCountdown,
+  formatLoyaltyTime,
   formatLoyaltyVacation,
   getLoyaltyState
 } from '../../analytics/loyalty-state.js';
@@ -12033,32 +12034,45 @@ const esc = value =>
   String(value || '');
 
 const rewards = [
-  ['1 день', '10 ♦'],
-  ['2 дня', '20 ♦'],
-  ['3 дня', '30 ♦'],
-  ['4–7 дней', '+5 ♦ ежедневно'],
-  ['7 дней', '100 ♦'],
-  ['8–14 дней', '+10 ♦ ежедневно'],
-  ['14 дней', '200 ♦'],
-  ['15–30 дней', '+20 ♦ ежедневно'],
-  ['30 дней', '500 ♦'],
-  ['31–100 дней', '+30 ♦ ежедневно'],
-  ['100 дней', '1000 ♦'],
-  ['101–365 дней', '+50 ♦ ежедневно'],
-  ['365 дней', '10000 ♦'],
-  ['366+ дней', '+100 ♦ ежедневно']
+  { day: '1 день', reward: '10 ♦', daily: '' },
+  { day: '2 дня', reward: '20 ♦', daily: '' },
+  { day: '3 дня', reward: '30 ♦', daily: 'далее +5 ♦ ежедневно' },
+  { day: '7 дней', reward: '100 ♦', daily: 'далее +10 ♦ ежедневно' },
+  { day: '14 дней', reward: '200 ♦', daily: 'далее +20 ♦ ежедневно' },
+  { day: '30 дней', reward: '500 ♦', daily: 'далее +30 ♦ ежедневно' },
+  { day: '100 дней', reward: '1000 ♦', daily: 'далее +50 ♦ ежедневно' },
+  { day: '365 дней', reward: '10000 ♦', daily: 'далее +100 ♦ ежедневно' }
 ];
 
-export const renderLoyaltyCard = () => {
+const rewardTable = () =>
+  `<div class="loyalty-reward-grid">${rewards.map(item =>
+    `<div class="loyalty-reward-cell"><span>${esc(item.day)}</span><b>${esc(item.reward)}</b>${item.daily ? `<small>${esc(item.daily)}</small>` : '<small>&nbsp;</small>'}</div>`
+  ).join('')}</div>`;
+
+export const updateLoyaltyCardTimers = root => {
+  root?.querySelectorAll('[data-loyalty-countdown-at]')
+    .forEach(element => {
+      const target = Number(
+        element.dataset.loyaltyCountdownAt || 0
+      );
+      const prefix =
+        element.dataset.loyaltyCountdownPrefix || '';
+
+      element.textContent =
+        `${prefix}${formatLoyaltyCountdown(target)}`;
+    });
+};
+
+export const renderLoyaltyCard = ({
+  expanded = false
+} = {}) => {
   const state = getLoyaltyState();
 
   if (state.pending) {
     return `<div class="ach-item loyalty-card"><div class="ach-title">⚡ Преданность</div><div class="ach-sub">Получаем подтверждённое состояние с сервера…</div></div>`;
   }
 
-  if (!state.available) {
-    return '';
-  }
+  if (!state.available) return '';
 
   const vacationDisabled =
     state.currentDays <= 0 ||
@@ -12066,14 +12080,28 @@ export const renderLoyaltyCard = () => {
       !state.vacation.active &&
       state.vacation.remainingMs <= 0
     );
-  const timer = state.vacation.active
-    ? `Пауза: ${formatLoyaltyVacation(state)}`
-    : `До потери streak: ${formatLoyaltyDeadline(state)}`;
-  const next = state.nextMilestone
-    ? `${state.daysToNextMilestone} дн. до ${state.nextMilestone.day}-го дня и ${state.nextMilestone.amount} ♦`
-    : 'Ежедневная серия продолжается без ограничения';
+  const changeTime = formatLoyaltyTime(
+    state.cycleStartedAt || state.dayChangeAt
+  );
+  const activityText = state.vacation.active
+    ? 'Преданность на паузе'
+    : state.activityAccounted
+      ? 'Активность текущего дня учтена'
+      : `До ${changeTime} нужна активность`;
+  const countdownAt = state.activityAccounted
+    ? state.nextMilestoneAt
+    : state.deadlineAt;
+  const countdownPrefix = state.activityAccounted
+    ? 'До крупной награды: '
+    : 'До потери серии: ';
+  const milestoneText = state.nextMilestone
+    ? `${state.nextMilestone.day} дней · ${state.nextMilestone.amount} ♦`
+    : 'Все крупные рубежи пройдены';
+  const currentReward = state.currentDayRewardAmount > 0
+    ? `+${state.currentDayRewardAmount} ♦`
+    : `+${state.nextDailyAmount} ♦ далее`;
 
-  return `<div class="ach-item loyalty-card ${state.vacation.active ? 'is-paused' : ''}" data-loyalty-card><div class="ach-top"><div class="ach-title">⚡ Преданность · ${state.currentDays} день</div></div><div class="ach-sub">${esc(timer)}</div><div class="loyalty-next"><b>Следующий ежедневный бонус: +${state.nextDailyAmount} ♦</b><span>${esc(next)}</span></div><div class="ach-bottom"><div class="ach-reward">Лучший streak: ${state.longestDays}</div><div class="ach-remaining">${esc(timer)}</div></div><div class="ach-details" style="display:block"><div class="ach-details-title">Как сохранить Преданность</div><div class="ach-details-how">Заходите в приложение каждый день и проявляйте подтверждённую активность: слушайте музыку, отмечайте любимые треки или сохраняйте прогресс в облако.</div><div class="loyalty-grid">${rewards.map(([day, reward]) => `<div><span>${esc(day)}</span><b>${esc(reward)}</b></div>`).join('')}</div><label class="loyalty-control"><span><b>🔔 Напоминать о Преданности</b><small>Уведомление придёт на авторизованные устройства перед окончанием срока.</small></span><input type="checkbox" data-loyalty-reminder ${state.reminderEnabled ? 'checked' : ''}></label><label class="loyalty-control ${vacationDisabled ? 'is-disabled' : ''}"><span><b>🛡️ Пауза Преданности</b><small>${state.vacation.active ? `Активна · осталось ${formatLoyaltyVacation(state)}` : `Доступно ${formatLoyaltyVacation(state)} за скользящие 365 дней`}</small></span><input type="checkbox" data-loyalty-vacation ${state.vacation.active ? 'checked' : ''} ${vacationDisabled ? 'disabled' : ''}></label><div class="ach-details-desc">Во время паузы streak не растёт и ежедневные награды не начисляются. После окончания у вас будет 24 часа, чтобы продолжить серию.</div></div></div>`;
+  return `<div class="ach-item loyalty-card ${state.vacation.active ? 'is-paused' : ''}" data-ach="loyalty" data-loyalty-card><div class="ach-top"><div class="ach-title">⚡ Преданность · ${state.currentDays} день</div></div><div class="loyalty-summary"><div><span>Текущий день</span><b>${state.currentDays}</b></div><div><span>Лучший стрик</span><b>${state.longestDays}</b></div><div><span>Смена дня</span><b>${esc(changeTime)}</b></div><div><span>Ежедневный бонус</span><b>+${state.nextDailyAmount} ♦</b></div></div><div class="loyalty-activity ${state.activityAccounted ? 'is-accounted' : 'is-required'}"><b>${state.activityAccounted ? '✓' : '!'}</b><span>${esc(activityText)}</span></div><div class="loyalty-next"><b>Следующая крупная награда</b><span>${esc(milestoneText)}</span><strong data-loyalty-countdown-at="${Number(countdownAt || 0)}" data-loyalty-countdown-prefix="${esc(countdownPrefix)}">${esc(countdownPrefix)}${esc(formatLoyaltyCountdown(countdownAt))}</strong></div><div class="ach-bottom"><div class="ach-reward">${esc(currentReward)}</div><div class="ach-remaining">${state.activityAccounted ? 'Сегодня продлено' : `Рубеж ${esc(changeTime)}`}</div><button class="ach-more" type="button" aria-expanded="${expanded ? 'true' : 'false'}">${expanded ? 'Свернуть' : 'Подробнее'}</button></div><div class="ach-details" style="display:${expanded ? 'block' : 'none'}"><div class="ach-details-title">Как сохранить Преданность</div><div class="ach-details-how">Время смены вашего дня зафиксировано при начале цикла: <b>${esc(changeTime)}</b>. Проявите хотя бы одну подтверждённую активность в каждом новом 24-часовом окне. Дополнительная активность не сдвигает время смены дня.</div>${rewardTable()}<label class="loyalty-control"><span><b>🔔 Напоминать о Преданности</b><small>Push придёт за один час до ${esc(changeTime)}, только если активность текущего дня ещё не учтена.</small></span><input type="checkbox" data-loyalty-reminder ${state.reminderEnabled ? 'checked' : ''}></label><label class="loyalty-control ${vacationDisabled ? 'is-disabled' : ''}"><span><b>🛡️ Пауза Преданности</b><small>${state.vacation.active ? `Активна · осталось ${formatLoyaltyVacation(state)}` : `Доступно ${formatLoyaltyVacation(state)} за скользящие 365 дней`}</small></span><input type="checkbox" data-loyalty-vacation ${state.vacation.active ? 'checked' : ''} ${vacationDisabled ? 'disabled' : ''}></label><div class="ach-details-desc">Во время паузы фиксированный цикл замораживается, стрик не растёт и награды не начисляются. После продолжения границы цикла сдвигаются ровно на длительность паузы.</div></div></div>`;
 };
 
 export const handleLoyaltyControl = async element => {
@@ -12084,12 +12112,11 @@ export const handleLoyaltyControl = async element => {
       await setLoyaltyReminderEnabled(element.checked);
       window.NotificationSystem?.success?.(
         element.checked
-          ? '🔔 Напоминания Преданности включены'
+          ? '🔔 Напоминание за час до рубежа включено'
           : 'Напоминания Преданности выключены'
       );
     } catch (error) {
       element.checked = !element.checked;
-
       window.NotificationSystem?.error?.(
         `Не удалось изменить напоминание: ${error?.message || 'ошибка'}`
       );
@@ -12106,15 +12133,13 @@ export const handleLoyaltyControl = async element => {
 
     try {
       await setLoyaltyVacationEnabled(enabled);
-
       window.NotificationSystem?.success?.(
         enabled
           ? '🛡️ Преданность поставлена на паузу'
-          : '⚡ Преданность продолжена. У вас есть 24 часа.'
+          : '⚡ Преданность продолжена'
       );
     } catch (error) {
       element.checked = !enabled;
-
       window.NotificationSystem?.error?.(
         `Не удалось изменить паузу: ${error?.message || 'ошибка'}`
       );
@@ -12130,6 +12155,7 @@ export const handleLoyaltyControl = async element => {
 
 export default {
   renderLoyaltyCard,
+  updateLoyaltyCardTimers,
   handleLoyaltyControl
 };
 
