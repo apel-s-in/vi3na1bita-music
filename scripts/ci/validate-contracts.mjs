@@ -488,12 +488,84 @@ const validatePlaybackBoundaries = () => {
     '_loadReq'
   ].forEach(marker => contains('src/PlayerCore.js', marker));
 };
+const validateLoyaltyReleaseD = () => {
+  const server =
+    'cloud-functions/vi3-signaling/index.js';
+  const scheduler =
+    'cloud-functions/vi3-loyalty-reminder/index.js';
+  const webpush =
+    'cloud-functions/vi3-webpush/index.js';
+
+  [
+    'const LOYALTY_VERSION = 2',
+    'LOYALTY_VACATION_ALLOWANCE_MS',
+    'LOYALTY_VACATION_WINDOW_MS',
+    'LOYALTY_DUE_BUCKET_MS',
+    'materializeLoyaltyVacation',
+    'syncLoyaltyDueIndex',
+    'actionLoyaltyPreferenceSet',
+    'actionLoyaltyVacationSet',
+    'actionLoyaltyDueRun',
+    "loyalty_preference_set",
+    "loyalty_vacation_set",
+    "loyalty_due_run",
+    "kvPrefixOrdered('loyaltyDue:'"
+  ].forEach(marker => contains(server, marker));
+
+  [
+    'LOYALTY_REMINDER',
+    'LOYALTY_VACATION_ENDING',
+    'LOYALTY_VACATION_ENDED',
+    'notificationTtl',
+    'notificationUrgency'
+  ].forEach(marker => contains(webpush, marker));
+
+  [
+    "action: 'loyalty_due_run'",
+    "'X-Vi3-Scheduler': SCHEDULER_SECRET",
+    'limit: 50'
+  ].forEach(marker => contains(scheduler, marker));
+
+  [
+    'setLoyaltyReminderEnabled',
+    'setLoyaltyVacationEnabled'
+  ].forEach(marker =>
+    contains(
+      'scripts/app/push/loyalty-reminders.js',
+      marker
+    )
+  );
+
+  contains(
+    'scripts/app/profile/loyalty-card.js',
+    'renderLoyaltyCard'
+  );
+  contains(
+    'service-worker.js',
+    "target.searchParams.set('openLoyalty', '1')"
+  );
+  contains(
+    'scripts/app.js',
+    "p.get('openLoyalty')==='1'"
+  );
+
+  assertNoMatch(
+    [
+      'scripts/app/push/loyalty-reminders.js',
+      'scripts/app/profile/loyalty-card.js',
+      scheduler
+    ],
+    /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/g,
+    'Release D не управляет playback'
+  );
+};
 
 const validateCloudFunctionFiles = () => {
   [
     'vi3-signaling',
     'vi3na1bita-backup-proxy',
-    'vi3-webpush'
+    'vi3-webpush',
+    'vi3-loyalty-reminder'
   ].forEach(name => {
     const indexPath =
       `cloud-functions/${name}/index.js`;
@@ -563,6 +635,7 @@ const main = async () => {
   validateDataBoundaries();
   validateRecommendationsAndStats();
   validatePlaybackBoundaries();
+  validateLoyaltyReleaseD();
   validateCloudFunctionFiles();
   validateWorkflows();
 
