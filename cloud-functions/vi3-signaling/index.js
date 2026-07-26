@@ -5963,10 +5963,14 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
     raw.perTrackFull && typeof raw.perTrackFull === 'object'
       ? raw.perTrackFull
       : {};
-  const perTrackValid =
-    raw.perTrackValid && typeof raw.perTrackValid === 'object'
-      ? raw.perTrackValid
-      : {};
+  const normalizedPerTrackFull =
+    normalizePerTrackCount(perTrackFull);
+  const normalizedPerTrackValid =
+    normalizePerTrackCount(perTrackValid);
+  const perTrackFullTotal =
+    sumObjectNumbers(normalizedPerTrackFull);
+  const perTrackValidTotal =
+    sumObjectNumbers(normalizedPerTrackValid);
   const listenTimeBySessionSource =
     raw.listenTimeBySession &&
     typeof raw.listenTimeBySession === 'object' &&
@@ -6049,12 +6053,18 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
     ),
     shadow: true,
     validPlays: Math.max(
-      0,
-      Math.floor(num(raw.validPlays))
+      perTrackValidTotal,
+      Math.max(
+        0,
+        Math.floor(num(raw.validPlays))
+      )
     ),
     fullPlays: Math.max(
-      0,
-      Math.floor(num(raw.fullPlays))
+      perTrackFullTotal,
+      Math.max(
+        0,
+        Math.floor(num(raw.fullPlays))
+      )
     ),
     totalListenMs: migratedTotalListenMs,
     totalSec: Math.floor(migratedTotalListenMs / 1000),
@@ -6153,12 +6163,8 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
         ])
         .filter(([uid, at]) => uid && at > 0)
     ),
-    perTrackFull: normalizePerTrackCount(
-      perTrackFull
-    ),
-    perTrackValid: normalizePerTrackCount(
-      perTrackValid
-    ),
+    perTrackFull: normalizedPerTrackFull,
+    perTrackValid: normalizedPerTrackValid,
     activeDays: [...new Set(
       (Array.isArray(raw.activeDays)
         ? raw.activeDays
@@ -6325,6 +6331,16 @@ function publicConfirmedListeningStats(progressRaw) {
       byTrackMs: sumObjectNumbers(progress.listenMsByTrack),
       classifiedListenMs: progress.classifiedListenMs,
       totalListenMs: progress.totalListenMs,
+      fullPlaysByTrack:
+        sumObjectNumbers(progress.perTrackFull),
+      validPlaysByTrack:
+        sumObjectNumbers(progress.perTrackValid),
+      fullCountersConsistent:
+        progress.fullPlays ===
+        sumObjectNumbers(progress.perTrackFull),
+      validCountersConsistent:
+        progress.validPlays ===
+        sumObjectNumbers(progress.perTrackValid),
       exact:
         progress.legacyUnclassifiedMs === 0
     },
