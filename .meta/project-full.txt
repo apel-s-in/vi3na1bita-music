@@ -11249,6 +11249,7 @@ export default { renderAccountDevicesBlock, bindAccountDevicesBlock };
 //=================================================
 // FILE: /scripts/app/profile/achievements-view.js
 import { fmtAchTimerText } from '../../ui/progress-formatters.js';
+import { renderLoyaltyCard } from './loyalty-card.js';
 
 export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) => {
   const expanded = new Set();
@@ -11287,13 +11288,20 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
       if (!c || !eng()?.achievements) return;
       const items = flt(ctx._achCurrentFilter = f);
 
-      c.innerHTML = items.length
+      const loyaltyHtml =
+        ['available', 'all'].includes(f)
+          ? renderLoyaltyCard()
+          : '';
+
+      c.innerHTML = loyaltyHtml + (items.length
         ? items.map(a => {
             const isExpanded = expanded.has(String(a.id));
 
             return `<div class="ach-item ${a.isUnlocked ? 'done' : ''}" data-ach="${hEsc(a.id)}"><div class="ach-top"><div class="ach-title" style="color:${a.isUnlocked ? '#fff' : a.color || '#fff'}">${hEsc(a.icon)} ${hEsc(a.name)}</div></div><div class="ach-sub">${a.isUnlocked && a.unlockedAt ? unlockInfo(a) : a.isHidden ? 'Откроется при особых условиях' : hEsc(a.short)}</div>${!a.isUnlocked && !a.isHidden && a.progress ? `<div class="ach-progress"><div class="ach-mini-bar"><div class="ach-mini-fill" data-ach-fill="${hEsc(a.id)}" style="width:${a.progress.pct}%"></div></div></div>` : ''}<div class="ach-bottom"><div class="ach-reward">${rewardText(a)}</div><div class="ach-remaining" data-ach-remaining="${hEsc(a.id)}">${tH(a)}</div><button class="ach-more" type="button" aria-expanded="${isExpanded ? 'true' : 'false'}">${isExpanded ? 'Свернуть' : 'Подробнее'}</button></div>${a.progressMeta?.serverConfirmed ? '<div class="ach-server-note">Подтверждено сервером · обновляется во время прослушивания</div>' : ''}<div class="ach-details" style="display:${isExpanded ? 'block' : 'none'}"><div class="ach-details-title">Как выполнить</div><div class="ach-details-how">${hEsc(a.howTo || 'Выполните условия.')}</div>${a.desc ? `<div class="ach-details-desc">${hEsc(a.desc)}</div>` : ''}</div></div>`;
           }).join('')
-        : '<div class="fav-empty">По данному фильтру ничего нет</div>';
+        : loyaltyHtml
+          ? ''
+          : '<div class="fav-empty">По данному фильтру ничего нет</div>');
     },
     updateLiveNodes: () => {
       if (!c || !eng()?.achievements) return;
