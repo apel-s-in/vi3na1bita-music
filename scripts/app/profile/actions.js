@@ -1,6 +1,7 @@
 // UID.096_(Helper-first anti-duplication policy)_(actions.js должен быть router-слоем)_(reset/trash вынесены в отдельные modules) UID.094_(No-paralysis rule)_(profile actions не должны влиять на playback)_(клики профиля не стопают и не сбрасывают плеер)
 
 import { createTrashActionHandlers } from './actions-trash.js';
+import { handleLoyaltyControl } from './loyalty-card.js';
 import { bindTabStripPhysics } from './tab-strip-physics.js';
 
 export const bindProfileActions = ({ ctx, container: c, achView: aV, reloadProfile: rP }) => {
@@ -20,6 +21,18 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, reloadProfi
   ];
 
   c.addEventListener('click', async e => { for (const h of handlers) { const el = e.target.closest(h.sel); if (el) { await h.run({ el, event: e }); break; } } });
+  c.addEventListener('change', event => {
+    handleLoyaltyControl(event.target)
+      .then(handled => {
+        if (!handled) return;
+
+        setTimeout(() => {
+          ctx._profileAchievementsView
+            ?.render?.(ctx._achCurrentFilter || 'available');
+        }, 80);
+      })
+      .catch(() => null);
+  });
 };
 
 export default { bindProfileActions };
