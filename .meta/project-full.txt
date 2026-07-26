@@ -14978,14 +14978,25 @@ const assert = (condition, message) => {
 };
 
 const contains = (relative, marker) => {
-  assert(
-    read(relative).includes(marker),
-    `${relative}: отсутствует ${marker}`
-  );
+  const found = read(relative).includes(marker);
+
+  if (found) {
+    console.log(`✅ ${relative}: найден ${marker}`);
+  } else {
+    failures.push(`${relative}: отсутствует ${marker}`);
+  }
 };
 
 const excludes = (relative, pattern, message) => {
-  assert(!pattern.test(read(relative)), `${relative}: ${message}`);
+  const source = read(relative);
+  pattern.lastIndex = 0;
+  const found = pattern.test(source);
+
+  if (!found) {
+    console.log(`✅ ${relative}: нарушение отсутствует — ${message}`);
+  } else {
+    failures.push(`${relative}: ${message}`);
+  }
 };
 
 const listFiles = directory => {
@@ -15461,8 +15472,16 @@ const validateLoyaltyReleaseD = () => {
     "loyalty_preference_set",
     "loyalty_vacation_set",
     "loyalty_due_run",
-    "kvPrefixOrdered('loyaltyDue:'"
+    "loyalty_preference_set",
+    "loyalty_vacation_set",
+    "loyalty_due_run"
   ].forEach(marker => contains(server, marker));
+
+  assert(
+    /kvPrefixOrdered\(\s*['"]loyaltyDue:['"]\s*,/
+      .test(read(server)),
+    'Release D scheduler читает ordered loyalty due-index'
+  );
 
   [
     'LOYALTY_REMINDER',
