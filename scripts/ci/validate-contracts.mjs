@@ -103,6 +103,7 @@ const importAchievementDictionary = async () => {
 const validateAchievements = async () => {
   const dictionary = await importAchievementDictionary();
   const play = dictionary?.play_total;
+  const full = dictionary?.full_total;
   const time = dictionary?.time_total;
 
   assert(
@@ -127,7 +128,34 @@ const validateAchievements = async () => {
     play?.scaling?.resetEachLevel === true,
     'В потоке: последовательный progress'
   );
+  assert(
+    JSON.stringify(full?.scaling?.steps) ===
+      JSON.stringify([
+        1, 2, 5, 10, 50, 100, 150, 200,
+        250, 300, 400, 500, 1000, 1500,
+        2000, 2500
+      ]),
+    'Верное ухо: последовательность уровней'
+  );
 
+  assert(
+    JSON.stringify(full?.reward?.steps) ===
+      JSON.stringify([
+        5, 10, 15, 30, 50, 75, 85, 100,
+        125, 150, 200, 250, 500, 250,
+        250, 250
+      ]),
+    'Верное ухо: таблица наград'
+  );
+
+  assert(
+    full?.scaling?.resetEachLevel === true &&
+      full?.scaling?.cumulativeSteps === true &&
+      full?.scaling?.repeatAfterLevel === 16 &&
+      full?.scaling?.repeatStep === 500 &&
+      full?.reward?.repeatAmount === 250,
+    'Верное ухо: последовательное продолжение после 2500'
+  );
   assert(
     time?.scaling?.resetEachLevel === true &&
       time?.scaling?.cumulativeSteps === true &&
@@ -181,7 +209,10 @@ const validateListening = () => {
     'totalListenMs',
     'listenTimeBySession',
     'applyVerifiedListenTimeProgress',
-    'buildTimeRewards'
+    'buildFullListenRewards',
+    'buildTimeRewards',
+    'data.continuityBroken !== true',
+    'Math.floor(data.duration * 0.95)'
   ].forEach(marker => contains(server, marker));
 
   assertNoMatch(
