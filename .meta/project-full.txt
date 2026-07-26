@@ -2180,7 +2180,7 @@ export class AchievementEngine {
   }
 
   _buildUIArray() {
-    const arr = [], agg = { ...(this.lastAgg || {}) }, lv = window.liveStatsTracker?.getSnapshot?.() || null;
+    const arr = [], agg = { ...(this.lastAgg || {}) };
     const confirmed = getConfirmedListeningStats();
     if (confirmed.available) {
       agg.totalSec = confirmed.totalListenMs / 1000;
@@ -2249,21 +2249,6 @@ export class AchievementEngine {
             targetMs: rawTarget * 1000,
             currentRaw: effectiveCurrent,
             targetRaw: rawTarget
-          };
-        } else if (r.id === 'streak_base') {
-          effectiveCurrent = Number(lv?.projectedStreak || rawCurrent);
-          pct = Math.min(100, Math.max(0, (effectiveCurrent / rawTarget) * 100));
-          progressMeta = {
-            kind: 'streak_days',
-            live: true,
-            toggleableTimer: true,
-            remainingDays: Math.max(0, rawTarget - effectiveCurrent),
-            elapsedDays: effectiveCurrent,
-            targetDays: rawTarget,
-            currentRaw: effectiveCurrent,
-            targetRaw: rawTarget,
-            hasTodayPersistent: !!lv?.hasTodayPersistent,
-            wouldCountToday: !!lv?.wouldCountToday
           };
         } else {
           progressMeta = {
