@@ -95,21 +95,19 @@ exports.handler = async () => {
       }
     );
 
+    const ok =
+      result.status >= 200 &&
+      result.status < 300 &&
+      result.payload?.ok === true;
+
     return {
-      statusCode:
-        result.status >= 200 &&
-        result.status < 300
-          ? 200
-          : 502,
+      statusCode: ok ? 200 : 502,
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store'
       },
       body: JSON.stringify({
-        ok:
-          result.status >= 200 &&
-          result.status < 300 &&
-          result.payload?.ok === true,
+        ok,
         signalingStatus: result.status,
         result: result.payload,
         ts: Date.now()
