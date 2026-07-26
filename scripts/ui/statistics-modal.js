@@ -3,7 +3,7 @@
 // UID.094_(No-paralysis rule)_(statistics modal не влияет на playback)_(только чтение MetaDB и render)
 
 import { metaDB } from '../analytics/meta-db.js';
-import { buildStatsViewModel } from '../analytics/stats-state.js';
+import { resolveListeningStatsViewModel } from '../analytics/confirmed-listening-stats.js';
 import { fmtAchTimerText } from './progress-formatters.js';
 import { openTrackStatisticsModal } from './track-statistics-modal.js';
 
@@ -26,13 +26,15 @@ const renderAchievements = engine =>
 export async function openStatisticsModal(uid = null) {
   if (uid || window.playerCore?.getCurrentTrackUid?.()) return openTrackStatisticsModal(uid);
 
-  const vm = buildStatsViewModel(await metaDB.getAllStats());
+  const vm = resolveListeningStatsViewModel(
+    await metaDB.getAllStats()
+  );
   const engine = window.achievementEngine, f = vm.globalFeatures;
 
   window.Modals?.open?.({
     title: 'Профиль слушателя',
     maxWidth: 400,
-    bodyHtml: `<div class="sm-note">Не удалось определить текущий трек. Показана общая статистика.</div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${vm.summary.totalFull}</b><span>Треков</span></div><div class="stat-box"><b>${dur(vm.summary.totalSec)}</b><span>В пути</span></div><div class="stat-box"><b>${String(vm.peakHour).padStart(2,'0')}:00</b><span>Пик активности</span></div><div class="stat-box"><b>${esc(vm.peakDaypart)}</b><span>Пик времени</span></div></div><div class="sm-card"><div class="sm-cap">🌙 ТАЙМЕР СНА</div><div>Срабатываний: <b>${f.sleep_timer || 0}</b></div><div>Установок: <b>${f.sleep_timer_set || 0}</b></div><div>Продлений: <b>${f.sleep_timer_extend || 0}</b></div><div>Отмен: <b>${f.sleep_timer_cancel || 0}</b></div><div>Сумма минут: <b>${f.sleep_timer_minutes_total || 0}</b></div></div><div class="sm-card-lg"><div class="sm-cap">🏆 ТОП 5 ТРЕКОВ</div>${renderTopTracks(vm.topFull)}</div><div class="sm-cap">ДОСТИЖЕНИЯ (${engine?.getCompletedCount?.() ?? 0}/${engine?.achievements?.length || 0})</div><div class="sm-ach-wrap">${renderAchievements(engine)}</div>`
+    bodyHtml: `<div class="sm-note">Не удалось определить текущий трек. Показана общая статистика.</div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${vm.summary.totalFull}</b><span>Полных</span></div><div class="stat-box"><b>${dur(vm.summary.totalSec)}</b><span>Время музыки</span></div><div class="stat-box"><b>${String(vm.peakHour).padStart(2,'0')}:00</b><span>Пик активности</span></div><div class="stat-box"><b>${esc(vm.peakDaypart)}</b><span>Пик времени</span></div></div><div class="sm-card"><div class="sm-cap">🌙 ТАЙМЕР СНА</div><div>Срабатываний: <b>${f.sleep_timer || 0}</b></div><div>Установок: <b>${f.sleep_timer_set || 0}</b></div><div>Продлений: <b>${f.sleep_timer_extend || 0}</b></div><div>Отмен: <b>${f.sleep_timer_cancel || 0}</b></div><div>Сумма минут: <b>${f.sleep_timer_minutes_total || 0}</b></div></div><div class="sm-card-lg"><div class="sm-cap">🏆 ТОП 5 ТРЕКОВ</div>${renderTopTracks(vm.topFull)}</div><div class="sm-cap">ДОСТИЖЕНИЯ (${engine?.getCompletedCount?.() ?? 0}/${engine?.achievements?.length || 0})</div><div class="sm-ach-wrap">${renderAchievements(engine)}</div>`
   });
 
   window.AlbumsManager?.highlightCurrentTrack?.();
