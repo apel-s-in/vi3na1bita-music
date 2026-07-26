@@ -14865,6 +14865,15 @@ let cachedSession = null;
 let cachedYandexId = '';
 let pendingSession = null;
 let pendingYandexId = '';
+let serverBackoffUntil = 0;
+let serverBackoffMs = 5000;
+
+const coalescedActions = new Set([
+  'achievement_reward_status',
+  'favorite_state_get',
+  'wallet_get'
+]);
+const actionRequests = new Map();
 
 const safe = value => String(value == null ? '' : value).trim();
 
@@ -15008,58 +15017,102 @@ export const getSocialSession = async ({ force = false } = {}) => {
   }
 };
 
-export const requestSocialAction = async (
+export const requestSocialAction = (
   action,
   data = {},
   { retryAuth = true } = {}
 ) => {
-  const session = await getSocialSession();
+  const cleanAction = safe(action);
+  const coalesced = coalescedActions.has(cleanAction);
+  const requestKey = coalesced ? cleanAction : '';
 
-  const request = async currentSession => {
-    const response = await fetch(SIGNALING_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-Vi3-Session': currentSession.socialSession
-      },
-      credentials: 'omit',
-      mode: 'cors',
-      body: JSON.stringify({
-        action: safe(action),
-        ...data
-      })
-    });
+  if (requestKey && actionRequests.has(requestKey)) {
+    return actionRequests.get(requestKey);
+  }
 
-    const result = await readJson(response);
-
-    if (!response.ok || result.ok === false) {
-      const error = new Error(
-        result.error ||
-        result.reason ||
-        `http_${response.status}`
-      );
-      error.status = response.status;
-      error.action = action;
+  const run = async () => {
+    if (Date.now() < serverBackoffUntil) {
+      const error = new Error('social_server_backoff_active');
+      error.status = 429;
+      error.action = cleanAction;
+      error.retryAt = serverBackoffUntil;
       throw error;
     }
 
-    return result;
+    const session = await getSocialSession();
+
+    const request = async currentSession => {
+      const response = await fetch(SIGNALING_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Vi3-Session': currentSession.socialSession
+        },
+        credentials: 'omit',
+        mode: 'cors',
+        body: JSON.stringify({
+          action: cleanAction,
+          ...data
+        })
+      });
+
+      const result = await readJson(response);
+
+      if (response.status === 429) {
+        serverBackoffUntil = Date.now() + serverBackoffMs;
+        serverBackoffMs = Math.min(
+          60000,
+          serverBackoffMs * 2
+        );
+      } else if (response.ok && result.ok !== false) {
+        serverBackoffUntil = 0;
+        serverBackoffMs = 5000;
+      }
+
+      if (!response.ok || result.ok === false) {
+        const error = new Error(
+          result.error ||
+          result.reason ||
+          `http_${response.status}`
+        );
+        error.status = response.status;
+        error.action = cleanAction;
+        throw error;
+      }
+
+      return result;
+    };
+
+    try {
+      return await request(session);
+    } catch (error) {
+      if (
+        retryAuth &&
+        Number(error?.status) === 401
+      ) {
+        const renewed = await getSocialSession({
+          force: true
+        });
+
+        return request(renewed);
+      }
+
+      throw error;
+    }
   };
 
-  try {
-    return await request(session);
-  } catch (error) {
+  const pending = run().finally(() => {
     if (
-      retryAuth &&
-      Number(error?.status) === 401
+      requestKey &&
+      actionRequests.get(requestKey) === pending
     ) {
-      const renewed = await getSocialSession({ force: true });
-      return request(renewed);
+      actionRequests.delete(requestKey);
     }
+  });
 
-    throw error;
-  }
+  if (requestKey) actionRequests.set(requestKey, pending);
+  return pending;
 };
 window.addEventListener(
   'yandex:auth:changed',
