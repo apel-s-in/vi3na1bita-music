@@ -1066,6 +1066,30 @@ async function kvPrefix(prefix, limit = 100) {
   const t = now();
   return rowsOf(res).filter(r => !num(r.expires_at) || num(r.expires_at) >= t);
 }
+async function kvPrefixOrdered(prefix, limit = 100) {
+  const to = `${prefix}\uffff`;
+  const res = await query(`
+    DECLARE $from AS Utf8;
+    DECLARE $to AS Utf8;
+    DECLARE $lim AS Uint64;
+
+    SELECT pk, type, owner, updated_at, expires_at, payload_json
+    FROM ${TABLE}
+    WHERE pk >= $from AND pk < $to
+    ORDER BY pk
+    LIMIT $lim;
+  `, {
+    '$from': tvUtf8(prefix),
+    '$to': tvUtf8(to),
+    '$lim': tvUint64(limit)
+  });
+
+  const at = now();
+  return rowsOf(res).filter(row =>
+    !num(row.expires_at) ||
+    num(row.expires_at) >= at
+  );
+}
 
 async function enforceRateLimit({
   scope,
@@ -4434,8 +4458,6 @@ function materializeLoyaltyVacation(stateRaw, at = now()) {
           ? state.lastAdvancedAt + frozenMs
           : 0,
       deadlineAt: vacation.endsAt + LOYALTY_WINDOW_MS,
-      scheduleRevision: state.scheduleRevision + 1,
-      vacation: {
         active: false,
         startedAt: 0,
         endsAt: 0,
@@ -4809,9 +4831,6 @@ async function applyLoyaltyActivity(playerId, {
       const settled =
         await settleLoyaltyPendingRewards(playerId);
 
-      await syncLoyaltyDueIndex(settled.state)
-        .catch(() => null);
-
       return {
         duplicate: true,
         advanced: false,
@@ -4843,6 +4862,7 @@ async function applyLoyaltyActivity(playerId, {
       };
     }
 
+    const currentDayKey = loyaltyDayKey(at);
     const expired =
       state.currentDays > 0 &&
       state.deadlineAt > 0 &&
@@ -4850,6 +4870,7 @@ async function applyLoyaltyActivity(playerId, {
     const canAdvance =
       state.currentDays > 0 &&
       !expired &&
+      currentDayKey !== state.lastDayKey &&
       at - state.lastAdvancedAt >=
         LOYALTY_ADVANCE_MIN_MS;
 
@@ -4917,7 +4938,7 @@ async function applyLoyaltyActivity(playerId, {
       firstQualifiedAt,
       lastQualifiedAt: at,
       lastAdvancedAt,
-      lastDayKey: loyaltyDayKey(at),
+      lastDayKey: currentDayKey,
       deadlineAt: at + LOYALTY_WINDOW_MS,
       cycleStartedAt,
       scheduleRevision: state.scheduleRevision + 1,
@@ -4989,9 +5010,6 @@ async function getLoyaltyStatus(playerId) {
   await materializeStoredLoyaltyState(playerId);
 
   const settled = await settleLoyaltyPendingRewards(playerId);
-
-  await syncLoyaltyDueIndex(settled.state)
-    .catch(() => null);
 
   return {
     loyalty: publicLoyaltyState(settled.state),
@@ -12565,32 +12583,33 @@ async function actionLoyaltyDueRun(event, body) {
     !CFG.schedulerSecret ||
     !timingSafeEqualText(secret, CFG.schedulerSecret)
   ) {
-    throw new Error('bad_scheduler_secret');
+    const error = new Error('bad_scheduler_secret');
+    error.httpStatus = 403;
+    throw error;
   }
 
   const currentBucket = Math.ceil(
     now() / LOYALTY_DUE_BUCKET_MS
   );
-  const rows = [];
-
-  for (let offset = 0; offset <= 12; offset++) {
-    const bucket = String(
-      currentBucket - offset
-    ).padStart(13, '0');
-
-    rows.push(
-      ...await kvPrefix(
-        `loyaltyDue:${bucket}:`,
-        500
-      )
-    );
-  }
+  const runLimit = Math.max(
+    1,
+    Math.min(100, Math.floor(num(body.limit, 50)))
+  );
+  const rows = await kvPrefixOrdered(
+    'loyaltyDue:',
+    Math.max(runLimit * 2, 100)
+  );
+  const dueRows = rows
+    .filter(row =>
+      normalizeLoyaltyDue(payload(row)).targetAt <= now()
+    )
+    .slice(0, runLimit);
 
   let sent = 0;
   let stale = 0;
   let retried = 0;
 
-  for (const row of rows) {
+  for (const row of dueRows) {
     const due = normalizeLoyaltyDue(payload(row));
 
     if (
@@ -12671,6 +12690,7 @@ async function actionLoyaltyDueRun(event, body) {
   return {
     ok: true,
     scanned: rows.length,
+    due: dueRows.length,
     sent,
     stale,
     retried,
