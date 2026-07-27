@@ -1021,7 +1021,7 @@ jobs:
 <link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
 <link rel="stylesheet" href="styles/album-carousel.css"><link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
 <link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/shards.css"><link rel="stylesheet" href="styles/games.css">
-<link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=9.1.4">
+<link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=9.1.5">
 <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -1109,7 +1109,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '9.1.4'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-07-26');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '9.1.5'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-07-27');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -1121,7 +1121,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '9.1.4';
+const SW_VERSION = '9.1.5';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 let isAirplaneMode = false;
 
@@ -7509,7 +7509,7 @@ const W = window;
 const D = document;
 const BASE_FRIENDS =
   'https://vi3na1bita.website.yandexcloud.net/Friends';
-const FRIENDS_BUILD = '9.1.4';
+const FRIENDS_BUILD = '9.1.5';
 const FRIENDS_CORE_URL =
   `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
 const FRIENDS_UI_URL =
@@ -8330,7 +8330,7 @@ import { getConfirmedListeningStats } from '../../analytics/confirmed-listening-
 import { getLoyaltyState } from '../../analytics/loyalty-state.js';
 import {
   getEmbeddedFriendsRpcMethod
-} from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.1.4';
+} from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.1.5';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -13956,8 +13956,8 @@ if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',init);else ini
 // FILE: /scripts/core/config.js
 // UID.005_(Soft-disable intel layer)_(не парализовать приложение при rollout)_(вынести базовые intel flags в APP_CONFIG) UID.019_(Compact TrackProfile index)_(дать стабильный путь до semantic data)_(хранить profile index/profile dir в config) UID.069_(Internal user identity)_(подготовить мульти-provider контур)_(держать future identity/sync flags централизованно) UID.092_(Incremental rollout order)_(делать staged внедрение через один конфиг)_(intel boot должен управляться отсюда)
 export const APP_CONFIG = {
-  APP_VERSION: '9.1.4',
-  BUILD_DATE: '2026-07-26',
+  APP_VERSION: '9.1.5',
+  BUILD_DATE: '2026-07-27',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
     { key: 'v-ssore', title: 'В Ссоре', icon: 'img/icon_album/icon-album-06.png', row: 'albums' },
@@ -17007,11 +17007,11 @@ export default { openTrackStatisticsModal };
 //=================================================
 // FILE: /.release/version.json
 {
-  "appVersion": "9.1.4",
-  "buildDate": "2026-07-26",
-  "friendsBuild": "9.1.4",
-  "gamesBuild": "9.1.4",
-  "warHeartsBuild": "9.1.4"
+  "appVersion": "9.1.5",
+  "buildDate": "2026-07-27",
+  "friendsBuild": "9.1.5",
+  "gamesBuild": "9.1.5",
+  "warHeartsBuild": "9.1.5"
 }
 
 //=================================================
