@@ -13,8 +13,13 @@ const proxyUploadBodyBytes = backup => new TextEncoder().encode(JSON.stringify({
 
 const normalizeDeviceForHash = d => ({ deviceStableId: sS(d?.deviceStableId), deviceHash: sS(d?.deviceHash), label: sS(d?.label), class: sS(d?.class), platform: sS(d?.platform), os: sS(d?.os), browser: sS(d?.browser), screen: sS(d?.screen), lang: sS(d?.lang), pwa: !!d?.pwa, firstSeenAt: sN(d?.firstSeenAt), retiredAt: sN(d?.retiredAt), authHistory: (Array.isArray(d?.authHistory) ? d.authHistory : []).map(x => ({ ts:sN(x?.ts), browser:sS(x?.browser), os:sS(x?.os), lang:sS(x?.lang), timezone:sS(x?.timezone), pwa:!!x?.pwa })).filter(x => x.ts > 0).slice(0,20), seenHashes: [...new Set((Array.isArray(d?.seenHashes) ? d.seenHashes : []).map(sS).filter(Boolean))].sort() });
 const normalizeStatsForHash = rows => (Array.isArray(rows) ? rows : []).filter(r => r && typeof r === 'object' && sS(r.uid)).map(r => { const featuresUsed = { ...(r.featuresUsed || {}) }; Object.keys(featuresUsed).forEach(k => { if (String(k || '').startsWith('backup')) delete featuresUsed[k]; }); return { ...r, uid: sS(r.uid), featuresUsed }; }).sort((a, b) => sS(a.uid).localeCompare(sS(b.uid)));
+const normalizeAchievementStateForHash = raw => {
+  const state = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const { updatedAt, ...stable } = state;
+  return stable;
+};
 
-export const buildSharedSemanticPayload = backup => ({ version: sS(backup?.version || backup?.revision?.version || '6.0'), ownerYandexId: sS(backup?.identity?.ownerYandexId || ''), devices: (Array.isArray(backup?.devices) ? backup.devices : []).map(normalizeDeviceForHash).sort((a, b) => a.deviceStableId.localeCompare(b.deviceStableId) || a.deviceHash.localeCompare(b.deviceHash)), data: { stats: normalizeStatsForHash(backup?.data?.stats), eventLog: { warm: (Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm : []).filter(x => x?.eventId && !isBackupSemanticNoiseEvent(x)) }, achievements: backup?.data?.achievements || {}, achievementState: backup?.data?.achievementState || {}, streaks: backup?.data?.streaks || {}, userProfile: backup?.data?.userProfile || {}, userProfileRpg: backup?.data?.userProfileRpg || {}, localStorage: getSharedSnapshotLocalEntries(backup?.data?.localStorage || {}), intel: backup?.data?.intel || {} } });
+export const buildSharedSemanticPayload = backup => ({ version: sS(backup?.version || backup?.revision?.version || '6.0'), ownerYandexId: sS(backup?.identity?.ownerYandexId || ''), devices: (Array.isArray(backup?.devices) ? backup.devices : []).map(normalizeDeviceForHash).sort((a, b) => a.deviceStableId.localeCompare(b.deviceStableId) || a.deviceHash.localeCompare(b.deviceHash)), data: { stats: normalizeStatsForHash(backup?.data?.stats), eventLog: { warm: (Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm : []).filter(x => x?.eventId && !isBackupSemanticNoiseEvent(x)) }, achievements: backup?.data?.achievements || {}, achievementState: normalizeAchievementStateForHash(backup?.data?.achievementState), streaks: backup?.data?.streaks || {}, userProfile: backup?.data?.userProfile || {}, userProfileRpg: backup?.data?.userProfileRpg || {}, localStorage: getSharedSnapshotLocalEntries(backup?.data?.localStorage || {}), intel: backup?.data?.intel || {} } });
 
 export const getSharedSemanticHash = async backup => await sha256Hex(stableStringify(buildSharedSemanticPayload(backup || {})));
 export const getDeviceSettingsSemanticHash = async doc => await sha256Hex(stableStringify({ version: sS(doc?.version || '1.0'), ownerYandexId: sS(doc?.ownerYandexId || ''), deviceStableId: sS(doc?.deviceStableId || ''), deviceHash: sS(doc?.deviceHash || ''), sourceDeviceLabel: sS(doc?.sourceDeviceLabel || ''), sourceDeviceClass: sS(doc?.sourceDeviceClass || ''), sourcePlatform: sS(doc?.sourcePlatform || ''), localStorage: doc?.localStorage || {} }));
@@ -164,7 +169,9 @@ const compactBackupForCloud = async (b, { disk = null, token = '' } = {}) => {
   );
 };
 
-export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBackupVault, backup = null, force = false, uploadDevice = true, reason = 'autosave', syncLease = null } = {}) => {
+let uploadBundlePromise = null;
+
+const runUploadBackupBundle = async ({ disk, token, BackupVault = DefaultBackupVault, backup = null, force = false, uploadDevice = true, reason = 'autosave', syncLease = null } = {}) => {
   if (!disk || !token || !BackupVault) throw new Error('upload_runner_invalid_input');
 
   const boundary =
@@ -219,6 +226,14 @@ export const uploadBackupBundle = async ({ disk, token, BackupVault = DefaultBac
   if (uploadedShared) try { window.eventLogger?.log?.('BACKUP_CREATED', null, { reason, uploadedShared, uploadedDevice, uploadedEventArchive, checksum: b?.integrity?.payloadHash || '' }); } catch {}
   recordSyncRevision({ hash: sharedHash, domains: changedDomains, uploadedShared, uploadedDevice, uploadedEventArchive, reason, ok: true });
   return { ok: true, reason, backup: b, meta, uploadedShared, uploadedDevice, uploadedEventArchive, eventArchive, sharedHash, deviceHash, deviceDoc };
+};
+
+export const uploadBackupBundle = options => {
+  if (uploadBundlePromise) return uploadBundlePromise;
+  uploadBundlePromise = runUploadBackupBundle(options).finally(() => {
+    uploadBundlePromise = null;
+  });
+  return uploadBundlePromise;
 };
 
 export default { buildSharedSemanticPayload, getSharedSemanticHash, getDeviceSettingsSemanticHash, uploadBackupBundle };
