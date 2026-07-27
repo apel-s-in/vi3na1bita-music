@@ -21,8 +21,10 @@ const VERSION_RE = /^app:\/Backup\/vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3ba
 const META_ONLY_TIMEOUT_MS = 10000;
 const DEFAULT_TIMEOUT_MS = 20000;
 const DOWNLOAD_TIMEOUT_MS = 25000;
-const MAX_BODY_BYTES = 10 * 1024 * 1024;
-const MAX_UPLOAD_BODY_BYTES = 12 * 1024 * 1024;
+const RECEIPT_TIMEOUT_MS = 5000;
+const MAX_BACKUP_BODY_BYTES = 10 * 1024 * 1024;
+const MAX_BODY_BYTES = MAX_BACKUP_BODY_BYTES;
+const MAX_UPLOAD_BODY_BYTES = MAX_BACKUP_BODY_BYTES;
 const DEVICE_SETTINGS_DIR = `${APP_ROOT}/device-settings`;
 const DEVICE_SETTINGS_INDEX_PATH = `${DEVICE_SETTINGS_DIR}/index.json`;
 const EVENT_ARCHIVE_DIR = `${APP_ROOT}/events`;
@@ -56,12 +58,24 @@ const BACKUP_RECEIPT_SECRET = String(process.env.BACKUP_RECEIPT_SECRET || '').tr
 const BACKUP_RECEIPT_OUTBOX_PATH = `${APP_ROOT}/pending-backup-receipts.json`;
 const BACKUP_RECEIPT_OUTBOX_LIMIT = 100;
 const BACKUP_RECEIPT_OUTBOX_TTL_MS = 90 * 24 * 60 * 60 * 1000;
-const BACKUP_RECEIPT_FLUSH_LIMIT = 20;
+const BACKUP_RECEIPT_FLUSH_LIMIT = 5;
 const safeString = v => String(v == null ? '' : v).trim();
 const safeNum = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const nowTs = () => Date.now();
 const makeRequestId = () => `ydp_${nowTs().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const normalizeErrMessage = e => safeString(e?.message || 'unknown_error');
+const errorStatus = error => {
+  const explicit = safeNum(error?.status);
+  if (explicit >= 400 && explicit <= 599) return explicit;
+
+  const message = normalizeErrMessage(error);
+  if (/auth|oauth|token/i.test(message)) return 401;
+  if (/forbidden|scope|permission/i.test(message)) return 403;
+  if (/not_found/i.test(message)) return 404;
+  if (/too_large|limit/i.test(message)) return 413;
+  if (/timeout/i.test(message)) return 504;
+  return 500;
+};
 function extractTokenFromHeader(authHeaderRaw) {
   const raw = safeString(authHeaderRaw);
   if (!raw) return '';
@@ -293,7 +307,18 @@ async function emitBackupAchievementReceipt(validation) {
   if (!SIGNALING_URL || !BACKUP_RECEIPT_SECRET || !validation?.ownerYandexId || !validation?.payloadHash) {
     return { ok: false, skipped: true, reason: 'backup_receipt_not_configured' };
   }
-  const response = await httpsPostJson(SIGNALING_URL, { action: 'backup_achievement_receipt', ownerYandexId: validation.ownerYandexId, payloadHash: validation.payloadHash }, { 'X-Vi3-Backup-Secret': BACKUP_RECEIPT_SECRET }, META_ONLY_TIMEOUT_MS);
+  const response = await httpsPostJson(
+    SIGNALING_URL,
+    {
+      action: 'backup_achievement_receipt',
+      ownerYandexId: validation.ownerYandexId,
+      payloadHash: validation.payloadHash
+    },
+    {
+      'X-Vi3-Backup-Secret': BACKUP_RECEIPT_SECRET
+    },
+    RECEIPT_TIMEOUT_MS
+  );
   const data = safeParse(response.body) || {};
   return { ok: response.status >= 200 && response.status < 300 && data.ok === true, status: response.status, duplicate: data.duplicate === true, shadow: data.shadow !== false, receiptId: safeString(data.receiptId), error: safeString(data.error) };
 }
@@ -569,9 +594,28 @@ async function inspectEventArchive(token) {
   const totalSize = items.reduce((a, x) => a + safeNum(x.size), 0);
   return { exists: idxRes?.type === 'ok', index: { ...rawIndex, items }, branches, totals: { branches: branches.length, segments: items.length, events: items.reduce((a, x) => a + safeNum(x.eventCount), 0), size: totalSize, sizeHuman: humanSize(totalSize), diskFiles: diskItems.length } };
 }
+const requestMethod = event =>
+  safeString(
+    event?.httpMethod ||
+    event?.requestContext?.http?.method ||
+    event?.requestContext?.httpMethod ||
+    event?.method ||
+    ''
+  ).toUpperCase();
+
 const getQuery = (event, key) => {
-  const q = event.queryStringParameters || {};
-  return safeString(q[key]);
+  const query = event?.queryStringParameters || {};
+  if (query[key] != null) return safeString(query[key]);
+
+  try {
+    return safeString(
+      new URLSearchParams(
+        event?.rawQueryString || ''
+      ).get(key)
+    );
+  } catch {
+    return '';
+  }
 };
 const normalizeBackupItem = (item, meta = null, opts = {}) => {
   const path = safeString(item?.path);
@@ -846,7 +890,8 @@ async function downloadBackup(token, selectedPath) {
 }
 module.exports.handler = async event => {
   const requestId = makeRequestId();
-  const hdrs = event.headers || {};
+  const method = requestMethod(event);
+  const hdrs = event?.headers || {};
   const origin = hdrs.origin || hdrs.Origin || '';
   const cors = corsHeaders(origin);
   const reply = (statusCode, body, extraHeaders = {}) => json(statusCode, cors, body, { 'X-Request-Id': requestId, ...extraHeaders });
@@ -863,15 +908,44 @@ module.exports.handler = async event => {
     }
     return null;
   };
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: { ...cors, 'X-Request-Id': requestId }, body: '' };
+  if (method === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: {
+        ...cors,
+        'X-Request-Id': requestId
+      },
+      body: ''
+    };
   }
-  const mode = getQuery(event, 'mode') || 'download';
+  const requestedMode = getQuery(event, 'mode');
+  const mode = requestedMode || 'ping';
+
+  console.log('[backup-proxy:request]', {
+    requestId,
+    method: method || 'unknown',
+    mode,
+    origin: safeString(origin),
+    hasToken: !!extractAnyToken(event),
+    bodyBytes: event?.body
+      ? Buffer.byteLength(String(event.body), 'utf8')
+      : 0
+  });
   if (!ALLOWED_MODES.has(mode)) {
     return reply(400, enrichBody(mode, { error: 'bad_mode', allowedModes: [...ALLOWED_MODES] }));
   }
   if (mode === 'ping') {
-    return reply(200, enrichBody('ping', { ok: true, mode: 'ping', service: 'vi3na1bita-backup-proxy', time: nowTs() }));
+    return reply(200, enrichBody('ping', {
+      ok: true,
+      mode: 'ping',
+      service: 'vi3na1bita-backup-proxy',
+      method: method || 'unknown',
+      uploadLimitBytes: MAX_UPLOAD_BODY_BYTES,
+      downloadLimitBytes: MAX_BODY_BYTES,
+      signalingConfigured: !!SIGNALING_URL,
+      backupReceiptConfigured: !!BACKUP_RECEIPT_SECRET,
+      time: nowTs()
+    }));
   }
   const token = extractAnyToken(event);
   if (!token) return reply(401, enrichBody(mode, { error: 'no_token' }));
@@ -921,7 +995,17 @@ module.exports.handler = async event => {
   }
   if (mode.startsWith('upload_')) {
     try {
-      if (event.httpMethod !== 'POST') return reply(405, enrichBody(mode, { error: 'method_not_allowed', expected: 'POST' }));
+      if (method !== 'POST') {
+        return reply(
+          405,
+          enrichBody(mode, {
+            error: 'method_not_allowed',
+            actual: method || 'unknown',
+            expected: 'POST'
+          }),
+          { Allow: 'POST, OPTIONS' }
+        );
+      }
       const parsed = parseEventJsonBody(event);
       if (!parsed.ok) return reply(parsed.status || 400, enrichBody(mode, { error: parsed.error }));
       const body = parsed.data || {};
@@ -950,7 +1034,14 @@ module.exports.handler = async event => {
       const rewardReceipt = mode === 'upload_backup' && path === BACKUP_PATH && backupValidation?.ok ? await flushBackupAchievementReceipts(token, backupValidation).catch(error => ({ ok: false, durable: false, pending: 0, error: normalizeErrMessage(error) })) : null;
       return reply(200, enrichBody(mode, { ok: true, path, status: wr.status, rewardReceipt }));
     } catch (e) {
-      return reply(500, enrichBody(mode, { error: 'upload_proxy_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
+      return reply(
+        errorStatus(e),
+        enrichBody(mode, {
+          error: 'upload_proxy_error',
+          message: normalizeErrMessage(e),
+          authValidationDegraded: !!valid.degraded
+        })
+      );
     }
   }
   if (mode === 'archive_inspect') {
@@ -969,7 +1060,18 @@ module.exports.handler = async event => {
   }
   if (mode === 'archive_delete_segments') {
     try {
-      if (event.httpMethod !== 'POST') return reply(405, enrichBody('archive_delete_segments', { ok: false, error: 'method_not_allowed', expected: 'POST' }));
+      if (method !== 'POST') {
+        return reply(
+          405,
+          enrichBody('archive_delete_segments', {
+            ok: false,
+            error: 'method_not_allowed',
+            actual: method || 'unknown',
+            expected: 'POST'
+          }),
+          { Allow: 'POST, OPTIONS' }
+        );
+      }
       const parsed = parseEventJsonBody(event);
       if (!parsed.ok) return reply(parsed.status || 400, enrichBody('archive_delete_segments', { ok: false, error: parsed.error }));
       const paths = sanitizeArchiveDeletePaths(parsed.data?.paths || []);
