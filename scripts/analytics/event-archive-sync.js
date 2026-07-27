@@ -11,6 +11,7 @@ import { readLedgerCheckpoint } from './event-integrity.js';
 
 const LAST_SEQ_PREFIX = 'backup:event_archive:last_seq:v2:';
 const LAST_HASH_PREFIX = 'backup:event_archive:last_hash:v2:';
+const EVENT_SEGMENT_TARGET_BYTES = 768 * 1024;
 const s = v => String(v == null ? '' : v).trim();
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 const safe = v => s(v).replace(/[^A-Za-z0-9._-]/g, '') || 'unknown';
@@ -70,21 +71,53 @@ const groupLocalArchivableEvents = async ({ db = defaultMetaDB } = {}) => {
   return [...by.values()].sort((a, b) => s(a.branchId).localeCompare(s(b.branchId)));
 };
 
-const buildDeltaForBranch = async ({ group, watermarkSeq = 0, limit = 500 } = {}) => {
-  const rows = (group?.events || []).filter(e => n(e.deviceSeq) > n(watermarkSeq));
+const buildDeltaForBranch = async ({ group, watermarkSeq = 0, limit = 500, maxBytes = EVENT_SEGMENT_TARGET_BYTES } = {}) => {
+  const rows = (group?.events || []).filter(event => n(event.deviceSeq) > n(watermarkSeq));
   if (!rows.length) return null;
+
   const picked = [];
   let lastSeq = 0;
-  for (const e of rows) {
-    const seq = n(e.deviceSeq);
-    if (!picked.length) { picked.push(e); lastSeq = seq; continue; }
-    if (seq !== lastSeq + 1 || picked.length >= limit) break;
-    picked.push(e); lastSeq = seq;
+
+  for (const event of rows) {
+    const seq = n(event.deviceSeq);
+    if (picked.length && (seq !== lastSeq + 1 || picked.length >= limit)) break;
+
+    const candidate = [...picked, event];
+    const candidateBytes = new TextEncoder().encode(JSON.stringify({ events: candidate })).byteLength;
+    if (picked.length && candidateBytes > maxBytes) break;
+
+    picked.push(event);
+    lastSeq = seq;
   }
+
   if (!picked.length) return null;
-  const fromSeq = n(picked[0].deviceSeq), toSeq = n(picked[picked.length - 1].deviceSeq), hash = await sha256Hex(stableStringify(picked));
-  const path = buildEventSegmentPath({ deviceStableId: group.deviceStableId, branchId: group.branchId, fromSeq, toSeq, hash });
-  return { ...normalizeEventArchiveSegment({ path, createdAt: Date.now(), deviceStableId: group.deviceStableId, branchId: group.branchId, chainId: group.chainId, fromSeq, toSeq, eventCount: picked.length, hash, events: picked }), path };
+
+  const fromSeq = n(picked[0].deviceSeq);
+  const toSeq = n(picked[picked.length - 1].deviceSeq);
+  const hash = await sha256Hex(stableStringify(picked));
+  const path = buildEventSegmentPath({
+    deviceStableId: group.deviceStableId,
+    branchId: group.branchId,
+    fromSeq,
+    toSeq,
+    hash
+  });
+
+  return {
+    ...normalizeEventArchiveSegment({
+      path,
+      createdAt: Date.now(),
+      deviceStableId: group.deviceStableId,
+      branchId: group.branchId,
+      chainId: group.chainId,
+      fromSeq,
+      toSeq,
+      eventCount: picked.length,
+      hash,
+      events: picked
+    }),
+    path
+  };
 };
 
 export const buildLocalEventArchiveDelta = async ({ db = defaultMetaDB, limit = 500 } = {}) => {
