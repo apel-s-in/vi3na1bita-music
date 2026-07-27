@@ -5,7 +5,7 @@ import { YANDEX_DISK_PROXY as PROXY, fetchProxyJson as fPJ, uploadJson as pJP, e
 const s = v => String(v == null ? '' : v).trim();
 const jp = t => { try { return JSON.parse(t); } catch { return null; } };
 const postProxyJson = async (mode, token, body = {}) => {
-  const u = new URL(PROXY); u.searchParams.set('mode', mode); u.searchParams.set('token', token);
+  const u = new URL(PROXY); u.searchParams.set('mode', mode);
   const r = await fetch(u.toString(), { method:'POST', headers:{ 'X-Yandex-Auth':token, 'Content-Type':'application/json', Accept:'application/json' }, credentials:'omit', mode:'cors', body:JSON.stringify(body || {}) });
   const txt = await r.text(), j = jp(txt) || {};
   if (!r.ok || j.ok === false) { const e = new Error(s(j.error || `proxy_${mode}_${r.status}`)); e.status = r.status; e.payload = j; throw e; }
