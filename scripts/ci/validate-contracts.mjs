@@ -230,6 +230,24 @@ const validateBackupProxy = () => {
 
   contains(transport, "'X-Yandex-Auth':token");
   contains(archiveTransport, "'X-Yandex-Auth':token");
+  contains(transport, 'PROXY_UPLOAD_MAX_BYTES');
+  contains(transport, 'upload_proxy_payload_too_large');
+  contains(
+    'scripts/analytics/backup-upload-runner.js',
+    'proxyUploadBodyBytes'
+  );
+  contains(
+    'scripts/analytics/backup-upload-runner.js',
+    'CLOUD_UPLOAD_BODY_BUDGET_BYTES'
+  );
+  contains(
+    'scripts/analytics/backup-upload-runner.js',
+    'requiredEvents'
+  );
+  contains(
+    'scripts/analytics/backup-upload-runner.js',
+    'tailCandidates'
+  );
 
   assertNoMatch(
     [transport, archiveTransport],
