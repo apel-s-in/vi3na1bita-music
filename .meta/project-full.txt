@@ -14248,6 +14248,47 @@ const validateLoyaltyReleaseD = () => {
     'Release D не управляет playback'
   );
 };
+const validateBackupProxy = () => {
+  const proxy =
+    'cloud-functions/vi3na1bita-backup-proxy/index.js';
+  const transport =
+    'scripts/core/yandex-disk-transport.js';
+
+  [
+    'requestContext?.http?.method',
+    'requestContext?.httpMethod',
+    "method === 'OPTIONS'",
+    "'X-Yandex-Auth'",
+    'upload_backup',
+    'upload_event_segment',
+    'archive_delete_segments',
+    'backup_achievement_receipt'
+  ].forEach(marker => contains(proxy, marker));
+
+  assert(
+    /const\s+mode\s*=\s*requestedMode\s*\|\|\s*['"]ping['"]/
+      .test(read(proxy)),
+    'Backup proxy: корневой вызов является ping'
+  );
+
+  assertNoMatch(
+    [transport],
+    /searchParams\.set\(['"]token['"]/g,
+    'OAuth token не помещается в query string'
+  );
+
+  assertNoMatch(
+    [transport],
+    /Authorization\s*:/g,
+    'Клиент не отправляет Authorization в Cloud Function'
+  );
+
+  assertNoMatch(
+    [proxy],
+    /event\.httpMethod\s*!==\s*['"]POST['"]/g,
+    'Backup proxy использует нормализованный HTTP method'
+  );
+};
 
 const validateCloudFunctionFiles = () => {
   [
@@ -14325,6 +14366,7 @@ const main = async () => {
   validateRecommendationsAndStats();
   validatePlaybackBoundaries();
   validateLoyaltyReleaseD();
+  validateBackupProxy();
   validateCloudFunctionFiles();
   validateWorkflows();
 
