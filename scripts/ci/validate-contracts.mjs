@@ -204,13 +204,50 @@ const validateLoyaltyReleaseD = () => {
   assertNoMatch(['scripts/app/push/loyalty-reminders.js', 'scripts/app/profile/loyalty-card.js', scheduler], /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/g, 'Release D не управляет playback');
 };
 const validateBackupProxy = () => {
-  const proxy = 'cloud-functions/vi3na1bita-backup-proxy/index.js';
-  const transport = 'scripts/core/yandex-disk-transport.js';
-  ['requestContext?.http?.method', 'requestContext?.httpMethod', "method === 'OPTIONS'", "'X-Yandex-Auth'", 'upload_backup', 'upload_event_segment', 'archive_delete_segments', 'backup_achievement_receipt'].forEach(marker => contains(proxy, marker));
-  assert(/const\s+mode\s*=\s*requestedMode\s*\|\|\s*['"]ping['"]/.test(read(proxy)), 'Backup proxy: корневой вызов является ping');
-  assertNoMatch([transport], /searchParams\.set\(['"]token['"]/g, 'OAuth token не помещается в query string');
-  assertNoMatch([transport], /Authorization\s*:/g, 'Клиент не отправляет Authorization в Cloud Function');
-  assertNoMatch([proxy], /event\.httpMethod\s*!==\s*['"]POST['"]/g, 'Backup proxy использует нормализованный HTTP method');
+  const proxy =
+    'cloud-functions/vi3na1bita-backup-proxy/index.js';
+  const transport =
+    'scripts/core/yandex-disk-transport.js';
+  const archiveTransport =
+    'scripts/core/yandex-event-archive-disk.js';
+
+  [
+    'requestContext?.http?.method',
+    'requestContext?.httpMethod',
+    "method === 'OPTIONS'",
+    'x-yandex-auth',
+    'upload_backup',
+    'upload_event_segment',
+    'archive_delete_segments',
+    'backup_achievement_receipt'
+  ].forEach(marker => contains(proxy, marker));
+
+  assert(
+    /const\s+mode\s*=\s*requestedMode\s*\|\|\s*['"]ping['"]/
+      .test(read(proxy)),
+    'Backup proxy: корневой вызов является ping'
+  );
+
+  contains(transport, "'X-Yandex-Auth':token");
+  contains(archiveTransport, "'X-Yandex-Auth':token");
+
+  assertNoMatch(
+    [transport, archiveTransport],
+    /searchParams\.set\(\s*['"]token['"]/g,
+    'OAuth token не помещается в proxy query string'
+  );
+
+  assert(
+    /export\s+const\s+authHeaders\s*=\s*t\s*=>\s*\(\{\s*Authorization:/
+      .test(read(transport)),
+    'Authorization сохранён только для прямого Yandex Disk API'
+  );
+
+  assertNoMatch(
+    [proxy],
+    /event\.httpMethod\s*!==\s*['"]POST['"]/g,
+    'Backup proxy использует нормализованный HTTP method'
+  );
 };
 const validateCloudFunctionFiles = () => {
   ['vi3-signaling', 'vi3na1bita-backup-proxy', 'vi3-webpush', 'vi3-loyalty-reminder'].forEach(name => {
