@@ -1,4 +1,3 @@
-/* GENERATED_FROM=input.js SOURCE_SHA256=16ae4255cd821098156c9979ec71dade0b7dc046fc4c5b48874c4eab042bcd56 FORMAT=READABLE_COMPACT PRINT_WIDTH=320 BLANK_LINES=SAFE_REMOVE DO_NOT_EDIT */
 // Account-local vault.
 // Переключает пользовательские данные, но не управляет playback.
 import { metaDB } from './meta-db.js';
