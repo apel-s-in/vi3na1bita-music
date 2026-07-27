@@ -1,4 +1,3 @@
-/* GENERATED_FROM=input.js SOURCE_SHA256=af67eb23cdb39d2464bca0ae957177b33771cd717b41152e06521c890622f5f8 FORMAT=READABLE_COMPACT PRINT_WIDTH=320 BLANK_LINES=SAFE_REMOVE DO_NOT_EDIT */
 // Server-observed listening receipts.
 // Режим наград задаёт сервер; клиент никогда не управляет playback.
 import { getSocialServerBackoffState, requestSocialAction } from '../core/social-session.js';
