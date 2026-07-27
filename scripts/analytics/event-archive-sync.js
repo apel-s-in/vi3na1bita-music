@@ -42,9 +42,9 @@ export const setLocalEventArchiveWatermark = ({ branchId = '', lastSeq = 0, last
   } catch {}
 };
 
-export const syncWatermarkFromCloudIndex = async ({ disk, token, branchId = '' } = {}) => {
-  if (!disk?.getEventArchiveIndex || !token || !branchId) return getLocalEventArchiveWatermark(branchId);
-  const idx = await disk.getEventArchiveIndex(token).catch(() => null);
+export const syncWatermarkFromCloudIndex = async ({ disk, token, branchId = '', index = null } = {}) => {
+  if (!branchId) return getLocalEventArchiveWatermark(branchId);
+  const idx = index || (disk?.getEventArchiveIndex && token ? await disk.getEventArchiveIndex(token).catch(() => null) : null);
   const rows = (idx?.items || []).filter(x => s(x.branchId || '') === s(branchId));
   if (!rows.length) return getLocalEventArchiveWatermark(branchId);
   const best = rows.sort((a, b) => n(b.toSeq) - n(a.toSeq))[0], local = getLocalEventArchiveWatermark(branchId);
@@ -108,32 +108,71 @@ export const uploadLocalEventArchiveDelta = async ({ disk, token, db = defaultMe
 export const uploadLocalEventArchiveUntilCaughtUp = async ({ disk, token, db = defaultMetaDB, maxSegments = 20, limit = 500 } = {}) => {
   if (!disk?.uploadEventSegment || !token) return { ok: false, uploaded: false, reason: 'archive_transport_missing' };
   const groups = await groupLocalArchivableEvents({ db });
-  if (disk?.getEventArchiveIndex) await Promise.all(groups.map(g => syncWatermarkFromCloudIndex({ disk, token, branchId: g.branchId }).catch(() => null)));
+  let cloudIndex = disk?.getEventArchiveIndex ? await disk.getEventArchiveIndex(token).catch(() => ({ items: [] })) : { items: [] };
+
+  await Promise.all(groups.map(group =>
+    syncWatermarkFromCloudIndex({ disk, token, branchId: group.branchId, index: cloudIndex }).catch(() => null)
+  ));
 
   let uploadedSegments = 0, uploadedEvents = 0, last = null;
   for (let i = 0; i < maxSegments; i++) {
     let did = false;
-    for (const g of groups) {
+    for (const group of groups) {
       if (uploadedSegments >= maxSegments) break;
-      const wm = getLocalEventArchiveWatermark(g.branchId);
-      const seg = await buildDeltaForBranch({ group: g, watermarkSeq: wm.lastSeq, limit }).catch(() => null);
-      if (!seg) continue;
-      last = await disk.uploadEventSegment(token, seg).catch(e => ({ ok: false, reason: e?.message || 'upload_failed' }));
+      const watermark = getLocalEventArchiveWatermark(group.branchId);
+      const segment = await buildDeltaForBranch({ group, watermarkSeq: watermark.lastSeq, limit }).catch(() => null);
+      if (!segment) continue;
+
+      last = await disk.uploadEventSegment(token, segment, { index: cloudIndex }).catch(error => ({
+        ok: false,
+        reason: error?.message || 'upload_failed'
+      }));
+
       if (!last?.ok) break;
-      setLocalEventArchiveWatermark({ branchId: seg.branchId, lastSeq: seg.toSeq, lastHash: seg.hash });
-      uploadedSegments++; uploadedEvents += n(seg.eventCount); did = true;
+      if (last.index) cloudIndex = last.index;
+
+      setLocalEventArchiveWatermark({
+        branchId: segment.branchId,
+        lastSeq: segment.toSeq,
+        lastHash: segment.hash
+      });
+
+      uploadedSegments++;
+      uploadedEvents += n(segment.eventCount);
+      did = true;
     }
+
     if (!did || last?.ok === false) break;
   }
 
-  const branchStats = groups.map(g => {
-    const wm = getLocalEventArchiveWatermark(g.branchId), maxSeq = Math.max(0, ...g.events.map(e => n(e.deviceSeq)));
-    return { branchId: g.branchId, chainId: g.chainId, deviceStableId: g.deviceStableId, events: g.events.length, maxSeq, watermarkSeq: wm.lastSeq, caughtUp: n(wm.lastSeq) >= n(maxSeq) };
+  const branchStats = groups.map(group => {
+    const watermark = getLocalEventArchiveWatermark(group.branchId);
+    const maxSeq = Math.max(0, ...group.events.map(event => n(event.deviceSeq)));
+    return {
+      branchId: group.branchId,
+      chainId: group.chainId,
+      deviceStableId: group.deviceStableId,
+      events: group.events.length,
+      maxSeq,
+      watermarkSeq: watermark.lastSeq,
+      caughtUp: n(watermark.lastSeq) >= n(maxSeq)
+    };
   });
-  const cur = await getCurrentEventArchiveBranch({ db }).catch(() => ({}));
-  const curStat = branchStats.find(x => x.branchId === cur.branchId) || null;
+  const currentBranch = await getCurrentEventArchiveBranch({ db }).catch(() => ({}));
+  const currentStat = branchStats.find(item => item.branchId === currentBranch.branchId) || null;
 
-  return { ok: !last || last.ok !== false, uploaded: uploadedSegments > 0, uploadedSegments, uploadedEvents, branch: cur, branches: branchStats, watermark: curStat ? getLocalEventArchiveWatermark(curStat.branchId) : {}, maxSeq: curStat?.maxSeq || 0, caughtUp: branchStats.every(x => x.caughtUp), reason: last?.reason || (uploadedSegments ? 'uploaded' : 'no_new_events') };
+  return {
+    ok: !last || last.ok !== false,
+    uploaded: uploadedSegments > 0,
+    uploadedSegments,
+    uploadedEvents,
+    branch: currentBranch,
+    branches: branchStats,
+    watermark: currentStat ? getLocalEventArchiveWatermark(currentStat.branchId) : {},
+    maxSeq: currentStat?.maxSeq || 0,
+    caughtUp: branchStats.every(item => item.caughtUp),
+    reason: last?.reason || (uploadedSegments ? 'uploaded' : 'no_new_events')
+  };
 };
 
 export default { buildEventArchiveBranchId, getCurrentEventArchiveBranch, getLocalEventArchiveWatermark, setLocalEventArchiveWatermark, syncWatermarkFromCloudIndex, getLocalDeviceMaxSeq, buildLocalEventArchiveDelta, uploadLocalEventArchiveDelta, uploadLocalEventArchiveUntilCaughtUp };
