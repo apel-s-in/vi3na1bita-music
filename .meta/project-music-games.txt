@@ -236,11 +236,14 @@ jobs:
           BUCKET: vi3na1bita
         run: |
           set -euo pipefail
+          upload_count=0
+          delete_count=0
 
           is_public_file() {
             case "$1" in
-              .git/*|.github/*|.meta/*|cloud-functions/*|albums/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
+              .git/*|.github/*|.meta/*|cloud-functions/*|scripts/ci/*|scripts/e2e/*|generate-context.js) return 1 ;;
               albums/gallery/*|audio/*|data/*|icons/*|img/*|news/*|scripts/*|src/*|styles/*) return 0 ;;
+              albums/*) return 1 ;;
               index.html|oauth-callback.html|manifest.json|albums.json|service-worker.js) return 0 ;;
               *) return 1 ;;
             esac
@@ -253,6 +256,7 @@ jobs:
             local cc="public,max-age=3600"
             if [[ "$f" == img/* ]] || [[ "$f" == audio/* ]] || [[ "$f" == icons/* ]]; then cc="public,max-age=31536000,immutable"; fi
             if [[ "$f" == *.html ]] || [[ "$f" == manifest.json ]] || [[ "$f" == service-worker.js ]]; then cc="no-cache"; fi
+            upload_count=$((upload_count + 1))
             echo "PUT $f"
             aws --endpoint-url=https://storage.yandexcloud.net s3 cp "$f" "s3://$BUCKET/$f" --cache-control "$cc" --only-show-errors
           }
@@ -260,6 +264,7 @@ jobs:
           delete_file() {
             local f="$1"
             is_public_file "$f" || return 0
+            delete_count=$((delete_count + 1))
             echo "DELETE $f"
             aws --endpoint-url=https://storage.yandexcloud.net s3 rm "s3://$BUCKET/$f" --only-show-errors || true
           }
@@ -344,6 +349,15 @@ jobs:
             echo "Publishing service-worker.js last"
             upload_file "service-worker.js"
           fi
+          {
+            echo "## Yandex Object Storage deploy"
+            echo ""
+            echo "- Actor: $GITHUB_ACTOR"
+            echo "- Run ID: $GITHUB_RUN_ID"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Uploaded: $upload_count"
+            echo "- Deleted: $delete_count"
+          } >> "$GITHUB_STEP_SUMMARY"
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
