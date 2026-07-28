@@ -1843,11 +1843,22 @@ function favoriteRewardCount(raw) {
   return Object.values(state.items).filter(item => item.status === 'active' && item.rewardEligible).length;
 }
 async function actionFavoriteStateGet(event, body) {
-  const { playerId } = await requirePlayer(event, body);
-  const { state } = await getOrCreateFavoriteState(playerId);
-  const progress = normalizeAchievementProgress(payload(await kvGet(achievementProgressKey(playerId))), playerId);
-  const rewards = await reconcileAchievementRewards(playerId, progress);
-  return { ok: true, shadow: CFG.favoriteRewardsShadow, rewardsEnabled: !CFG.favoriteRewardsShadow, state: publicFavoriteState(state), rewards: rewards.grants, wallet: rewards.wallet ? publicShardWallet(rewards.wallet) : null };
+  const { playerId } = await requirePlayer(
+    event,
+    body
+  );
+  const { state } =
+    await getOrCreateFavoriteState(playerId);
+
+  return {
+    ok: true,
+    shadow: CFG.favoriteRewardsShadow,
+    rewardsEnabled:
+      !CFG.favoriteRewardsShadow,
+    state: publicFavoriteState(state),
+    rewards: [],
+    wallet: null
+  };
 }
 async function actionFavoriteStateMutate(event, body) {
   const { playerId } = await requirePlayer(event, body);
