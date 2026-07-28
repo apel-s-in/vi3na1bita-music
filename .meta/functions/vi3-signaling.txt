@@ -806,7 +806,10 @@ async function actionRoomJoin(event, body) {
     return { ok: false, reason: 'room_expired' };
   }
   const requestedPeerId = sanitizeId(body.peerId || '', 120);
-  if (room.invitedPlayerId && room.invitedPlayerId !== playerId && room.hostPlayerId !== playerId) {
+  if (room.hostPlayerId === playerId) {
+    return { ok: false, reason: 'room_self_join_forbidden' };
+  }
+  if (room.invitedPlayerId && room.invitedPlayerId !== playerId) {
     return { ok: false, reason: 'room_invite_forbidden' };
   }
   if (room.guestPlayerId && room.guestPlayerId !== playerId) {
@@ -5289,61 +5292,103 @@ async function actionNearbyGameJoin(event, body) {
 // ─── LAN Wi-Fi: регистрация и разрешение кодов комнат ───────────────────────
 async function actionLanCodeRegister(event, body) {
   const { playerId } = await requirePlayer(event, body);
-  const code = safe(body.code || '')
-    .replace(/\D/g, '')
-    .slice(0, 6);
+  const code = safe(body.code || '').replace(/\D/g, '').slice(0, 6);
   const roomId = sanitizeId(body.roomId);
   const roomSecret = safe(body.roomSecret);
-  if (!code || code.length < 4) throw new Error('lan_code_required');
+  if (code.length !== 6) throw new Error('lan_code_required');
   if (!roomId || !roomSecret) throw new Error('room_data_required');
-  const row = await kvGet(`room:${roomId}`);
-  const room = payload(row);
-  if (!row || room.roomSecretHash !== hash(roomSecret)) return { ok: false, reason: 'room_not_found' };
-  if (room.hostPlayerId !== playerId) return { ok: false, reason: 'room_owner_forbidden' };
-  const isWarHearts = room.gameId === 'war_hearts';
 
-  if (isWarHearts && body.ranked !== true) {
-    return {
-      ok: false,
-      reason: 'war_hearts_ranked_required'
-    };
+  const roomRow = await kvGet(`room:${roomId}`);
+  const room = payload(roomRow);
+  if (!roomRow || room.roomSecretHash !== hash(roomSecret)) return { ok: false, reason: 'room_not_found' };
+  if (room.hostPlayerId !== playerId) return { ok: false, reason: 'room_owner_forbidden' };
+  if (room.status === 'closed') return { ok: false, reason: 'room_closed' };
+
+  const isWarHearts = room.gameId === 'war_hearts';
+  if (isWarHearts && body.ranked !== true) return { ok: false, reason: 'war_hearts_ranked_required' };
+
+  const codeKey = `lanCode:${code}`;
+  if (await kvGet(codeKey)) return { ok: false, reason: 'lan_code_taken' };
+
+  const ranked = isWarHearts || body.ranked === true;
+  const localOnly = isWarHearts || body.localOnly === true;
+  const ttlMs = Math.min(600000, Math.max(60000, num(body.ttlMs, 300000)));
+  const createdAt = now();
+  const expiresAt = createdAt + ttlMs;
+
+  room.ranked = ranked;
+  room.localOnly = localOnly;
+  room.matchMode = ranked ? 'ranked' : 'casual';
+  room.updatedAt = createdAt;
+
+  await kvPut({
+    pk: `room:${roomId}`,
+    type: 'room',
+    owner: room.hostPlayerId || playerId,
+    expiresAt: room.reconnectUntil || expiresAt,
+    data: room
+  });
+
+  try {
+    await kvInsert({
+      pk: codeKey,
+      type: 'lanCode',
+      owner: playerId,
+      expiresAt,
+      data: {
+        code,
+        roomId,
+        roomSecret,
+        gameId: room.gameId,
+        ranked,
+        localOnly,
+        matchMode: room.matchMode,
+        hostPlayerId: playerId,
+        createdAt,
+        expiresAt
+      }
+    });
+  } catch {
+    return { ok: false, reason: 'lan_code_taken' };
   }
 
-  room.ranked = isWarHearts || body.ranked === true;
-  room.localOnly = false;
-  room.matchMode = room.ranked ? 'ranked' : 'casual';
-  room.updatedAt = now();
-  const ttlMs = Math.min(600000, Math.max(60000, num(body.ttlMs, 300000)));
-  const expiresAt = now() + ttlMs;
-  await kvPut({ pk: `room:${roomId}`, type: 'room', owner: room.hostPlayerId || playerId, expiresAt: room.reconnectUntil || expiresAt, data: room });
-  await kvPut({
-    pk: `lanCode:${code}`,
-    type: 'lanCode',
-    owner: playerId,
-    expiresAt,
-    data: {
-      code,
-      roomId,
-      roomSecret,
-      ranked: !!room.ranked,
-      matchMode: room.matchMode,
-      hostPlayerId: playerId,
-      createdAt: now(),
-      expiresAt
-    }
-  });
-  return { ok: true, code, expiresAt };
+  return {
+    ok: true,
+    code,
+    ranked,
+    localOnly,
+    matchMode: room.matchMode,
+    expiresAt
+  };
 }
 async function actionLanCodeResolve(event, body) {
-  await requirePlayer(event, body);
-  const code = safe(body.code || '')
-    .replace(/\D/g, '')
-    .slice(0, 6);
-  if (!code) throw new Error('lan_code_required');
+  const { playerId } = await requirePlayer(event, body);
+  const code = safe(body.code || '').replace(/\D/g, '').slice(0, 6);
+  if (code.length !== 6) throw new Error('lan_code_required');
+
   const row = await kvGet(`lanCode:${code}`);
   const data = payload(row);
   if (!row || !data.roomId || !data.roomSecret) return { ok: false, reason: 'lan_room_not_found' };
-  return { ok: true, code: data.code, roomId: data.roomId, roomSecret: data.roomSecret, ranked: !!data.ranked, localOnly: false, matchMode: data.ranked ? 'ranked' : 'casual', hostPlayerId: data.hostPlayerId, expiresAt: data.expiresAt };
+  if (data.hostPlayerId === playerId) return { ok: false, reason: 'lan_self_join_forbidden' };
+
+  const roomRow = await kvGet(`room:${sanitizeId(data.roomId)}`);
+  const room = payload(roomRow);
+  if (!roomRow || room.roomSecretHash !== hash(data.roomSecret)) return { ok: false, reason: 'lan_room_not_found' };
+  if (room.status === 'closed' || num(room.closedAt) > 0) return { ok: false, reason: 'room_closed' };
+  if (room.gameId === 'war_hearts' && room.ranked !== true) return { ok: false, reason: 'war_hearts_ranked_required' };
+
+  return {
+    ok: true,
+    code: data.code,
+    roomId: data.roomId,
+    roomSecret: data.roomSecret,
+    gameId: room.gameId,
+    ranked: room.gameId === 'war_hearts' || data.ranked === true,
+    localOnly: room.gameId === 'war_hearts' || data.localOnly === true,
+    matchMode: room.gameId === 'war_hearts' ? 'ranked' : safe(data.matchMode || 'casual'),
+    hostPlayerId: data.hostPlayerId,
+    expiresAt: data.expiresAt
+  };
 }
 function loyaltyNotificationForDue(due, state) {
   if (due.kind === 'LOYALTY_VACATION_ENDING') {
