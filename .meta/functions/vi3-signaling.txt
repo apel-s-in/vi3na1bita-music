@@ -915,6 +915,51 @@ async function actionRoomSetMode(event, body) {
   await kvPut({ pk: `room:${roomId}`, type: 'room', owner: room.hostPlayerId || playerId, expiresAt: room.reconnectUntil || now() + CFG.roomTtlMs, data: room });
   return { ok: true, roomId, ranked: !!room.ranked, localOnly: !!room.localOnly, matchMode: room.matchMode };
 }
+const SIGNAL_TYPES = new Set([
+  'offer',
+  'answer',
+  'ice'
+]);
+const SIGNAL_MAX_BYTES = 64 * 1024;
+
+function normalizeSignalPayload(type, raw) {
+  if (!SIGNAL_TYPES.has(type)) {
+    throw new Error('signal_type_forbidden');
+  }
+
+  let text;
+
+  try {
+    text = JSON.stringify(raw ?? null);
+  } catch {
+    throw new Error('bad_signal_payload');
+  }
+
+  const bytes = Buffer.byteLength(text, 'utf8');
+  if (!bytes || bytes > SIGNAL_MAX_BYTES) {
+    const error = new Error('signal_payload_too_large');
+    error.httpStatus = 413;
+    throw error;
+  }
+
+  const value = JSON.parse(text);
+
+  if (
+    (type === 'offer' || type === 'answer') &&
+    !safe(value?.sdp?.sdp || value?.sdp)
+  ) {
+    throw new Error('signal_sdp_required');
+  }
+
+  if (
+    type === 'ice' &&
+    !safe(value?.candidate)
+  ) {
+    throw new Error('signal_ice_required');
+  }
+
+  return value;
+}
 async function actionSignalSend(event, body) {
   const { playerId } = await requirePlayer(event, body);
   const roomId = sanitizeId(body.roomId);
@@ -922,7 +967,14 @@ async function actionSignalSend(event, body) {
   const fromPeerId = sanitizeId(body.fromPeerId || body.peerId, 140);
   const toPeerId = sanitizeId(body.toPeerId || body.targetPeerId, 140);
   const type = sanitizeId(body.type || body.signalType || body.payload?.type, 40);
-  const payloadData = body.payload?.data !== undefined ? body.payload.data : body.payload;
+  const rawPayload =
+    body.payload?.data !== undefined
+      ? body.payload.data
+      : body.payload;
+  const payloadData = normalizeSignalPayload(
+    type,
+    rawPayload
+  );
   const roomRow = roomId ? await kvGet(`room:${roomId}`) : null;
   const room = payload(roomRow);
   if (!roomRow || room.roomSecretHash !== hash(roomSecret)) {
@@ -953,37 +1005,79 @@ async function actionSignalSend(event, body) {
 async function actionSignalPoll(event, body) {
   const { playerId } = await requirePlayer(event, body);
   const roomId = sanitizeId(body.roomId);
-  const roomSecret = safe(body.roomSecret || body.secret || body.key || '');
+  const roomSecret = safe(
+    body.roomSecret ||
+    body.secret ||
+    body.key ||
+    ''
+  );
   const peerId = sanitizeId(body.peerId, 140);
-  const roomRow = roomId ? await kvGet(`room:${roomId}`) : null;
+  const roomRow = roomId
+    ? await kvGet(`room:${roomId}`)
+    : null;
   const room = payload(roomRow);
-  if (!roomRow || room.roomSecretHash !== hash(roomSecret)) {
-    return { ok: false, reason: 'room_not_found' };
+
+  if (
+    !roomRow ||
+    room.roomSecretHash !== hash(roomSecret)
+  ) {
+    return {
+      ok: false,
+      reason: 'room_not_found'
+    };
   }
-  if (room.status === 'closed' || num(room.closedAt) > 0) {
-    return { ok: false, reason: 'room_closed' };
+
+  if (
+    room.status === 'closed' ||
+    num(room.closedAt) > 0
+  ) {
+    return {
+      ok: false,
+      reason: 'room_closed'
+    };
   }
+
   if (!isRoomParticipant(room, playerId)) {
-    return { ok: false, reason: 'room_forbidden' };
+    return {
+      ok: false,
+      reason: 'room_forbidden'
+    };
   }
-  if (!peerId) throw new Error('peer_id_required');
-  if (expectedPeerForPlayer(room, playerId) !== peerId) {
-    return { ok: false, reason: 'peer_identity_mismatch' };
+
+  if (!peerId) {
+    throw new Error('peer_id_required');
   }
-  const rows = await kvPrefix(`signal:${roomId}:${peerId}:`, 200);
-  const messages = [];
-  for (const row of rows) {
-    const msg = payload(row);
-    if (!msg.deliveredAt) {
-      msg.status = 'delivered';
-      msg.deliveredAt = now();
-      msg.deliveryAttempts = num(msg.deliveryAttempts) + 1;
-      await kvPut({ pk: row.pk, type: 'signal', owner: peerId, expiresAt: num(row.expires_at) || num(msg.expiresAt), data: msg });
-    }
-    messages.push(msg);
+
+  if (
+    expectedPeerForPlayer(room, playerId) !== peerId
+  ) {
+    return {
+      ok: false,
+      reason: 'peer_identity_mismatch'
+    };
   }
-  messages.sort((a, b) => num(a.createdAt) - num(b.createdAt));
-  return { ok: true, messages };
+
+  const rows = await kvPrefix(
+    `signal:${roomId}:${peerId}:`,
+    64
+  );
+
+  const messages = rows
+    .map(payload)
+    .filter(message =>
+      message &&
+      message.seq &&
+      message.roomId === roomId &&
+      message.toPeerId === peerId
+    )
+    .sort((left, right) =>
+      num(left.createdAt) - num(right.createdAt)
+    );
+
+  return {
+    ok: true,
+    messages
+  };
 }
 async function actionSignalAck(event, body) {
   const { playerId } = await requirePlayer(event, body);
