@@ -34,14 +34,85 @@ function postJson(url, data, headers = {}) {
   });
 }
 exports.handler = async () => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store'
+  };
+
   if (!SIGNALING_URL || !SCHEDULER_SECRET) {
-    return { statusCode: 503, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: false, error: 'scheduler_not_configured' }) };
+    return {
+      statusCode: 503,
+      headers,
+      body: JSON.stringify({
+        ok: false,
+        error: 'scheduler_not_configured'
+      })
+    };
   }
+
   try {
-    const result = await postJson(SIGNALING_URL, { action: 'loyalty_due_run', limit: 50 }, { 'X-Vi3-Scheduler': SCHEDULER_SECRET });
-    const ok = result.status >= 200 && result.status < 300 && result.payload?.ok === true;
-    return { statusCode: ok ? 200 : 502, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, body: JSON.stringify({ ok, signalingStatus: result.status, result: result.payload, ts: Date.now() }) };
+    const requestHeaders = {
+      'X-Vi3-Scheduler': SCHEDULER_SECRET
+    };
+
+    const [loyalty, ranked] = await Promise.all([
+      postJson(
+        SIGNALING_URL,
+        {
+          action: 'loyalty_due_run',
+          limit: 50
+        },
+        requestHeaders
+      ),
+      postJson(
+        SIGNALING_URL,
+        {
+          action: 'ranked_match_cleanup',
+          limit: 50
+        },
+        requestHeaders
+      )
+    ]);
+
+    const loyaltyOk =
+      loyalty.status >= 200 &&
+      loyalty.status < 300 &&
+      loyalty.payload?.ok === true;
+    const rankedOk =
+      ranked.status >= 200 &&
+      ranked.status < 300 &&
+      ranked.payload?.ok === true;
+    const ok = loyaltyOk && rankedOk;
+
+    return {
+      statusCode: ok ? 200 : 502,
+      headers,
+      body: JSON.stringify({
+        ok,
+        loyalty: {
+          ok: loyaltyOk,
+          status: loyalty.status,
+          result: loyalty.payload
+        },
+        ranked: {
+          ok: rankedOk,
+          status: ranked.status,
+          result: ranked.payload
+        },
+        ts: Date.now()
+      })
+    };
   } catch (error) {
-    return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, body: JSON.stringify({ ok: false, error: safe(error?.message || 'scheduler_failed'), ts: Date.now() }) };
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        ok: false,
+        error: safe(
+          error?.message || 'scheduler_failed'
+        ),
+        ts: Date.now()
+      })
+    };
   }
 };
