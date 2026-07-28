@@ -736,7 +736,23 @@ async function actionRoomCreate(event, body) {
   const hostPeerId = sanitizeId(body.peerId || `${playerId}:host:${rid('p')}`, 120);
   const guestPeerId = `${roomId}:guest`;
   const expiresAt = now() + CFG.roomTtlMs;
-  const room = { roomId, gameId, status: 'waiting', hostPlayerId: playerId, guestPlayerId: '', hostPeerId, guestPeerId, roomSecretHash: hash(roomSecret), createdAt: now(), updatedAt: now(), reconnectUntil: expiresAt };
+  const ranked = gameId === 'war_hearts';
+  const room = {
+    roomId,
+    gameId,
+    status: 'waiting',
+    hostPlayerId: playerId,
+    guestPlayerId: '',
+    hostPeerId,
+    guestPeerId,
+    roomSecretHash: hash(roomSecret),
+    ranked,
+    matchMode: ranked ? 'ranked' : 'casual',
+    localOnly: false,
+    createdAt: now(),
+    updatedAt: now(),
+    reconnectUntil: expiresAt
+  };
   await kvPut({ pk: `room:${roomId}`, type: 'room', owner: playerId, expiresAt, data: room });
   return { ok: true, roomId, roomSecret, hostPeerId, guestPeerId, room };
 }
@@ -867,10 +883,19 @@ async function actionRoomSetMode(event, body) {
     return { ok: false, reason: 'room_host_required' };
   }
   if (room.status === 'closed') return { ok: false, reason: 'room_closed' };
-  const ranked = body.ranked === true;
+  const isWarHearts = room.gameId === 'war_hearts';
+
+  if (isWarHearts && body.ranked !== true) {
+    return {
+      ok: false,
+      reason: 'war_hearts_ranked_required'
+    };
+  }
+
+  const ranked = isWarHearts || body.ranked === true;
   room.ranked = ranked;
   room.matchMode = ranked ? 'ranked' : 'casual';
-  room.localOnly = body.localOnly === false ? !!room.localOnly : true;
+  room.localOnly = body.localOnly === true;
   room.modeChangedByPlayerId = playerId;
   room.modeChangedAt = now();
   room.updatedAt = now();
@@ -5265,16 +5290,38 @@ async function actionLanCodeRegister(event, body) {
   const room = payload(row);
   if (!row || room.roomSecretHash !== hash(roomSecret)) return { ok: false, reason: 'room_not_found' };
   if (room.hostPlayerId !== playerId) return { ok: false, reason: 'room_owner_forbidden' };
-  room.ranked = !!body.ranked;
-  // localOnly больше не форсируем: гость не должен получать урезанный ICE.
-  // LAN-режим — это просто способ обмена кодом, а не запрет STUN.
+  const isWarHearts = room.gameId === 'war_hearts';
+
+  if (isWarHearts && body.ranked !== true) {
+    return {
+      ok: false,
+      reason: 'war_hearts_ranked_required'
+    };
+  }
+
+  room.ranked = isWarHearts || body.ranked === true;
   room.localOnly = false;
   room.matchMode = room.ranked ? 'ranked' : 'casual';
   room.updatedAt = now();
   const ttlMs = Math.min(600000, Math.max(60000, num(body.ttlMs, 300000)));
   const expiresAt = now() + ttlMs;
   await kvPut({ pk: `room:${roomId}`, type: 'room', owner: room.hostPlayerId || playerId, expiresAt: room.reconnectUntil || expiresAt, data: room });
-  await kvPut({ pk: `lanCode:${code}`, type: 'lanCode', owner: playerId, expiresAt, data: { code, roomId, roomSecret, ranked: !!body.ranked, hostPlayerId: playerId, createdAt: now(), expiresAt } });
+  await kvPut({
+    pk: `lanCode:${code}`,
+    type: 'lanCode',
+    owner: playerId,
+    expiresAt,
+    data: {
+      code,
+      roomId,
+      roomSecret,
+      ranked: !!room.ranked,
+      matchMode: room.matchMode,
+      hostPlayerId: playerId,
+      createdAt: now(),
+      expiresAt
+    }
+  });
   return { ok: true, code, expiresAt };
 }
 async function actionLanCodeResolve(event, body) {
