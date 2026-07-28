@@ -19,6 +19,10 @@ const actionRequests = new Map();
 
 const safe = value => String(value == null ? '' : value).trim();
 
+const isRealtimeAction = action =>
+  /^(room_|signal_|lan_code_|ranked_)/.test(action) ||
+  action === 'push_send';
+
 export const getSocialServerBackoffState = () => ({
   active: Date.now() < serverBackoffUntil,
   retryAt: serverBackoffUntil,
@@ -59,6 +63,36 @@ const readJson = async response => {
   } catch {
     return {};
   }
+};
+
+const registerServerBackoff = response => {
+  if (
+    response.status !== 429 &&
+    ![502, 503, 504].includes(response.status)
+  ) {
+    return 0;
+  }
+
+  const retryAfterSec = Number(
+    response.headers.get('Retry-After') || 0
+  );
+  const delayMs = Math.max(
+    serverBackoffMs,
+    retryAfterSec > 0
+      ? retryAfterSec * 1000
+      : 0
+  ) + Math.floor(Math.random() * 1000);
+
+  serverBackoffUntil = Math.max(
+    serverBackoffUntil,
+    Date.now() + delayMs
+  );
+  serverBackoffMs = Math.min(
+    60000,
+    serverBackoffMs * 2
+  );
+
+  return delayMs;
 };
 
 export const invalidateSocialSession = ({
@@ -109,7 +143,6 @@ export const getSocialSession = async ({ force = false } = {}) => {
   }
 
   if (
-    !force &&
     pendingSession &&
     pendingYandexId === yandexId
   ) {
@@ -140,17 +173,22 @@ export const getSocialSession = async ({ force = false } = {}) => {
     });
 
     const result = await readJson(response);
+    registerServerBackoff(response);
 
     if (
       !response.ok ||
       result.ok === false ||
       !result.socialSession
     ) {
-      throw new Error(
+      const error = new Error(
         result.error ||
         result.reason ||
         'social_session_issue_failed'
       );
+      error.status = response.status;
+      error.action = 'social_session_issue';
+      error.retryAt = serverBackoffUntil;
+      throw error;
     }
 
     const currentYandexId = readProfile().yandexId;
@@ -207,8 +245,13 @@ export const requestSocialAction = (
   }
 
   const run = async () => {
-    if (Date.now() < serverBackoffUntil) {
-      const error = new Error('social_server_backoff_active');
+    if (
+      Date.now() < serverBackoffUntil &&
+      !isRealtimeAction(cleanAction)
+    ) {
+      const error = new Error(
+        'social_server_backoff_active'
+      );
       error.status = 429;
       error.action = cleanAction;
       error.retryAt = serverBackoffUntil;
@@ -239,22 +282,7 @@ export const requestSocialAction = (
         response.status === 429 ||
         [502, 503, 504].includes(response.status)
       ) {
-        const retryAfterSec = Number(
-          response.headers.get('Retry-After') || 0
-        );
-        const delayMs = Math.max(
-          serverBackoffMs,
-          retryAfterSec > 0 ? retryAfterSec * 1000 : 0
-        ) + Math.floor(Math.random() * 1000);
-
-        serverBackoffUntil = Math.max(
-          serverBackoffUntil,
-          Date.now() + delayMs
-        );
-        serverBackoffMs = Math.min(
-          60000,
-          serverBackoffMs * 2
-        );
+        registerServerBackoff(response);
       } else if (
         response.ok &&
         result.ok !== false &&
