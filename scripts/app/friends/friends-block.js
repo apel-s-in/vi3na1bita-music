@@ -4,6 +4,7 @@
 // Тонкий адаптер: основное приложение -> внешний модуль /Friends/
 
 import {
+  getSocialServerBackoffState,
   getSocialSession,
   invalidateSocialSession
 } from '../../core/social-session.js';
@@ -522,12 +523,35 @@ const applyIdentity = async () => {
   try {
     session = await issueSocialSession();
   } catch (error) {
-    invalidateSocialSession();
-    _socialSessionRetryAt = Date.now() + 30000;
-    _core.setIdentity({ friendId: '', yandexLinked: false });
+    const message = String(error?.message || '');
+    const status = Number(error?.status || 0);
+    const authFailed =
+      status === 401 ||
+      /oauth|required|expired|bad_social_session|account_changed/i
+        .test(message);
+
+    if (authFailed) {
+      invalidateSocialSession();
+    }
+
+    const backoff =
+      getSocialServerBackoffState();
+
+    _socialSessionRetryAt = backoff.active
+      ? backoff.retryAt
+      : Date.now() + 30000;
+
+    _core.setIdentity({
+      friendId: '',
+      yandexLinked: false
+    });
     W.__vfIdentity = null;
     stopFriendsBackgroundTasks();
-    console.error('[Friends] social session failed:', error);
+
+    console.error(
+      '[Friends] social session failed:',
+      error
+    );
     renderFriendsServiceError(error);
     return false;
   }
