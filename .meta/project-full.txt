@@ -14371,9 +14371,28 @@ export const requestSocialAction = (
 };
 window.addEventListener(
   'yandex:auth:changed',
-  () => invalidateSocialSession({
-    resetBackoff: true
-  })
+  event => {
+    const status = safe(event.detail?.status);
+    const nextYandexId = safe(
+      event.detail?.profile?.yandexId ||
+      event.detail?.profile?.id ||
+      readProfile().yandexId
+    );
+
+    if (
+      status === 'logged_out' ||
+      status === 'expired' ||
+      (
+        cachedYandexId &&
+        nextYandexId &&
+        cachedYandexId !== nextYandexId
+      )
+    ) {
+      invalidateSocialSession({
+        resetBackoff: true
+      });
+    }
+  }
 );
 
 export default {
