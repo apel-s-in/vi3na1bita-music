@@ -5221,11 +5221,37 @@ async function actionRankedMatchPrepare(event, body) {
     const currentMatch = payload(currentMatchRow);
 
     if (currentMatchId && !currentMatchRow) {
-      await new Promise(resolve => setTimeout(resolve, 60));
+      const reservationAge =
+        now() - num(currentRoom.rankedPreparedAt);
+
+      if (reservationAge < 3000) {
+        await new Promise(resolve =>
+          setTimeout(resolve, 100)
+        );
+        continue;
+      }
+
+      const cleared = await kvCompareAndPut({
+        row: currentRoomRow,
+        type: 'room',
+        owner: currentRoom.hostPlayerId,
+        expiresAt: num(currentRoomRow.expires_at),
+        data: {
+          ...currentRoom,
+          rankedMatchId: '',
+          rankedPreparedAt: 0,
+          updatedAt: now()
+        }
+      });
+
+      if (!cleared) continue;
       continue;
     }
 
-    const terminal = isRankedTerminal(currentMatch.status);
+    const terminal = isRankedTerminal(
+      currentMatch.status
+    );
+
     if (currentMatchRow && !terminal) {
       matchId = currentMatchId;
       break;
@@ -5233,27 +5259,71 @@ async function actionRankedMatchPrepare(event, body) {
 
     const candidate = rid('ranked');
     const preparedAt = now();
-    const changed = await kvCompareAndPut({ row: currentRoomRow, type: 'room', owner: currentRoom.hostPlayerId, expiresAt: num(currentRoomRow.expires_at), data: { ...currentRoom, rankedMatchId: candidate, rankedPreparedAt: preparedAt, updatedAt: preparedAt } });
-    if (!changed) continue;
-    await kvPut({
-      pk: rankedMatchKey(candidate),
-      type: 'rankedMatch',
-      owner: roomId,
-      expiresAt: num(currentRoom.reconnectUntil) || preparedAt + CFG.roomTtlMs,
+    const candidateKey = rankedMatchKey(candidate);
+    const candidateExpiresAt =
+      num(currentRoom.reconnectUntil) ||
+      preparedAt + CFG.roomTtlMs;
+
+    try {
+      await kvInsert({
+        pk: candidateKey,
+        type: 'rankedMatch',
+        owner: roomId,
+        expiresAt: candidateExpiresAt,
+        data: {
+          version: 2,
+          matchId: candidate,
+          roomId,
+          gameId: RANKED_GAME_ID,
+          participants,
+          status: 'pending',
+          rps: {
+            version: 1,
+            status: 'waiting',
+            currentRound: 1,
+            firstPlayerId: '',
+            rounds: {},
+            updatedAt: preparedAt
+          },
+          submissions: {},
+          economy: {
+            required: true,
+            status: 'locking',
+            stakeEach: RANKED_STAKE_AMOUNT,
+            escrow: RANKED_STAKE_AMOUNT * 2,
+            lockedPlayers: 0,
+            participants: 2,
+            fundedAt: 0,
+            paidAt: 0,
+            refundedAt: 0,
+            updatedAt: preparedAt
+          },
+          createdAt: preparedAt,
+          updatedAt: preparedAt
+        }
+      });
+    } catch {
+      continue;
+    }
+
+    const changed = await kvCompareAndPut({
+      row: currentRoomRow,
+      type: 'room',
+      owner: currentRoom.hostPlayerId,
+      expiresAt: num(currentRoomRow.expires_at),
       data: {
-        version: 2,
-        matchId: candidate,
-        roomId,
-        gameId: RANKED_GAME_ID,
-        participants,
-        status: 'pending',
-        rps: { version: 1, status: 'waiting', currentRound: 1, firstPlayerId: '', rounds: {}, updatedAt: preparedAt },
-        submissions: {},
-        economy: { required: true, status: 'locking', stakeEach: RANKED_STAKE_AMOUNT, escrow: RANKED_STAKE_AMOUNT * 2, lockedPlayers: 0, participants: 2, fundedAt: 0, paidAt: 0, refundedAt: 0, updatedAt: preparedAt },
-        createdAt: preparedAt,
+        ...currentRoom,
+        rankedMatchId: candidate,
+        rankedPreparedAt: preparedAt,
         updatedAt: preparedAt
       }
     });
+
+    if (!changed) {
+      await kvDelete(candidateKey).catch(() => null);
+      continue;
+    }
+
     matchId = candidate;
     break;
   }
@@ -5340,11 +5410,39 @@ async function actionRankedMatchAbort(event, body) {
   throw new Error('ranked_abort_conflict');
 }
 async function actionRankedMatchCleanup(event, body) {
-  const admin = headerValue(event, 'x-vi3-admin') || safe(body.adminSecret);
-  if (!CFG.adminSecret || !timingSafeEqualText(admin, CFG.adminSecret)) {
-    throw new Error('bad_admin_secret');
+  const admin =
+    headerValue(event, 'x-vi3-admin') ||
+    safe(body.adminSecret);
+  const scheduler =
+    headerValue(event, 'x-vi3-scheduler') ||
+    safe(body.schedulerSecret);
+
+  const adminAllowed =
+    !!CFG.adminSecret &&
+    timingSafeEqualText(admin, CFG.adminSecret);
+  const schedulerAllowed =
+    !!CFG.schedulerSecret &&
+    timingSafeEqualText(
+      scheduler,
+      CFG.schedulerSecret
+    );
+
+  if (!adminAllowed && !schedulerAllowed) {
+    const error = new Error(
+      'bad_ranked_cleanup_secret'
+    );
+    error.httpStatus = 403;
+    throw error;
   }
-  const rows = await kvPrefix('rankedMatch:', 500);
+
+  const limit = Math.max(
+    1,
+    Math.min(100, Math.floor(num(body.limit, 50)))
+  );
+  const rows = await kvPrefixOrdered(
+    'rankedMatch:',
+    limit
+  );
   const results = [];
   for (const row of rows) {
     const match = payload(row);
