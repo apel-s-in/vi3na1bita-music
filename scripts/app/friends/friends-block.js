@@ -579,7 +579,6 @@ export const mountFriendsBlock = async ({ container } = {}) => {
   if (!_bound) {
     _bound = true;
     W.addEventListener('yandex:auth:changed', () => {
-      invalidateSocialSession();
       applyIdentity().catch(() => {});
     });
     D.addEventListener('visibilitychange', () => {
