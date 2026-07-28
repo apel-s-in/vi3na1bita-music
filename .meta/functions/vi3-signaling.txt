@@ -1011,8 +1011,21 @@ async function actionSignalAck(event, body) {
   if (expectedPeerForPlayer(room, playerId) !== peerId) {
     return { ok: false, reason: 'peer_identity_mismatch' };
   }
-  await Promise.all(seqs.map(seq => kvDelete(`signal:${roomId}:${peerId}:${seq}`).catch(() => null)));
-  return { ok: true, acked: seqs.length };
+  let acked = 0;
+
+  for (const seq of seqs) {
+    try {
+      await kvDelete(
+        `signal:${roomId}:${peerId}:${seq}`
+      );
+      acked++;
+    } catch {}
+  }
+
+  return {
+    ok: true,
+    acked
+  };
 }
 // ===== FRIENDS / E2EE V2 =====
 async function actionProfileSet(event, body) {
@@ -5427,13 +5440,48 @@ async function actionLanCodeRegister(event, body) {
   const ttlMs = Math.min(600000, Math.max(60000, num(body.ttlMs, 300000)));
   const createdAt = now();
   const expiresAt = createdAt + ttlMs;
-  room.ranked = ranked;
-  room.localOnly = localOnly;
-  room.matchMode = ranked ? 'ranked' : 'casual';
-  room.updatedAt = createdAt;
-  await kvPut({ pk: `room:${roomId}`, type: 'room', owner: room.hostPlayerId || playerId, expiresAt: room.reconnectUntil || expiresAt, data: room });
+  const matchMode = ranked
+    ? 'ranked'
+    : 'casual';
+  const modeChanged =
+    room.ranked !== ranked ||
+    room.localOnly !== localOnly ||
+    room.matchMode !== matchMode;
+
+  if (modeChanged) {
+    room.ranked = ranked;
+    room.localOnly = localOnly;
+    room.matchMode = matchMode;
+    room.updatedAt = createdAt;
+
+    await kvPut({
+      pk: `room:${roomId}`,
+      type: 'room',
+      owner: room.hostPlayerId || playerId,
+      expiresAt:
+        room.reconnectUntil || expiresAt,
+      data: room
+    });
+  }
   try {
-    await kvInsert({ pk: codeKey, type: 'lanCode', owner: playerId, expiresAt, data: { code, roomId, roomSecret, gameId: room.gameId, ranked, localOnly, matchMode: room.matchMode, hostPlayerId: playerId, createdAt, expiresAt } });
+await kvInsert({
+  pk: codeKey,
+  type: 'lanCode',
+  owner: playerId,
+  expiresAt,
+  data: {
+    code,
+    roomId,
+    roomSecret,
+    gameId: room.gameId,
+    ranked,
+    localOnly,
+    matchMode,
+    hostPlayerId: playerId,
+    createdAt,
+    expiresAt
+  }
+});
   } catch {
     return { ok: false, reason: 'lan_code_taken' };
   }
