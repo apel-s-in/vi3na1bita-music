@@ -2148,6 +2148,13 @@ const buildSnapshot = ({ config = {} } = {}) => {
 export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
   const bridgeId = crypto.randomUUID();
   const activeFriendsRequests = new Set();
+  const activeSignalingRequests = new Set();
+  let signalingQueue = Promise.resolve();
+  const enqueueSignaling = task => {
+    const run = signalingQueue.then(task, task);
+    signalingQueue = run.catch(() => null);
+    return run;
+  };
   const capabilities = Object.freeze({ tower: crypto.randomUUID(), war_hearts: crypto.randomUUID() });
   const capabilityScopes = new Map([
     [capabilities.tower, 'tower'],
@@ -2228,19 +2235,66 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     const action = safe(payload?.action);
     const scope = getCapabilityScope(payload);
     const allowed = GAME_SIGNALING_SCOPES[scope];
+
     if (!requestId || !allowed?.has(action)) {
-      send('GC_SIGNALING_RESPONSE', { requestId, ok: false, status: 403, error: 'game_rpc_action_forbidden' });
+      send('GC_SIGNALING_RESPONSE', {
+        requestId,
+        ok: false,
+        status: 403,
+        error: 'game_rpc_action_forbidden'
+      });
       return;
     }
+
+    if (activeSignalingRequests.has(requestId)) {
+      send('GC_SIGNALING_RESPONSE', {
+        requestId,
+        ok: false,
+        status: 409,
+        error: 'game_rpc_request_duplicate'
+      });
+      return;
+    }
+
+    activeSignalingRequests.add(requestId);
+
     try {
       const data = normalizeRpcPayload(payload?.data);
-      const result = await requestSocialAction(action, data);
-      if (action === 'ranked_stake_prepare' || (action === 'ranked_match_status' && ['paid', 'refunded'].includes(result?.match?.economy?.status))) {
-        W.ShardWallet?.refresh?.({ force: true }).catch(() => null);
+      const result = await enqueueSignaling(() =>
+        requestSocialAction(action, data)
+      );
+
+      if (
+        action === 'ranked_stake_prepare' ||
+        (
+          action === 'ranked_match_status' &&
+          ['paid', 'refunded'].includes(
+            result?.match?.economy?.status
+          )
+        )
+      ) {
+        W.ShardWallet?.refresh?.({
+          force: true
+        }).catch(() => null);
       }
-      send('GC_SIGNALING_RESPONSE', { requestId, ok: true, status: 200, result });
+
+      send('GC_SIGNALING_RESPONSE', {
+        requestId,
+        ok: true,
+        status: 200,
+        result
+      });
     } catch (error) {
-      send('GC_SIGNALING_RESPONSE', { requestId, ok: false, status: Number(error?.status || 500), error: safe(error?.message || 'game_rpc_failed') });
+      send('GC_SIGNALING_RESPONSE', {
+        requestId,
+        ok: false,
+        status: Number(error?.status || 500),
+        error: safe(
+          error?.message || 'game_rpc_failed'
+        )
+      });
+    } finally {
+      activeSignalingRequests.delete(requestId);
     }
   };
   const onMessage = e => {
@@ -2407,6 +2461,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     destroy() {
       alive = false;
       activeFriendsRequests.clear();
+      activeSignalingRequests.clear();
       W.removeEventListener('message', onMessage);
       GAME_HOST_SYNC_EVENTS.forEach(name => W.removeEventListener(name, onHostUpdate));
     }
