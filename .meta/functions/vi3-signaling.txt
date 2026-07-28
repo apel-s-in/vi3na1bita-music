@@ -4677,7 +4677,16 @@ async function actionRankedRpsReveal(event, body) {
         nextRps = { ...nextRps, status: 'resolved', firstPlayerId: winnerId, rounds: { ...nextRps.rounds, [requestedRound]: nextRound }, updatedAt: now() };
       }
     }
-    const next = { ...match, rps: nextRps, updatedAt: now() };
+    const updatedAt = now();
+    const next = {
+      ...match,
+      rps: nextRps,
+      battleStartedAt:
+        nextRps.firstPlayerId
+          ? num(match.battleStartedAt) || updatedAt
+          : num(match.battleStartedAt),
+      updatedAt
+    };
     if (!(await kvCompareAndPut({ row, type: 'rankedMatch', owner: match.roomId, expiresAt: num(row.expires_at), data: next }))) {
       continue;
     }
@@ -4928,6 +4937,225 @@ function validateRankedSubmissions(match) {
   }
   return transcriptCheck;
 }
+function rankedPlayerMatchStats({
+  match,
+  playerId,
+  settlement
+}) {
+  const transcript = Array.isArray(
+    match?.submissions?.[
+      match?.participants?.[0]
+    ]?.transcript
+  )
+    ? match.submissions[
+        match.participants[0]
+      ].transcript
+    : [];
+
+  const opponentId = otherRankedPlayer(
+    match.participants || [],
+    playerId
+  );
+  const shots = transcript.filter(
+    event => event.shooterId === playerId
+  );
+  const opponentShots = transcript.filter(
+    event => event.shooterId === opponentId
+  );
+
+  const hits = shots.filter(
+    event =>
+      event.result === 'hit' ||
+      event.result === 'sunk'
+  ).length;
+  const misses = shots.filter(
+    event => event.result === 'miss'
+  ).length;
+  const sunk = shots.filter(
+    event => event.result === 'sunk'
+  ).length;
+  const shipsLost = opponentShots.filter(
+    event => event.result === 'sunk'
+  ).length;
+
+  let sunkStreak = 0;
+  let bestSunkStreak = 0;
+
+  shots.forEach(event => {
+    if (event.result === 'sunk') {
+      sunkStreak++;
+      bestSunkStreak = Math.max(
+        bestSunkStreak,
+        sunkStreak
+      );
+    } else if (event.result === 'miss') {
+      sunkStreak = 0;
+    }
+  });
+
+  const startedAt = Math.max(
+    num(match.battleStartedAt),
+    num(match.createdAt)
+  );
+  const finishedAt = Math.max(
+    num(match.terminalAt),
+    num(match.settledAt),
+    now()
+  );
+
+  return {
+    version: 1,
+    matchId: sanitizeId(match.matchId, 120),
+    roomId: sanitizeId(match.roomId, 120),
+    playerId,
+    opponentId,
+    result:
+      settlement.winnerId === playerId
+        ? 'win'
+        : 'loss',
+    outcome: safe(
+      settlement.outcome || 'completed'
+    ),
+    shots: shots.length,
+    hits,
+    misses,
+    sunk,
+    shipsLost,
+    shipDifference: sunk - shipsLost,
+    accuracy:
+      shots.length > 0
+        ? Math.round((hits / shots.length) * 100)
+        : 0,
+    bestSunkStreak,
+    turns: Math.max(
+      0,
+      Math.floor(num(settlement.turns))
+    ),
+    startedAt,
+    finishedAt,
+    durationMs:
+      startedAt > 0
+        ? Math.max(0, finishedAt - startedAt)
+        : 0,
+    stakeEach: Math.max(
+      0,
+      Math.floor(
+        num(
+          settlement.economy?.stakeEach,
+          RANKED_STAKE_AMOUNT
+        )
+      )
+    ),
+    fairPlayStatus:
+      settlement.outcome === 'completed'
+        ? 'server_validated'
+        : 'server_forfeit'
+  };
+}
+
+function normalizeRankedStats(raw = {}) {
+  return {
+    version: 1,
+    matches: Math.max(0, Math.floor(num(raw.matches))),
+    wins: Math.max(0, Math.floor(num(raw.wins))),
+    losses: Math.max(0, Math.floor(num(raw.losses))),
+    shots: Math.max(0, Math.floor(num(raw.shots))),
+    hits: Math.max(0, Math.floor(num(raw.hits))),
+    misses: Math.max(0, Math.floor(num(raw.misses))),
+    sunk: Math.max(0, Math.floor(num(raw.sunk))),
+    shipsLost: Math.max(
+      0,
+      Math.floor(num(raw.shipsLost))
+    ),
+    bestSunkStreak: Math.max(
+      0,
+      Math.floor(num(raw.bestSunkStreak))
+    ),
+    totalDurationMs: Math.max(
+      0,
+      Math.floor(num(raw.totalDurationMs))
+    ),
+    forfeitsWon: Math.max(
+      0,
+      Math.floor(num(raw.forfeitsWon))
+    ),
+    forfeitsLost: Math.max(
+      0,
+      Math.floor(num(raw.forfeitsLost))
+    ),
+    updatedAt: Math.max(0, num(raw.updatedAt))
+  };
+}
+
+function applyRankedStatsMatch(
+  statsRaw,
+  matchStats
+) {
+  const stats = normalizeRankedStats(statsRaw);
+  const won = matchStats.result === 'win';
+  const forfeit =
+    matchStats.outcome === 'forfeit';
+
+  return normalizeRankedStats({
+    ...stats,
+    matches: stats.matches + 1,
+    wins: stats.wins + (won ? 1 : 0),
+    losses: stats.losses + (won ? 0 : 1),
+    shots: stats.shots + matchStats.shots,
+    hits: stats.hits + matchStats.hits,
+    misses: stats.misses + matchStats.misses,
+    sunk: stats.sunk + matchStats.sunk,
+    shipsLost:
+      stats.shipsLost + matchStats.shipsLost,
+    bestSunkStreak: Math.max(
+      stats.bestSunkStreak,
+      matchStats.bestSunkStreak
+    ),
+    totalDurationMs:
+      stats.totalDurationMs +
+      matchStats.durationMs,
+    forfeitsWon:
+      stats.forfeitsWon +
+      (forfeit && won ? 1 : 0),
+    forfeitsLost:
+      stats.forfeitsLost +
+      (forfeit && !won ? 1 : 0),
+    updatedAt: now()
+  });
+}
+
+function publicRankedStats(profile = {}) {
+  const stats = normalizeRankedStats(
+    profile.rankedStats
+  );
+  const history = (
+    Array.isArray(profile.rankedHistory)
+      ? profile.rankedHistory
+      : []
+  ).slice(0, 50);
+
+  return {
+    ...stats,
+    rating: Math.max(
+      100,
+      num(profile.rating, 1000)
+    ),
+    accuracy:
+      stats.shots > 0
+        ? Math.round(
+            (stats.hits / stats.shots) * 100
+          )
+        : 0,
+    averageDurationMs:
+      stats.matches > 0
+        ? Math.round(
+            stats.totalDurationMs /
+            stats.matches
+          )
+        : 0,
+    history
+  };
+}
 async function buildRankedSettlementPlan({ match, winnerId, loserId, outcome = 'completed', turns = 0 }) {
   if (!match?.participants?.includes(winnerId) || !match?.participants?.includes(loserId) || winnerId === loserId) {
     throw new Error('ranked_settlement_players_invalid');
@@ -4952,33 +5180,130 @@ async function buildRankedSettlementPlan({ match, winnerId, loserId, outcome = '
     createdAt: now()
   };
 }
-async function applyRankedProfileSettlement({ playerId, matchId, won, delta }) {
+async function applyRankedProfileSettlement({
+  playerId,
+  matchId,
+  won,
+  delta,
+  match,
+  settlement
+}) {
   for (let attempt = 0; attempt < 8; attempt++) {
     const row = await kvGet(`profile:${playerId}`);
-    if (!row) throw new Error('ranked_profile_not_found');
-    const profile = payload(row);
-    const settled = Array.isArray(profile.rankedSettlements) ? profile.rankedSettlements.map(value => sanitizeId(value, 120)) : [];
-    const currentRating = Math.max(100, num(profile.rating, 1000));
-    const matches = Math.max(num(profile.rankedMatches), num(profile.matches));
-    if (settled.includes(matchId)) {
-      return { ok: true, duplicate: true, rating: currentRating, matches };
+    if (!row) {
+      throw new Error('ranked_profile_not_found');
     }
+
+    const profile = payload(row);
+    const settled = Array.isArray(
+      profile.rankedSettlements
+    )
+      ? profile.rankedSettlements.map(value =>
+          sanitizeId(value, 120)
+        )
+      : [];
+    const currentRating = Math.max(
+      100,
+      num(profile.rating, 1000)
+    );
+    const matches = Math.max(
+      num(profile.rankedMatches),
+      num(profile.matches)
+    );
+
+    if (settled.includes(matchId)) {
+      return {
+        ok: true,
+        duplicate: true,
+        rating: currentRating,
+        matches,
+        stats: publicRankedStats(profile)
+      };
+    }
+
+    const nextRating = Math.max(
+      100,
+      Math.min(3000, currentRating + delta)
+    );
+    const matchStats = rankedPlayerMatchStats({
+      match,
+      playerId,
+      settlement
+    });
+
+    matchStats.ratingBefore = currentRating;
+    matchStats.ratingAfter = nextRating;
+    matchStats.ratingDelta =
+      nextRating - currentRating;
+
+    const oldHistory = Array.isArray(
+      profile.rankedHistory
+    )
+      ? profile.rankedHistory
+      : [];
+    const rankedHistory = [
+      matchStats,
+      ...oldHistory.filter(
+        item => item?.matchId !== matchId
+      )
+    ]
+      .sort(
+        (left, right) =>
+          num(right.finishedAt) -
+          num(left.finishedAt)
+      )
+      .slice(0, 50);
+
+    const rankedStats = applyRankedStatsMatch(
+      profile.rankedStats,
+      matchStats
+    );
+
     const next = {
       ...profile,
-      rating: Math.max(100, Math.min(3000, currentRating + delta)),
+      rating: nextRating,
       rankedMatches: matches + 1,
-      rankedWins: Math.max(num(profile.rankedWins), num(profile.wins)) + (won ? 1 : 0),
-      rankedLosses: Math.max(num(profile.rankedLosses), num(profile.losses)) + (won ? 0 : 1),
+      rankedWins:
+        Math.max(
+          num(profile.rankedWins),
+          num(profile.wins)
+        ) + (won ? 1 : 0),
+      rankedLosses:
+        Math.max(
+          num(profile.rankedLosses),
+          num(profile.losses)
+        ) + (won ? 0 : 1),
+      rankedStats,
+      rankedHistory,
       rankedV2: true,
       rankedUpdatedAt: now(),
-      rankedSettlements: [...settled, matchId].slice(-RANKED_SETTLEMENT_HISTORY)
+      rankedSettlements: [
+        ...settled,
+        matchId
+      ].slice(-RANKED_SETTLEMENT_HISTORY)
     };
-    const changed = await kvCompareAndPut({ row, type: 'profile', owner: playerId, data: next });
+
+    const changed = await kvCompareAndPut({
+      row,
+      type: 'profile',
+      owner: playerId,
+      data: next
+    });
+
     if (changed) {
-      return { ok: true, rating: next.rating, matches: next.rankedMatches };
+      return {
+        ok: true,
+        duplicate: false,
+        rating: next.rating,
+        matches: next.rankedMatches,
+        stats: publicRankedStats(next)
+      };
     }
   }
-  throw new Error('ranked_profile_settlement_conflict');
+
+  throw new Error(
+    'ranked_profile_settlement_conflict'
+  );
 }
 async function settleRankedMatch(matchId) {
   const key = rankedMatchKey(matchId);
@@ -5033,12 +5358,42 @@ async function settleRankedMatch(matchId) {
       }
       continue;
     }
-    const [winner, loser] = await Promise.all([applyRankedProfileSettlement({ playerId: settlement.winnerId, matchId, won: true, delta: num(settlement.winnerDelta) }), applyRankedProfileSettlement({ playerId: settlement.loserId, matchId, won: false, delta: num(settlement.loserDelta) })]);
+    const settledAt = now();
+    const finalSettlement = {
+      ...settlement,
+      settledAt
+    };
+
+    const [winner, loser] = await Promise.all([
+      applyRankedProfileSettlement({
+        playerId: settlement.winnerId,
+        matchId,
+        won: true,
+        delta: num(settlement.winnerDelta),
+        match,
+        settlement: finalSettlement
+      }),
+      applyRankedProfileSettlement({
+        playerId: settlement.loserId,
+        matchId,
+        won: false,
+        delta: num(settlement.loserDelta),
+        match,
+        settlement: finalSettlement
+      })
+    ]);
     const terminalStatus = settlement.outcome === 'forfeit' ? 'forfeited' : 'settled';
     const completed = transitionRankedMatch(match, terminalStatus, {
       reason: settlement.outcome === 'forfeit' ? 'server_issued_forfeit' : 'settled',
       actorId: settlement.outcome === 'forfeit' ? settlement.loserId : '',
-      extra: { settlement: { ...settlement, winnerRating: winner.rating || 0, loserRating: loser.rating || 0, settledAt: now() }, settledAt: now() }
+      extra: {
+        settlement: {
+          ...finalSettlement,
+          winnerRating: winner.rating || 0,
+          loserRating: loser.rating || 0
+        },
+        settledAt
+      }
     });
     if (await kvCompareAndPut({ row, type: 'rankedMatch', owner: match.roomId, expiresAt: num(row.expires_at), data: completed })) {
       return reconcileRankedEconomy(completed);
@@ -5283,6 +5638,21 @@ async function actionRankedMatchStatus(event, body) {
   }
   const current = await reconcileRankedMatch(matchId);
   return { ok: true, match: publicRankedMatch(current, playerId) };
+}
+async function actionRankedStatsGet(event, body) {
+  const { playerId } = await requirePlayer(
+    event,
+    body
+  );
+  const profile = payload(
+    await kvGet(`profile:${playerId}`)
+  );
+
+  return {
+    ok: true,
+    source: 'server_validated',
+    stats: publicRankedStats(profile)
+  };
 }
 async function actionLeaderboardV2Get(event, body) {
   await requirePlayer(event, body);
@@ -5583,6 +5953,7 @@ const ACTIONS = {
   ranked_match_abort: actionRankedMatchAbort,
   ranked_match_cleanup: actionRankedMatchCleanup,
   leaderboard_v2_get: actionLeaderboardV2Get,
+  ranked_stats_get: actionRankedStatsGet,
   wallet_get: actionWalletGet,
   wallet_registration_backfill: actionWalletRegistrationBackfill,
   wallet_purchase_avatar: actionWalletPurchaseAvatar,
