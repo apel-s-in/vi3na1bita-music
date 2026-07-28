@@ -737,22 +737,7 @@ async function actionRoomCreate(event, body) {
   const guestPeerId = `${roomId}:guest`;
   const expiresAt = now() + CFG.roomTtlMs;
   const ranked = gameId === 'war_hearts';
-  const room = {
-    roomId,
-    gameId,
-    status: 'waiting',
-    hostPlayerId: playerId,
-    guestPlayerId: '',
-    hostPeerId,
-    guestPeerId,
-    roomSecretHash: hash(roomSecret),
-    ranked,
-    matchMode: ranked ? 'ranked' : 'casual',
-    localOnly: false,
-    createdAt: now(),
-    updatedAt: now(),
-    reconnectUntil: expiresAt
-  };
+  const room = { roomId, gameId, status: 'waiting', hostPlayerId: playerId, guestPlayerId: '', hostPeerId, guestPeerId, roomSecretHash: hash(roomSecret), ranked, matchMode: ranked ? 'ranked' : 'casual', localOnly: false, createdAt: now(), updatedAt: now(), reconnectUntil: expiresAt };
   await kvPut({ pk: `room:${roomId}`, type: 'room', owner: playerId, expiresAt, data: room });
   return { ok: true, roomId, roomSecret, hostPeerId, guestPeerId, room };
 }
@@ -887,14 +872,9 @@ async function actionRoomSetMode(event, body) {
   }
   if (room.status === 'closed') return { ok: false, reason: 'room_closed' };
   const isWarHearts = room.gameId === 'war_hearts';
-
   if (isWarHearts && body.ranked !== true) {
-    return {
-      ok: false,
-      reason: 'war_hearts_ranked_required'
-    };
+    return { ok: false, reason: 'war_hearts_ranked_required' };
   }
-
   const ranked = isWarHearts || body.ranked === true;
   room.ranked = ranked;
   room.matchMode = ranked ? 'ranked' : 'casual';
@@ -905,49 +885,31 @@ async function actionRoomSetMode(event, body) {
   await kvPut({ pk: `room:${roomId}`, type: 'room', owner: room.hostPlayerId || playerId, expiresAt: room.reconnectUntil || now() + CFG.roomTtlMs, data: room });
   return { ok: true, roomId, ranked: !!room.ranked, localOnly: !!room.localOnly, matchMode: room.matchMode };
 }
-const SIGNAL_TYPES = new Set([
-  'offer',
-  'answer',
-  'ice'
-]);
+const SIGNAL_TYPES = new Set(['offer', 'answer', 'ice']);
 const SIGNAL_MAX_BYTES = 64 * 1024;
-
 function normalizeSignalPayload(type, raw) {
   if (!SIGNAL_TYPES.has(type)) {
     throw new Error('signal_type_forbidden');
   }
-
   let text;
-
   try {
     text = JSON.stringify(raw ?? null);
   } catch {
     throw new Error('bad_signal_payload');
   }
-
   const bytes = Buffer.byteLength(text, 'utf8');
   if (!bytes || bytes > SIGNAL_MAX_BYTES) {
     const error = new Error('signal_payload_too_large');
     error.httpStatus = 413;
     throw error;
   }
-
   const value = JSON.parse(text);
-
-  if (
-    (type === 'offer' || type === 'answer') &&
-    !safe(value?.sdp?.sdp || value?.sdp)
-  ) {
+  if ((type === 'offer' || type === 'answer') && !safe(value?.sdp?.sdp || value?.sdp)) {
     throw new Error('signal_sdp_required');
   }
-
-  if (
-    type === 'ice' &&
-    !safe(value?.candidate)
-  ) {
+  if (type === 'ice' && !safe(value?.candidate)) {
     throw new Error('signal_ice_required');
   }
-
   return value;
 }
 async function actionSignalSend(event, body) {
@@ -957,14 +919,8 @@ async function actionSignalSend(event, body) {
   const fromPeerId = sanitizeId(body.fromPeerId || body.peerId, 140);
   const toPeerId = sanitizeId(body.toPeerId || body.targetPeerId, 140);
   const type = sanitizeId(body.type || body.signalType || body.payload?.type, 40);
-  const rawPayload =
-    body.payload?.data !== undefined
-      ? body.payload.data
-      : body.payload;
-  const payloadData = normalizeSignalPayload(
-    type,
-    rawPayload
-  );
+  const rawPayload = body.payload?.data !== undefined ? body.payload.data : body.payload;
+  const payloadData = normalizeSignalPayload(type, rawPayload);
   const roomRow = roomId ? await kvGet(`room:${roomId}`) : null;
   const room = payload(roomRow);
   if (!roomRow || room.roomSecretHash !== hash(roomSecret)) {
@@ -995,79 +951,31 @@ async function actionSignalSend(event, body) {
 async function actionSignalPoll(event, body) {
   const { playerId } = await requirePlayer(event, body);
   const roomId = sanitizeId(body.roomId);
-  const roomSecret = safe(
-    body.roomSecret ||
-    body.secret ||
-    body.key ||
-    ''
-  );
+  const roomSecret = safe(body.roomSecret || body.secret || body.key || '');
   const peerId = sanitizeId(body.peerId, 140);
-  const roomRow = roomId
-    ? await kvGet(`room:${roomId}`)
-    : null;
+  const roomRow = roomId ? await kvGet(`room:${roomId}`) : null;
   const room = payload(roomRow);
-
-  if (
-    !roomRow ||
-    room.roomSecretHash !== hash(roomSecret)
-  ) {
-    return {
-      ok: false,
-      reason: 'room_not_found'
-    };
+  if (!roomRow || room.roomSecretHash !== hash(roomSecret)) {
+    return { ok: false, reason: 'room_not_found' };
   }
-
-  if (
-    room.status === 'closed' ||
-    num(room.closedAt) > 0
-  ) {
-    return {
-      ok: false,
-      reason: 'room_closed'
-    };
+  if (room.status === 'closed' || num(room.closedAt) > 0) {
+    return { ok: false, reason: 'room_closed' };
   }
-
   if (!isRoomParticipant(room, playerId)) {
-    return {
-      ok: false,
-      reason: 'room_forbidden'
-    };
+    return { ok: false, reason: 'room_forbidden' };
   }
-
   if (!peerId) {
     throw new Error('peer_id_required');
   }
-
-  if (
-    expectedPeerForPlayer(room, playerId) !== peerId
-  ) {
-    return {
-      ok: false,
-      reason: 'peer_identity_mismatch'
-    };
+  if (expectedPeerForPlayer(room, playerId) !== peerId) {
+    return { ok: false, reason: 'peer_identity_mismatch' };
   }
-
-  const rows = await kvPrefix(
-    `signal:${roomId}:${peerId}:`,
-    64
-  );
-
+  const rows = await kvPrefix(`signal:${roomId}:${peerId}:`, 64);
   const messages = rows
     .map(payload)
-    .filter(message =>
-      message &&
-      message.seq &&
-      message.roomId === roomId &&
-      message.toPeerId === peerId
-    )
-    .sort((left, right) =>
-      num(left.createdAt) - num(right.createdAt)
-    );
-
-  return {
-    ok: true,
-    messages
-  };
+    .filter(message => message && message.seq && message.roomId === roomId && message.toPeerId === peerId)
+    .sort((left, right) => num(left.createdAt) - num(right.createdAt));
+  return { ok: true, messages };
 }
 async function actionSignalAck(event, body) {
   const { playerId } = await requirePlayer(event, body);
@@ -4668,15 +4576,7 @@ async function actionRankedRpsReveal(event, body) {
       }
     }
     const updatedAt = now();
-    const next = {
-      ...match,
-      rps: nextRps,
-      battleStartedAt:
-        nextRps.firstPlayerId
-          ? num(match.battleStartedAt) || updatedAt
-          : num(match.battleStartedAt),
-      updatedAt
-    };
+    const next = { ...match, rps: nextRps, battleStartedAt: nextRps.firstPlayerId ? num(match.battleStartedAt) || updatedAt : num(match.battleStartedAt), updatedAt };
     if (!(await kvCompareAndPut({ row, type: 'rankedMatch', owner: match.roomId, expiresAt: num(row.expires_at), data: next }))) {
       continue;
     }
@@ -4927,122 +4827,51 @@ function validateRankedSubmissions(match) {
   }
   return transcriptCheck;
 }
-function rankedPlayerMatchStats({
-  match,
-  playerId,
-  settlement
-}) {
-  const transcript = Array.isArray(
-    match?.submissions?.[
-      match?.participants?.[0]
-    ]?.transcript
-  )
-    ? match.submissions[
-        match.participants[0]
-      ].transcript
-    : [];
-
-  const opponentId = otherRankedPlayer(
-    match.participants || [],
-    playerId
-  );
-  const shots = transcript.filter(
-    event => event.shooterId === playerId
-  );
-  const opponentShots = transcript.filter(
-    event => event.shooterId === opponentId
-  );
-
-  const hits = shots.filter(
-    event =>
-      event.result === 'hit' ||
-      event.result === 'sunk'
-  ).length;
-  const misses = shots.filter(
-    event => event.result === 'miss'
-  ).length;
-  const sunk = shots.filter(
-    event => event.result === 'sunk'
-  ).length;
-  const shipsLost = opponentShots.filter(
-    event => event.result === 'sunk'
-  ).length;
-
+function rankedPlayerMatchStats({ match, playerId, settlement }) {
+  const transcript = Array.isArray(match?.submissions?.[match?.participants?.[0]]?.transcript) ? match.submissions[match.participants[0]].transcript : [];
+  const opponentId = otherRankedPlayer(match.participants || [], playerId);
+  const shots = transcript.filter(event => event.shooterId === playerId);
+  const opponentShots = transcript.filter(event => event.shooterId === opponentId);
+  const hits = shots.filter(event => event.result === 'hit' || event.result === 'sunk').length;
+  const misses = shots.filter(event => event.result === 'miss').length;
+  const sunk = shots.filter(event => event.result === 'sunk').length;
+  const shipsLost = opponentShots.filter(event => event.result === 'sunk').length;
   let sunkStreak = 0;
   let bestSunkStreak = 0;
-
   shots.forEach(event => {
     if (event.result === 'sunk') {
       sunkStreak++;
-      bestSunkStreak = Math.max(
-        bestSunkStreak,
-        sunkStreak
-      );
+      bestSunkStreak = Math.max(bestSunkStreak, sunkStreak);
     } else if (event.result === 'miss') {
       sunkStreak = 0;
     }
   });
-
-  const startedAt = Math.max(
-    num(match.battleStartedAt),
-    num(match.createdAt)
-  );
-  const finishedAt = Math.max(
-    num(match.terminalAt),
-    num(match.settledAt),
-    now()
-  );
-
+  const startedAt = Math.max(num(match.battleStartedAt), num(match.createdAt));
+  const finishedAt = Math.max(num(match.terminalAt), num(match.settledAt), now());
   return {
     version: 1,
     matchId: sanitizeId(match.matchId, 120),
     roomId: sanitizeId(match.roomId, 120),
     playerId,
     opponentId,
-    result:
-      settlement.winnerId === playerId
-        ? 'win'
-        : 'loss',
-    outcome: safe(
-      settlement.outcome || 'completed'
-    ),
+    result: settlement.winnerId === playerId ? 'win' : 'loss',
+    outcome: safe(settlement.outcome || 'completed'),
     shots: shots.length,
     hits,
     misses,
     sunk,
     shipsLost,
     shipDifference: sunk - shipsLost,
-    accuracy:
-      shots.length > 0
-        ? Math.round((hits / shots.length) * 100)
-        : 0,
+    accuracy: shots.length > 0 ? Math.round((hits / shots.length) * 100) : 0,
     bestSunkStreak,
-    turns: Math.max(
-      0,
-      Math.floor(num(settlement.turns))
-    ),
+    turns: Math.max(0, Math.floor(num(settlement.turns))),
     startedAt,
     finishedAt,
-    durationMs:
-      startedAt > 0
-        ? Math.max(0, finishedAt - startedAt)
-        : 0,
-    stakeEach: Math.max(
-      0,
-      Math.floor(
-        num(
-          settlement.economy?.stakeEach,
-          RANKED_STAKE_AMOUNT
-        )
-      )
-    ),
-    fairPlayStatus:
-      settlement.outcome === 'completed'
-        ? 'server_validated'
-        : 'server_forfeit'
+    durationMs: startedAt > 0 ? Math.max(0, finishedAt - startedAt) : 0,
+    stakeEach: Math.max(0, Math.floor(num(settlement.economy?.stakeEach, RANKED_STAKE_AMOUNT))),
+    fairPlayStatus: settlement.outcome === 'completed' ? 'server_validated' : 'server_forfeit'
   };
 }
-
 function normalizeRankedStats(raw = {}) {
   return {
     version: 1,
@@ -5053,39 +4882,18 @@ function normalizeRankedStats(raw = {}) {
     hits: Math.max(0, Math.floor(num(raw.hits))),
     misses: Math.max(0, Math.floor(num(raw.misses))),
     sunk: Math.max(0, Math.floor(num(raw.sunk))),
-    shipsLost: Math.max(
-      0,
-      Math.floor(num(raw.shipsLost))
-    ),
-    bestSunkStreak: Math.max(
-      0,
-      Math.floor(num(raw.bestSunkStreak))
-    ),
-    totalDurationMs: Math.max(
-      0,
-      Math.floor(num(raw.totalDurationMs))
-    ),
-    forfeitsWon: Math.max(
-      0,
-      Math.floor(num(raw.forfeitsWon))
-    ),
-    forfeitsLost: Math.max(
-      0,
-      Math.floor(num(raw.forfeitsLost))
-    ),
+    shipsLost: Math.max(0, Math.floor(num(raw.shipsLost))),
+    bestSunkStreak: Math.max(0, Math.floor(num(raw.bestSunkStreak))),
+    totalDurationMs: Math.max(0, Math.floor(num(raw.totalDurationMs))),
+    forfeitsWon: Math.max(0, Math.floor(num(raw.forfeitsWon))),
+    forfeitsLost: Math.max(0, Math.floor(num(raw.forfeitsLost))),
     updatedAt: Math.max(0, num(raw.updatedAt))
   };
 }
-
-function applyRankedStatsMatch(
-  statsRaw,
-  matchStats
-) {
+function applyRankedStatsMatch(statsRaw, matchStats) {
   const stats = normalizeRankedStats(statsRaw);
   const won = matchStats.result === 'win';
-  const forfeit =
-    matchStats.outcome === 'forfeit';
-
+  const forfeit = matchStats.outcome === 'forfeit';
   return normalizeRankedStats({
     ...stats,
     matches: stats.matches + 1,
@@ -5095,56 +4903,18 @@ function applyRankedStatsMatch(
     hits: stats.hits + matchStats.hits,
     misses: stats.misses + matchStats.misses,
     sunk: stats.sunk + matchStats.sunk,
-    shipsLost:
-      stats.shipsLost + matchStats.shipsLost,
-    bestSunkStreak: Math.max(
-      stats.bestSunkStreak,
-      matchStats.bestSunkStreak
-    ),
-    totalDurationMs:
-      stats.totalDurationMs +
-      matchStats.durationMs,
-    forfeitsWon:
-      stats.forfeitsWon +
-      (forfeit && won ? 1 : 0),
-    forfeitsLost:
-      stats.forfeitsLost +
-      (forfeit && !won ? 1 : 0),
+    shipsLost: stats.shipsLost + matchStats.shipsLost,
+    bestSunkStreak: Math.max(stats.bestSunkStreak, matchStats.bestSunkStreak),
+    totalDurationMs: stats.totalDurationMs + matchStats.durationMs,
+    forfeitsWon: stats.forfeitsWon + (forfeit && won ? 1 : 0),
+    forfeitsLost: stats.forfeitsLost + (forfeit && !won ? 1 : 0),
     updatedAt: now()
   });
 }
-
 function publicRankedStats(profile = {}) {
-  const stats = normalizeRankedStats(
-    profile.rankedStats
-  );
-  const history = (
-    Array.isArray(profile.rankedHistory)
-      ? profile.rankedHistory
-      : []
-  ).slice(0, 50);
-
-  return {
-    ...stats,
-    rating: Math.max(
-      100,
-      num(profile.rating, 1000)
-    ),
-    accuracy:
-      stats.shots > 0
-        ? Math.round(
-            (stats.hits / stats.shots) * 100
-          )
-        : 0,
-    averageDurationMs:
-      stats.matches > 0
-        ? Math.round(
-            stats.totalDurationMs /
-            stats.matches
-          )
-        : 0,
-    history
-  };
+  const stats = normalizeRankedStats(profile.rankedStats);
+  const history = (Array.isArray(profile.rankedHistory) ? profile.rankedHistory : []).slice(0, 50);
+  return { ...stats, rating: Math.max(100, num(profile.rating, 1000)), accuracy: stats.shots > 0 ? Math.round((stats.hits / stats.shots) * 100) : 0, averageDurationMs: stats.matches > 0 ? Math.round(stats.totalDurationMs / stats.matches) : 0, history };
 }
 async function buildRankedSettlementPlan({ match, winnerId, loserId, outcome = 'completed', turns = 0 }) {
   if (!match?.participants?.includes(winnerId) || !match?.participants?.includes(loserId) || winnerId === loserId) {
@@ -5170,130 +4940,45 @@ async function buildRankedSettlementPlan({ match, winnerId, loserId, outcome = '
     createdAt: now()
   };
 }
-async function applyRankedProfileSettlement({
-  playerId,
-  matchId,
-  won,
-  delta,
-  match,
-  settlement
-}) {
+async function applyRankedProfileSettlement({ playerId, matchId, won, delta, match, settlement }) {
   for (let attempt = 0; attempt < 8; attempt++) {
     const row = await kvGet(`profile:${playerId}`);
     if (!row) {
       throw new Error('ranked_profile_not_found');
     }
-
     const profile = payload(row);
-    const settled = Array.isArray(
-      profile.rankedSettlements
-    )
-      ? profile.rankedSettlements.map(value =>
-          sanitizeId(value, 120)
-        )
-      : [];
-    const currentRating = Math.max(
-      100,
-      num(profile.rating, 1000)
-    );
-    const matches = Math.max(
-      num(profile.rankedMatches),
-      num(profile.matches)
-    );
-
+    const settled = Array.isArray(profile.rankedSettlements) ? profile.rankedSettlements.map(value => sanitizeId(value, 120)) : [];
+    const currentRating = Math.max(100, num(profile.rating, 1000));
+    const matches = Math.max(num(profile.rankedMatches), num(profile.matches));
     if (settled.includes(matchId)) {
-      return {
-        ok: true,
-        duplicate: true,
-        rating: currentRating,
-        matches,
-        stats: publicRankedStats(profile)
-      };
+      return { ok: true, duplicate: true, rating: currentRating, matches, stats: publicRankedStats(profile) };
     }
-
-    const nextRating = Math.max(
-      100,
-      Math.min(3000, currentRating + delta)
-    );
-    const matchStats = rankedPlayerMatchStats({
-      match,
-      playerId,
-      settlement
-    });
-
+    const nextRating = Math.max(100, Math.min(3000, currentRating + delta));
+    const matchStats = rankedPlayerMatchStats({ match, playerId, settlement });
     matchStats.ratingBefore = currentRating;
     matchStats.ratingAfter = nextRating;
-    matchStats.ratingDelta =
-      nextRating - currentRating;
-
-    const oldHistory = Array.isArray(
-      profile.rankedHistory
-    )
-      ? profile.rankedHistory
-      : [];
-    const rankedHistory = [
-      matchStats,
-      ...oldHistory.filter(
-        item => item?.matchId !== matchId
-      )
-    ]
-      .sort(
-        (left, right) =>
-          num(right.finishedAt) -
-          num(left.finishedAt)
-      )
-      .slice(0, 50);
-
-    const rankedStats = applyRankedStatsMatch(
-      profile.rankedStats,
-      matchStats
-    );
-
+    matchStats.ratingDelta = nextRating - currentRating;
+    const oldHistory = Array.isArray(profile.rankedHistory) ? profile.rankedHistory : [];
+    const rankedHistory = [matchStats, ...oldHistory.filter(item => item?.matchId !== matchId)].sort((left, right) => num(right.finishedAt) - num(left.finishedAt)).slice(0, 50);
+    const rankedStats = applyRankedStatsMatch(profile.rankedStats, matchStats);
     const next = {
       ...profile,
       rating: nextRating,
       rankedMatches: matches + 1,
-      rankedWins:
-        Math.max(
-          num(profile.rankedWins),
-          num(profile.wins)
-        ) + (won ? 1 : 0),
-      rankedLosses:
-        Math.max(
-          num(profile.rankedLosses),
-          num(profile.losses)
-        ) + (won ? 0 : 1),
+      rankedWins: Math.max(num(profile.rankedWins), num(profile.wins)) + (won ? 1 : 0),
+      rankedLosses: Math.max(num(profile.rankedLosses), num(profile.losses)) + (won ? 0 : 1),
       rankedStats,
       rankedHistory,
       rankedV2: true,
       rankedUpdatedAt: now(),
-      rankedSettlements: [
-        ...settled,
-        matchId
-      ].slice(-RANKED_SETTLEMENT_HISTORY)
+      rankedSettlements: [...settled, matchId].slice(-RANKED_SETTLEMENT_HISTORY)
     };
-
-    const changed = await kvCompareAndPut({
-      row,
-      type: 'profile',
-      owner: playerId,
-      data: next
-    });
-
+    const changed = await kvCompareAndPut({ row, type: 'profile', owner: playerId, data: next });
     if (changed) {
-      return {
-        ok: true,
-        duplicate: false,
-        rating: next.rating,
-        matches: next.rankedMatches,
-        stats: publicRankedStats(next)
-      };
+      return { ok: true, duplicate: false, rating: next.rating, matches: next.rankedMatches, stats: publicRankedStats(next) };
     }
   }
-
-  throw new Error(
-    'ranked_profile_settlement_conflict'
-  );
+  throw new Error('ranked_profile_settlement_conflict');
 }
 async function settleRankedMatch(matchId) {
   const key = rankedMatchKey(matchId);
@@ -5349,41 +5034,16 @@ async function settleRankedMatch(matchId) {
       continue;
     }
     const settledAt = now();
-    const finalSettlement = {
-      ...settlement,
-      settledAt
-    };
-
+    const finalSettlement = { ...settlement, settledAt };
     const [winner, loser] = await Promise.all([
-      applyRankedProfileSettlement({
-        playerId: settlement.winnerId,
-        matchId,
-        won: true,
-        delta: num(settlement.winnerDelta),
-        match,
-        settlement: finalSettlement
-      }),
-      applyRankedProfileSettlement({
-        playerId: settlement.loserId,
-        matchId,
-        won: false,
-        delta: num(settlement.loserDelta),
-        match,
-        settlement: finalSettlement
-      })
+      applyRankedProfileSettlement({ playerId: settlement.winnerId, matchId, won: true, delta: num(settlement.winnerDelta), match, settlement: finalSettlement }),
+      applyRankedProfileSettlement({ playerId: settlement.loserId, matchId, won: false, delta: num(settlement.loserDelta), match, settlement: finalSettlement })
     ]);
     const terminalStatus = settlement.outcome === 'forfeit' ? 'forfeited' : 'settled';
     const completed = transitionRankedMatch(match, terminalStatus, {
       reason: settlement.outcome === 'forfeit' ? 'server_issued_forfeit' : 'settled',
       actorId: settlement.outcome === 'forfeit' ? settlement.loserId : '',
-      extra: {
-        settlement: {
-          ...finalSettlement,
-          winnerRating: winner.rating || 0,
-          loserRating: loser.rating || 0
-        },
-        settledAt
-      }
+      extra: { settlement: { ...finalSettlement, winnerRating: winner.rating || 0, loserRating: loser.rating || 0 }, settledAt }
     });
     if (await kvCompareAndPut({ row, type: 'rankedMatch', owner: match.roomId, expiresAt: num(row.expires_at), data: completed })) {
       return reconcileRankedEconomy(completed);
@@ -5630,19 +5290,9 @@ async function actionRankedMatchStatus(event, body) {
   return { ok: true, match: publicRankedMatch(current, playerId) };
 }
 async function actionRankedStatsGet(event, body) {
-  const { playerId } = await requirePlayer(
-    event,
-    body
-  );
-  const profile = payload(
-    await kvGet(`profile:${playerId}`)
-  );
-
-  return {
-    ok: true,
-    source: 'server_validated',
-    stats: publicRankedStats(profile)
-  };
+  const { playerId } = await requirePlayer(event, body);
+  const profile = payload(await kvGet(`profile:${playerId}`));
+  return { ok: true, source: 'server_validated', stats: publicRankedStats(profile) };
 }
 async function actionLeaderboardV2Get(event, body) {
   await requirePlayer(event, body);
@@ -5746,91 +5396,54 @@ async function actionNearbyGameJoin(event, body) {
 // ─── LAN Wi-Fi: регистрация и разрешение кодов комнат ───────────────────────
 async function actionLanCodeRegister(event, body) {
   const { playerId } = await requirePlayer(event, body);
-  const code = safe(body.code || '').replace(/\D/g, '').slice(0, 6);
+  const code = safe(body.code || '')
+    .replace(/\D/g, '')
+    .slice(0, 6);
   const roomId = sanitizeId(body.roomId);
   const roomSecret = safe(body.roomSecret);
   if (code.length !== 6) throw new Error('lan_code_required');
   if (!roomId || !roomSecret) throw new Error('room_data_required');
-
   const roomRow = await kvGet(`room:${roomId}`);
   const room = payload(roomRow);
   if (!roomRow || room.roomSecretHash !== hash(roomSecret)) return { ok: false, reason: 'room_not_found' };
   if (room.hostPlayerId !== playerId) return { ok: false, reason: 'room_owner_forbidden' };
   if (room.status === 'closed') return { ok: false, reason: 'room_closed' };
-
   const isWarHearts = room.gameId === 'war_hearts';
   if (isWarHearts && body.ranked !== true) return { ok: false, reason: 'war_hearts_ranked_required' };
-
   const codeKey = `lanCode:${code}`;
   if (await kvGet(codeKey)) return { ok: false, reason: 'lan_code_taken' };
-
   const ranked = isWarHearts || body.ranked === true;
   const localOnly = isWarHearts || body.localOnly === true;
   const ttlMs = Math.min(600000, Math.max(60000, num(body.ttlMs, 300000)));
   const createdAt = now();
   const expiresAt = createdAt + ttlMs;
-
   room.ranked = ranked;
   room.localOnly = localOnly;
   room.matchMode = ranked ? 'ranked' : 'casual';
   room.updatedAt = createdAt;
-
-  await kvPut({
-    pk: `room:${roomId}`,
-    type: 'room',
-    owner: room.hostPlayerId || playerId,
-    expiresAt: room.reconnectUntil || expiresAt,
-    data: room
-  });
-
+  await kvPut({ pk: `room:${roomId}`, type: 'room', owner: room.hostPlayerId || playerId, expiresAt: room.reconnectUntil || expiresAt, data: room });
   try {
-    await kvInsert({
-      pk: codeKey,
-      type: 'lanCode',
-      owner: playerId,
-      expiresAt,
-      data: {
-        code,
-        roomId,
-        roomSecret,
-        gameId: room.gameId,
-        ranked,
-        localOnly,
-        matchMode: room.matchMode,
-        hostPlayerId: playerId,
-        createdAt,
-        expiresAt
-      }
-    });
+    await kvInsert({ pk: codeKey, type: 'lanCode', owner: playerId, expiresAt, data: { code, roomId, roomSecret, gameId: room.gameId, ranked, localOnly, matchMode: room.matchMode, hostPlayerId: playerId, createdAt, expiresAt } });
   } catch {
     return { ok: false, reason: 'lan_code_taken' };
   }
-
-  return {
-    ok: true,
-    code,
-    ranked,
-    localOnly,
-    matchMode: room.matchMode,
-    expiresAt
-  };
+  return { ok: true, code, ranked, localOnly, matchMode: room.matchMode, expiresAt };
 }
 async function actionLanCodeResolve(event, body) {
   const { playerId } = await requirePlayer(event, body);
-  const code = safe(body.code || '').replace(/\D/g, '').slice(0, 6);
+  const code = safe(body.code || '')
+    .replace(/\D/g, '')
+    .slice(0, 6);
   if (code.length !== 6) throw new Error('lan_code_required');
-
   const row = await kvGet(`lanCode:${code}`);
   const data = payload(row);
   if (!row || !data.roomId || !data.roomSecret) return { ok: false, reason: 'lan_room_not_found' };
   if (data.hostPlayerId === playerId) return { ok: false, reason: 'lan_self_join_forbidden' };
-
   const roomRow = await kvGet(`room:${sanitizeId(data.roomId)}`);
   const room = payload(roomRow);
   if (!roomRow || room.roomSecretHash !== hash(data.roomSecret)) return { ok: false, reason: 'lan_room_not_found' };
   if (room.status === 'closed' || num(room.closedAt) > 0) return { ok: false, reason: 'room_closed' };
   if (room.gameId === 'war_hearts' && room.ranked !== true) return { ok: false, reason: 'war_hearts_ranked_required' };
-
   return {
     ok: true,
     code: data.code,
