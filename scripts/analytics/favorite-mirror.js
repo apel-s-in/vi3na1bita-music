@@ -1,6 +1,9 @@
 // Account-aware server mirror Избранного.
 // Не управляет playback и не перестраивает playing playlist.
-import { requestSocialAction } from '../core/social-session.js';
+import {
+  getSocialServerBackoffState,
+  requestSocialAction
+} from '../core/social-session.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 import { favoriteSignature, localToRemote, remoteToLocal } from './favorite-state-contract.js';
 const OUTBOX_KEY = 'favoriteMirror:outbox:v1';
@@ -30,11 +33,29 @@ class FavoriteMirrorService {
     this.initialized = false;
     this.syncing = null;
     this.timer = 0;
+    this.retryTimer = 0;
     this.lastLocal = new Map();
     this.serverRevision = 0;
   }
   isAuthorized() {
     return window.YandexAuth?.getSessionStatus?.() === 'active' && window.YandexAuth?.isTokenAlive?.();
+  }
+  deferForServerBackoff(task) {
+    const backoff =
+      getSocialServerBackoffState();
+
+    if (!backoff.active) return false;
+
+    clearTimeout(this.retryTimer);
+
+    if (!document.hidden) {
+      this.retryTimer = setTimeout(() => {
+        this.retryTimer = 0;
+        task().catch(() => null);
+      }, backoff.remainingMs + 500);
+    }
+
+    return true;
   }
   initialize() {
     if (this.initialized) return;
@@ -144,6 +165,15 @@ class FavoriteMirrorService {
     if (!this.isAuthorized() || !networkAllowed()) {
       return false;
     }
+
+    if (
+      this.deferForServerBackoff(() =>
+        this.flush()
+      )
+    ) {
+      return false;
+    }
+
     if (this.syncing) return this.syncing;
     this.syncing = (async () => {
       let outbox = readOutbox();
@@ -167,18 +197,48 @@ class FavoriteMirrorService {
     if (!this.isAuthorized() || !networkAllowed()) {
       return false;
     }
+
+    if (
+      this.deferForServerBackoff(() =>
+        this.sync({ bootstrap })
+      )
+    ) {
+      return false;
+    }
+
     this.captureLocalChanges();
+
     if (readOutbox().length) {
       return this.flush();
     }
-    let remote = await this.getRemote();
-    if (bootstrap && Number(remote?.state?.revision || 0) === 0 && !(remote?.state?.items || []).length) {
-      await this.bootstrap();
-      remote = await this.getRemote();
-    }
-    this.applyRemote(remote?.state, bootstrap ? 'favorite_bootstrap' : 'favorite_poll');
-    this.startPolling();
-    return true;
+
+    if (this.syncing) return this.syncing;
+
+    this.syncing = (async () => {
+      let remote = await this.getRemote();
+
+      if (
+        bootstrap &&
+        Number(remote?.state?.revision || 0) === 0 &&
+        !(remote?.state?.items || []).length
+      ) {
+        await this.bootstrap();
+        remote = await this.getRemote();
+      }
+
+      this.applyRemote(
+        remote?.state,
+        bootstrap
+          ? 'favorite_bootstrap'
+          : 'favorite_poll'
+      );
+      this.startPolling();
+      return true;
+    })().finally(() => {
+      this.syncing = null;
+    });
+
+    return this.syncing;
   }
   startPolling() {
     this.stopPolling();
@@ -190,7 +250,9 @@ class FavoriteMirrorService {
   }
   stopPolling() {
     clearInterval(this.timer);
+    clearTimeout(this.retryTimer);
     this.timer = 0;
+    this.retryTimer = 0;
   }
 }
 export const favoriteMirrorService = new FavoriteMirrorService();
