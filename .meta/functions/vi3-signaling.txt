@@ -624,13 +624,66 @@ async function actionSocialSessionIssue(event, body) {
   const expiresAt = issuedAt + CFG.socialSessionTtlMs;
   const oldPlayer = payload(await kvGet(`player:${identity.friendId}`));
   const oldProfile = payload(await kvGet(`profile:${identity.friendId}`));
-  await kvPut({
-    pk: `player:${identity.friendId}`,
-    type: 'player',
-    owner: identity.friendId,
-    data: { ...oldPlayer, playerId: identity.friendId, authVersion: 2, yandexIdHash: hash(`ya:${identity.yandexId}`), displayName: identity.displayName, avatarUrl: identity.avatarUrl, createdAt: oldPlayer.createdAt || issuedAt, updatedAt: issuedAt }
-  });
-  await kvPut({ pk: `profile:${identity.friendId}`, type: 'profile', owner: identity.friendId, data: { ...oldProfile, friendId: identity.friendId, displayName: identity.displayName || oldProfile.displayName || 'Слушатель', avatarUrl: identity.avatarUrl || oldProfile.avatarUrl || '', updatedAt: issuedAt } });
+  const yandexIdHash = hash(
+    `ya:${identity.yandexId}`
+  );
+  const playerChanged =
+    oldPlayer.playerId !== identity.friendId ||
+    num(oldPlayer.authVersion) < 2 ||
+    oldPlayer.yandexIdHash !== yandexIdHash ||
+    safe(oldPlayer.displayName) !==
+      identity.displayName ||
+    safe(oldPlayer.avatarUrl) !==
+      identity.avatarUrl;
+
+  if (playerChanged) {
+    await kvPut({
+      pk: `player:${identity.friendId}`,
+      type: 'player',
+      owner: identity.friendId,
+      data: {
+        ...oldPlayer,
+        playerId: identity.friendId,
+        authVersion: 2,
+        yandexIdHash,
+        displayName: identity.displayName,
+        avatarUrl: identity.avatarUrl,
+        createdAt:
+          oldPlayer.createdAt || issuedAt,
+        updatedAt: issuedAt
+      }
+    });
+  }
+
+  const profileDisplayName =
+    identity.displayName ||
+    oldProfile.displayName ||
+    'Слушатель';
+  const profileAvatar =
+    identity.avatarUrl ||
+    oldProfile.avatarUrl ||
+    '';
+  const profileChanged =
+    oldProfile.friendId !== identity.friendId ||
+    safe(oldProfile.displayName) !==
+      profileDisplayName ||
+    safe(oldProfile.avatarUrl) !==
+      profileAvatar;
+
+  if (profileChanged) {
+    await kvPut({
+      pk: `profile:${identity.friendId}`,
+      type: 'profile',
+      owner: identity.friendId,
+      data: {
+        ...oldProfile,
+        friendId: identity.friendId,
+        displayName: profileDisplayName,
+        avatarUrl: profileAvatar,
+        updatedAt: issuedAt
+      }
+    });
+  }
   const registrationGrant = await ensureRegistrationShardGrant(identity.friendId).catch(error => ({ ok: false, duplicate: false, amount: 0, operationId: '', error: safe(error?.message) }));
   const sessionJti = rid('ss');
   const session = issueSocialSession({ sub: identity.friendId, yidHash: hash(`ya:${identity.yandexId}`), iat: issuedAt, exp: expiresAt, jti: sessionJti, v: 2 });
