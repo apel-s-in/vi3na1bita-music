@@ -3,6 +3,8 @@ import { expect } from '@playwright/test';
 
 export const BASE=process.env.BASE_URL||'http://127.0.0.1:4173';
 
+const REMOTE_CONFIG_CACHE = new Map();
+
 const HOWLER_MOCK=`(()=>{let globalVolume=1;class MockHowl{constructor(options={}){this.options=options;this._playing=false;this._position=0;this._duration=240;this._volume=Number(options.volume??1);this._events=new Map();queueMicrotask(()=>options.onload?.());if(options.autoplay)queueMicrotask(()=>this.play())}play(){if(this._playing)return 1;this._playing=true;queueMicrotask(()=>this.options.onplay?.());this._emit('play');return 1}pause(){if(!this._playing)return this;this._playing=false;queueMicrotask(()=>this.options.onpause?.());this._emit('pause');return this}stop(){const wasPlaying=this._playing;this._playing=false;this._position=0;if(wasPlaying){queueMicrotask(()=>this.options.onstop?.());this._emit('stop')}return this}unload(){this._playing=false;this._events.clear();return null}playing(){return this._playing}seek(value){if(value===undefined)return this._position;this._position=Math.max(0,Number(value)||0);this.options.onseek?.();this._emit('seek');return this}duration(){return this._duration}state(){return'loaded'}volume(value){if(value===undefined)return this._volume;this._volume=Number(value)||0;return this}mute(){return this}rate(){return 1}loop(){return false}on(name,fn){if(typeof fn==='function'){const rows=this._events.get(name)||[];rows.push(fn);this._events.set(name,rows)}return this}once(name,fn){const wrap=(...args)=>{this.off(name,wrap);fn(...args)};return this.on(name,wrap)}off(name,fn){if(!name){this._events.clear();return this}if(!fn){this._events.delete(name);return this}this._events.set(name,(this._events.get(name)||[]).filter(row=>row!==fn));return this}_emit(name,...args){(this._events.get(name)||[]).forEach(fn=>fn(...args))}}window.Howl=MockHowl;window.Howler={version:'e2e-mock',ctx:{state:'running',resume:()=>Promise.resolve(),addEventListener:()=>{}},masterGain:null,volume(value){if(value===undefined)return globalVolume;globalVolume=Number(value)||0;return this},mute(value){if(value)globalVolume=0;return this},stop(){return this},_howls:[]};})();`;
 
 const installAudioMock=async page=>{
@@ -10,6 +12,15 @@ const installAudioMock=async page=>{
   page.__vi3AudioMockInstalled=true;
   await page.addInitScript(()=>localStorage.setItem('sourcePref','yandex'));
   await page.route('**/scripts/vendor/howler.min.js',route=>route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:HOWLER_MOCK}));
+  await page.route(/https:\/\/storage\.yandexcloud\.net\/vi3na1bita\/albums\/[^?]+\/config\.json(?:\?.*)?$/,async route=>{
+    const key=route.request().url().replace(/[?#].*$/,'');
+    const cached=REMOTE_CONFIG_CACHE.get(key);
+    if(cached)return route.fulfill(cached);
+    const response=await route.fetch();
+    const entry={status:response.status(),headers:response.headers(),body:await response.body()};
+    if(response.ok())REMOTE_CONFIG_CACHE.set(key,entry);
+    return route.fulfill(entry);
+  });
 };
 
 export const waitForAppReady=async(page,{timeout=20000}={})=>{
