@@ -5215,13 +5215,22 @@ async function actionRankedMatchPrepare(event, body) {
     }
     const currentRoom = payload(currentRoomRow);
     const currentMatchId = sanitizeId(currentRoom.rankedMatchId, 120);
-    const currentMatchRow = currentMatchId ? await kvGet(rankedMatchKey(currentMatchId)) : null;
+    const currentMatchRow = currentMatchId
+      ? await kvGet(rankedMatchKey(currentMatchId))
+      : null;
     const currentMatch = payload(currentMatchRow);
+
+    if (currentMatchId && !currentMatchRow) {
+      await new Promise(resolve => setTimeout(resolve, 60));
+      continue;
+    }
+
     const terminal = isRankedTerminal(currentMatch.status);
     if (currentMatchRow && !terminal) {
       matchId = currentMatchId;
       break;
     }
+
     const candidate = rid('ranked');
     const preparedAt = now();
     const changed = await kvCompareAndPut({ row: currentRoomRow, type: 'room', owner: currentRoom.hostPlayerId, expiresAt: num(currentRoomRow.expires_at), data: { ...currentRoom, rankedMatchId: candidate, rankedPreparedAt: preparedAt, updatedAt: preparedAt } });
