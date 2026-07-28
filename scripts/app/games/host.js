@@ -163,7 +163,7 @@ const makeRoomUrl = cfg => {
           <b>${invite.hasInvite ? 'Подключаемся к вызову' : invite.isSendingInvite ? 'Готовим приглашение' : 'Открываем Зал Витрины'}</b>
           <span>Соединение будет настроено автоматически...</span>
         </div>
-        <iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen; microphone" allowfullscreen referrerpolicy="no-referrer"></iframe>
+        <iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
       `;
       const iframe = frameWrap.querySelector('iframe');
 
