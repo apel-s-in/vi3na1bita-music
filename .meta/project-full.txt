@@ -13887,7 +13887,12 @@ const validateListening = () => {
 };
 const validateRewards = () => {
   const engine = 'scripts/analytics/achievement-engine.js';
-  ['_requiresServerVerification', 'legacy_local_unverified', 'getCompletedCount', '_hasScalableLevel', 'server_wallet'].forEach(marker => contains(engine, marker));
+  ['_requiresServerVerification', 'isAuthorized', 'server_catalog_pending', 'getCompletedCount', '_hasScalableLevel', 'server_wallet'].forEach(marker => contains(engine, marker));
+  contains(engine, 'return true;');
+  excludes(engine, /completed\s*=\s*.*localUnlocked/, 'Локальный unlock участвует в completion достижения');
+  excludes(engine, /reward\?\.current\s*\?\?\s*localCurrent/, 'Локальный progress подменяет серверный');
+  contains('scripts/app/profile/achievements-view.js', 'achievement-auth-gate');
+  contains('scripts/app/profile/achievements-view.js', 'data-achievement-login');
   contains('scripts/app/profile/achievements-view.js', 'rewardAwarded');
   contains('scripts/app/shards/view.js', 'getRewardCatalog');
   contains('scripts/app/shards/view.js', 'serverRewardMap');
@@ -13978,9 +13983,14 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/analytics/playback-ownership.js', 'buildPlaybackFencePayload');
   contains('scripts/analytics/playback-ownership.js', 'releasePlaybackOwnership');
   contains('scripts/analytics/playback-ownership.js', 'getLogicalListenDiagnostics');
+  ['account_device_list', 'account_device_update', 'takeoverEnabled', 'remotePauseEnabled', 'alwaysConfirm'].forEach(marker => contains('scripts/app/profile/account-devices-view.js', marker));
+  contains('scripts/app/playback-return-ui.js', 'Вернуть сюда');
+  contains('scripts/app/playback-return-ui.js', 'window.playerCore?.play?.()');
+  excludes('scripts/app/playback-return-ui.js', /\.(pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist)\s*\(/, 'Return UI управляет playback помимо явного Play');
+  contains('service-worker.js', './scripts/app/playback-return-ui.js');
   contains('src/PlayerCore.js', "releaseOwnership: false");
   assertNoMatch([...listFiles('scripts').filter(file => !file.startsWith('scripts/ci/')), ...listFiles('src')], /dormant playback ownership|Dormant ownership service/g, 'Устаревшие комментарии пассивного ownership удалены');
-  ['requirePlaybackFence', 'renewPlaybackFence', 'closeActiveListenSegment', 'playback_owner_changed', 'playback_release', 'logical_listen_get', 'logicalListenKey', 'syncLogicalListenSession', 'finalizeLogicalListen', 'mergeLogicalCoverageIntervals', 'fromPositionMs', 'toPositionMs', "receiptKind: 'logical_full'", 'accountTimezoneRevision', 'listenZonedParts'].forEach(marker => contains(server, marker));
+  ['requirePlaybackFence', 'renewPlaybackFence', 'closeActiveListenSegment', 'playback_owner_changed', 'playback_release', 'logical_listen_get', 'account_device_current_revoke_forbidden', 'logicalListenKey', 'syncLogicalListenSession', 'finalizeLogicalListen', 'mergeLogicalCoverageIntervals', 'fromPositionMs', 'toPositionMs', "receiptKind: 'logical_full'", 'accountTimezoneRevision', 'listenZonedParts'].forEach(marker => contains(server, marker));
   excludes(server, /const legacyKey = listenActiveKey\(playerId\)/, 'Legacy listenActive:<playerId> lookup остался');
   excludes(server, /activeSessions:\s*activeSessions\.map/, 'Legacy activeSessions остался в reward status');
   excludes(server, /history\.deviceId[\s\S]{0,300}listenActiveKey\(playerId,\s*history\.deviceId\)/, 'History-device fallback остался');
