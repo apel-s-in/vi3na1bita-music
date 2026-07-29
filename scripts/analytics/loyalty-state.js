@@ -77,15 +77,19 @@ export const getLoyaltyState = () =>
   normalizeLoyaltyState(
     window.ListeningReceipts?.lastLoyalty
   );
-export const formatLoyaltyTime = timestamp => {
+export const formatLoyaltyTime = (timestamp, timezone = '') => {
   const value = Math.floor(n(timestamp));
-
-  return value > 0
-    ? new Date(value).toLocaleTimeString('ru-RU', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    : '—';
+  const zone = String(timezone || window.TimezonePolicy?.getCached?.()?.zone || '').trim();
+  if (value <= 0) return '—';
+  try {
+    return new Date(value).toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      ...(zone ? { timeZone: zone } : {})
+    });
+  } catch {
+    return new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  }
 };
 
 export const formatLoyaltyCountdown = timestamp => {
