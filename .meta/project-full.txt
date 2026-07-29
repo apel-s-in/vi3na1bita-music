@@ -125,7 +125,7 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
@@ -5650,6 +5650,42 @@ export class MetaDB {
   tx(sName, mode, fn) { return this._exec(sName, mode, (s, tx) => { fn(s, tx); tx.onabort = () => { throw tx.error || new Error(`Abort: ${sName}`); }; }); }
 }
 export const metaDB = new MetaDB();
+
+//=================================================
+// FILE: /scripts/analytics/playback-fence.js
+// Канонический pure-контракт playback fencing payload.
+// Не читает storage, не выполняет сеть и не управляет playback.
+const safe = value => String(value == null ? '' : value).trim();
+const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+
+export const normalizePlaybackFenceGrant = raw => ({
+  logicalSessionId: safe(raw?.logicalSessionId),
+  ownerEpoch: Math.max(0, Math.floor(num(raw?.ownerEpoch))),
+  fencingToken: safe(raw?.fencingToken),
+  trackVersion: safe(raw?.trackVersion)
+});
+
+export const buildPlaybackFencePayload = ({ grant = null, deviceId = '', trackVersion = '' } = {}) => {
+  const normalized = normalizePlaybackFenceGrant(grant);
+  return {
+    deviceId: safe(deviceId),
+    logicalSessionId: normalized.logicalSessionId,
+    ownerEpoch: normalized.ownerEpoch,
+    fencingToken: normalized.fencingToken,
+    trackVersion: safe(trackVersion || normalized.trackVersion)
+  };
+};
+
+export const hasPlaybackFence = raw => {
+  const normalized = normalizePlaybackFenceGrant(raw);
+  return !!normalized.logicalSessionId && normalized.ownerEpoch > 0 && !!normalized.fencingToken && !!normalized.trackVersion;
+};
+
+export default {
+  normalizePlaybackFenceGrant,
+  buildPlaybackFencePayload,
+  hasPlaybackFence
+};
 
 //=================================================
 // FILE: /scripts/analytics/playback-ownership.js

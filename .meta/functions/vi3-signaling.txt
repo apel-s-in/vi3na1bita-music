@@ -956,7 +956,6 @@ async function actionPlaybackClaim(event, body) {
     if (playbackIsActive(current, at) && current.ownerDeviceId !== auth.deviceId) {
       return { ok: true, claimed: false, requiresConfirmation: true, playback: publicPlaybackState(current, auth.deviceId) };
     }
-    const fencingToken = base64url(crypto.randomBytes(32));
     const suppliedFencingToken = safe(body.fencingToken);
     const sameOwnerGrant = playbackIsActive(current, at) && current.ownerDeviceId === auth.deviceId && suppliedFencingToken && current.fencingTokenHash === hash(suppliedFencingToken);
     const fencingToken = sameOwnerGrant ? suppliedFencingToken : base64url(crypto.randomBytes(32));
