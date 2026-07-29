@@ -52,6 +52,11 @@
         const wS = W.ShardWallet?.getSnapshot?.();
         if ($('ach-shards-balance')) $('ach-shards-balance').textContent = wS?.available ? `♦ ${Number(wS.shards || 0)}` : '♦ нужен вход';
         const bT = $('ach-hint-bubble-text');
+        if (bT && !(W.YandexAuth?.getSessionStatus?.() === 'active' && W.YandexAuth?.isTokenAlive?.())) {
+          clearInterval(W._bInt);
+          bT.textContent = '🔒 Достижения доступны после входа через Яндекс';
+          return;
+        }
         if (bT && W.achievementEngine?.achievements) {
           let g = W.achievementEngine.achievements.filter(a => !a.isUnlocked && !a.isHidden && (a.progressMeta || a.progress?.target > a.progress?.current)).sort((a, b) => (b.progress?.pct || 0) - (a.progress?.pct || 0));
           const pI = g.findIndex(a => a.id === 'pwa_installed');
