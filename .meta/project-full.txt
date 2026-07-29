@@ -10930,24 +10930,16 @@ export const renderCloudMetaPair = ({ cloudInfo = null, compareVm = null, restor
 export const renderYandexActionGrid = (items = null) => {
   const rows = items || [
     ['rename', '✏️ Имя'],
-    ['save-backup', '☁️ Сохранить'],
-    ['check-backup', '🔎 Сравнить'],
-    ['restore-backup', '📥 Из облака'],
-    ['backup-export-manual', '💾 В файл'],
-    ['backup-import-manual', '📂 Из файла']
+    ['save-backup', '☁️ Синхронизировать сейчас'],
+    ['sync-log', '📜 Что изменилось']
   ];
   return `<div class="yandex-auth-actions">${rows.map(([act, text]) => `<button class="modal-action-btn" data-ya-action="${esc(act)}">${esc(text)}</button>`).join('')}</div>`;
 };
 
 export const renderAccountBottomActions = () => {
   const rows = [
-    ['backup-info', 'Что сохраняется?'],
+    ['backup-info', 'Что синхронизируется?'],
     ['sync-log', 'Журнал синхронизации'],
-    ['recovery-snapshot', 'Recovery snapshot'],
-    ['ledger-health', 'Диагностика журнала'],
-    ['trust-check', 'Проверка доверия'],
-    ['archive-maintenance', 'Обслуживание archive'],
-    ['delete-old-backups', 'Удалить старые backup'],
     ['reconnect-rights', 'Переподключить права'],
     ['logout', 'Выйти из Яндекса', 'om-btn--outline']
   ];
