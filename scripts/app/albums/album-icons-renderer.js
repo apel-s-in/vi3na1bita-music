@@ -58,10 +58,8 @@ export const renderAlbumIconRows = ({
   config = {},
   albumsIndex = [],
   mobile = false,
-  profileKey = '__profile__',
   logo = 'img/logo.png',
-  escapeHtml,
-  wallet = null
+  escapeHtml
 } = {}) => {
   const { albums, navigation } = getRenderableAlbumIcons({ config, albumsIndex });
   const render = item => renderAlbumIcon({
