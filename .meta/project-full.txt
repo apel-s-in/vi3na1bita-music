@@ -2725,7 +2725,6 @@ import { normalizeCloudBackupMeta } from './cloud-contract.js';
 import { collectSharedSnapshotLocalStorage } from './snapshot-contract.js';
 import { buildDeviceSettingsPath, collectDeviceSettingsLocalStorage, normalizeDeviceSettingsSnapshot } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
-import { buildAchievementBackupState, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
 import { readLedgerCheckpoint } from './event-integrity.js';
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 import { AccountDataContext } from './account-data-boundary.js';
@@ -2775,19 +2774,18 @@ const pickArchivableLedgerHead = events => {
   const x = rows[rows.length - 1] || null;
   return { archivableLedgerHead:String(x?.eventHash || ''), archivableLedgerSeq:Number(x?.deviceSeq || 0), archivableLedgerDeviceStableId:String(x?.deviceStableId || ''), archivableLedgerChainId:String(x?.chainId || ''), archivableEventCount:rows.length };
 };
-
 export const buildBackupDataSnapshot = async () => {
-  try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await window.eventLogger?.flush?.(); await window.statsAggregator?.waitForIdle?.(); } catch {}
+  try {
+    window.dispatchEvent(new CustomEvent('analytics:forceFlush'));
+    await window.eventLogger?.flush?.();
+    await window.statsAggregator?.waitForIdle?.();
+  } catch {}
 
-  const [st, h, w, a, aM, str, uP, uR, lP, pI, hS, rS, cS, iR, ledger] = await Promise.all([
+  const [stats, hot, warm, userProfile, listenerProfile, providerIdentity, hybridSync, recommendationState, collectionState, intelRuntime, ledger] = await Promise.all([
     metaDB.getAllStats(),
     metaDB.getEvents('events_hot').catch(() => []),
-    metaDB.getEvents('events_warm'),
-    metaDB.getGlobal('unlocked_achievements'),
-    metaDB.getGlobal('achievement_unlock_meta'),
-    metaDB.getGlobal('global_streak'),
+    metaDB.getEvents('events_warm').catch(() => []),
     metaDB.getGlobal('user_profile'),
-    metaDB.getGlobal('user_profile_rpg'),
     metaDB.getStoreAll('listener_profile').catch(() => []),
     metaDB.getStoreAll('provider_identity').catch(() => []),
     metaDB.getStoreAll('hybrid_sync').catch(() => []),
@@ -2797,30 +2795,20 @@ export const buildBackupDataSnapshot = async () => {
     readLedgerCheckpoint(metaDB).catch(() => null)
   ]);
 
-  const warmTrimmed = normalizeEventList([...(Array.isArray(w) ? w : []), ...(Array.isArray(h) ? h : [])], { limit: 10000 });
+  const warmTrimmed = normalizeEventList([...(Array.isArray(warm) ? warm : []), ...(Array.isArray(hot) ? hot : [])], { limit: 10000 });
   return {
-    stats: st,
+    stats,
     eventLog: { warm: warmTrimmed },
     ledger: ledger || {},
-    achievements: a?.value || {},
-    streaks: str?.value || {},
-    userProfile: uP?.value || { name: 'Слушатель', avatar: '😎' },
-    userProfileRpg: uR?.value || { xp: 0, level: 1 },
-    achievementState: buildAchievementBackupState({
-      unlocked: a?.value || {},
-      unlockMeta: { ...deriveAchievementUnlockMetaFromEvents(warmTrimmed), ...(aM?.value || {}) },
-      profileRpg: uR?.value || { xp: 0, level: 1 },
-      streaks: str?.value || {},
-      events: warmTrimmed
-    }),
+    userProfile: userProfile?.value || { name: 'Слушатель', avatar: '😎' },
     localStorage: collectSharedSnapshotLocalStorage(localStorage),
     intel: {
-      listenerProfile: dedupIntel(lP),
-      providerIdentity: dedupIntel(pI),
-      hybridSync: dedupIntel(hS),
-      recommendationState: dedupIntel(rS),
-      collectionState: dedupIntel(cS),
-      intelRuntime: dedupIntel(iR)
+      listenerProfile: dedupIntel(listenerProfile),
+      providerIdentity: dedupIntel(providerIdentity),
+      hybridSync: dedupIntel(hybridSync),
+      recommendationState: dedupIntel(recommendationState),
+      collectionState: dedupIntel(collectionState),
+      intelRuntime: dedupIntel(intelRuntime)
     }
   };
 };
@@ -2828,7 +2816,7 @@ export const buildBackupDataSnapshot = async () => {
 export const buildBackupRevision = ({ identity: i, devices: dv, data: d, currentDevice: c } = {}) => normalizeCloudBackupMeta({
   timestamp: Date.now(),
   appVersion: window.APP_CONFIG?.APP_VERSION || null,
-  version: '6.0',
+  version: '6.1',
   eventCount: Array.isArray(d?.eventLog?.warm) ? d.eventLog.warm.length : 0,
   statsCount: Array.isArray(d?.stats) ? d.stats.length : 0,
   devicesCount: Array.isArray(dv) ? dv.length : 0,
@@ -2838,9 +2826,9 @@ export const buildBackupRevision = ({ identity: i, devices: dv, data: d, current
   sourceDeviceClass: String(c?.class || ''),
   sourcePlatform: String(c?.platform || ''),
   ownerYandexId: String(i?.ownerYandexId || ''),
-  achievementsCount: Object.keys(d?.achievements || {}).length,
-  level: Math.max(1, Number(d?.userProfileRpg?.level || 1)),
-  xp: Number(d?.userProfileRpg?.xp || 0),
+  achievementsCount: 0,
+  level: 1,
+  xp: 0,
   deviceStableCount: DeviceRegistry.countDeviceStableIds(dv || [])
 });
 
@@ -2903,7 +2891,7 @@ export const buildFullBackupObject = async () => {
   const payloadHash = await sha256Hex(stableStringify({ identity, devices, revision, data }));
 
   return {
-    version: '6.0',
+    version: '6.1',
     createdAt: Date.now(),
     identity,
     devices,
@@ -2913,7 +2901,7 @@ export const buildFullBackupObject = async () => {
       payloadHash,
       ownerBinding: await sha256Hex(`${identity.ownerYandexId || 'anon'}::${identity.internalUserId || 'local'}::${payloadHash}`),
       createdByAppVersion: window.APP_CONFIG?.APP_VERSION || 'unknown',
-      schemaVersion: '6.0',
+      schemaVersion: '6.1',
       minReaderVersion: '8.3.0',
       sourceDeviceStableId: String(currentDevice?.deviceStableId || ''),
       eventLedgerHead: revision.eventLedgerHead,
