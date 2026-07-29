@@ -14447,23 +14447,32 @@ const validateLoyaltyReleaseD = () => {
 const validateBackupProxy = () => {
   const proxy = 'cloud-functions/vi3na1bita-backup-proxy/index.js';
   const signaling = 'cloud-functions/vi3-signaling/index.js';
-  const transport = 'scripts/core/yandex-disk-transport.js';
-  const archiveTransport = 'scripts/core/yandex-event-archive-disk.js';
+
   ['backup_device_authorize', 'actionBackupDeviceAuthorize', 'backup_device_session_required', 'backup_device_identity_mismatch', 'backup_device_not_registered', 'backup_device_revoked', 'backup_owner_identity_mismatch', 'ownerYandexIdHash', 'server_account_device'].forEach(marker => contains(signaling, marker));
-  ['requestContext?.http?.method', 'requestContext?.httpMethod', "method === 'OPTIONS'", 'x-yandex-auth', 'upload_backup', 'upload_event_segment', 'archive_delete_segments'].forEach(marker => contains(proxy, marker));
-  excludes(proxy, /backup_achievement_receipt|pending-backup-receipts|BACKUP_RECEIPT_SECRET|SIGNALING_URL/, 'Legacy backup reward transport остался в proxy');
-  assert(/const\s+mode\s*=\s*requestedMode\s*\|\|\s*['"]ping['"]/.test(read(proxy)), 'Backup proxy: корневой вызов является ping');
-  contains(transport, "'X-Yandex-Auth':token");
-  contains(archiveTransport, "'X-Yandex-Auth':token");
-  contains(transport, 'PROXY_UPLOAD_MAX_BYTES');
-  contains(transport, 'upload_proxy_payload_too_large');
-  contains('scripts/analytics/backup-upload-runner.js', 'proxyUploadBodyBytes');
-  contains('scripts/analytics/backup-upload-runner.js', 'CLOUD_UPLOAD_BODY_BUDGET_BYTES');
-  contains('scripts/analytics/backup-upload-runner.js', 'requiredEvents');
-  contains('scripts/analytics/backup-upload-runner.js', 'tailCandidates');
-  assertNoMatch([transport, archiveTransport], /searchParams\.set\(\s*['"]token['"]/g, 'OAuth token не помещается в proxy query string');
-  assert(/export\s+const\s+authHeaders\s*=\s*t\s*=>\s*\(\{\s*Authorization:/.test(read(transport)), 'Authorization сохранён только для прямого Yandex Disk API');
-  assertNoMatch([proxy], /event\.httpMethod\s*!==\s*['"]POST['"]/g, 'Backup proxy использует нормализованный HTTP method');
+
+  [
+    'BACKUP_AUTHORITY_URL',
+    'X-Vi3-Session',
+    'x-yandex-auth',
+    'backup_device_authorize',
+    'v7_authorize',
+    'v7_push_range',
+    'v7_pull_ranges',
+    'v7_put_settings',
+    'v7_get_settings',
+    'overwrite=false',
+    'immutable_range_conflict',
+    'range_sequence_not_contiguous',
+    'range_event_hash_mismatch',
+    'backup_oauth_social_owner_mismatch',
+    'ownerYandexIdHash',
+    'legacyEnabled: false'
+  ].forEach(marker => contains(proxy, marker));
+
+  assertNoMatch([proxy], /upload_backup|upload_meta|upload_event_segment|archive_delete_segments|archive_inspect|ledger_verify|lease_acquire|lease_release|vi3na1bita_backup\.vi3bak/g, 'Backup proxy не содержит v6, archive, ledger или lease modes');
+  assertNoMatch([proxy], /searchParams\.set\(\s*['"]token['"]/g, 'OAuth token не помещается в query string');
+  assertNoMatch([proxy], /overwrite=true[^'"]*range_|range_[^'"]*overwrite=true/g, 'Immutable range не загружается с overwrite=true');
+  assertNoMatch([proxy], /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/g, 'Backup proxy управляет playback');
 };
 const validateCloudFunctionFiles = () => {
   ['vi3-signaling', 'vi3na1bita-backup-proxy', 'vi3-webpush', 'vi3-loyalty-reminder'].forEach(name => {
@@ -14499,13 +14508,9 @@ const main = async () => {
   validatePlaybackBoundaries();
   validateLoyaltyReleaseD();
   validateBackupProxy();
-  contains('scripts/analytics/backup-builders.js', "version: '6.1'");
-  excludes('scripts/analytics/backup-builders.js', /achievementState:\s*buildAchievementBackupState/, 'Backup 6.1 содержит legacy achievement state');
-  excludes('scripts/analytics/backup-builders.js', /achievements:\s*a\?\.value/, 'Backup 6.1 содержит локальные достижения');
-  excludes('scripts/analytics/backup-upload-runner.js', /HISTORY_MATERIAL_DOMAINS/, 'Autosync продолжает создавать versioned full-history backup');
+  contains('scripts/analytics/backup-delta-contract.js', "BACKUP_DELTA_VERSION = '7.0'");
+  contains('scripts/analytics/stats-shard-contract.js', 'buildStatsProjectionShard');
   excludes('scripts/app/profile/cloud-action-render-kit.js', /backup-export-manual|backup-import-manual|archive-maintenance|recovery-snapshot|trust-check|ledger-health/, 'Пользовательские ручные служебные backup-действия остались');
-  contains('scripts/analytics/sync-domains.js', 'stats: 24 * 60 * 60 * 1000');
-  contains('scripts/analytics/backup-upload-runner.js', 'maxSegments: 1');
   validateCloudFunctionFiles();
   validateWorkflows();
   if (failures.length) {
