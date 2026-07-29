@@ -3234,19 +3234,25 @@ import { getCurrentEventArchiveBranch, getLocalEventArchiveWatermark, uploadLoca
 import { AccountDataContext } from './account-data-boundary.js';
 import { PROXY_UPLOAD_MAX_BYTES } from '../core/yandex-disk-transport.js';
 
-const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LAST_HISTORY_AT = 'backup:last_history_upload_at:v1', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', HISTORY_MIN_INTERVAL_MS = 86400000, CLOUD_EVENT_TAIL_LIMIT = 500, CLOUD_UPLOAD_BODY_BUDGET_BYTES = PROXY_UPLOAD_MAX_BYTES - 65536, CLOUD_BACKUP_PATH = 'app:/Backup/vi3na1bita_backup.vi3bak', HISTORY_MATERIAL_DOMAINS = new Set(['achievements','favorites','playlists','profile','devices','stats']);
+const LS_SHARED_HASH = 'backup:last_shared_semantic_hash:v1', LS_DEVICE_HASH_PREFIX = 'backup:last_device_settings_hash:v1:', LS_LOCAL_SUMMARY = 'backup:last_local_summary:v1', CLOUD_EVENT_TAIL_LIMIT = 50, CLOUD_UPLOAD_BODY_BUDGET_BYTES = PROXY_UPLOAD_MAX_BYTES - 65536, CLOUD_BACKUP_PATH = 'app:/Backup/vi3na1bita_backup.vi3bak';
 const sS = v => String(v == null ? '' : v).trim(), sN = v => Number.isFinite(Number(v)) ? Number(v) : 0, jP = (raw, fb = null) => { try { return JSON.parse(raw); } catch { return fb; } };
 const proxyUploadBodyBytes = backup => new TextEncoder().encode(JSON.stringify({ path: CLOUD_BACKUP_PATH, data: backup })).byteLength;
 
 const normalizeDeviceForHash = d => ({ deviceStableId: sS(d?.deviceStableId), deviceHash: sS(d?.deviceHash), label: sS(d?.label), class: sS(d?.class), platform: sS(d?.platform), os: sS(d?.os), browser: sS(d?.browser), screen: sS(d?.screen), lang: sS(d?.lang), pwa: !!d?.pwa, firstSeenAt: sN(d?.firstSeenAt), retiredAt: sN(d?.retiredAt), authHistory: (Array.isArray(d?.authHistory) ? d.authHistory : []).map(x => ({ ts:sN(x?.ts), browser:sS(x?.browser), os:sS(x?.os), lang:sS(x?.lang), timezone:sS(x?.timezone), pwa:!!x?.pwa })).filter(x => x.ts > 0).slice(0,20), seenHashes: [...new Set((Array.isArray(d?.seenHashes) ? d.seenHashes : []).map(sS).filter(Boolean))].sort() });
 const normalizeStatsForHash = rows => (Array.isArray(rows) ? rows : []).filter(r => r && typeof r === 'object' && sS(r.uid)).map(r => { const featuresUsed = { ...(r.featuresUsed || {}) }; Object.keys(featuresUsed).forEach(k => { if (String(k || '').startsWith('backup')) delete featuresUsed[k]; }); return { ...r, uid: sS(r.uid), featuresUsed }; }).sort((a, b) => sS(a.uid).localeCompare(sS(b.uid)));
-const normalizeAchievementStateForHash = raw => {
-  const state = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
-  const { updatedAt, ...stable } = state;
-  return stable;
-};
 
-export const buildSharedSemanticPayload = backup => ({ version: sS(backup?.version || backup?.revision?.version || '6.0'), ownerYandexId: sS(backup?.identity?.ownerYandexId || ''), devices: (Array.isArray(backup?.devices) ? backup.devices : []).map(normalizeDeviceForHash).sort((a, b) => a.deviceStableId.localeCompare(b.deviceStableId) || a.deviceHash.localeCompare(b.deviceHash)), data: { stats: normalizeStatsForHash(backup?.data?.stats), eventLog: { warm: (Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm : []).filter(x => x?.eventId && !isBackupSemanticNoiseEvent(x)) }, achievements: backup?.data?.achievements || {}, achievementState: normalizeAchievementStateForHash(backup?.data?.achievementState), streaks: backup?.data?.streaks || {}, userProfile: backup?.data?.userProfile || {}, userProfileRpg: backup?.data?.userProfileRpg || {}, localStorage: getSharedSnapshotLocalEntries(backup?.data?.localStorage || {}), intel: backup?.data?.intel || {} } });
+export const buildSharedSemanticPayload = backup => ({
+  version: sS(backup?.version || backup?.revision?.version || '6.1'),
+  ownerYandexId: sS(backup?.identity?.ownerYandexId || ''),
+  devices: (Array.isArray(backup?.devices) ? backup.devices : []).map(normalizeDeviceForHash).sort((a, b) => a.deviceStableId.localeCompare(b.deviceStableId) || a.deviceHash.localeCompare(b.deviceHash)),
+  data: {
+    stats: normalizeStatsForHash(backup?.data?.stats),
+    eventLog: { warm: (Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm : []).filter(item => item?.eventId && !isBackupSemanticNoiseEvent(item)) },
+    userProfile: backup?.data?.userProfile || {},
+    localStorage: getSharedSnapshotLocalEntries(backup?.data?.localStorage || {}),
+    intel: backup?.data?.intel || {}
+  }
+});
 
 export const getSharedSemanticHash = async backup => await sha256Hex(stableStringify(buildSharedSemanticPayload(backup || {})));
 export const getDeviceSettingsSemanticHash = async doc => await sha256Hex(stableStringify({ version: sS(doc?.version || '1.0'), ownerYandexId: sS(doc?.ownerYandexId || ''), deviceStableId: sS(doc?.deviceStableId || ''), deviceHash: sS(doc?.deviceHash || ''), sourceDeviceLabel: sS(doc?.sourceDeviceLabel || ''), sourceDeviceClass: sS(doc?.sourceDeviceClass || ''), sourcePlatform: sS(doc?.sourcePlatform || ''), localStorage: doc?.localStorage || {} }));
@@ -3263,8 +3269,6 @@ const branchIdOfEvent = e => `${sS(e?.deviceStableId).replace(/[^A-Za-z0-9._-]/g
 const compactBackupForCloud = async (b, { disk = null, token = '' } = {}) => {
   const events = Array.isArray(b?.data?.eventLog?.warm) ? b.data.eventLog.warm : [];
   const beforeBytes = proxyUploadBodyBytes(b);
-
-  if (beforeBytes <= CLOUD_UPLOAD_BODY_BUDGET_BYTES) return b;
 
   const idx = disk?.getEventArchiveIndex && token
     ? await disk.getEventArchiveIndex(token).catch(() => null)
@@ -3302,10 +3306,8 @@ const compactBackupForCloud = async (b, { disk = null, token = '' } = {}) => {
   }
 
   if (!coverage.size) {
-    throw new Error(
-      `backup_too_large_without_archive:${beforeBytes}:` +
-      `${CLOUD_UPLOAD_BODY_BUDGET_BYTES}`
-    );
+    if (beforeBytes <= CLOUD_UPLOAD_BODY_BUDGET_BYTES) return b;
+    throw new Error(`backup_too_large_without_archive:${beforeBytes}:${CLOUD_UPLOAD_BODY_BUDGET_BYTES}`);
   }
 
   const required = [];
@@ -3421,11 +3423,10 @@ const runUploadBackupBundle = async ({ disk, token, BackupVault = DefaultBackupV
 
   if (shouldUploadShared) {
     changedDomains = Array.isArray(jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', [])) ? jP(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []).map(sS).filter(Boolean) : [];
-    const materialHistory = changedDomains.some(d => HISTORY_MATERIAL_DOMAINS.has(sS(d)));
-    const writeHistory = reason === 'manual_save' || (!!force && reason !== 'autosync') || (materialHistory && Date.now() - sN(localStorage.getItem(LS_LAST_HISTORY_AT) || 0) > HISTORY_MIN_INTERVAL_MS);
+    const writeHistory = false;
 
     if (typeof disk.uploadEventSegment === 'function') {
-      eventArchive = await uploadLocalEventArchiveUntilCaughtUp({ disk, token, maxSegments: 20 }).catch(e => ({ ok: false, uploaded: false, reason: e?.message || 'event_archive_failed' }));
+      eventArchive = await uploadLocalEventArchiveUntilCaughtUp({ disk, token, maxSegments: 1 }).catch(error => ({ ok: false, uploaded: false, reason: error?.message || 'event_archive_failed' }));
       uploadedEventArchive = !!eventArchive?.uploaded;
       if (uploadedEventArchive) changedDomains = [...new Set([...(changedDomains || []), 'eventArchive'])];
       console.info('[BackupArchive]', eventArchive);
@@ -3434,7 +3435,6 @@ const runUploadBackupBundle = async ({ disk, token, BackupVault = DefaultBackupV
     const cloudBackup = await compactBackupForCloud(b, { disk, token });
     meta = await disk.upload(token, cloudBackup, { writeHistory, changedDomains, syncLease });
     uploadedShared = true; persistMeta({ meta, backup: b, sharedHash });
-    if (writeHistory) try { localStorage.setItem(LS_LAST_HISTORY_AT, String(Date.now())); } catch {}
   }
 
   let uploadedDevice = false, deviceDoc = null, deviceHash = '';
