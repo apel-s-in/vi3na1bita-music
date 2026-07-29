@@ -4,6 +4,13 @@ import { renderLoyaltyCard, updateLoyaltyCardTimers } from './loyalty-card.js';
 export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) => {
   const expanded = new Set();
   const esc = v => CSS.escape(String(v || '')), hEsc = v => window.Utils?.escapeHtml?.(String(v || '')) || String(v || ''), eng = () => window.achievementEngine || e;
+  const authorized = () => window.YandexAuth?.getSessionStatus?.() === 'active' && window.YandexAuth?.isTokenAlive?.();
+  if (c && !c._achievementAuthBound) {
+    c._achievementAuthBound = true;
+    c.addEventListener('click', event => {
+      if (event.target.closest('[data-achievement-login]')) window.YandexAuth?.login?.();
+    });
+  }
   const rewardText = a => {
     if (a?.isHidden && !a?.isUnlocked) return 'Секретное';
     if (a?.rewardAwarded) return `+${a.shardReward} ♦ получено`;
@@ -35,7 +42,13 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
 
   return {
     render: (f = 'available') => {
-      if (!c || !eng()?.achievements) return;
+      if (!c) return;
+      if (!authorized()) {
+        ctx._achCurrentFilter = f;
+        c.innerHTML = `<div class="achievement-auth-gate"><div class="achievement-auth-gate__icon">🔒</div><h3>Достижения доступны после входа</h3><p>Локальная статистика продолжает накапливаться на этом устройстве, но прогресс и выполнение всех достижений подтверждает только сервер для вашего Яндекс ID.</p><button type="button" class="yandex-auth-mainbtn" data-achievement-login><span>Я</span><span>Войти через Яндекс</span></button></div>`;
+        return;
+      }
+      if (!eng()?.achievements) return;
       const items = flt(ctx._achCurrentFilter = f);
 
       const loyaltyHtml =
@@ -56,7 +69,7 @@ export const createProfileAchievementsView = ({ ctx, container: c, engine: e }) 
           : '<div class="fav-empty">По данному фильтру ничего нет</div>');
     },
     updateLiveNodes: () => {
-      if (!c || !eng()?.achievements) return;
+      if (!c || !authorized() || !eng()?.achievements) return;
 
       updateLoyaltyCardTimers(c);
 
