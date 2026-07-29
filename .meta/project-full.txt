@@ -5021,7 +5021,7 @@ class ListeningReceiptService {
       }
     });
     window.addEventListener('playback:ownership-lost', () => {
-      this.stageCurrentCompletion('ownership_transfer', this.snapshot());
+      this.abandonCurrentSession('ownership_transfer');
     });
     window.addEventListener('online', () => {
       this.enqueue(async () => {
@@ -5054,6 +5054,13 @@ class ListeningReceiptService {
     const player = window.playerCore;
     const device = getDeviceContext();
     return { position: Math.max(0, Number(player?.getPosition?.() || 0)), visibility: document.visibilityState || 'visible', platform: device.platform, timezone: device.timezone, timezoneOffsetMin: device.timezoneOffsetMin, quality: safe(player?.qMode || ''), muted: !!player?.isMuted?.(), volume: Number(player?.getVolume?.() ?? 100), ...extra };
+  }
+  abandonCurrentSession(reason = 'ownership_transfer') {
+    const current = this.session;
+    this.clearTimer();
+    this.session = null;
+    if (current?.sessionId) this.emit(reason, null);
+    return current;
   }
   stageCurrentCompletion(reason = 'unknown', finalSnapshot = null) {
     const current = this.session;
