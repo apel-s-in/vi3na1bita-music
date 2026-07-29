@@ -275,7 +275,8 @@ async function validateBackupUpload(token, backup) {
   if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
     return { ok: false, status: 400, error: 'backup_object_required' };
   }
-  if (safeString(backup.version) !== '6.0' || !backup.identity || !backup.data || !backup.integrity) {
+  const schemaVersion = safeString(backup.version);
+  if (!['6.0', '6.1'].includes(schemaVersion) || !backup.identity || !backup.data || !backup.integrity) {
     return { ok: false, status: 400, error: 'backup_schema_invalid' };
   }
   const payloadCheck = verifyBackupPayloadHash(backup);
