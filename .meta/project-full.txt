@@ -13911,6 +13911,8 @@ const validateRewards = () => {
   contains(engine, 'return true;');
   excludes(engine, /completed\s*=\s*.*localUnlocked/, 'Локальный unlock участвует в completion достижения');
   excludes(engine, /reward\?\.current\s*\?\?\s*localCurrent/, 'Локальный progress подменяет серверный');
+  excludes('scripts/analytics/achievements-dict.js', /metric:\s*["'](?:playlist|playlists|playlistCount|playlistTracks)["']/, 'Плейлисты участвуют в локальном achievement catalog');
+  excludes('cloud-functions/vi3-signaling/index.js', /metric:\s*['"](?:playlist|playlists|playlistCount|playlistTracks)['"]/, 'Плейлисты участвуют в серверном reward catalog');
   contains('scripts/app/profile/achievements-view.js', 'achievement-auth-gate');
   contains('scripts/app/profile/achievements-view.js', 'data-achievement-login');
   contains('scripts/app/profile/achievements-view.js', 'rewardAwarded');
@@ -13937,6 +13939,11 @@ const validateDataBoundaries = () => {
   ['Vi3AccountVault_v1', 'eventLedger:chainId:v1', 'favoriteMirror:outbox:v1', 'listeningReceipts:completionOutbox:v1', 'adoptLocalData'].forEach(marker => contains(account, marker));
   ['normalizeFavoriteItem', 'favoriteClock', 'favoriteStatus', 'mergeFavoritePair', 'remoteToLocal', 'localToRemote', 'favoriteSignature'].forEach(marker => contains(favorite, marker));
   ['favorite_state_get', 'favorite_state_mutate', 'favorite_state_reconcile'].forEach(marker => contains(mirror, marker));
+  excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*__favorites_v2__/, 'Избранное осталось в shared backup');
+  excludes('scripts/analytics/storage-merge.js', /mergeFavoritesStorageSafe|__favorites_v2__/, 'Backup restore продолжает объединять Избранное');
+  contains('scripts/analytics/snapshot-contract.js', 'sc3:playlists');
+  contains('scripts/analytics/snapshot-contract.js', 'sc3:default');
+  contains('scripts/analytics/snapshot-contract.js', 'sc3:albumColors');
   excludes(account, /\.(play|pause|stop|seek|setVolume|setMuted)\s*\(/, 'Account vault управляет playback');
   assertNoMatch([favorite, mirror], /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(/g, 'Favorite contract или mirror управляет playback');
 };
@@ -14066,7 +14073,8 @@ const validateBackupProxy = () => {
   const proxy = 'cloud-functions/vi3na1bita-backup-proxy/index.js';
   const transport = 'scripts/core/yandex-disk-transport.js';
   const archiveTransport = 'scripts/core/yandex-event-archive-disk.js';
-  ['requestContext?.http?.method', 'requestContext?.httpMethod', "method === 'OPTIONS'", 'x-yandex-auth', 'upload_backup', 'upload_event_segment', 'archive_delete_segments', 'backup_achievement_receipt'].forEach(marker => contains(proxy, marker));
+  ['requestContext?.http?.method', 'requestContext?.httpMethod', "method === 'OPTIONS'", 'x-yandex-auth', 'upload_backup', 'upload_event_segment', 'archive_delete_segments'].forEach(marker => contains(proxy, marker));
+  excludes(proxy, /backup_achievement_receipt|pending-backup-receipts|BACKUP_RECEIPT_SECRET|SIGNALING_URL/, 'Legacy backup reward transport остался в proxy');
   assert(/const\s+mode\s*=\s*requestedMode\s*\|\|\s*['"]ping['"]/.test(read(proxy)), 'Backup proxy: корневой вызов является ping');
   contains(transport, "'X-Yandex-Auth':token");
   contains(archiveTransport, "'X-Yandex-Auth':token");
@@ -14106,7 +14114,7 @@ const main = async () => {
   validateListening();
   validateRewards();
   excludes('scripts/analytics/achievements-dict.js', /["']backup_saves["']/, 'Достижение за технический backup осталось в словаре');
-  excludes('cloud-functions/vi3-signaling/index.js', /id:\s*['"]backup_saves['"]/, 'Серверное достижение за backup осталось в reward catalog');
+  excludes('cloud-functions/vi3-signaling/index.js', /backup_achievement_receipt|actionBackupAchievementReceipt|backupReceiptIds|backupSaves|CFG\.backupRewardsShadow|CFG\.backupReceiptSecret/, 'Legacy backup achievement contour остался в signaling');
   validatePwaAndLegacy();
   validateDataBoundaries();
   validateRecommendationsAndStats();
