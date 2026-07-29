@@ -1,5 +1,5 @@
-// Пассивный playback ownership protocol.
-// На этом этапе модуль не подключён к PlayerCore и не управляет audio transport.
+// Playback ownership protocol.
+// Управляет только разрешением старта и узкой pause-only реакцией на подтверждённую потерю ownership.
 import { requestSocialAction } from '../core/social-session.js';
 import { getDeviceId } from '../core/device-context.js';
 
@@ -98,7 +98,9 @@ export const reconcilePlaybackOwnership = async ({ reason = 'foreground' } = {})
   const lost = playback?.active === true && playback.ownerDeviceId && playback.ownerDeviceId !== currentDeviceId();
   if (!lost) return playback;
   clearOwnershipGrant();
-  window.dispatchEvent(new CustomEvent('playback:ownership-lost', { detail: { reason, playback, previousGrant: grant ? { ...grant, fencingToken: '' } : null } }));
+  const detail = { reason, playback, previousGrant: grant ? { ...grant, fencingToken: '' } : null };
+  window.dispatchEvent(new CustomEvent('playback:ownership-lost', { detail }));
+  window.playerCore?.pauseForOwnershipTransfer?.(detail);
   return playback;
 };
 
@@ -106,7 +108,16 @@ export const claimPlaybackOwnership = async ({ trackUid, trackVersion = '', posi
   const uid = safe(trackUid);
   if (!uid) throw new Error('playback_track_required');
   const version = safe(trackVersion) || await getTrackVersion(uid);
-  const base = { deviceId: currentDeviceId(), trackUid: uid, trackVersion: version, position: Math.max(0, Number(position || 0)) };
+  const currentGrant = readOwnershipGrant();
+  const base = {
+    deviceId: currentDeviceId(),
+    trackUid: uid,
+    trackVersion: version,
+    position: Math.max(0, Number(position || 0)),
+    logicalSessionId: safe(currentGrant?.logicalSessionId),
+    ownerEpoch: Math.max(0, Number(currentGrant?.ownerEpoch || 0)),
+    fencingToken: safe(currentGrant?.fencingToken)
+  };
   const claimed = await requestSocialAction('playback_claim', base);
   if (claimed?.grant) {
     return { ok: true, transferred: false, playback: claimed.playback, grant: saveGrant(claimed.grant) };
@@ -132,7 +143,53 @@ export const claimPlaybackOwnership = async ({ trackUid, trackVersion = '', posi
   if (!committed?.grant) throw new Error('playback_transfer_commit_failed');
   return { ok: true, transferred: true, fromDeviceId: safe(committed.fromDeviceId), playback: committed.playback, grant: saveGrant(committed.grant) };
 };
+const isTransportFailure = error => {
+  const status = Number(error?.status || 0);
+  const message = safe(error?.message);
+  return !status || status === 429 || status >= 500 || /network|fetch|timeout|backoff|offline|unavailable/i.test(message);
+};
 
+const withTimeout = (promise, timeoutMs) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => {
+    const error = new Error('playback_ownership_timeout');
+    error.status = 0;
+    reject(error);
+  }, Math.max(500, Number(timeoutMs) || 3500)))
+]);
+
+export const authorizePlaybackStart = async ({ trackUid, position = 0, timeoutMs = 3500, confirm = true } = {}) => {
+  const uid = safe(trackUid);
+  if (!uid) return { allowed: false, reason: 'playback_track_required' };
+  if (window.YandexAuth?.getSessionStatus?.() !== 'active' || !window.YandexAuth?.isTokenAlive?.()) {
+    return { allowed: true, localOnly: true, reason: 'not_authorized' };
+  }
+  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
+    return { allowed: true, localOnly: true, reason: 'offline' };
+  }
+  try {
+    const result = await withTimeout(claimPlaybackOwnership({ trackUid: uid, position, confirm }), timeoutMs);
+    if (!result?.ok) return { allowed: false, canceled: result?.canceled === true, playback: result?.playback || null };
+    return { allowed: true, transferred: result.transferred === true, playback: result.playback || null, grant: result.grant || readOwnershipGrant(), resumePosition: result.transferred ? Math.max(0, Number(result.grant?.position || 0)) : null };
+  } catch (error) {
+    if (isTransportFailure(error)) {
+      window.dispatchEvent(new CustomEvent('playback:ownership-degraded', { detail: { reason: safe(error?.message), trackUid: uid } }));
+      return { allowed: true, localOnly: true, degraded: true, reason: safe(error?.message) };
+    }
+    throw error;
+  }
+};
+
+export const updateOwnershipLease = playback => {
+  const grant = readOwnershipGrant();
+  if (!grant || !playback?.isCurrentDeviceOwner || Number(playback.ownerEpoch) !== Number(grant.ownerEpoch)) return grant;
+  return saveGrant({
+    ...grant,
+    leaseExpiresAt: Math.max(Number(grant.leaseExpiresAt || 0), Number(playback.leaseExpiresAt || 0)),
+    revision: Math.max(Number(grant.revision || 0), Number(playback.revision || 0)),
+    position: Math.max(0, Number(playback.confirmedPosition ?? grant.position ?? 0))
+  });
+};
 let initialized = false;
 export const initPlaybackOwnership = () => {
   if (initialized) return;
@@ -164,7 +221,9 @@ export const playbackOwnershipService = {
   init: initPlaybackOwnership,
   getState: getPlaybackOwnershipState,
   reconcile: reconcilePlaybackOwnership,
+  authorize: authorizePlaybackStart,
   claim: claimPlaybackOwnership,
+  updateLease: updateOwnershipLease,
   getTrackVersion,
   getGrant: readOwnershipGrant,
   clearGrant: clearOwnershipGrant
