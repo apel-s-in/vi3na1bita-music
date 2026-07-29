@@ -127,6 +127,7 @@ async function kvDelete(pk) {
   );
 }
 function notificationTtl(kind) {
+  if (kind === 'PLAYBACK_TRANSFERRED') return 120;
   if (kind === 'CHAT_MESSAGE') return 86400;
   if (kind === 'LOYALTY_REMINDER') return 10800;
   if (kind === 'LOYALTY_VACATION_ENDING' || kind === 'LOYALTY_VACATION_ENDED') return 86400;
@@ -134,7 +135,7 @@ function notificationTtl(kind) {
   return 3600;
 }
 function notificationUrgency(kind) {
-  return ['CHAT_MESSAGE', 'GAME_INVITE', 'VOICE_CALL', 'LOYALTY_VACATION_ENDED'].includes(kind) ? 'high' : 'normal';
+  return ['CHAT_MESSAGE', 'GAME_INVITE', 'VOICE_CALL', 'PLAYBACK_TRANSFERRED', 'LOYALTY_VACATION_ENDED'].includes(kind) ? 'high' : 'normal';
 }
 async function sendToSubscription(row, notification) {
   const data = payload(row);
@@ -173,6 +174,7 @@ async function actionSendToPlayer(event, body) {
     error.httpStatus = 400;
     throw error;
   }
+  const targetDeviceId = safe(body.targetDeviceId).slice(0, 120);
   const notification = {
     title: safe(body.title || 'Витрина Разбита').slice(0, 80),
     body: safe(body.body || body.text || 'Новое уведомление').slice(0, 220),
@@ -183,14 +185,19 @@ async function actionSendToPlayer(event, body) {
     fromFriendId: safe(body.fromFriendId || ''),
     gameId: safe(body.gameId || ''),
     msgId: safe(body.msgId || ''),
-    callId: safe(body.callId || '')
+    callId: safe(body.callId || ''),
+    logicalSessionId: safe(body.logicalSessionId || '').slice(0, 120),
+    ownerDeviceId: safe(body.ownerDeviceId || '').slice(0, 120),
+    ownerLabel: safe(body.ownerLabel || '').slice(0, 80),
+    ownerEpoch: Math.max(0, Math.floor(num(body.ownerEpoch)))
   };
-  const rows = await kvPrefix(`webPushSub:${playerId}:`, 20);
+  const allRows = await kvPrefix(`webPushSub:${playerId}:`, 20);
+  const rows = targetDeviceId ? allRows.filter(row => safe(payload(row).deviceId) === targetDeviceId) : allRows;
   const results = [];
   for (const row of rows) {
     results.push(await sendToSubscription(row, notification));
   }
-  return { ok: true, playerId, subscriptions: rows.length, sent: results.filter(x => x.ok).length, results };
+  return { ok: true, playerId, targetDeviceId, subscriptions: rows.length, totalSubscriptions: allRows.length, sent: results.filter(x => x.ok).length, results };
 }
 exports.handler = async event => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: corsHeaders(event), body: '' };
