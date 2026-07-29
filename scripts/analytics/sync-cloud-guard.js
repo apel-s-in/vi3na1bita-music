@@ -4,8 +4,20 @@ import { readLocalEventLog } from './stats-state.js';
 
 const META_CACHE_MAX_AGE_MS = 10 * 60000, LEASE_GRACE_MS = 2000;
 export const getLocalSyncSummary = () => {
-  const a = window.achievementEngine, f = safeJsonParse(localStorage.getItem('__favorites_v2__'), []), pl = safeJsonParse(localStorage.getItem('sc3:playlists'), []), r = window.DeviceRegistry?.getDeviceRegistry?.() || safeJsonParse(localStorage.getItem('backup:device_registry:v1'), []) || [];
-  return { timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts')), level: safeNum(a?.profile?.level || 1), xp: safeNum(a?.profile?.xp || 0), achievementsCount: Object.keys(a?.unlocked || {}).length, favoritesCount: Array.isArray(f) ? f.filter(i => !i?.inactiveAt && !i?.deletedAt).length : 0, playlistsCount: Array.isArray(pl) ? pl.filter(p => !p?.deletedAt).length : 0, statsCount: 0, eventCount: 0, devicesCount: Array.isArray(r) ? r.length : 0, deviceStableCount: window.DeviceRegistry?.countDeviceStableIds?.(r) || new Set((Array.isArray(r) ? r : []).map(d => safeString(d?.deviceStableId)).filter(Boolean)).size };
+  const playlists = safeJsonParse(localStorage.getItem('sc3:playlists'), []);
+  const devices = window.DeviceRegistry?.getDeviceRegistry?.() || safeJsonParse(localStorage.getItem('backup:device_registry:v1'), []) || [];
+  return {
+    timestamp: safeNum(localStorage.getItem('yandex:last_backup_local_ts')),
+    level: 1,
+    xp: 0,
+    achievementsCount: 0,
+    favoritesCount: 0,
+    playlistsCount: Array.isArray(playlists) ? playlists.filter(item => !item?.deletedAt).length : 0,
+    statsCount: 0,
+    eventCount: 0,
+    devicesCount: Array.isArray(devices) ? devices.length : 0,
+    deviceStableCount: window.DeviceRegistry?.countDeviceStableIds?.(devices) || new Set((Array.isArray(devices) ? devices : []).map(device => safeString(device?.deviceStableId)).filter(Boolean)).size
+  };
 };
 export const enrichLocalSyncSummary = async summary => { try { const { metaDB } = await import('./meta-db.js'), [stats, events] = await Promise.all([metaDB.getAllStats().catch(() => []), readLocalEventLog(metaDB, { forceFlush: true }).catch(() => [])]); return { ...summary, statsCount: Array.isArray(stats) ? stats.filter(x => x?.uid && x.uid !== 'global').length : safeNum(summary?.statsCount), eventCount: Array.isArray(events) ? events.length : safeNum(summary?.eventCount) }; } catch { return summary; } };
 export const readCachedCloudMeta = (maxAgeMs = META_CACHE_MAX_AGE_MS) => { try { const ts = safeNum(localStorage.getItem('yandex:last_backup_check_ts')); return (!ts || Date.now() - ts > maxAgeMs) ? null : safeJsonParse(localStorage.getItem('yandex:last_backup_check') || localStorage.getItem('yandex:last_backup_meta') || 'null', null); } catch { return null; } };
