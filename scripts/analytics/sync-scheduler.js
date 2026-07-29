@@ -3,7 +3,15 @@ import { safeNum, safeJsonParse } from './backup-summary.js'; import { markDomai
 let _timer = null, _dueAt = 0;
 export const cancelScheduledSync = () => { clearTimeout(_timer); _timer = null; _dueAt = 0; };
 const persistDirtyDomain = d => { try { localStorage.setItem('backup:local_dirty_ts', String(Date.now())); const p = safeJsonParse(localStorage.getItem('backup:last_dirty_domains:v1') || '[]', []); localStorage.setItem('backup:last_dirty_domains:v1', JSON.stringify([...new Set([...(Array.isArray(p) ? p : []), d].filter(Boolean))])); } catch {} };
-const isEmpty = d => { let f = 0, p = 0; try { f = JSON.parse(d?.localStorage?.['__favorites_v2__'] || '[]').filter(i => !i?.inactiveAt && !i?.deletedAt).length; p = JSON.parse(d?.localStorage?.['sc3:playlists'] || '[]').filter(x => !x?.deletedAt).length; } catch {} return (d?.stats?.length || 0) <= 1 && (d?.eventLog?.warm?.length || 0) === 0 && Object.keys(d?.achievements || {}).length === 0 && f === 0 && p === 0; };
+const isEmpty = data => {
+  let playlists = 0;
+  try {
+    playlists = JSON.parse(data?.localStorage?.['sc3:playlists'] || '[]').filter(item => !item?.deletedAt).length;
+  } catch {}
+  const profile = data?.userProfile || {};
+  const customProfile = String(profile.name || 'Слушатель') !== 'Слушатель' || String(profile.avatar || '😎') !== '😎';
+  return (data?.stats?.length || 0) <= 1 && (data?.eventLog?.warm?.length || 0) === 0 && playlists === 0 && !customProfile;
+};
 const persistRes = ({ meta, backup } = {}) => { try { if (meta) { const ms = JSON.stringify(meta); localStorage.setItem('yandex:last_backup_meta', ms); localStorage.setItem('yandex:last_backup_check', ms); localStorage.setItem('yandex:last_backup_check_ts', String(Date.now())); } localStorage.removeItem('backup:last_dirty_domains:v1'); if (backup) localStorage.setItem('yandex:last_backup_local_ts', String(Number(backup?.revision?.timestamp || backup?.createdAt || Date.now()))); window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated')); } catch {} };
 export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
   if (!canUpload() || Date.now() - getLastUploadAt() < 10000 || !(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return false;
