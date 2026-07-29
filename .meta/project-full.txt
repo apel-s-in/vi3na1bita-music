@@ -4990,6 +4990,14 @@ class ListeningReceiptService {
     this.sleepTimer = null;
     this.heartbeatPending = null;
   }
+  resetServerState(reason = 'auth_reset') {
+    this.lastProgress = null;
+    this.lastLoyalty = null;
+    this.rewardCatalog = [];
+    this.pendingFeatures.clear();
+    this.sleepTimer = null;
+    this.emit(reason, null);
+  }
   initialize() {
     if (this.initialized) return;
     this.initialized = true;
@@ -5015,6 +5023,7 @@ class ListeningReceiptService {
     window.addEventListener('yandex:auth:changed', event => {
       if (event.detail?.status !== 'active') {
         this.stageCurrentCompletion('auth_lost', this.snapshot());
+        this.resetServerState('auth_lost');
         return;
       }
       this.enqueue(async () => {
@@ -5027,8 +5036,7 @@ class ListeningReceiptService {
     });
     window.addEventListener('account:data-switching', () => {
       this.stageCurrentCompletion('account_switch', this.snapshot());
-      this.pendingFeatures.clear();
-      this.sleepTimer = null;
+      this.resetServerState('account_switch');
     });
     window.addEventListener('account:data-switched', () => {
       this.enqueue(async () => {
