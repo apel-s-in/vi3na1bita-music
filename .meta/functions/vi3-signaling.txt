@@ -293,7 +293,6 @@ const BASE_ACHIEVEMENT_REWARD_CATALOG = Object.freeze([
   ...buildScaledRewards({ id: 'unique_tracks', metric: 'uniqueTracks', targets: [5, 10, 16, 50, 100], xpBase: 20, xpMultiplier: 1.5 }),
   ...buildScaledRewards({ id: 'one_track_full', metric: 'maxOneTrackFull', targets: [10, 25, 100, 500], xpBase: 50, xpMultiplier: 2 }),
   ...buildScaledRewards({ id: 'fav_total', metric: 'favCount', channel: 'favorite', targets: [3, 5, 8, 15, 50], xpBase: 10, xpMultiplier: 1.4 }),
-  ...buildScaledRewards({ id: 'backup_saves', metric: 'backupSaves', channel: 'backup', targets: [1, 3, 10], xpBase: 20, xpMultiplier: 1.5 }),
   { id: 'quality_snob', metric: 'hiFullPlays', channel: 'listening_context', target: 10, amount: 30, validatorVersion: 1 },
   { id: 'early_bird', metric: 'earlyFullPlays', channel: 'listening_context', target: 10, amount: 50, validatorVersion: 1 },
   { id: 'night_owl', metric: 'nightFullPlays', channel: 'listening_context', target: 10, amount: 50, validatorVersion: 1 },
@@ -4871,16 +4870,12 @@ function publicRewardChannels() {
     listening: { shadow: CFG.listeningReceiptsShadow, rewardsEnabled: !CFG.listeningReceiptsShadow },
     listeningContext: { shadow: CFG.listeningContextRewardsShadow, rewardsEnabled: !CFG.listeningContextRewardsShadow },
     favorite: { shadow: CFG.favoriteRewardsShadow, rewardsEnabled: !CFG.favoriteRewardsShadow },
-    backup: { shadow: CFG.backupRewardsShadow, rewardsEnabled: !CFG.backupRewardsShadow },
     feature: { shadow: CFG.featureRewardsShadow, rewardsEnabled: !CFG.featureRewardsShadow }
   };
 }
 function achievementRewardEnabled(reward) {
   if (reward.channel === 'favorite') {
     return !CFG.favoriteRewardsShadow;
-  }
-  if (reward.channel === 'backup') {
-    return !CFG.backupRewardsShadow;
   }
   if (reward.channel === 'listening_context') {
     return !CFG.listeningContextRewardsShadow;
