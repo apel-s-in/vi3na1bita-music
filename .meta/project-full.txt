@@ -4910,6 +4910,7 @@ export default {
 // Режим наград задаёт сервер; клиент никогда не управляет playback.
 import { getSocialServerBackoffState, requestSocialAction } from '../core/social-session.js';
 import { getDeviceContext, getDeviceId } from '../core/device-context.js';
+import { buildPlaybackFencePayload } from './playback-fence.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 const HEARTBEAT_MS = 20000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
@@ -4926,15 +4927,10 @@ const parseJson = (raw, fallback) => {
 };
 const currentYandexId = () => safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
 const currentDeviceId = () => getDeviceId();
-const ownershipFields = () => {
-  const grant = window.PlaybackOwnership?.getGrant?.();
-  return grant ? {
-    logicalSessionId: safe(grant.logicalSessionId),
-    ownerEpoch: Math.max(0, Math.floor(Number(grant.ownerEpoch || 0))),
-    fencingToken: safe(grant.fencingToken),
-    trackVersion: safe(grant.trackVersion)
-  } : {};
-};
+const ownershipFields = () => buildPlaybackFencePayload({
+  grant: window.PlaybackOwnership?.getGrant?.(),
+  deviceId: currentDeviceId()
+});
 const readCompletionOutbox = () => {
   const rows = parseJson(localStorage.getItem(COMPLETION_OUTBOX_KEY), []);
   if (!Array.isArray(rows)) return [];
