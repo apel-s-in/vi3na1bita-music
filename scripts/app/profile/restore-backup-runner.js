@@ -1,4 +1,4 @@
-import { bindCurrentInstallToDeviceStableId, ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
+import { ensureCurrentDeviceRegistryRow } from '../../core/device-linking.js';
 import { getDeviceSettingsSemanticHash } from '../../analytics/backup-upload-runner.js';
 import { saveRestoreRecoverySnapshot, restoreRecoverySnapshot } from '../../analytics/backup-recovery.js';
 import { enrichBackupWithEventArchive } from '../../analytics/event-archive-restore.js';
@@ -68,12 +68,7 @@ export const runBackupRestore = async ({ BackupVault: bV, disk: d, token: t, bac
     await importBackupWithFallback({ BackupVault: bV, backup: eff, mode: m });
     await maybeApplyDeviceSettings({ BackupVault: bV, disk: d, token: t, backup: eff, inheritDeviceKey: iK, asNewDevice: aN, skipDeviceSettings: sDS, allowPlaybackSensitive: aPS });
 
-    if (iK && !aN) {
-      const p = (Array.isArray(eff?.devices) ? eff.devices : []).find(x => String(x?.deviceStableId || '').trim() === String(iK || '').trim()) || null;
-      await bindCurrentInstallToDeviceStableId({ deviceStableId: iK, label: p?.label || '', deviceClass: p?.class || '', platform: p?.platform || '', registry: eff?.devices || [] }).catch(() => null);
-    } else if (aN) {
-      await ensureCurrentDeviceRegistryRow({ registry: eff?.devices || [] }).catch(() => null);
-    }
+    await ensureCurrentDeviceRegistryRow({ registry: eff?.devices || [] }).catch(() => null);
 
     await adoptLedgerCheckpointFromEvents({ deviceStableId: localStorage.getItem('deviceStableId') || '', reason: 'after_restore_adopt_branch' }).catch(() => null);
     await persistCloudMetaAfterRestore({ disk: d, token: t, restoredBackup: eff });
