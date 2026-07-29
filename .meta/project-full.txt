@@ -6744,7 +6744,7 @@ export const runScheduledSyncNow = async ({ reason = 'autosync' } = {}) => {
 export const scheduleSync = ({ immediate = false, domain = 'generic' } = {}) => {
   if (!canUpload()) return false;
   const d = String(domain || 'generic').trim() || 'generic'; markDomainDirty(d); persistDirtyDomain(d);
-  const ds = consumeDirtyState(), delay = immediate ? DOMAIN_DEBOUNCE_MS.achievements : (ds.debounceMs || DOMAIN_DEBOUNCE_MS.generic), dueAt = Date.now() + Math.max(0, safeNum(delay));
+  const ds = consumeDirtyState(), delay = immediate ? 0 : (ds.debounceMs || DOMAIN_DEBOUNCE_MS.generic), dueAt = Date.now() + Math.max(0, safeNum(delay));
   if (_timer && _dueAt && dueAt >= _dueAt) return true;
   cancelScheduledSync(); _dueAt = dueAt; _timer = setTimeout(() => { _timer = null; _dueAt = 0; runScheduledSyncNow({ reason: 'autosync' }); }, Math.max(0, dueAt - Date.now())); return true;
 };
