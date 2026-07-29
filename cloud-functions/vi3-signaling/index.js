@@ -850,6 +850,79 @@ async function requirePlaybackDevice(event, body) {
   if (device.revokedAt > 0) throw new Error('account_device_revoked');
   return { ...auth, deviceId, device };
 }
+function playbackFenceFields(body = {}) {
+  return {
+    logicalSessionId: sanitizeId(body.logicalSessionId, 120),
+    ownerEpoch: Math.max(0, Math.floor(num(body.ownerEpoch))),
+    fencingToken: safe(body.fencingToken),
+    trackVersion: safe(body.trackVersion).slice(0, 96)
+  };
+}
+function assertPlaybackFenceState(stateRaw, auth, body = {}, { requireTrack = false, trackUid = '', trackVersion = '' } = {}) {
+  const state = normalizePlaybackState(stateRaw, auth.playerId);
+  const fence = playbackFenceFields(body);
+  if (!playbackIsActive(state)) throw new Error('playback_owner_not_active');
+  if (state.ownerDeviceId !== auth.deviceId) throw new Error('playback_owner_changed');
+  if (!fence.ownerEpoch || state.ownerEpoch !== fence.ownerEpoch) throw new Error('playback_fence_epoch_mismatch');
+  if (!fence.fencingToken || state.fencingTokenHash !== hash(fence.fencingToken)) throw new Error('playback_fence_token_mismatch');
+  if (requireTrack) {
+    const uid = sanitizeId(trackUid, 160);
+    const version = safe(trackVersion).slice(0, 96);
+    if (state.trackUid !== uid || state.trackVersion !== version) throw new Error('playback_fence_track_mismatch');
+  }
+  return { state, fence };
+}
+async function requirePlaybackFence(event, body, options = {}) {
+  const auth = await requirePlaybackDevice(event, body);
+  const row = await kvGet(playbackStateKey(auth.playerId));
+  if (!row) throw new Error('playback_grant_required');
+  return { ...assertPlaybackFenceState(payload(row), auth, body, options), auth, row };
+}
+async function renewPlaybackFence(auth, body, position) {
+  const key = playbackStateKey(auth.playerId);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const row = await kvGet(key);
+    if (!row) throw new Error('playback_grant_required');
+    const checked = assertPlaybackFenceState(payload(row), auth, body);
+    const at = now();
+    const track = LISTEN_TRACK_CATALOG.get(checked.state.trackUid);
+    const next = normalizePlaybackState({
+      ...checked.state,
+      confirmedPosition: Math.max(0, Math.min(track?.duration || 7200, num(position))),
+      confirmedAt: at,
+      leaseExpiresAt: at + PLAYBACK_LEASE_MS,
+      revision: checked.state.revision + 1,
+      updatedAt: at
+    }, auth.playerId);
+    if (!(await kvCompareAndPut({ row, type: 'playbackState', owner: auth.playerId, expiresAt: next.leaseExpiresAt + PLAYBACK_LEASE_MS, data: next }))) continue;
+    return next;
+  }
+  throw new Error('playback_lease_conflict');
+}
+async function closeTransferredListenSegment(playerId, deviceId, confirmedPosition) {
+  const key = listenActiveKey(playerId, deviceId);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const row = await kvGet(key);
+    const current = normalizeListenSession(payload(row));
+    if (!row || current.status !== 'active') return null;
+    const at = now();
+    const completed = normalizeListenSession({
+      ...current,
+      status: 'completed',
+      completedAt: at,
+      completionReason: 'ownership_transfer',
+      lastPosition: Math.max(current.lastPosition, Math.min(current.duration, num(confirmedPosition))),
+      receiptId: `lr_${hash([playerId, current.sessionId, 'ownership_transfer'].join(':')).slice(0, 28)}`,
+      updatedAt: at
+    });
+    if (!(await kvCompareAndPut({ row, type: 'listenActive', owner: playerId, data: completed }))) continue;
+    await persistListenSession(completed);
+    const finalized = await finalizeListenSession(completed);
+    await kvDelete(key).catch(() => null);
+    return finalized;
+  }
+  throw new Error('playback_transfer_listen_close_conflict');
+}
 async function actionPlaybackStateGet(event, body) {
   const auth = await requirePlayer(event, body);
   const state = normalizePlaybackState(payload(await kvGet(playbackStateKey(auth.playerId))), auth.playerId);
@@ -874,6 +947,9 @@ async function actionPlaybackClaim(event, body) {
       return { ok: true, claimed: false, requiresConfirmation: true, playback: publicPlaybackState(current, auth.deviceId) };
     }
     const fencingToken = base64url(crypto.randomBytes(32));
+    const suppliedFencingToken = safe(body.fencingToken);
+    const sameOwnerGrant = playbackIsActive(current, at) && current.ownerDeviceId === auth.deviceId && suppliedFencingToken && current.fencingTokenHash === hash(suppliedFencingToken);
+    const fencingToken = sameOwnerGrant ? suppliedFencingToken : base64url(crypto.randomBytes(32));
     const sameLogicalTrack = current.logicalSessionId && current.trackUid === track.uid && current.trackVersion === track.trackVersion;
     const next = normalizePlaybackState(
       {
@@ -886,7 +962,7 @@ async function actionPlaybackClaim(event, body) {
         ownerDeviceId: auth.deviceId,
         ownerLabel: auth.device.label,
         ownerSessionId: auth.sessionId,
-        ownerEpoch: current.ownerEpoch + 1,
+        ownerEpoch: sameOwnerGrant ? current.ownerEpoch : current.ownerEpoch + 1,
         fencingTokenHash: hash(fencingToken),
         confirmedPosition: sameLogicalTrack ? Math.min(track.duration, Math.max(current.confirmedPosition, num(body.position))) : Math.min(track.duration, Math.max(0, num(body.position))),
         confirmedAt: at,
@@ -1010,6 +1086,7 @@ async function actionPlaybackTransferCommit(event, body) {
     );
     if (!(await kvCompareAndPut({ row, type: 'playbackState', owner: auth.playerId, expiresAt: next.leaseExpiresAt + PLAYBACK_LEASE_MS, data: next }))) continue;
     await kvDelete(transferKey).catch(() => null);
+    const closedListenSegment = await closeTransferredListenSegment(auth.playerId, transfer.fromDeviceId, current.confirmedPosition).catch(error => ({ error: safe(error?.message) }));
     const webPush = await sendSystemWebPush({
       toPlayerId: auth.playerId,
       targetDeviceId: transfer.fromDeviceId,
@@ -1024,7 +1101,7 @@ async function actionPlaybackTransferCommit(event, body) {
       ownerLabel: next.ownerLabel,
       ownerEpoch: next.ownerEpoch
     }).catch(error => ({ ok: false, error: safe(error?.message) }));
-    return { ok: true, transferred: true, fromDeviceId: transfer.fromDeviceId, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken), webPush };
+    return { ok: true, transferred: true, fromDeviceId: transfer.fromDeviceId, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken), closedListenSegment: closedListenSegment?.receipt ? { receiptId: closedListenSegment.receipt.receiptId, observedSec: closedListenSegment.receipt.observedSec } : null, webPush };
   }
   throw new Error('playback_transfer_conflict');
 }
@@ -2845,7 +2922,11 @@ function normalizeListenSession(raw = {}) {
     playerId: sanitizeId(raw.playerId, 96),
     sessionId: sanitizeId(raw.sessionId, 120),
     deviceId: sanitizeId(raw.deviceId, 120),
+    logicalSessionId: sanitizeId(raw.logicalSessionId, 120),
+    ownerEpoch: Math.max(0, Math.floor(num(raw.ownerEpoch))),
+    fencingTokenHash: safe(raw.fencingTokenHash).slice(0, 64),
     trackUid: sanitizeId(raw.trackUid, 160),
+    trackVersion: safe(raw.trackVersion).slice(0, 96),
     album: sanitizeId(raw.album, 120),
     duration: Math.max(0, Math.min(7200, num(raw.duration))),
     variant: sanitizeId(raw.variant || 'audio', 40),
@@ -3107,7 +3188,10 @@ function publicListenSession(session) {
     version: data.version,
     sessionId: data.sessionId,
     deviceId: data.deviceId,
+    logicalSessionId: data.logicalSessionId,
+    ownerEpoch: data.ownerEpoch,
     trackUid: data.trackUid,
+    trackVersion: data.trackVersion,
     status: data.status,
     contextVersion: data.contextVersion,
     quality: data.quality,
@@ -3587,10 +3671,10 @@ async function finalizeListenSession(session) {
   return { receipt: completedReceipt, progress: applied.progress, rewards, duplicate: applied.duplicate };
 }
 async function actionListenSessionStart(event, body) {
-  const { playerId } = await requirePlayer(event, body);
-  await enforceRateLimit({ scope: 'listen_start', actor: playerId, limit: 40, windowMs: 60 * 1000 });
   const track = listenTrackFromCatalog(body.trackUid);
-  const deviceId = sanitizeId(body.deviceId, 120) || 'web';
+  const fenced = await requirePlaybackFence(event, body, { requireTrack: true, trackUid: track.uid, trackVersion: track.trackVersion });
+  const { playerId, deviceId } = fenced.auth;
+  await enforceRateLimit({ scope: 'listen_start', actor: playerId, limit: 40, windowMs: 60 * 1000 });
   const favoriteState = normalizeFavoriteState(payload(await kvGet(favoriteStateKey(playerId))), playerId);
   const favoriteOrder = Object.values(favoriteState.items || {})
     .filter(item => item.status === 'active')
@@ -3602,7 +3686,7 @@ async function actionListenSessionStart(event, body) {
     let row = await kvGet(key);
     const current = normalizeListenSession(payload(row));
     if (row && current.status === 'active' && current.trackUid === track.uid && current.deviceId === deviceId && now() - current.lastHeartbeatAt < CFG.listenHeartbeatMaxGapMs) {
-      return { ok: true, duplicate: true, shadow: CFG.listeningReceiptsShadow, session: publicListenSession(current) };
+      return { ok: true, duplicate: true, shadow: CFG.listeningReceiptsShadow, playback: publicPlaybackState(fenced.state, deviceId), session: publicListenSession(current) };
     }
     const at = now();
     const session = normalizeListenSession({
@@ -3610,7 +3694,11 @@ async function actionListenSessionStart(event, body) {
       playerId,
       sessionId: rid('listen'),
       deviceId,
+      logicalSessionId: fenced.state.logicalSessionId,
+      ownerEpoch: fenced.state.ownerEpoch,
+      fencingTokenHash: fenced.state.fencingTokenHash,
       trackUid: track.uid,
+      trackVersion: track.trackVersion,
       album: track.album,
       duration: track.duration,
       variant: body.variant || 'audio',
@@ -3641,7 +3729,7 @@ async function actionListenSessionStart(event, body) {
       try {
         await kvInsert({ pk: key, type: 'listenActive', owner: playerId, data: session });
         await persistListenSession(session);
-        return { ok: true, duplicate: false, shadow: CFG.listeningReceiptsShadow, session: publicListenSession(session) };
+        return { ok: true, duplicate: false, shadow: CFG.listeningReceiptsShadow, playback: publicPlaybackState(fenced.state, deviceId), session: publicListenSession(session) };
       } catch {
         continue;
       }
@@ -3658,7 +3746,8 @@ async function actionListenSessionStart(event, body) {
   throw new Error('listen_session_start_conflict');
 }
 async function actionListenSessionHeartbeat(event, body) {
-  const { playerId } = await requirePlayer(event, body);
+  const fenced = await requirePlaybackFence(event, body);
+  const { playerId } = fenced.auth;
   const sessionId = sanitizeId(body.sessionId, 120);
   if (!sessionId) {
     throw new Error('listen_session_required');
@@ -3668,6 +3757,9 @@ async function actionListenSessionHeartbeat(event, body) {
     const { row, session } = resolved;
     if (!resolved.active || !row || session.sessionId !== sessionId || session.status !== 'active') {
       throw new Error('listen_session_not_active');
+    }
+    if (session.ownerEpoch !== fenced.state.ownerEpoch || session.fencingTokenHash !== fenced.state.fencingTokenHash || session.deviceId !== fenced.auth.deviceId) {
+      throw new Error('playback_owner_changed');
     }
     if (now() - session.startedAt > CFG.listenSessionMaxMs) {
       throw new Error('listen_session_expired');
@@ -3679,6 +3771,8 @@ async function actionListenSessionHeartbeat(event, body) {
     if (!(await kvCompareAndPut({ row, type: 'listenActive', owner: playerId, data: observation.session }))) {
       continue;
     }
+    await requirePlaybackFence(event, body);
+    const playback = await renewPlaybackFence(fenced.auth, body, observation.session.lastPosition);
     const appliedTime = await applyVerifiedListenTimeProgress(observation.session);
     const previousTotalSec = Math.floor(appliedTime.previousTotalListenMs / 1000);
     const currentTotalSec = appliedTime.progress.totalSec;
@@ -3697,13 +3791,15 @@ async function actionListenSessionHeartbeat(event, body) {
       loyalty: loyalty?.loyalty || null,
       wallet: loyalty?.wallet ? publicShardWallet(loyalty.wallet) : rewards.wallet ? publicShardWallet(rewards.wallet) : null,
       progress: publicAchievementProgress(appliedTime.progress),
+      playback: publicPlaybackState(playback, fenced.auth.deviceId),
       session: publicListenSession(observation.session)
     };
   }
   throw new Error('listen_heartbeat_conflict');
 }
 async function actionListenSessionComplete(event, body) {
-  const { playerId } = await requirePlayer(event, body);
+  const fenced = await requirePlaybackFence(event, body);
+  const { playerId } = fenced.auth;
   const sessionId = sanitizeId(body.sessionId, 120);
   if (!sessionId) {
     throw new Error('listen_session_required');
@@ -3735,6 +3831,9 @@ async function actionListenSessionComplete(event, body) {
     }
     if (!['active', 'replaced'].includes(current.status)) {
       throw new Error('listen_session_not_completable');
+    }
+    if (current.ownerEpoch !== fenced.state.ownerEpoch || current.fencingTokenHash !== fenced.state.fencingTokenHash || current.deviceId !== fenced.auth.deviceId) {
+      throw new Error('playback_owner_changed');
     }
     const at = now();
     const observation = applyListenObservation(current, body, { completed: true, at });
@@ -6167,7 +6266,7 @@ exports.handler = async event => {
         status = 410;
       } else if (/listen_session_not_found/i.test(msg)) {
         status = 404;
-      } else if (/listen_session_(not_active|not_completable)|playback_.*(?:conflict|mismatch|state_changed|disabled|not_active)|chat_revision_conflict|ranked_.*conflict|crypto_.*(?:missing|not_ready|conflict)|chat_e2ee_disabled/i.test(msg)) {
+      } else if (/listen_session_(not_active|not_completable)|playback_.*(?:conflict|mismatch|state_changed|disabled|not_active|owner_changed|grant_required)|chat_revision_conflict|ranked_.*conflict|crypto_.*(?:missing|not_ready|conflict)|chat_e2ee_disabled/i.test(msg)) {
         status = 409;
       } else if (/required|bad_|not_found|invalid|timezone_|account_device_/i.test(msg)) {
         status = 400;
