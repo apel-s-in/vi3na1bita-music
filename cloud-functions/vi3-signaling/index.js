@@ -4866,6 +4866,7 @@ async function reconcileAchievementRewards(playerId, progressRaw, { metrics = nu
     latestWallet = registration.wallet;
   }
   return { enabled: !CFG.listeningReceiptsShadow || !CFG.listeningContextRewardsShadow || !CFG.favoriteRewardsShadow || !CFG.featureRewardsShadow, grants, wallet: latestWallet };
+}
 async function actionWalletGet(event, body) {
   const { playerId } = await requirePlayer(event, body);
   const grant = await ensureRegistrationShardGrant(playerId);
