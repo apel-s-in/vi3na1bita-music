@@ -7,7 +7,7 @@ export const BACKUP_DELTA_DEVICES_DIR = `${BACKUP_DELTA_ROOT}/devices`;
 export const BACKUP_DELTA_EVENTS_DIR = `${BACKUP_DELTA_ROOT}/events`;
 export const BACKUP_DELTA_STATS_DIR = `${BACKUP_DELTA_ROOT}/stats`;
 export const BACKUP_DELTA_MAX_EVENTS = 500;
-export const BACKUP_DELTA_MAX_RANGES = 5000;
+export const BACKUP_DELTA_MAX_RANGES = 50000;
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Math.floor(Number(value))) : 0;
@@ -19,8 +19,8 @@ export const buildDeltaBranchId = ({ deviceStableId = '', chainId = '' } = {}) =
   return `${device}_${chain.slice(0, 36)}`;
 };
 
-export const buildDeltaRangeKey = ({ branchId = '', fromSeq = 0, toSeq = 0, hash = '' } = {}) =>
-  `${safeDeltaId(branchId)}:${num(fromSeq)}:${num(toSeq)}:${safeDeltaId(hash).slice(0, 32)}`;
+export const buildDeltaRangeKey = ({ deviceId = '', chainId = '', branchId = '', fromSeq = 0, toSeq = 0, hash = '' } = {}) =>
+  `${safeDeltaId(deviceId)}:${safeDeltaId(chainId || branchId)}:${num(fromSeq)}:${num(toSeq)}:${safeDeltaId(hash).slice(0, 64)}`;
 
 export const buildDeltaManifestPath = deviceStableId => {
   const device = safeDeltaId(deviceStableId);
