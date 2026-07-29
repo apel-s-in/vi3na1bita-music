@@ -984,7 +984,7 @@ async function actionPlaybackTransferCommit(event, body) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const row = await kvGet(key);
     const current = normalizePlaybackState(payload(row), auth.playerId);
-    if (!row || current.ownerDeviceId !== transfer.fromDeviceId || current.ownerEpoch !== num(transfer.expectedOwnerEpoch) || current.revision !== num(transfer.expectedRevision) || current.logicalSessionId !== transfer.expectedLogicalSessionId) {
+    if (!row || current.ownerDeviceId !== transfer.fromDeviceId || current.ownerEpoch !== num(transfer.expectedOwnerEpoch) || current.logicalSessionId !== transfer.expectedLogicalSessionId) {
       const error = new Error('playback_transfer_state_changed');
       error.httpStatus = 409;
       throw error;
@@ -1020,7 +1020,21 @@ async function actionPlaybackTransferCommit(event, body) {
     );
     if (!(await kvCompareAndPut({ row, type: 'playbackState', owner: auth.playerId, expiresAt: next.leaseExpiresAt + PLAYBACK_LEASE_MS, data: next }))) continue;
     await kvDelete(transferKey).catch(() => null);
-    return { ok: true, transferred: true, fromDeviceId: transfer.fromDeviceId, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken) };
+    const webPush = await sendSystemWebPush({
+      toPlayerId: auth.playerId,
+      targetDeviceId: transfer.fromDeviceId,
+      title: 'Воспроизведение передано',
+      body: `Музыка продолжена на «${next.ownerLabel || 'другом устройстве'}».`,
+      url: './',
+      tag: `playback-${next.logicalSessionId}`,
+      requireInteraction: false,
+      kind: 'PLAYBACK_TRANSFERRED',
+      logicalSessionId: next.logicalSessionId,
+      ownerDeviceId: next.ownerDeviceId,
+      ownerLabel: next.ownerLabel,
+      ownerEpoch: next.ownerEpoch
+    }).catch(error => ({ ok: false, error: safe(error?.message) }));
+    return { ok: true, transferred: true, fromDeviceId: transfer.fromDeviceId, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken), webPush };
   }
   throw new Error('playback_transfer_conflict');
 }
@@ -1492,10 +1506,10 @@ async function actionPresenceBatch(event, body) {
   }
   return { ok: true, presence };
 }
-async function sendSystemWebPush({ toPlayerId, title, body, url = './', tag = 'vi3-notification', requireInteraction = false, kind = '', fromFriendId = '', gameId = '', msgId = '', callId = '' } = {}) {
+async function sendSystemWebPush({ toPlayerId, targetDeviceId = '', title, body, url = './', tag = 'vi3-notification', requireInteraction = false, kind = '', fromFriendId = '', gameId = '', msgId = '', callId = '', logicalSessionId = '', ownerDeviceId = '', ownerLabel = '', ownerEpoch = 0 } = {}) {
   if (!CFG.webPushFunctionUrl || !CFG.webPushSecret || !toPlayerId) return { ok: false, skipped: true };
   try {
-    const res = await fetch(CFG.webPushFunctionUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Vi3-Admin': CFG.webPushSecret }, body: JSON.stringify({ action: 'send_to_player', playerId: toPlayerId, title, body, url, tag, requireInteraction, kind, fromFriendId, gameId, msgId, callId }) });
+    const res = await fetch(CFG.webPushFunctionUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Vi3-Admin': CFG.webPushSecret }, body: JSON.stringify({ action: 'send_to_player', playerId: toPlayerId, targetDeviceId, title, body, url, tag, requireInteraction, kind, fromFriendId, gameId, msgId, callId, logicalSessionId, ownerDeviceId, ownerLabel, ownerEpoch }) });
     const json = await res.json().catch(() => ({}));
     return json;
   } catch (err) {
@@ -5783,13 +5797,20 @@ async function actionWebPushConfig(event, body) {
   return { ok: true, vapidPublicKey: CFG.vapidPublicKey, enabled: !!CFG.vapidPublicKey };
 }
 async function actionWebPushSubscribe(event, body) {
-  const { playerId } = await requirePlayer(event, body);
+  const auth = await requirePlayer(event, body);
   const sub = body.subscription || {};
   const endpoint = safe(sub.endpoint || '');
   if (!endpoint) throw new Error('push_endpoint_required');
+  const requestedDeviceId = sanitizeId(body.deviceId, 120);
+  const deviceId = auth.deviceId || requestedDeviceId;
+  if (!deviceId) throw new Error('push_device_required');
+  if (requestedDeviceId && requestedDeviceId !== deviceId) throw new Error('push_device_identity_mismatch');
   const endpointHash = hash(endpoint).slice(0, 32);
-  await kvPut({ pk: `webPushSub:${playerId}:${endpointHash}`, type: 'webPushSub', owner: playerId, expiresAt: 0, data: { playerId, endpointHash, subscription: sub, userAgent: safe(body.userAgent || '').slice(0, 220), createdAt: now(), updatedAt: now() } });
-  return { ok: true, endpointHash };
+  const key = `webPushSub:${auth.playerId}:${endpointHash}`;
+  const old = payload(await kvGet(key));
+  const at = now();
+  await kvPut({ pk: key, type: 'webPushSub', owner: auth.playerId, expiresAt: 0, data: { ...old, playerId: auth.playerId, deviceId, endpointHash, subscription: sub, userAgent: safe(body.userAgent || '').slice(0, 220), createdAt: old.createdAt || at, updatedAt: at } });
+  return { ok: true, endpointHash, deviceId };
 }
 async function actionWebPushUnsubscribe(event, body) {
   const { playerId } = await requirePlayer(event, body);
