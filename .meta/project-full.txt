@@ -10145,7 +10145,7 @@ const renderMiniRow = d => {
 
 export const renderAccountDevicesBlock = () => {
   const r = rows(), active = r.filter(d => !Number(d.retiredAt || 0));
-  return `<div class="yandex-auth-note" id="ya-devices-block" style="margin-top:8px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px"><div style="font-size:12px;font-weight:900;color:#eaf2ff;text-transform:uppercase;letter-spacing:.7px">📱 Устройства пользователя</div><button type="button" class="om-btn om-btn--ghost" id="ya-devices-refresh" style="font-size:11px;padding:5px 9px">↻</button></div><div style="font-size:11px;color:#7f93b5;margin-bottom:8px">Активных: ${active.length} · всего в истории: ${r.length}. Данные обновляются через общий backup.</div><div style="display:flex;flex-direction:column;gap:6px">${r.length ? r.slice(0,3).map(renderMiniRow).join('') : '<div class="fav-empty">Устройства ещё не зарегистрированы</div>'}</div>${r.length > 3 ? `<button type="button" class="om-btn om-btn--outline" id="ya-devices-open" style="width:100%;margin-top:8px">Показать все устройства</button>` : ''}</div>`;
+  return `<div class="yandex-auth-note" id="ya-devices-block" style="margin-top:8px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px"><div style="font-size:12px;font-weight:900;color:#eaf2ff;text-transform:uppercase;letter-spacing:.7px">📱 Устройства пользователя</div><button type="button" class="om-btn om-btn--ghost" id="ya-devices-refresh" style="font-size:11px;padding:5px 9px">↻</button></div><div style="font-size:11px;color:#7f93b5;margin-bottom:8px">Активных: ${active.length} · всего в истории: ${r.length}. Runtime playback хранится только на сервере и не входит в backup.</div><div style="display:flex;flex-direction:column;gap:6px">${r.length ? r.slice(0,3).map(renderMiniRow).join('') : '<div class="fav-empty">Устройства ещё не зарегистрированы</div>'}</div>${r.length > 3 ? `<button type="button" class="om-btn om-btn--outline" id="ya-devices-open" style="width:100%;margin-top:8px">Показать все устройства</button>` : ''}<button type="button" class="om-btn om-btn--ghost" id="ya-playback-diagnostics" style="width:100%;margin-top:8px">Диагностика playback</button></div>`;
 };
 
 const renderAuthHistory = d => {
@@ -10189,6 +10189,12 @@ export const bindAccountDevicesBlock = (root, rerender) => {
     const open = e.target.closest('[data-dev-open]')?.dataset.devOpen;
     if (open) return openDeviceModal({ stableId: open, rerender });
     if (e.target.closest('#ya-devices-open')) return openDeviceModal({ stableId: curId(), rerender });
+    if (e.target.closest('#ya-playback-diagnostics')) {
+      const logical = await window.PlaybackOwnership?.getLogicalDiagnostics?.().catch(() => null);
+      const text = logical ? JSON.stringify(logical, null, 2) : 'Активная logical listening session не найдена.';
+      window.Modals?.open?.({ title: 'Playback diagnostics', maxWidth: 500, bodyHtml: `<pre style="white-space:pre-wrap;word-break:break-word;color:#9db7dd;font-size:10px;line-height:1.4">${esc(text)}</pre>` });
+      return;
+    }
     if (e.target.closest('#ya-devices-refresh')) { await ensureCurrentDeviceRegistryRow({ authEvent: true }).catch(() => null); markDevicesDirty({ immediate: true }); window.NotificationSystem?.success('Список устройств обновлён'); rerender?.(); }
   });
 };
