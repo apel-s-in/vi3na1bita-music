@@ -132,14 +132,15 @@ export const normalizeStatsProjection = raw => ({
 export const buildStatsProjectionShard = async segment => {
   const events = (Array.isArray(segment?.events) ? segment.events : []).filter(isV7SyncEvent);
   const branchId = safeDeltaId(segment?.branchId);
-  const deviceStableId = safeDeltaId(segment?.deviceStableId);
+  const deviceStableId = safeDeltaId(segment?.deviceId || segment?.deviceStableId);
+  const chainId = safe(segment?.chainId);
   const fromSeq = Math.floor(num(segment?.fromSeq));
   const toSeq = Math.floor(num(segment?.toSeq));
   const sourceHash = safe(segment?.hash);
-  const rangeKey = buildDeltaRangeKey({ branchId, fromSeq, toSeq, hash: sourceHash });
+  const rangeKey = buildDeltaRangeKey({ deviceId: deviceStableId, chainId: chainId || branchId, fromSeq, toSeq, hash: sourceHash });
   const projection = normalizeStatsProjection(buildStatsProjection(events));
   const hash = await sha256Hex({ rangeKey, projection });
-  return { version: STATS_SHARD_VERSION, rangeKey, deviceStableId, branchId, chainId: safe(segment?.chainId), fromSeq, toSeq, eventCount: events.length, sourceHash, hash, projection, createdAt: Date.now() };
+  return { version: STATS_SHARD_VERSION, rangeKey, deviceStableId, branchId, chainId, fromSeq, toSeq, eventCount: events.length, sourceHash, hash, projection, createdAt: Date.now() };
 };
 
 export const mergeStatsProjections = shards => {
