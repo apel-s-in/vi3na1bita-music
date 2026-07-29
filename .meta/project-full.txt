@@ -14134,6 +14134,14 @@ let serverBackoffMs = 5000;
 const coalescedActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get']);
 const actionRequests = new Map();
 const safe = value => String(value == null ? '' : value).trim();
+const readTimezonePolicyRevision = yandexId => {
+  try {
+    const policy = JSON.parse(localStorage.getItem(`account:timezone-policy:v1:${safe(yandexId)}`) || 'null');
+    return Math.max(0, Math.floor(Number(policy?.revision || 0)));
+  } catch {
+    return 0;
+  }
+};
 const isRealtimeAction = action => /^(room_|signal_|lan_code_|ranked_|playback_)/.test(action) || action === 'push_send';
 export const getSocialServerBackoffState = () => ({ active: Date.now() < serverBackoffUntil, retryAt: serverBackoffUntil, remainingMs: Math.max(0, serverBackoffUntil - Date.now()) });
 const readProfile = () => {
@@ -14196,7 +14204,7 @@ export const getSocialSession = async ({ force = false } = {}) => {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Yandex-OAuth': token },
       credentials: 'omit',
       mode: 'cors',
-      body: JSON.stringify({ action: 'social_session_issue', displayName: profile.displayName, avatarUrl: profile.avatar, ...getDeviceContextForServer() })
+      body: JSON.stringify({ action: 'social_session_issue', displayName: profile.displayName, avatarUrl: profile.avatar, ...getDeviceContextForServer(), timezonePolicyRevision: readTimezonePolicyRevision(yandexId) })
     });
     const result = await readJson(response);
     registerServerBackoff(response);
