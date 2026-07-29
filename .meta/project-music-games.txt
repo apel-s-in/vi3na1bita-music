@@ -138,7 +138,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
 [/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
-[/scripts/core/] bootstrap.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
+[/scripts/core/] bootstrap.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-backup-v7.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js

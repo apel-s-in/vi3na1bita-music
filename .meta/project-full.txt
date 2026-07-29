@@ -137,7 +137,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
 [/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
-[/scripts/core/] bootstrap.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
+[/scripts/core/] bootstrap.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-backup-v7.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
@@ -5779,11 +5779,26 @@ export const META_DB_STORES = Object.freeze([
   'hybrid_sync',
   'recommendation_state',
   'collection_state',
-  'intel_runtime'
+  'intel_runtime',
+  'backup_known_ranges',
+  'backup_pending_ranges',
+  'backup_mutations',
+  'backup_sync_state'
+]);
+
+export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
+  'events_hot',
+  'events_warm',
+  'stats',
+  'global',
+  'backup_known_ranges',
+  'backup_pending_ranges',
+  'backup_mutations',
+  'backup_sync_state'
 ]);
 
 export class MetaDB {
-  constructor() { this.dbName = 'MetaDB_v4'; this.version = 2; this.db = null; }
+  constructor() { this.dbName = 'MetaDB_v4'; this.version = 3; this.db = null; }
   async init() {
     if (this.db) return this.db;
     return window.Utils.func.memoAsyncOnce('analytics:meta-db:init', () => new Promise((res, rej) => {
@@ -5794,7 +5809,8 @@ export class MetaDB {
         ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
-        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
+        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime', 'backup_pending_ranges', 'backup_mutations', 'backup_sync_state'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
+        if (!db.objectStoreNames.contains('backup_known_ranges')) db.createObjectStore('backup_known_ranges', { keyPath: 'rangeKey' });
       };
       req.onsuccess = () => res(this.db = req.result);
       req.onerror = () => rej(req.error);
@@ -5825,13 +5841,13 @@ export class MetaDB {
 
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction(
-        META_DB_STORES,
+        ACCOUNT_SNAPSHOT_STORES,
         'readonly'
       );
       const snapshot = {};
-      let pending = META_DB_STORES.length;
+      let pending = ACCOUNT_SNAPSHOT_STORES.length;
 
-      META_DB_STORES.forEach(name => {
+      ACCOUNT_SNAPSHOT_STORES.forEach(name => {
         const request = tx.objectStore(name).getAll();
 
         request.onsuccess = () => {
@@ -15184,6 +15200,80 @@ async checkExists(t){if(!t)return false;try{return!!(await this.getMeta(t))}catc
 async deleteOldBackups(t,{keep:k=5}={}){if(!t)return;const r=await fetch(`${API}/resources?path=${encodeURIComponent(BD)}&limit=200`,{headers:aH(t)});if(!r.ok)return;const i=(await r.json())?._embedded?.items||[],v=i.filter(x=>/^vi3na1bita_backup_.*\.vi3bak$/i.test(sS(x.name))).sort((a,b)=>(Date.parse(b.modified)||0)-(Date.parse(a.modified)||0)),tD=v.slice(Math.max(0,k));for(const it of tD)await fetch(`${API}/resources?path=${encodeURIComponent(it.path)}`,{method:'DELETE',headers:aH(t)}).catch(()=>{});}
 };
 export default YandexBackupDisk;
+
+//=================================================
+// FILE: /scripts/core/yandex-backup-v7.js
+// Backup v7 transport.
+// Передаёт OAuth и signed social session, не управляет playback.
+import { getSocialSession } from './social-session.js';
+
+export const YANDEX_BACKUP_V7_PROXY = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
+
+const safe = value => String(value == null ? '' : value).trim();
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const readJson = async response => {
+  const text = await response.text();
+  try {
+    return JSON.parse(text || '{}') || {};
+  } catch {
+    return {};
+  }
+};
+
+const request = async (mode, data = {}, { retries = 1 } = {}) => {
+  const token = window.YandexAuth?.getToken?.();
+  if (!token || !window.YandexAuth?.isTokenAlive?.()) throw new Error('yandex_oauth_required');
+
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const session = await getSocialSession({ force: attempt > 0 && Number(lastError?.status) === 401 });
+      const response = await fetch(YANDEX_BACKUP_V7_PROXY, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Yandex-Auth': token,
+          'X-Vi3-Session': session.socialSession
+        },
+        credentials: 'omit',
+        mode: 'cors',
+        body: JSON.stringify({ mode, ...data })
+      });
+      const result = await readJson(response);
+      if (!response.ok || result.ok === false) {
+        const error = new Error(safe(result.error || `backup_v7_http_${response.status}`));
+        error.status = response.status;
+        error.payload = result;
+        throw error;
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries || ![0, 401, 429, 502, 503, 504].includes(Number(error?.status || 0))) break;
+      await sleep(600 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error('backup_v7_request_failed');
+};
+
+export const authorizeBackupV7 = () => request('v7_authorize', {}, { retries: 1 });
+export const pushBackupV7Range = range => request('v7_push_range', { range }, { retries: 1 });
+export const pullBackupV7Ranges = knownRangeKeys => request('v7_pull_ranges', { knownRangeKeys: Array.isArray(knownRangeKeys) ? knownRangeKeys : [] }, { retries: 1 });
+export const putBackupV7Settings = settings => request('v7_put_settings', { settings }, { retries: 1 });
+export const getBackupV7Settings = () => request('v7_get_settings', {}, { retries: 1 });
+
+export const YandexBackupV7 = {
+  authorize: authorizeBackupV7,
+  pushRange: pushBackupV7Range,
+  pullRanges: pullBackupV7Ranges,
+  putSettings: putBackupV7Settings,
+  getSettings: getBackupV7Settings
+};
+
+window.YandexBackupV7 = YandexBackupV7;
+export default YandexBackupV7;
 
 //=================================================
 // FILE: /scripts/core/yandex-device-settings-disk.js
