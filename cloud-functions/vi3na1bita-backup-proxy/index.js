@@ -258,16 +258,6 @@ async function ensureDir(token, path) {
 async function ensureDirs(token, paths) {
   for (const path of paths) await ensureDir(token, path);
 }
-async function resourceMeta(token, path) {
-  const response = await diskJson('GET', `${API}/resources?path=${encodeURIComponent(path)}`, token, null, 10000);
-  if (response.status === 404) return null;
-  if (response.status !== 200) {
-    const error = new Error(`disk_meta_failed:${response.status}`);
-    error.status = response.status === 401 ? 401 : response.status === 403 ? 403 : 502;
-    throw error;
-  }
-  return response.json || null;
-}
 async function downloadJson(token, path) {
   const link = await diskJson('GET', `${API}/resources/download?path=${encodeURIComponent(path)}`, token, null, 15000);
   if (link.status === 404) return null;
@@ -312,7 +302,7 @@ async function uploadJson(token, path, value, { overwrite = false } = {}) {
   }
   return { ok: true, conflict: false };
 }
-async function listFolder(token, path, maxItems = 2000) {
+async function listFolder(token, path, maxItems = 10000) {
   const output = [];
   const limit = 200;
   for (let offset = 0; offset < maxItems; offset += limit) {
@@ -351,15 +341,27 @@ function normalizeRange(raw, auth) {
   if (toSeq < fromSeq) throw Object.assign(new Error('range_sequence_invalid'), { status: 400 });
   if (!events.length || events.length > MAX_RANGE_EVENTS) throw Object.assign(new Error('range_event_count_invalid'), { status: 413 });
   if (events.length !== toSeq - fromSeq + 1) throw Object.assign(new Error('range_sequence_not_contiguous'), { status: 409 });
+  const eventIds = new Set();
   events.forEach((event, index) => {
     const expectedSeq = fromSeq + index;
-    if (!isObject(event) || !safe(event.eventId)) throw Object.assign(new Error('range_event_invalid'), { status: 400 });
+    const eventId = safe(event?.eventId);
+
+    if (!isObject(event) || !eventId) throw Object.assign(new Error('range_event_invalid'), { status: 400 });
+    if (eventIds.has(eventId)) throw Object.assign(new Error('range_event_id_duplicate'), { status: 409 });
+    eventIds.add(eventId);
+
     if (Math.floor(num(event.deviceSeq)) !== expectedSeq) throw Object.assign(new Error('range_event_sequence_mismatch'), { status: 409 });
     if (safeId(event.chainId, 160) !== chainId) throw Object.assign(new Error('range_event_chain_mismatch'), { status: 409 });
     if (safeId(event.deviceStableId, 120) !== auth.deviceId) throw Object.assign(new Error('range_event_device_mismatch'), { status: 403 });
+
     if (!/^[a-f0-9]{64}$/.test(safe(event.eventHash)) || eventHash(event) !== safe(event.eventHash)) {
       throw Object.assign(new Error('range_event_hash_mismatch'), { status: 409 });
     }
+
+    if (index > 0 && safe(event.prevHash) !== safe(events[index - 1]?.eventHash)) {
+      throw Object.assign(new Error('range_event_prev_hash_mismatch'), { status: 409 });
+    }
+
     const eventOwner = safe(event.ownerYandexIdHash);
     if (eventOwner && eventOwner !== auth.ownerYandexIdHash) {
       throw Object.assign(new Error('range_event_owner_mismatch'), { status: 403 });
@@ -386,20 +388,113 @@ function normalizeSettings(raw, auth) {
   const settings = { version: V7_VERSION, ownerYandexIdHash: auth.ownerYandexIdHash, deviceId: auth.deviceId, updatedAt: now(), localStorage };
   return { ...settings, hash: hash(stableStringify(settings)) };
 }
+const rangeRefFromFile = ({ file, deviceId, chainId, chainDir }) => {
+  const match = safe(file?.name).match(/^range_(\d+)_(\d+)_([a-f0-9]{64})\.json$/);
+  if (!match) return null;
+
+  const fromSeq = Number(match[1]);
+  const toSeq = Number(match[2]);
+  const payloadHash = match[3];
+
+  if (!fromSeq || toSeq < fromSeq) return null;
+
+  return {
+    rangeKey: `${deviceId}:${chainId}:${fromSeq}:${toSeq}:${payloadHash}`,
+    deviceId,
+    chainId,
+    fromSeq,
+    toSeq,
+    hash: payloadHash,
+    path: `${chainDir}/${file.name}`,
+    size: num(file.size),
+    modified: file.modified || null
+  };
+};
+
+const immutableConflict = message => {
+  const error = new Error(message);
+  error.status = 409;
+  return error;
+};
+
 async function writeImmutableRange(auth, range) {
   const deviceDir = `${V7_DEVICES_DIR}/${auth.deviceId}`;
   const chainDir = `${deviceDir}/${range.chainId}`;
   const path = rangePath(range);
+  const slotPath = `${chainDir}/slot_${range.fromSeq}.json`;
+
   await ensureDirs(auth.oauthToken, ['app:/Backup', V7_ROOT, V7_DEVICES_DIR, deviceDir, chainDir]);
+
+  const files = await listFolder(auth.oauthToken, chainDir);
+  const refs = files
+    .map(file => rangeRefFromFile({ file, deviceId: auth.deviceId, chainId: range.chainId, chainDir }))
+    .filter(Boolean)
+    .sort((left, right) => left.fromSeq - right.fromSeq || left.toSeq - right.toSeq);
+
+  const exact = refs.find(ref => ref.rangeKey === range.rangeKey);
+  if (exact) {
+    const existing = await downloadJson(auth.oauthToken, exact.path);
+    if (existing && safe(existing.hash) === range.hash && safe(existing.rangeKey) === range.rangeKey) {
+      return { duplicate: true, path: exact.path };
+    }
+    throw immutableConflict('immutable_range_conflict');
+  }
+
+  const overlap = refs.find(ref => range.fromSeq <= ref.toSeq && range.toSeq >= ref.fromSeq);
+  if (overlap) throw immutableConflict('range_sequence_overlap');
+
+  const previous = refs[refs.length - 1] || null;
+  const firstEvent = range.events[0];
+
+  if (!previous) {
+    if (range.fromSeq !== 1) throw immutableConflict('range_chain_must_start_at_one');
+    if (safe(firstEvent?.prevHash)) throw immutableConflict('range_chain_first_prev_hash_invalid');
+  } else {
+    if (range.fromSeq !== previous.toSeq + 1) throw immutableConflict('range_chain_gap_or_reorder');
+
+    const previousRange = await downloadJson(auth.oauthToken, previous.path);
+    const previousEvents = Array.isArray(previousRange?.events) ? previousRange.events : [];
+    const previousLastEvent = previousEvents[previousEvents.length - 1];
+
+    if (!previousLastEvent || safe(firstEvent?.prevHash) !== safe(previousLastEvent.eventHash)) {
+      throw immutableConflict('range_chain_prev_hash_mismatch');
+    }
+  }
+
+  const slot = {
+    version: V7_VERSION,
+    ownerYandexIdHash: auth.ownerYandexIdHash,
+    deviceId: auth.deviceId,
+    chainId: range.chainId,
+    fromSeq: range.fromSeq,
+    toSeq: range.toSeq,
+    hash: range.hash,
+    rangeKey: range.rangeKey,
+    path,
+    createdAt: range.createdAt
+  };
+
+  const slotWrite = await uploadJson(auth.oauthToken, slotPath, slot, { overwrite: false });
+  if (!slotWrite.ok) {
+    const existingSlot = await downloadJson(auth.oauthToken, slotPath);
+    const sameSlot =
+      safe(existingSlot?.rangeKey) === range.rangeKey &&
+      safe(existingSlot?.hash) === range.hash &&
+      num(existingSlot?.fromSeq) === range.fromSeq &&
+      num(existingSlot?.toSeq) === range.toSeq;
+
+    if (!sameSlot) throw immutableConflict('immutable_range_slot_conflict');
+  }
+
   const uploaded = await uploadJson(auth.oauthToken, path, range, { overwrite: false });
   if (uploaded.ok) return { duplicate: false, path };
+
   const existing = await downloadJson(auth.oauthToken, path);
   if (existing && safe(existing.hash) === range.hash && safe(existing.rangeKey) === range.rangeKey) {
     return { duplicate: true, path };
   }
-  const error = new Error('immutable_range_conflict');
-  error.status = 409;
-  throw error;
+
+  throw immutableConflict('immutable_range_conflict');
 }
 async function listRangeRefs(auth) {
   const refs = [];
@@ -415,12 +510,8 @@ async function listRangeRefs(auth) {
       const chainDir = `${deviceDir}/${chainId}`;
       const files = await listFolder(auth.oauthToken, chainDir);
       files.forEach(file => {
-        const match = safe(file?.name).match(/^range_(\d+)_(\d+)_([a-f0-9]{64})\.json$/);
-        if (!match) return;
-        const fromSeq = Number(match[1]);
-        const toSeq = Number(match[2]);
-        const payloadHash = match[3];
-        refs.push({ rangeKey: `${deviceId}:${chainId}:${fromSeq}:${toSeq}:${payloadHash}`, deviceId, chainId, fromSeq, toSeq, hash: payloadHash, path: `${chainDir}/${file.name}`, size: num(file.size), modified: file.modified || null });
+        const ref = rangeRefFromFile({ file, deviceId, chainId, chainDir });
+        if (ref) refs.push(ref);
       });
     }
   }
