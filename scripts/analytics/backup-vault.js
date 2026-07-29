@@ -14,5 +14,43 @@ export class BackupVault {
     return true;
   }
   static async importDeviceSettingsObject(device, options = {}) { return applyDeviceSettingsObject(device, options); }
-  static summarizeBackupObject(b) { const ls=b?.data?.localStorage||{}, f=(()=>{try{return JSON.parse(ls['__favorites_v2__']||'[]');}catch{return[];}})(), p=(()=>{try{return JSON.parse(ls['sc3:playlists']||'[]');}catch{return[];}})(), dv=Array.isArray(b?.devices)?DeviceRegistry.normalizeDeviceRegistry(b.devices):[]; return normalizeCloudBackupMeta({ timestamp:Number(b?.revision?.timestamp||b?.createdAt||0), appVersion:String(b?.revision?.appVersion||'unknown'), statsCount:Array.isArray(b?.data?.stats)?b.data.stats.filter(x=>x?.uid&&x.uid!=='global').length:0, eventCount:Number(b?.data?.eventArchive?.eventCountFull||b?.data?.eventArchive?.eventCount||0)||(Array.isArray(b?.data?.eventLog?.warm)?b.data.eventLog.warm.length:0), achievementsCount:Object.keys(b?.data?.achievements||{}).length, favoritesCount:Array.isArray(f)?f.filter(x=>!x?.inactiveAt&&!x?.deletedAt).length:0, playlistsCount:Array.isArray(p)?p.filter(x=>!x?.deletedAt).length:0, profileName:String(b?.data?.userProfile?.name||'Слушатель'), ownerYandexId:String(b?.identity?.ownerYandexId||''), devicesCount:dv.length, deviceStableCount:DeviceRegistry.countDeviceStableIds(dv), checksum:String(b?.integrity?.payloadHash||''), eventLedgerHead:String(b?.integrity?.eventLedgerHead||b?.revision?.eventLedgerHead||''), eventLedgerSeq:Number(b?.integrity?.eventLedgerSeq||b?.revision?.eventLedgerSeq||0), eventLedgerDeviceStableId:String(b?.integrity?.eventLedgerDeviceStableId||b?.revision?.eventLedgerDeviceStableId||''), archivableLedgerHead:String(b?.integrity?.archivableLedgerHead||b?.revision?.archivableLedgerHead||''), archivableLedgerSeq:Number(b?.integrity?.archivableLedgerSeq||b?.revision?.archivableLedgerSeq||0), archivableLedgerDeviceStableId:String(b?.integrity?.archivableLedgerDeviceStableId||b?.revision?.archivableLedgerDeviceStableId||''), archivableLedgerChainId:String(b?.integrity?.archivableLedgerChainId||b?.revision?.archivableLedgerChainId||''), archivableEventCount:Number(b?.integrity?.archivableEventCount||b?.revision?.archivableEventCount||0), eventLogHash:String(b?.integrity?.eventLogHash||b?.revision?.eventLogHash||''), sharedStorageHash:String(b?.integrity?.sharedStorageHash||b?.revision?.sharedStorageHash||''), version:String(b?.version||b?.revision?.version||'unknown'), sourceDeviceStableId:String(b?.revision?.sourceDeviceStableId||''), sourceDeviceLabel:String(b?.revision?.sourceDeviceLabel||''), sourceDeviceClass:String(b?.revision?.sourceDeviceClass||''), sourcePlatform:String(b?.revision?.sourcePlatform||'') }); }
+  static summarizeBackupObject(backup) {
+    const storage = backup?.data?.localStorage || {};
+    let playlists = [];
+    try {
+      playlists = JSON.parse(storage['sc3:playlists'] || '[]');
+    } catch {}
+    const devices = Array.isArray(backup?.devices) ? DeviceRegistry.normalizeDeviceRegistry(backup.devices) : [];
+    return normalizeCloudBackupMeta({
+      timestamp: Number(backup?.revision?.timestamp || backup?.createdAt || 0),
+      appVersion: String(backup?.revision?.appVersion || 'unknown'),
+      statsCount: Array.isArray(backup?.data?.stats) ? backup.data.stats.filter(row => row?.uid && row.uid !== 'global').length : 0,
+      eventCount: Number(backup?.data?.eventArchive?.eventCountFull || backup?.data?.eventArchive?.eventCount || 0) || (Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm.length : 0),
+      achievementsCount: 0,
+      favoritesCount: 0,
+      level: 1,
+      xp: 0,
+      playlistsCount: Array.isArray(playlists) ? playlists.filter(item => !item?.deletedAt).length : 0,
+      profileName: String(backup?.data?.userProfile?.name || 'Слушатель'),
+      ownerYandexId: String(backup?.identity?.ownerYandexId || ''),
+      devicesCount: devices.length,
+      deviceStableCount: DeviceRegistry.countDeviceStableIds(devices),
+      checksum: String(backup?.integrity?.payloadHash || ''),
+      eventLedgerHead: String(backup?.integrity?.eventLedgerHead || backup?.revision?.eventLedgerHead || ''),
+      eventLedgerSeq: Number(backup?.integrity?.eventLedgerSeq || backup?.revision?.eventLedgerSeq || 0),
+      eventLedgerDeviceStableId: String(backup?.integrity?.eventLedgerDeviceStableId || backup?.revision?.eventLedgerDeviceStableId || ''),
+      archivableLedgerHead: String(backup?.integrity?.archivableLedgerHead || backup?.revision?.archivableLedgerHead || ''),
+      archivableLedgerSeq: Number(backup?.integrity?.archivableLedgerSeq || backup?.revision?.archivableLedgerSeq || 0),
+      archivableLedgerDeviceStableId: String(backup?.integrity?.archivableLedgerDeviceStableId || backup?.revision?.archivableLedgerDeviceStableId || ''),
+      archivableLedgerChainId: String(backup?.integrity?.archivableLedgerChainId || backup?.revision?.archivableLedgerChainId || ''),
+      archivableEventCount: Number(backup?.integrity?.archivableEventCount || backup?.revision?.archivableEventCount || 0),
+      eventLogHash: String(backup?.integrity?.eventLogHash || backup?.revision?.eventLogHash || ''),
+      sharedStorageHash: String(backup?.integrity?.sharedStorageHash || backup?.revision?.sharedStorageHash || ''),
+      version: String(backup?.version || backup?.revision?.version || 'unknown'),
+      sourceDeviceStableId: String(backup?.revision?.sourceDeviceStableId || ''),
+      sourceDeviceLabel: String(backup?.revision?.sourceDeviceLabel || ''),
+      sourceDeviceClass: String(backup?.revision?.sourceDeviceClass || ''),
+      sourcePlatform: String(backup?.revision?.sourcePlatform || '')
+    });
+  }
 }
