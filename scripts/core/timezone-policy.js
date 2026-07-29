@@ -108,16 +108,16 @@ export const initTimezonePolicy = () => {
   initialized = true;
   window.addEventListener('yandex:auth:changed', event => {
     if (event.detail?.status === 'active') {
-      setTimeout(() => refreshTimezonePolicy({ promptIfMissing: true }).catch(() => null), 350);
+      setTimeout(() => refreshTimezonePolicy().catch(() => null), 350);
     }
   });
   window.addEventListener('account:data-switched', () => {
     if (window.YandexAuth?.getSessionStatus?.() === 'active') {
-      refreshTimezonePolicy({ promptIfMissing: true }).catch(() => null);
+      refreshTimezonePolicy().catch(() => null);
     }
   });
   if (window.YandexAuth?.getSessionStatus?.() === 'active') {
-    refreshTimezonePolicy({ promptIfMissing: true }).catch(() => null);
+    refreshTimezonePolicy().catch(() => null);
   }
 };
 
