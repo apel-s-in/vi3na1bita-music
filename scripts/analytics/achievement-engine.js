@@ -20,6 +20,23 @@ export class AchievementEngine {
       this.achievements = this._buildUIArray();
       this.broadcast(this.lastAgg?.streak || 0);
     });
+    window.addEventListener('yandex:auth:changed', event => {
+      if (event.detail?.status !== 'active') {
+        this.lastAgg = {};
+        this.achievements = [];
+        this.broadcast(0, { reason: 'achievement_auth_required', authRequired: true });
+        return;
+      }
+      window.ListeningReceipts?.refreshStatus?.().then(() => this.check({ force: true, reason: 'achievement_auth_restored' })).catch(() => null);
+    });
+    window.addEventListener('account:data-switching', () => {
+      this.lastAgg = {};
+      this.achievements = [];
+      this.broadcast(0, { reason: 'achievement_account_switch', authRequired: true });
+    });
+  }
+  isAuthorized() {
+    return window.YandexAuth?.getSessionStatus?.() === 'active' && window.YandexAuth?.isTokenAlive?.();
   }
   async _initBoot() {
     const [unData, metaData, profData] = await Promise.all([metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('achievement_unlock_meta'), metaDB.getGlobal('user_profile_rpg')]);
@@ -87,11 +104,17 @@ export class AchievementEngine {
     }
     return rule.scaling.steps.slice(0, level - 1).reduce((sum, target) => sum + Number(target || 0), 0);
   }
-  _requiresServerVerification(rule) {
-    return !!rule?.reward;
+  _requiresServerVerification() {
+    return true;
   }
   async check({ force = false, reason = '' } = {}) {
     if (window._isRestoring && !force) return;
+    if (!this.isAuthorized()) {
+      this.lastAgg = {};
+      this.achievements = [];
+      this.broadcast(0, { reason: reason || 'achievement_auth_required', authRequired: true });
+      return;
+    }
     if (this._checking) {
       this._checkAgain = true;
       return;
@@ -225,6 +248,7 @@ export class AchievementEngine {
     return window.ListeningReceipts?.getRewardCatalog?.().find(item => String(item?.id || '') === String(id || '')) || null;
   }
   _buildUIArray() {
+    if (!this.isAuthorized()) return [];
     const arr = [],
       agg = { ...(this.lastAgg || {}) };
     const confirmed = getConfirmedListeningStats();
@@ -238,14 +262,11 @@ export class AchievementEngine {
       const reward = this._getServerReward(id);
       const rewardEligible = reward?.eligible === true;
       const rewardAwarded = reward?.awarded === true;
-      const requiresServerVerification = this._requiresServerVerification(r);
-      const completed = requiresServerVerification ? rewardEligible || rewardAwarded : !!localUnlocked || rewardEligible || rewardAwarded;
-      const legacyAmount = lvl ? this._getSc(r, lvl, true) : Number(r.reward?.xp || 0);
-      const shardReward = Number(reward?.amount ?? legacyAmount);
-      const localTarget = Number(target || 0);
-      const localCurrent = lvl && r.scaling?.resetEachLevel ? Math.max(0, Math.min(localTarget, Number(current || 0) - this._getLevelOffset(r, lvl))) : Number(current || 0);
-      const rawCurrent = Number(reward?.current ?? localCurrent);
-      const rawTarget = Number(reward?.target ?? localTarget);
+      const requiresServerVerification = true;
+      const completed = rewardEligible || rewardAwarded;
+      const shardReward = Math.max(0, Number(reward?.amount || 0));
+      const rawCurrent = Math.max(0, Number(reward?.current || 0));
+      const rawTarget = Math.max(0, Number(reward?.target || 0));
       const hidden = !completed && !!r.hidden;
       let effectiveCurrent = rawCurrent;
       let pct = rawTarget > 0 ? Math.min(100, Math.max(0, (rawCurrent / rawTarget) * 100)) : 0;
@@ -270,18 +291,18 @@ export class AchievementEngine {
         icon: hidden ? '🔒' : r.ui.icon,
         color: hidden || (!completed && lvl) ? '#888888' : r.ui.color,
         isUnlocked: completed,
-        localUnlocked: !!localUnlocked,
+        localUnlocked: false,
         serverCompleted: rewardEligible || rewardAwarded,
         isHidden: hidden,
         isSecret: !!r.hidden || r.category === 'secret',
-        unlockedAt: Number(reward?.awardedAt || unlockedAt || 0) || null,
-        unlockMeta: reward?.awardedAt ? { id, unlockedAt: Number(reward.awardedAt), source: 'server_wallet' } : this.unlockMeta?.[id] || null,
+        unlockedAt: Number(reward?.awardedAt || 0) || null,
+        unlockMeta: reward?.awardedAt ? { id, unlockedAt: Number(reward.awardedAt), source: 'server_wallet' } : null,
         shardReward,
         rewardEligible,
         rewardAwarded,
         rewardsEnabled: reward?.rewardsEnabled === true,
         hasServerReward: !!reward,
-        rewardStatus: rewardAwarded ? 'awarded' : rewardEligible ? 'verified' : localUnlocked && requiresServerVerification ? 'legacy_local_unverified' : localUnlocked ? 'local_completed' : 'available',
+        rewardStatus: rewardAwarded ? 'awarded' : rewardEligible ? 'verified' : reward ? 'server_progress' : 'server_catalog_pending',
         ...(!completed && !hidden && rawTarget > 0 && { progress: { current: visibleCurrent, target: visibleTarget, pct } }),
         ...(progressMeta && { progressMeta })
       });
