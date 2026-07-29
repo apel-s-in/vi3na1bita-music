@@ -1026,7 +1026,6 @@ async function actionPlaybackTransferPrepare(event, body) {
     fromDeviceId: state.ownerDeviceId,
     toDeviceId: auth.deviceId,
     expectedOwnerEpoch: state.ownerEpoch,
-    expectedRevision: state.revision,
     expectedLogicalSessionId: state.logicalSessionId,
     targetTrackUid: targetTrack.uid,
     targetTrackVersion: targetTrack.trackVersion,
@@ -1076,6 +1075,7 @@ async function actionPlaybackTransferCommit(event, body) {
     const next = normalizePlaybackState(
       {
         ...current,
+        logicalSessionId: sameTrack ? current.logicalSessionId : rid('playback'),
         trackUid: track.uid,
         trackVersion: track.trackVersion,
         status: 'playing',
@@ -1110,7 +1110,19 @@ async function actionPlaybackTransferCommit(event, body) {
       ownerLabel: next.ownerLabel,
       ownerEpoch: next.ownerEpoch
     }).catch(error => ({ ok: false, error: safe(error?.message) }));
-    return { ok: true, transferred: true, fromDeviceId: transfer.fromDeviceId, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken), closedListenSegment: closedListenSegment?.receipt ? { receiptId: closedListenSegment.receipt.receiptId, observedSec: closedListenSegment.receipt.observedSec } : null, webPush };
+    return {
+      ok: true,
+      transferred: true,
+      fromDeviceId: transfer.fromDeviceId,
+      playback: publicPlaybackState(next, auth.deviceId),
+      grant: playbackGrant(next, fencingToken),
+      closedListenSegment: closedListenSegment?.segmentReceipt ? {
+        receiptId: closedListenSegment.segmentReceipt.receiptId,
+        observedSec: closedListenSegment.segmentReceipt.observedSec
+      } : null,
+      logical: closedListenSegment?.logical || null,
+      webPush
+    };
   }
   throw new Error('playback_transfer_conflict');
 }
@@ -2919,9 +2931,11 @@ function normalizeListenCreditSegments(raw) {
       toAt: Math.max(0, Math.floor(num(segment?.toAt))),
       creditMs: Math.max(0, Math.floor(num(segment?.creditMs))),
       fromObservedMs: Math.max(0, Math.floor(num(segment?.fromObservedMs))),
-      toObservedMs: Math.max(0, Math.floor(num(segment?.toObservedMs)))
+      toObservedMs: Math.max(0, Math.floor(num(segment?.toObservedMs))),
+      fromPositionMs: Math.max(0, Math.floor(num(segment?.fromPositionMs))),
+      toPositionMs: Math.max(0, Math.floor(num(segment?.toPositionMs)))
     }))
-    .filter(segment => segment.fromAt > 0 && segment.toAt > segment.fromAt && segment.creditMs > 0 && segment.toObservedMs > segment.fromObservedMs)
+    .filter(segment => segment.fromAt > 0 && segment.toAt > segment.fromAt && segment.creditMs > 0 && segment.toObservedMs > segment.fromObservedMs && segment.toPositionMs > segment.fromPositionMs)
     .sort((left, right) => left.fromObservedMs - right.fromObservedMs)
     .slice(-LISTEN_CREDIT_SEGMENT_LIMIT);
 }
@@ -2967,6 +2981,291 @@ function normalizeListenSession(raw = {}) {
     platform: sanitizeId(raw.platform, 30),
     updatedAt: num(raw.updatedAt)
   };
+}
+const LOGICAL_LISTEN_VERSION = 1;
+const LOGICAL_COVERAGE_LIMIT = 512;
+const LOGICAL_SEGMENT_LIMIT = 128;
+const LOGICAL_COVERAGE_REQUIRED_RATIO = 0.95;
+const LOGICAL_COVERAGE_MAX_GAP_MS = 3000;
+
+function logicalListenKey(playerId, logicalSessionId) {
+  return ['logicalListen', sanitizeId(playerId, 96), sanitizeId(logicalSessionId, 120)].join(':');
+}
+function normalizeLogicalCoverageIntervals(raw) {
+  return (Array.isArray(raw) ? raw : [])
+    .map(interval => ({
+      intervalId: sanitizeId(interval?.intervalId, 120),
+      sessionId: sanitizeId(interval?.sessionId, 120),
+      deviceId: sanitizeId(interval?.deviceId, 120),
+      ownerEpoch: Math.max(0, Math.floor(num(interval?.ownerEpoch))),
+      fromPositionMs: Math.max(0, Math.floor(num(interval?.fromPositionMs))),
+      toPositionMs: Math.max(0, Math.floor(num(interval?.toPositionMs))),
+      creditMs: Math.max(0, Math.floor(num(interval?.creditMs))),
+      fromAt: Math.max(0, Math.floor(num(interval?.fromAt))),
+      toAt: Math.max(0, Math.floor(num(interval?.toAt)))
+    }))
+    .filter(interval => interval.intervalId && interval.sessionId && interval.deviceId && interval.ownerEpoch > 0 && interval.toPositionMs > interval.fromPositionMs && interval.creditMs > 0)
+    .sort((left, right) => left.fromPositionMs - right.fromPositionMs || left.toPositionMs - right.toPositionMs)
+    .slice(-LOGICAL_COVERAGE_LIMIT);
+}
+function mergeLogicalCoverageIntervals(intervals = []) {
+  const rows = normalizeLogicalCoverageIntervals(intervals);
+  const merged = [];
+  rows.forEach(interval => {
+    const last = merged[merged.length - 1];
+    if (!last || interval.fromPositionMs > last.toPositionMs) {
+      merged.push({ fromPositionMs: interval.fromPositionMs, toPositionMs: interval.toPositionMs });
+      return;
+    }
+    last.toPositionMs = Math.max(last.toPositionMs, interval.toPositionMs);
+  });
+  return merged;
+}
+function logicalCoverageMetrics(intervals = [], durationMs = 0) {
+  const merged = mergeLogicalCoverageIntervals(intervals);
+  const coveredMs = merged.reduce((sum, interval) => sum + Math.max(0, interval.toPositionMs - interval.fromPositionMs), 0);
+  let maxGapMs = 0;
+  for (let index = 1; index < merged.length; index++) {
+    maxGapMs = Math.max(maxGapMs, merged[index].fromPositionMs - merged[index - 1].toPositionMs);
+  }
+  const duration = Math.max(0, Math.floor(num(durationMs)));
+  return {
+    merged,
+    coveredMs: Math.min(duration || coveredMs, coveredMs),
+    coverageRatio: duration > 0 ? Math.min(1, coveredMs / duration) : 0,
+    maxGapMs
+  };
+}
+function normalizeLogicalListen(raw = {}, playerId = '') {
+  const durationMs = Math.max(0, Math.floor(num(raw.durationMs)));
+  const coverageIntervals = normalizeLogicalCoverageIntervals(raw.coverageIntervals);
+  const coverage = logicalCoverageMetrics(coverageIntervals, durationMs);
+  return {
+    version: LOGICAL_LISTEN_VERSION,
+    playerId: sanitizeId(playerId || raw.playerId, 96),
+    logicalSessionId: sanitizeId(raw.logicalSessionId, 120),
+    trackUid: sanitizeId(raw.trackUid, 160),
+    trackVersion: safe(raw.trackVersion).slice(0, 96),
+    album: sanitizeId(raw.album, 120),
+    durationMs,
+    status: sanitizeId(raw.status || 'active', 30),
+    initialStartedPositionMs: Math.max(0, Math.floor(num(raw.initialStartedPositionMs))),
+    finalPositionMs: Math.max(0, Math.floor(num(raw.finalPositionMs))),
+    acceptedCreditMs: Math.max(0, Math.floor(num(raw.acceptedCreditMs))),
+    coverageIntervals,
+    coveredMs: coverage.coveredMs,
+    coverageRatio: coverage.coverageRatio,
+    maxGapMs: coverage.maxGapMs,
+    intervalIds: [...new Set((Array.isArray(raw.intervalIds) ? raw.intervalIds : []).map(value => sanitizeId(value, 120)).filter(Boolean))].slice(-LOGICAL_COVERAGE_LIMIT),
+    segmentIds: [...new Set((Array.isArray(raw.segmentIds) ? raw.segmentIds : []).map(value => sanitizeId(value, 120)).filter(Boolean))].slice(-LOGICAL_SEGMENT_LIMIT),
+    deviceIds: [...new Set((Array.isArray(raw.deviceIds) ? raw.deviceIds : []).map(value => sanitizeId(value, 120)).filter(Boolean))].slice(-30),
+    transferCount: Math.max(0, Math.floor(num(raw.transferCount))),
+    invalidated: raw.invalidated === true,
+    invalidReason: sanitizeId(raw.invalidReason, 80),
+    reachedEndNaturally: raw.reachedEndNaturally === true,
+    completionReason: sanitizeId(raw.completionReason, 40),
+    contextVersion: Math.max(0, Math.min(1, Math.floor(num(raw.contextVersion)))),
+    quality: normalizeListenQuality(raw.quality),
+    timezoneOffsetMin: normalizeTimezoneOffsetMin(raw.timezoneOffsetMin),
+    shuffle: raw.shuffle === true,
+    favoritesOnly: raw.favoritesOnly === true,
+    favoriteAtStart: raw.favoriteAtStart === true,
+    favoriteRevisionAtStart: Math.max(0, Math.floor(num(raw.favoriteRevisionAtStart))),
+    favoriteOrderIndexAtStart: Math.max(-1, Math.floor(num(raw.favoriteOrderIndexAtStart, -1))),
+    favoriteOrderSizeAtStart: Math.max(0, Math.floor(num(raw.favoriteOrderSizeAtStart))),
+    startedAt: Math.max(0, num(raw.startedAt)),
+    completedAt: Math.max(0, num(raw.completedAt)),
+    fullReceiptId: sanitizeId(raw.fullReceiptId, 120),
+    createdAt: Math.max(0, num(raw.createdAt)),
+    updatedAt: Math.max(0, num(raw.updatedAt))
+  };
+}
+function publicLogicalListen(raw = {}) {
+  const logical = normalizeLogicalListen(raw, raw?.playerId);
+  return {
+    version: logical.version,
+    logicalSessionId: logical.logicalSessionId,
+    trackUid: logical.trackUid,
+    trackVersion: logical.trackVersion,
+    status: logical.status,
+    durationMs: logical.durationMs,
+    initialStartedPositionMs: logical.initialStartedPositionMs,
+    finalPositionMs: logical.finalPositionMs,
+    acceptedCreditMs: logical.acceptedCreditMs,
+    coveredMs: logical.coveredMs,
+    coverageRatio: logical.coverageRatio,
+    maxGapMs: logical.maxGapMs,
+    segments: logical.segmentIds.length,
+    devices: logical.deviceIds.length,
+    transferCount: logical.transferCount,
+    invalidated: logical.invalidated,
+    invalidReason: logical.invalidReason,
+    reachedEndNaturally: logical.reachedEndNaturally,
+    fullReceiptId: logical.fullReceiptId,
+    completedAt: logical.completedAt,
+    updatedAt: logical.updatedAt
+  };
+}
+async function syncLogicalListenSession(sessionRaw) {
+  const session = normalizeListenSession(sessionRaw);
+  if (!session.playerId || !session.logicalSessionId || !session.trackUid || !session.trackVersion) return null;
+  const track = listenTrackFromCatalog(session.trackUid);
+  if (track.trackVersion !== session.trackVersion) throw new Error('logical_listen_track_version_mismatch');
+  const key = logicalListenKey(session.playerId, session.logicalSessionId);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const row = await kvGet(key);
+    const current = normalizeLogicalListen(payload(row), session.playerId);
+    if (row && (current.trackUid !== session.trackUid || current.trackVersion !== session.trackVersion)) {
+      throw new Error('logical_listen_track_mismatch');
+    }
+    if (row && current.status === 'completed') return current;
+    const knownIntervals = new Set(current.intervalIds);
+    const additions = session.creditSegments
+      .map(segment => {
+        const intervalId = `cov_${hash([session.playerId, session.logicalSessionId, session.sessionId, segment.fromObservedMs, segment.toObservedMs].join(':')).slice(0, 36)}`;
+        return {
+          intervalId,
+          sessionId: session.sessionId,
+          deviceId: session.deviceId,
+          ownerEpoch: session.ownerEpoch,
+          fromPositionMs: segment.fromPositionMs,
+          toPositionMs: segment.toPositionMs,
+          creditMs: segment.creditMs,
+          fromAt: segment.fromAt,
+          toAt: segment.toAt
+        };
+      })
+      .filter(interval => !knownIntervals.has(interval.intervalId));
+    const at = now();
+    const ended = session.status === 'completed' && session.completionReason === 'ended';
+    const first = !row || !current.logicalSessionId;
+    const invalidated = current.invalidated || session.rejectedHeartbeats > 0 || session.continuityBroken === true;
+    const next = normalizeLogicalListen({
+      ...current,
+      playerId: session.playerId,
+      logicalSessionId: session.logicalSessionId,
+      trackUid: session.trackUid,
+      trackVersion: session.trackVersion,
+      album: session.album,
+      durationMs: Math.floor(track.duration * 1000),
+      status: ended ? 'completed' : 'active',
+      initialStartedPositionMs: first ? Math.floor(session.startedPosition * 1000) : current.initialStartedPositionMs,
+      finalPositionMs: ended ? Math.floor(session.lastPosition * 1000) : Math.max(current.finalPositionMs, Math.floor(session.lastPosition * 1000)),
+      acceptedCreditMs: current.acceptedCreditMs + additions.reduce((sum, interval) => sum + interval.creditMs, 0),
+      coverageIntervals: [...current.coverageIntervals, ...additions],
+      intervalIds: [...current.intervalIds, ...additions.map(interval => interval.intervalId)],
+      segmentIds: [...current.segmentIds, session.sessionId],
+      deviceIds: [...current.deviceIds, session.deviceId],
+      transferCount: Math.max(current.transferCount, Math.max(0, current.deviceIds.includes(session.deviceId) ? current.transferCount : current.deviceIds.length)),
+      invalidated,
+      invalidReason: invalidated ? (current.invalidReason || session.lastRejectReason || 'segment_continuity') : '',
+      reachedEndNaturally: current.reachedEndNaturally || ended,
+      completionReason: ended ? 'ended' : current.completionReason,
+      contextVersion: first ? session.contextVersion : current.contextVersion,
+      quality: first ? session.quality : current.quality,
+      timezoneOffsetMin: first ? session.timezoneOffsetMin : current.timezoneOffsetMin,
+      shuffle: first ? session.shuffle : current.shuffle,
+      favoritesOnly: first ? session.favoritesOnly : current.favoritesOnly,
+      favoriteAtStart: first ? session.favoriteAtStart : current.favoriteAtStart,
+      favoriteRevisionAtStart: first ? session.favoriteRevisionAtStart : current.favoriteRevisionAtStart,
+      favoriteOrderIndexAtStart: first ? session.favoriteOrderIndexAtStart : current.favoriteOrderIndexAtStart,
+      favoriteOrderSizeAtStart: first ? session.favoriteOrderSizeAtStart : current.favoriteOrderSizeAtStart,
+      startedAt: first ? session.startedAt : current.startedAt,
+      completedAt: ended ? session.completedAt : current.completedAt,
+      createdAt: current.createdAt || session.startedAt || at,
+      updatedAt: at
+    }, session.playerId);
+    let changed = false;
+    if (!row) {
+      try {
+        await kvInsert({ pk: key, type: 'logicalListen', owner: session.playerId, expiresAt: now() + LISTEN_SESSION_RETENTION_MS, data: next });
+        changed = true;
+      } catch {}
+    } else {
+      changed = await kvCompareAndPut({ row, type: 'logicalListen', owner: session.playerId, expiresAt: now() + LISTEN_SESSION_RETENTION_MS, data: next });
+    }
+    if (changed) return next;
+  }
+  throw new Error('logical_listen_sync_conflict');
+}
+async function finalizeLogicalListen(logicalRaw) {
+  const logical = normalizeLogicalListen(logicalRaw, logicalRaw?.playerId);
+  if (!logical.playerId || !logical.logicalSessionId || logical.status !== 'completed' || !logical.reachedEndNaturally) return null;
+  const receiptId = logical.fullReceiptId || `llr_${hash([logical.playerId, logical.logicalSessionId, logical.trackUid, logical.trackVersion].join(':')).slice(0, 36)}`;
+  const receiptPk = listenReceiptKey(logical.playerId, receiptId);
+  const oldRow = await kvGet(receiptPk);
+  const oldReceipt = payload(oldRow);
+  if (oldReceipt.progressApplied === true) {
+    const progress = normalizeAchievementProgress(payload(await kvGet(achievementProgressKey(logical.playerId))), logical.playerId);
+    return { receipt: oldReceipt, progress, rewards: { enabled: true, grants: [], wallet: null }, duplicate: true };
+  }
+  const requiredCoverageMs = Math.floor(logical.durationMs * LOGICAL_COVERAGE_REQUIRED_RATIO);
+  const full = !logical.invalidated &&
+    logical.initialStartedPositionMs <= 2000 &&
+    logical.finalPositionMs >= Math.max(0, logical.durationMs - 3000) &&
+    logical.coveredMs >= requiredCoverageMs &&
+    logical.acceptedCreditMs >= requiredCoverageMs &&
+    logical.maxGapMs <= LOGICAL_COVERAGE_MAX_GAP_MS;
+  const receipt = {
+    version: LISTEN_RECEIPT_VERSION,
+    receiptId,
+    receiptKind: 'logical_full',
+    playerId: logical.playerId,
+    logicalSessionId: logical.logicalSessionId,
+    sessionId: logical.logicalSessionId,
+    deviceId: logical.deviceIds[logical.deviceIds.length - 1] || '',
+    trackUid: logical.trackUid,
+    trackVersion: logical.trackVersion,
+    album: logical.album,
+    duration: logical.durationMs / 1000,
+    startedPosition: logical.initialStartedPositionMs / 1000,
+    finalPosition: logical.finalPositionMs / 1000,
+    observedSec: Math.floor(logical.acceptedCreditMs / 1000),
+    coveredMs: logical.coveredMs,
+    coverageRatio: logical.coverageRatio,
+    maxGapMs: logical.maxGapMs,
+    valid: false,
+    full,
+    acceptedHeartbeats: logical.coverageIntervals.length,
+    rejectedHeartbeats: logical.invalidated ? 1 : 0,
+    completionReason: 'ended',
+    contextVersion: logical.contextVersion,
+    quality: logical.quality,
+    timezoneOffsetMin: logical.timezoneOffsetMin,
+    shuffle: logical.shuffle,
+    favoritesOnly: logical.favoritesOnly,
+    favoriteAtStart: logical.favoriteAtStart,
+    favoriteRevisionAtStart: logical.favoriteRevisionAtStart,
+    favoriteOrderIndexAtStart: logical.favoriteOrderIndexAtStart,
+    favoriteOrderSizeAtStart: logical.favoriteOrderSizeAtStart,
+    continuousObservedMs: logical.invalidated ? 0 : logical.acceptedCreditMs,
+    continuityBroken: logical.invalidated,
+    startedAt: logical.startedAt,
+    completedAt: logical.completedAt,
+    segments: logical.segmentIds.length,
+    devices: logical.deviceIds.length,
+    transferCount: logical.transferCount,
+    shadow: true,
+    rewardGranted: false
+  };
+  if (!oldRow) {
+    try {
+      await kvInsert({ pk: receiptPk, type: 'listenReceipt', owner: logical.playerId, expiresAt: 0, data: { ...receipt, progressApplied: false } });
+    } catch {}
+  }
+  const applied = await applyListenReceiptProgress(receipt);
+  const rewards = await reconcileAchievementRewards(logical.playerId, applied.progress);
+  const completedReceipt = { ...receipt, progressApplied: true, rewardGranted: rewards.grants.length > 0, rewardAmount: rewards.grants.reduce((sum, grant) => sum + grant.amount, 0), rewardIds: rewards.grants.map(grant => grant.achievementId) };
+  await kvPut({ pk: receiptPk, type: 'listenReceipt', owner: logical.playerId, expiresAt: 0, data: completedReceipt });
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const row = await kvGet(logicalListenKey(logical.playerId, logical.logicalSessionId));
+    if (!row) break;
+    const current = normalizeLogicalListen(payload(row), logical.playerId);
+    if (current.fullReceiptId === receiptId) break;
+    const next = normalizeLogicalListen({ ...current, fullReceiptId: receiptId, updatedAt: now() }, logical.playerId);
+    if (await kvCompareAndPut({ row, type: 'logicalListen', owner: logical.playerId, expiresAt: now() + LISTEN_SESSION_RETENTION_MS, data: next })) break;
+  }
+  return { receipt: completedReceipt, progress: applied.progress, rewards, duplicate: applied.duplicate };
 }
 function normalizeFavoriteOrderedByDevice(raw = {}) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
@@ -3348,7 +3647,9 @@ function applyListenObservation(session, body, { completed = false, at = now() }
   }
   const creditMs = accepted ? Math.max(0, Math.floor(Math.min(gapMs, mediaDeltaMs, maxGapMs))) : 0;
   const nextObservedMs = current.observedMs + creditMs;
-  const creditSegments = creditMs > 0 ? normalizeListenCreditSegments([...current.creditSegments, { fromAt: at - gapMs, toAt: at, creditMs, fromObservedMs: current.observedMs, toObservedMs: nextObservedMs }]) : current.creditSegments;
+  const fromPositionMs = Math.max(0, Math.floor(current.lastPosition * 1000));
+  const toPositionMs = Math.max(fromPositionMs, Math.floor(position * 1000));
+  const creditSegments = creditMs > 0 ? normalizeListenCreditSegments([...current.creditSegments, { fromAt: at - gapMs, toAt: at, creditMs, fromObservedMs: current.observedMs, toObservedMs: nextObservedMs, fromPositionMs, toPositionMs }]) : current.creditSegments;
   return {
     changed: true,
     throttled: false,
@@ -3617,28 +3918,35 @@ async function applyVerifiedFeatureProgress(playerId, { receiptId, field, increm
 }
 async function finalizeListenSession(session) {
   const data = normalizeListenSession(session);
+  const logical = data.logicalSessionId ? await syncLogicalListenSession(data) : null;
   const receiptId = data.receiptId || `lr_${hash([data.playerId, data.sessionId, data.completedAt].join(':')).slice(0, 28)}`;
   const receiptPk = listenReceiptKey(data.playerId, receiptId);
   const oldReceiptRow = await kvGet(receiptPk);
   const oldReceipt = payload(oldReceiptRow);
   if (oldReceipt.progressApplied === true) {
-    const progress = normalizeAchievementProgress(payload(await kvGet(achievementProgressKey(data.playerId))), data.playerId);
-    return { receipt: oldReceipt, progress, rewards: { enabled: true, grants: [], wallet: null }, duplicate: true };
+    const logicalFinalized = logical?.status === 'completed' ? await finalizeLogicalListen(logical) : null;
+    const progress = logicalFinalized?.progress || normalizeAchievementProgress(payload(await kvGet(achievementProgressKey(data.playerId))), data.playerId);
+    return { receipt: logicalFinalized?.receipt || oldReceipt, segmentReceipt: oldReceipt, logical: logical ? publicLogicalListen(logical) : null, progress, rewards: logicalFinalized?.rewards || { enabled: true, grants: [], wallet: null }, duplicate: true };
   }
   await applyVerifiedListenTimeProgress(data);
   const observedSec = Math.max(0, Math.floor(data.observedMs / 1000));
   const progressRatio = data.duration > 0 ? data.lastPosition / data.duration : 0;
-  const valid = observedSec >= LISTEN_VALID_MIN_SEC;
+  const transferred = data.completionReason === 'ownership_transfer';
+  const valid = !transferred && observedSec >= LISTEN_VALID_MIN_SEC;
   const fullPositionToleranceSec = 3;
   const fullObservedMinSec = Math.max(LISTEN_VALID_MIN_SEC, Math.floor(data.duration * 0.95));
-  const full = data.completionReason === 'ended' && data.startedPosition <= 2 && data.lastPosition >= Math.max(0, data.duration - fullPositionToleranceSec) && observedSec >= fullObservedMinSec && data.acceptedHeartbeats > 0 && data.rejectedHeartbeats === 0 && data.continuityBroken !== true;
+  const segmentFull = !data.logicalSessionId && data.completionReason === 'ended' && data.startedPosition <= 2 && data.lastPosition >= Math.max(0, data.duration - fullPositionToleranceSec) && observedSec >= fullObservedMinSec && data.acceptedHeartbeats > 0 && data.rejectedHeartbeats === 0 && data.continuityBroken !== true;
   const receipt = {
     version: LISTEN_RECEIPT_VERSION,
     receiptId,
+    receiptKind: data.logicalSessionId ? 'device_segment' : 'legacy_session',
     playerId: data.playerId,
+    logicalSessionId: data.logicalSessionId,
     sessionId: data.sessionId,
     deviceId: data.deviceId,
+    ownerEpoch: data.ownerEpoch,
     trackUid: data.trackUid,
+    trackVersion: data.trackVersion,
     album: data.album,
     duration: data.duration,
     startedPosition: data.startedPosition,
@@ -3648,7 +3956,7 @@ async function finalizeListenSession(session) {
     finalPosition: data.lastPosition,
     progressRatio: Math.max(0, Math.min(1, progressRatio)),
     valid,
-    full,
+    full: segmentFull,
     acceptedHeartbeats: data.acceptedHeartbeats,
     rejectedHeartbeats: data.rejectedHeartbeats,
     completionReason: data.completionReason,
@@ -3673,11 +3981,20 @@ async function finalizeListenSession(session) {
       await kvInsert({ pk: receiptPk, type: 'listenReceipt', owner: data.playerId, expiresAt: 0, data: { ...receipt, progressApplied: false } });
     } catch {}
   }
-  const applied = await applyListenReceiptProgress(receipt);
-  const rewards = await reconcileAchievementRewards(data.playerId, applied.progress);
-  const completedReceipt = { ...receipt, progressApplied: true, rewardGranted: rewards.grants.length > 0, rewardAmount: rewards.grants.reduce((sum, grant) => sum + grant.amount, 0), rewardIds: rewards.grants.map(grant => grant.achievementId) };
+  const segmentApplied = await applyListenReceiptProgress(receipt);
+  const logicalFinalized = logical?.status === 'completed' ? await finalizeLogicalListen(logical) : null;
+  const progress = logicalFinalized?.progress || segmentApplied.progress;
+  const rewards = logicalFinalized?.rewards || await reconcileAchievementRewards(data.playerId, progress);
+  const completedReceipt = { ...receipt, progressApplied: true, rewardGranted: !logicalFinalized && rewards.grants.length > 0, rewardAmount: !logicalFinalized ? rewards.grants.reduce((sum, grant) => sum + grant.amount, 0) : 0, rewardIds: !logicalFinalized ? rewards.grants.map(grant => grant.achievementId) : [] };
   await kvPut({ pk: receiptPk, type: 'listenReceipt', owner: data.playerId, expiresAt: 0, data: completedReceipt });
-  return { receipt: completedReceipt, progress: applied.progress, rewards, duplicate: applied.duplicate };
+  return {
+    receipt: logicalFinalized?.receipt || completedReceipt,
+    segmentReceipt: completedReceipt,
+    logical: logical ? publicLogicalListen(logical) : null,
+    progress,
+    rewards,
+    duplicate: logicalFinalized ? logicalFinalized.duplicate : segmentApplied.duplicate
+  };
 }
 async function actionListenSessionStart(event, body) {
   const track = listenTrackFromCatalog(body.trackUid);
@@ -3695,7 +4012,8 @@ async function actionListenSessionStart(event, body) {
     let row = await kvGet(key);
     const current = normalizeListenSession(payload(row));
     if (row && current.status === 'active' && current.trackUid === track.uid && current.deviceId === deviceId && now() - current.lastHeartbeatAt < CFG.listenHeartbeatMaxGapMs) {
-      return { ok: true, duplicate: true, shadow: CFG.listeningReceiptsShadow, playback: publicPlaybackState(fenced.state, deviceId), session: publicListenSession(current) };
+      const logical = await syncLogicalListenSession(current);
+      return { ok: true, duplicate: true, shadow: CFG.listeningReceiptsShadow, playback: publicPlaybackState(fenced.state, deviceId), logical: publicLogicalListen(logical), session: publicListenSession(current) };
     }
     const at = now();
     const session = normalizeListenSession({
@@ -3738,7 +4056,8 @@ async function actionListenSessionStart(event, body) {
       try {
         await kvInsert({ pk: key, type: 'listenActive', owner: playerId, data: session });
         await persistListenSession(session);
-        return { ok: true, duplicate: false, shadow: CFG.listeningReceiptsShadow, playback: publicPlaybackState(fenced.state, deviceId), session: publicListenSession(session) };
+        const logical = await syncLogicalListenSession(session);
+        return { ok: true, duplicate: false, shadow: CFG.listeningReceiptsShadow, playback: publicPlaybackState(fenced.state, deviceId), logical: publicLogicalListen(logical), session: publicListenSession(session) };
       } catch {
         continue;
       }
@@ -3750,7 +4069,8 @@ async function actionListenSessionStart(event, body) {
       continue;
     }
     await persistListenSession(session);
-    return { ok: true, duplicate: false, shadow: CFG.listeningReceiptsShadow, session: publicListenSession(session) };
+    const logical = await syncLogicalListenSession(session);
+    return { ok: true, duplicate: false, shadow: CFG.listeningReceiptsShadow, playback: publicPlaybackState(fenced.state, deviceId), logical: publicLogicalListen(logical), session: publicListenSession(session) };
   }
   throw new Error('listen_session_start_conflict');
 }
@@ -3782,6 +4102,7 @@ async function actionListenSessionHeartbeat(event, body) {
     }
     await requirePlaybackFence(event, body);
     const playback = await renewPlaybackFence(fenced.auth, body, observation.session.lastPosition);
+    const logical = await syncLogicalListenSession(observation.session);
     const appliedTime = await applyVerifiedListenTimeProgress(observation.session);
     const previousTotalSec = Math.floor(appliedTime.previousTotalListenMs / 1000);
     const currentTotalSec = appliedTime.progress.totalSec;
@@ -3801,6 +4122,7 @@ async function actionListenSessionHeartbeat(event, body) {
       wallet: loyalty?.wallet ? publicShardWallet(loyalty.wallet) : rewards.wallet ? publicShardWallet(rewards.wallet) : null,
       progress: publicAchievementProgress(appliedTime.progress),
       playback: publicPlaybackState(playback, fenced.auth.deviceId),
+      logical: publicLogicalListen(logical),
       session: publicListenSession(observation.session)
     };
   }
@@ -3831,6 +4153,8 @@ async function actionListenSessionComplete(event, body) {
         rewardsEnabled: !CFG.listeningReceiptsShadow,
         rewardChannels: publicRewardChannels(),
         receipt: finalized.receipt,
+        segmentReceipt: finalized.segmentReceipt || null,
+        logical: finalized.logical || null,
         rewards: finalized.rewards?.grants || [],
         loyaltyRewards: loyalty?.loyaltyRewards || [],
         loyalty: loyalty?.loyalty || null,
@@ -3863,6 +4187,8 @@ async function actionListenSessionComplete(event, body) {
       rewardsEnabled: !CFG.listeningReceiptsShadow,
       rewardChannels: publicRewardChannels(),
       receipt: finalized.receipt,
+      segmentReceipt: finalized.segmentReceipt || null,
+      logical: finalized.logical || null,
       rewards: finalized.rewards?.grants || [],
       loyaltyRewards: loyalty?.loyaltyRewards || [],
       loyalty: loyalty?.loyalty || null,
