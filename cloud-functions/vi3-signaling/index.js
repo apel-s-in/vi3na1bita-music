@@ -809,9 +809,11 @@ async function actionAccountDeviceList(event, body) {
   return { ok: true, items };
 }
 async function actionAccountDeviceUpdate(event, body) {
-  const { playerId } = await requirePlayer(event, body);
+  const auth = await requirePlayer(event, body);
+  const { playerId } = auth;
   const deviceId = sanitizeId(body.deviceId, 120);
   if (!deviceId) throw new Error('account_device_required');
+  if (body.revoked === true && auth.deviceId === deviceId) throw new Error('account_device_current_revoke_forbidden');
   const key = accountDeviceKey(playerId, deviceId);
   const row = await kvGet(key);
   if (!row) throw new Error('account_device_not_found');
