@@ -205,7 +205,7 @@ function parseListenTrackCatalog(raw) {
     ? parsed
     : Object.entries(parsed && typeof parsed === 'object' ? parsed : {}).map(([uid, value]) => {
         if (Array.isArray(value)) {
-          return { uid, duration: value[0], album: value[1] };
+          return { uid, duration: value[0], album: value[1], trackVersion: value[2] };
         }
         return { uid, ...(value && typeof value === 'object' ? value : { duration: value }) };
       });
@@ -218,7 +218,9 @@ function parseListenTrackCatalog(raw) {
         if (!uid || !album || !Number.isFinite(rawDuration) || rawDuration < 10 || rawDuration > 7200) {
           return null;
         }
-        return [uid, Object.freeze({ uid, duration: Math.round(rawDuration * 1000) / 1000, album })];
+        const duration = Math.round(rawDuration * 1000) / 1000;
+        const trackVersion = safe(item?.trackVersion).slice(0, 96) || hash(stableStringify({ uid, duration, album })).slice(0, 32);
+        return [uid, Object.freeze({ uid, duration, album, trackVersion })];
       })
       .filter(Boolean)
   );
@@ -730,7 +732,7 @@ async function upsertAccountDevice(playerId, body = {}) {
     pwa: body.pwa === true,
     timezone: body.timezone || old.timezone,
     timezoneOffsetMin: body.timezoneOffsetMin,
-    revokedAt: 0,
+    revokedAt: old.revokedAt,
     firstSeenAt: old.firstSeenAt || at,
     lastSeenAt: at,
     updatedAt: at
@@ -748,7 +750,9 @@ function normalizePlaybackState(raw = {}, playerId = '') {
     status: sanitizeId(raw.status || 'idle', 30),
     ownerDeviceId: sanitizeId(raw.ownerDeviceId, 120),
     ownerLabel: safe(raw.ownerLabel).slice(0, 80),
+    ownerSessionId: sanitizeId(raw.ownerSessionId, 120),
     ownerEpoch: Math.max(0, Math.floor(num(raw.ownerEpoch))),
+    fencingTokenHash: safe(raw.fencingTokenHash).slice(0, 64),
     confirmedPosition: Math.max(0, num(raw.confirmedPosition)),
     confirmedAt: Math.max(0, num(raw.confirmedAt)),
     leaseExpiresAt: Math.max(0, num(raw.leaseExpiresAt)),
@@ -837,10 +841,197 @@ async function actionAccountDeviceUpdate(event, body) {
   await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: next });
   return { ok: true, device: publicAccountDevice(next) };
 }
+const PLAYBACK_LEASE_MS = 20 * 60 * 1000;
+const PLAYBACK_TRANSFER_TTL_MS = 2 * 60 * 1000;
+function playbackTransferKey(playerId, transferId) {
+  return `playbackTransfer:${sanitizeId(playerId, 96)}:${sanitizeId(transferId, 120)}`;
+}
+function playbackIsActive(state, at = now()) {
+  return !!state.logicalSessionId && state.status === 'playing' && state.leaseExpiresAt > at;
+}
+function playbackGrant(state, fencingToken) {
+  return {
+    logicalSessionId: state.logicalSessionId,
+    ownerEpoch: state.ownerEpoch,
+    fencingToken,
+    trackUid: state.trackUid,
+    trackVersion: state.trackVersion,
+    position: state.confirmedPosition,
+    leaseExpiresAt: state.leaseExpiresAt,
+    revision: state.revision
+  };
+}
+async function requirePlaybackDevice(event, body) {
+  const auth = await requirePlayer(event, body);
+  const requestedDeviceId = sanitizeId(body.deviceId, 120);
+  const deviceId = auth.deviceId || requestedDeviceId;
+  if (!deviceId) throw new Error('playback_device_session_required');
+  if (requestedDeviceId && requestedDeviceId !== deviceId) {
+    throw new Error('playback_device_identity_mismatch');
+  }
+  const row = await kvGet(accountDeviceKey(auth.playerId, deviceId));
+  const device = normalizeAccountDevice(payload(row), auth.playerId);
+  if (!row || !device.deviceId) throw new Error('account_device_not_found');
+  if (device.revokedAt > 0) throw new Error('account_device_revoked');
+  return { ...auth, deviceId, device };
+}
 async function actionPlaybackStateGet(event, body) {
-  const { playerId } = await requirePlayer(event, body);
-  const state = normalizePlaybackState(payload(await kvGet(playbackStateKey(playerId))), playerId);
-  return { ok: true, playback: publicPlaybackState(state, body.deviceId) };
+  const auth = await requirePlayer(event, body);
+  const state = normalizePlaybackState(payload(await kvGet(playbackStateKey(auth.playerId))), auth.playerId);
+  return { ok: true, playback: publicPlaybackState(state, auth.deviceId || body.deviceId) };
+}
+async function actionPlaybackClaim(event, body) {
+  const auth = await requirePlaybackDevice(event, body);
+  await enforceRateLimit({ scope: 'playback_claim', actor: `${auth.playerId}:${auth.deviceId}`, limit: 120, windowMs: 60 * 60 * 1000 });
+  const track = listenTrackFromCatalog(body.trackUid);
+  const requestedVersion = safe(body.trackVersion).slice(0, 96);
+  if (requestedVersion && requestedVersion !== track.trackVersion) {
+    const error = new Error('playback_track_version_mismatch');
+    error.httpStatus = 409;
+    throw error;
+  }
+  const key = playbackStateKey(auth.playerId);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const row = await kvGet(key);
+    const current = normalizePlaybackState(payload(row), auth.playerId);
+    const at = now();
+    if (playbackIsActive(current, at) && current.ownerDeviceId !== auth.deviceId) {
+      return { ok: true, claimed: false, requiresConfirmation: true, playback: publicPlaybackState(current, auth.deviceId) };
+    }
+    const fencingToken = base64url(crypto.randomBytes(32));
+    const sameLogicalTrack = current.logicalSessionId && current.trackUid === track.uid && current.trackVersion === track.trackVersion;
+    const next = normalizePlaybackState({
+      ...current,
+      playerId: auth.playerId,
+      logicalSessionId: sameLogicalTrack ? current.logicalSessionId : rid('playback'),
+      trackUid: track.uid,
+      trackVersion: track.trackVersion,
+      status: 'playing',
+      ownerDeviceId: auth.deviceId,
+      ownerLabel: auth.device.label,
+      ownerSessionId: auth.sessionId,
+      ownerEpoch: current.ownerEpoch + 1,
+      fencingTokenHash: hash(fencingToken),
+      confirmedPosition: sameLogicalTrack ? Math.min(track.duration, Math.max(current.confirmedPosition, num(body.position))) : Math.min(track.duration, Math.max(0, num(body.position))),
+      confirmedAt: at,
+      leaseExpiresAt: at + PLAYBACK_LEASE_MS,
+      revision: current.revision + 1,
+      updatedAt: at
+    }, auth.playerId);
+    let changed = false;
+    if (!row) {
+      try {
+        await kvInsert({ pk: key, type: 'playbackState', owner: auth.playerId, expiresAt: next.leaseExpiresAt + PLAYBACK_LEASE_MS, data: next });
+        changed = true;
+      } catch {}
+    } else {
+      changed = await kvCompareAndPut({ row, type: 'playbackState', owner: auth.playerId, expiresAt: next.leaseExpiresAt + PLAYBACK_LEASE_MS, data: next });
+    }
+    if (!changed) continue;
+    return { ok: true, claimed: true, requiresConfirmation: false, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken) };
+  }
+  throw new Error('playback_claim_conflict');
+}
+async function actionPlaybackTransferPrepare(event, body) {
+  const auth = await requirePlaybackDevice(event, body);
+  await enforceRateLimit({ scope: 'playback_transfer', actor: auth.playerId, limit: 30, windowMs: 60 * 60 * 1000 });
+  if (auth.device.takeoverEnabled === false) throw new Error('playback_takeover_disabled');
+  const stateRow = await kvGet(playbackStateKey(auth.playerId));
+  const state = normalizePlaybackState(payload(stateRow), auth.playerId);
+  if (!stateRow || !playbackIsActive(state)) throw new Error('playback_transfer_source_not_active');
+  if (state.ownerDeviceId === auth.deviceId) {
+    return { ok: true, alreadyOwner: true, playback: publicPlaybackState(state, auth.deviceId) };
+  }
+  const sourceRow = await kvGet(accountDeviceKey(auth.playerId, state.ownerDeviceId));
+  const sourceDevice = normalizeAccountDevice(payload(sourceRow), auth.playerId);
+  if (sourceDevice.revokedAt > 0) throw new Error('playback_source_device_revoked');
+  if (sourceDevice.remotePauseEnabled === false) throw new Error('playback_remote_pause_disabled');
+  const targetTrack = listenTrackFromCatalog(body.trackUid || state.trackUid);
+  const targetVersion = safe(body.trackVersion).slice(0, 96) || targetTrack.trackVersion;
+  if (targetVersion !== targetTrack.trackVersion) {
+    const error = new Error('playback_track_version_mismatch');
+    error.httpStatus = 409;
+    throw error;
+  }
+  const transferId = rid('transfer');
+  const transferToken = base64url(crypto.randomBytes(32));
+  const createdAt = now();
+  const transfer = {
+    version: 1,
+    transferId,
+    playerId: auth.playerId,
+    fromDeviceId: state.ownerDeviceId,
+    toDeviceId: auth.deviceId,
+    expectedOwnerEpoch: state.ownerEpoch,
+    expectedRevision: state.revision,
+    expectedLogicalSessionId: state.logicalSessionId,
+    targetTrackUid: targetTrack.uid,
+    targetTrackVersion: targetTrack.trackVersion,
+    requestedPosition: Math.max(0, Math.min(targetTrack.duration, num(body.position))),
+    tokenHash: hash(transferToken),
+    createdAt,
+    expiresAt: createdAt + PLAYBACK_TRANSFER_TTL_MS
+  };
+  await kvPut({ pk: playbackTransferKey(auth.playerId, transferId), type: 'playbackTransfer', owner: auth.playerId, expiresAt: transfer.expiresAt, data: transfer });
+  return { ok: true, alreadyOwner: false, transferId, transferToken, expiresAt: transfer.expiresAt, playback: publicPlaybackState(state, auth.deviceId) };
+}
+async function actionPlaybackTransferCommit(event, body) {
+  const auth = await requirePlaybackDevice(event, body);
+  const transferId = sanitizeId(body.transferId, 120);
+  const transferToken = safe(body.transferToken);
+  if (!transferId || !transferToken) throw new Error('playback_transfer_confirmation_required');
+  const transferKey = playbackTransferKey(auth.playerId, transferId);
+  const transferRow = await kvGet(transferKey);
+  const transfer = payload(transferRow);
+  if (!transferRow || transfer.playerId !== auth.playerId || transfer.toDeviceId !== auth.deviceId || transfer.tokenHash !== hash(transferToken)) {
+    throw new Error('playback_transfer_not_found');
+  }
+  if (num(transfer.expiresAt) <= now()) {
+    await kvDelete(transferKey).catch(() => null);
+    const error = new Error('playback_transfer_expired');
+    error.httpStatus = 410;
+    throw error;
+  }
+  const key = playbackStateKey(auth.playerId);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const row = await kvGet(key);
+    const current = normalizePlaybackState(payload(row), auth.playerId);
+    if (!row || current.ownerDeviceId !== transfer.fromDeviceId || current.ownerEpoch !== num(transfer.expectedOwnerEpoch) || current.revision !== num(transfer.expectedRevision) || current.logicalSessionId !== transfer.expectedLogicalSessionId) {
+      const error = new Error('playback_transfer_state_changed');
+      error.httpStatus = 409;
+      throw error;
+    }
+    const track = listenTrackFromCatalog(transfer.targetTrackUid);
+    if (track.trackVersion !== transfer.targetTrackVersion) {
+      const error = new Error('playback_track_version_mismatch');
+      error.httpStatus = 409;
+      throw error;
+    }
+    const sameTrack = current.trackUid === track.uid && current.trackVersion === track.trackVersion;
+    const fencingToken = base64url(crypto.randomBytes(32));
+    const at = now();
+    const next = normalizePlaybackState({
+      ...current,
+      trackUid: track.uid,
+      trackVersion: track.trackVersion,
+      status: 'playing',
+      ownerDeviceId: auth.deviceId,
+      ownerLabel: auth.device.label,
+      ownerSessionId: auth.sessionId,
+      ownerEpoch: current.ownerEpoch + 1,
+      fencingTokenHash: hash(fencingToken),
+      confirmedPosition: sameTrack ? Math.min(track.duration, current.confirmedPosition) : Math.min(track.duration, Math.max(0, num(transfer.requestedPosition))),
+      confirmedAt: at,
+      leaseExpiresAt: at + PLAYBACK_LEASE_MS,
+      transferCount: current.transferCount + 1,
+      revision: current.revision + 1,
+      updatedAt: at
+    }, auth.playerId);
+    if (!(await kvCompareAndPut({ row, type: 'playbackState', owner: auth.playerId, expiresAt: next.leaseExpiresAt + PLAYBACK_LEASE_MS, data: next }))) continue;
+    await kvDelete(transferKey).catch(() => null);
+    return { ok: true, transferred: true, fromDeviceId: transfer.fromDeviceId, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken) };
+  }
+  throw new Error('playback_transfer_conflict');
 }
 async function actionSocialSessionIssue(event, body) {
   if (!CFG.socialSessionSecret) throw new Error('social_session_not_configured');
@@ -915,7 +1106,8 @@ async function actionSocialSessionIssue(event, body) {
     getTimezonePolicy(identity.friendId).catch(() => normalizeTimezonePolicy({}, identity.friendId))
   ]);
   const sessionJti = rid('ss');
-  const session = issueSocialSession({ sub: identity.friendId, yidHash: hash(`ya:${identity.yandexId}`), iat: issuedAt, exp: expiresAt, jti: sessionJti, v: 2 });
+  const sessionDeviceId = sanitizeId(body.deviceId || 'web', 120) || 'web';
+  const session = issueSocialSession({ sub: identity.friendId, yidHash: hash(`ya:${identity.yandexId}`), did: sessionDeviceId, iat: issuedAt, exp: expiresAt, jti: sessionJti, v: 3 });
   const loyalty = await applyLoyaltyActivity(identity.friendId, { activityId: `loyalty:auth:${sessionJti}`, kind: 'authorization', deviceId: body.deviceId }).catch(error => ({ loyalty: null, loyaltyRewards: [], wallet: null, error: safe(error?.message) }));
   return {
     ok: true,
@@ -943,7 +1135,7 @@ async function requirePlayer(event, body) {
   }
   const row = await kvGet(`player:${claims.sub}`);
   if (!row) throw new Error('player_not_registered');
-  return { playerId: claims.sub, sessionId: safe(claims.jti), expiresAt: num(claims.exp), authVersion: 2 };
+  return { playerId: claims.sub, sessionId: safe(claims.jti), deviceId: sanitizeId(claims.did, 120), expiresAt: num(claims.exp), authVersion: Math.max(2, Math.floor(num(claims.v, 2))) };
 }
 async function actionPlayerRegister(event, body) {
   const { playerId } = await requirePlayer(event, body);
@@ -5998,6 +6190,9 @@ const ACTIONS = {
   account_device_list: actionAccountDeviceList,
   account_device_update: actionAccountDeviceUpdate,
   playback_state_get: actionPlaybackStateGet,
+  playback_claim: actionPlaybackClaim,
+  playback_transfer_prepare: actionPlaybackTransferPrepare,
+  playback_transfer_commit: actionPlaybackTransferCommit,
   player_register: actionPlayerRegister,
   presence_heartbeat: actionHeartbeat,
   friend_status_check: actionFriendStatus,
@@ -6148,11 +6343,11 @@ exports.handler = async event => {
         status = 401;
       } else if (/forbidden|identity_mismatch/i.test(msg)) {
         status = 403;
-      } else if (/listen_session_expired/i.test(msg)) {
+      } else if (/listen_session_expired|playback_transfer_expired/i.test(msg)) {
         status = 410;
       } else if (/listen_session_not_found/i.test(msg)) {
         status = 404;
-      } else if (/listen_session_(not_active|not_completable)|chat_revision_conflict|ranked_.*conflict|crypto_.*(?:missing|not_ready|conflict)|chat_e2ee_disabled/i.test(msg)) {
+      } else if (/listen_session_(not_active|not_completable)|playback_.*(?:conflict|mismatch|state_changed|disabled|not_active)|chat_revision_conflict|ranked_.*conflict|crypto_.*(?:missing|not_ready|conflict)|chat_e2ee_disabled/i.test(msg)) {
         status = 409;
       } else if (/required|bad_|not_found|invalid|timezone_|account_device_/i.test(msg)) {
         status = 400;
