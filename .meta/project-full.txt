@@ -13752,10 +13752,22 @@ let pendingSession = null;
 let pendingYandexId = '';
 let serverBackoffUntil = 0;
 let serverBackoffMs = 5000;
-const coalescedActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get']);
+const coalescedActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get']);
 const actionRequests = new Map();
 const safe = value => String(value == null ? '' : value).trim();
-const isRealtimeAction = action => /^(room_|signal_|lan_code_|ranked_)/.test(action) || action === 'push_send';
+const currentDeviceContext = () => {
+  const info = window.Utils?.getPlatform?.() || {};
+  return {
+    deviceId: safe(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web'),
+    deviceLabel: safe(localStorage.getItem('yandex:onboarding:device_label') || (info.isIOS ? 'Мой iPhone' : info.isAndroid ? 'Моё Android устройство' : 'Мой Desktop')),
+    deviceClass: info.isIOS ? 'iPhone' : info.isAndroid ? 'Android' : 'Desktop',
+    platform: info.isIOS ? 'ios' : info.isAndroid ? 'android' : 'web',
+    pwa: info.isPWA === true,
+    timezone: safe(Intl.DateTimeFormat().resolvedOptions().timeZone),
+    timezoneOffsetMin: new Date().getTimezoneOffset()
+  };
+};
+const isRealtimeAction = action => /^(room_|signal_|lan_code_|ranked_|playback_)/.test(action) || action === 'push_send';
 export const getSocialServerBackoffState = () => ({ active: Date.now() < serverBackoffUntil, retryAt: serverBackoffUntil, remainingMs: Math.max(0, serverBackoffUntil - Date.now()) });
 const readProfile = () => {
   const auth = window.YandexAuth;
@@ -13817,7 +13829,7 @@ export const getSocialSession = async ({ force = false } = {}) => {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Yandex-OAuth': token },
       credentials: 'omit',
       mode: 'cors',
-      body: JSON.stringify({ action: 'social_session_issue', displayName: profile.displayName, avatarUrl: profile.avatar, deviceId: localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web' })
+      body: JSON.stringify({ action: 'social_session_issue', displayName: profile.displayName, avatarUrl: profile.avatar, ...currentDeviceContext() })
     });
     const result = await readJson(response);
     registerServerBackoff(response);
