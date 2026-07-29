@@ -1021,8 +1021,7 @@ module.exports.handler = async event => {
       if (pd && pd !== APP_ROOT) await ensureDiskDir(token, pd).catch(() => false);
       const wr = await uploadJsonResourceByPath(token, path, payload);
       if (!wr.ok) return reply(502, enrichBody(mode, { error: 'upload_proxy_write_failed', path, status: wr.status, raw: wr.raw }));
-      const rewardReceipt = mode === 'upload_backup' && path === BACKUP_PATH && backupValidation?.ok ? await flushBackupAchievementReceipts(token, backupValidation).catch(error => ({ ok: false, durable: false, pending: 0, error: normalizeErrMessage(error) })) : null;
-      return reply(200, enrichBody(mode, { ok: true, path, status: wr.status, rewardReceipt }));
+      return reply(200, enrichBody(mode, { ok: true, path, status: wr.status }));
     } catch (e) {
       return reply(
         errorStatus(e),
