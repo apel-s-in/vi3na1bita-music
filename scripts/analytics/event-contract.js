@@ -10,6 +10,8 @@ export const getEventDomain = t => ({ LISTEN_START: 'listening', LISTEN_COMPLETE
 export const isBackupNoiseEvent = e => sS(e?.type) === EVENT_TYPES.FEATURE_USED && sS(e?.data?.feature).startsWith('backup');
 export const isCloudServiceEvent = e => [EVENT_TYPES.BACKUP_CREATED, EVENT_TYPES.RESTORE_APPLIED, EVENT_TYPES.SYNC_STATE_CHANGED].includes(sS(e?.type));
 export const isBackupSemanticNoiseEvent = e => isBackupNoiseEvent(e) || isCloudServiceEvent(e);
+export const V7_SYNC_EVENT_TYPES = new Set([EVENT_TYPES.LISTEN_START, EVENT_TYPES.LISTEN_COMPLETE, EVENT_TYPES.LISTEN_SKIP, EVENT_TYPES.FEATURE_USED, EVENT_TYPES.PLAYLIST_CHANGED]);
+export const isV7SyncEvent = event => V7_SYNC_EVENT_TYPES.has(sS(event?.type)) && !isBackupSemanticNoiseEvent(event);
 export const normalizeEventEnvelope = ({ eventId, sessionId, deviceHash, deviceStableId, deviceLabel = '', deviceClass = '', devicePwa = false, deviceOs = '', deviceBrowser = '', deviceLang = '', deviceTimezone = '', deviceScreen = '', platform, type, uid = null, timestamp = Date.now(), data = {}, deviceSeq = 0, prevHash = '', eventHash = '', chainId = '', sourceClock = null, ownerYandexIdHash = '' } = {}) => ({ v: EVENT_SCHEMA_VERSION, eventId: sS(eventId) || crypto.randomUUID(), sessionId: sS(sessionId), deviceHash: sS(deviceHash), deviceStableId: sS(deviceStableId), deviceLabel: sS(deviceLabel), deviceClass: sS(deviceClass), devicePwa: !!devicePwa, deviceOs: sS(deviceOs), deviceBrowser: sS(deviceBrowser), deviceLang: sS(deviceLang), deviceTimezone: sS(deviceTimezone), deviceScreen: sS(deviceScreen), platform: sS(platform || 'web'), domain: getEventDomain(type), type: sS(type || 'UNKNOWN'), uid: uid == null ? null : sS(uid), timestamp: sN(timestamp) || Date.now(), sourceClock: sourceClock && typeof sourceClock === 'object' ? sourceClock : null, chainId: sS(chainId), deviceSeq: sN(deviceSeq), prevHash: sS(prevHash), eventHash: sS(eventHash), ownerYandexIdHash: sS(ownerYandexIdHash), data: data && typeof data === 'object' ? data : {} });
 export const describeEventForUi = ev => {
   const t = sS(ev?.type), d = ev?.data || {};
@@ -35,4 +37,4 @@ export const describeEventForUi = ev => {
   if (t === EVENT_TYPES.FEATURE_USED) return { icon: '🛠️', title: 'Функция использована', desc: sS(d.feature) };
   return { icon: '•', title: t || 'Событие', desc: sS(ev?.uid) };
 };
-export default { EVENT_SCHEMA_VERSION, EVENT_TYPES, getEventDomain, isBackupNoiseEvent, isCloudServiceEvent, isBackupSemanticNoiseEvent, normalizeEventEnvelope, describeEventForUi };
+export default { EVENT_SCHEMA_VERSION, EVENT_TYPES, V7_SYNC_EVENT_TYPES, getEventDomain, isBackupNoiseEvent, isCloudServiceEvent, isBackupSemanticNoiseEvent, isV7SyncEvent, normalizeEventEnvelope, describeEventForUi };
