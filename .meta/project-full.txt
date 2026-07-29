@@ -126,7 +126,7 @@ F всегда относится к playing-context, а не к просто о
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
 [/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
-[/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
+[/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
@@ -9626,6 +9626,76 @@ async function flushGC() { if (_protected || !_pendingGC.size) return; const kee
 export function initPlaybackCache() { if (_init) return; _init = true; const r = e => rebuild(Number(e?.detail?.dir) || 1).catch(() => {}), tN = () => { const b = !navigator.onLine || (window.NetPolicy && !window.NetPolicy.isNetworkAllowed()); b ? protectWindow() : unprotectWindow(); if (!b) r(); }; window.addEventListener('player:trackChanged', r); ['online', 'offline', 'netPolicy:changed'].forEach(e => window.addEventListener(e, tN)); window.playerCore?.on?.({ onPlay: () => flushGC().catch(() => {}) }); tN(); }
 export const protectWindow = () => { _protected = true; }; export const unprotectWindow = () => { _protected = false; flushGC().catch(() => {}); }; export const getWindowState = () => ({ ..._win, protected: _protected, pendingGC: [..._pendingGC] });
 window.PlaybackCache = window.PlaybackCache || {}; window.PlaybackCache.getWindowState = getWindowState; window.PlaybackCache.protectWindow = protectWindow; window.PlaybackCache.unprotectWindow = unprotectWindow;
+
+//=================================================
+// FILE: /scripts/app/playback-return-ui.js
+// Пользовательская кнопка возврата playback ownership.
+// Не запускает музыку автоматически: обычный PlayerCore.play() вызывается только после явного клика.
+const safe = value => String(value == null ? '' : value).trim();
+let root = null;
+let lastDetail = null;
+let initialized = false;
+
+const remove = () => {
+  root?.remove();
+  root = null;
+  lastDetail = null;
+};
+
+const show = detail => {
+  const playback = detail?.playback || {};
+  if (!playback.active || !safe(playback.ownerDeviceId)) return;
+  lastDetail = detail;
+  remove();
+  lastDetail = detail;
+  root = document.createElement('aside');
+  root.className = 'playback-return-banner';
+  root.setAttribute('role', 'status');
+  root.innerHTML = `<div class="playback-return-banner__icon">↩</div><div class="playback-return-banner__text"><b>Музыка играет на другом устройстве</b><span>${safe(playback.ownerLabel || 'Другое устройство')}</span></div><button type="button" class="playback-return-banner__button">Вернуть сюда</button><button type="button" class="playback-return-banner__close" aria-label="Скрыть">×</button>`;
+  document.body.appendChild(root);
+
+  root.querySelector('.playback-return-banner__close')?.addEventListener('click', remove);
+  root.querySelector('.playback-return-banner__button')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = 'Запрашиваем…';
+    try {
+      const result = await window.playerCore?.play?.();
+      if (result !== false && window.playerCore?.isPlaying?.()) {
+        remove();
+        return;
+      }
+      button.disabled = false;
+      button.textContent = 'Вернуть сюда';
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'Вернуть сюда';
+      window.NotificationSystem?.error?.(`Не удалось вернуть воспроизведение: ${error?.message || 'ошибка'}`);
+    }
+  });
+};
+
+export const initPlaybackReturnUi = () => {
+  if (initialized) return;
+  initialized = true;
+  window.addEventListener('playback:ownership-lost', event => show(event.detail || {}));
+  window.addEventListener('playback:ownership-updated', () => {
+    if (window.PlaybackOwnership?.getGrant?.()) remove();
+  });
+  window.addEventListener('player:play', remove);
+  window.addEventListener('yandex:auth:changed', event => {
+    if (event.detail?.status !== 'active') remove();
+  });
+  window.addEventListener('account:data-switching', remove);
+};
+
+export const getPlaybackReturnUiState = () => ({
+  visible: !!root?.isConnected,
+  ownerDeviceId: safe(lastDetail?.playback?.ownerDeviceId),
+  ownerLabel: safe(lastDetail?.playback?.ownerLabel)
+});
+
+export default { initPlaybackReturnUi, getPlaybackReturnUiState };
 
 //=================================================
 // FILE: /scripts/app/player-ui.js
@@ -19534,6 +19604,20 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 .account-card-heading .om-btn{padding:5px 9px;font-size:11px}
 .account-timezone-status{margin-bottom:8px;color:#9db7dd;font-size:11px;line-height:1.4}
 .account-timezone-note{margin:2px 0 10px;color:#7f93b5;font-size:10.5px;line-height:1.4}
+.account-device-summary{margin-bottom:8px;color:#9db7dd;font-size:11px;line-height:1.4}
+.account-device-summary b{color:#eaf2ff}
+.account-device-list{display:flex;flex-direction:column;gap:6px}
+.account-devices-card>.om-btn{margin-top:8px}
+.account-backup-device-note{margin-top:10px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.025);color:#7185a5;font-size:10.5px;line-height:1.4}
+.account-device-modal{display:flex;flex-direction:column;gap:10px}
+.account-device-flags{display:flex;flex-wrap:wrap;gap:6px}
+.account-device-setting{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px;border-radius:11px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}
+.account-device-setting>span{display:flex;min-width:0;flex-direction:column;gap:3px}
+.account-device-setting b{color:#eaf2ff;font-size:12px}
+.account-device-setting small{color:#7f93b5;font-size:10px;line-height:1.35}
+.account-device-setting input{width:20px;height:20px;flex:0 0 auto;accent-color:#4daaff}
+.account-device-setting.is-disabled{opacity:.45}
+.account-device-id{color:#566a89;font-size:9.5px;word-break:break-all}
 .yandex-auth-mainbtn{width:100%;min-height:48px;padding:14px 16px;font-size:16px;font-weight:900;border-radius:12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;background:linear-gradient(135deg,#d50000,#8f0000);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;transition:opacity .2s,transform .15s;box-shadow:0 8px 22px rgba(213,0,0,.25)}
 .yandex-auth-mainbtn:active{transform:scale(.98)}
 .yandex-auth-mainbtn:hover{filter:brightness(1.06)}
