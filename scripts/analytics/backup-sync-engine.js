@@ -10,7 +10,11 @@ export const setSyncEnabled = value => { setSyncEnabledState(!!value); if (!valu
 
 export const initBackupSyncEngine = () => {
   if (_bound) return; _bound = true;
-  window.addEventListener('backup:domain-dirty', e => isSyncReady() && scheduleSync({ immediate: !!e.detail?.immediate, domain: e.detail?.domain || 'generic' }));
+  window.addEventListener('backup:domain-dirty', event => {
+    const domain = String(event.detail?.domain || 'generic').trim() || 'generic';
+    if (domain === 'favorites') return;
+    if (isSyncReady()) scheduleSync({ immediate: !!event.detail?.immediate, domain });
+  });
   window.addEventListener('analytics:logUpdated', () => isSyncReady() && shouldMarkStatsDirty(60000) && scheduleSync({ immediate: false, domain: 'stats' }));
   window.addEventListener('storage', e => { if (isSyncReady() && isWatchedStorageKey(e.key)) { const state = markStorageKeyDirty(e.key); scheduleSync({ immediate: false, domain: state?.domains?.[state.domains.length - 1] || 'generic' }); } });
   setTimeout(() => !isSyncReady() && (console.warn('[BackupSyncEngine] timeout fallback reached'), window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'timeout_fallback', blocked: true } }))), 300000);
