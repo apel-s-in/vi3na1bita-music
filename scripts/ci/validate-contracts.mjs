@@ -187,7 +187,10 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/app/push/loyalty-reminders.js', 'getDeviceId');
   contains(server, 'did: sessionDeviceId');
   const ownership = 'scripts/analytics/playback-ownership.js';
+  const fence = 'scripts/analytics/playback-fence.js';
   ['claimPlaybackOwnership', 'playback_transfer_prepare', 'playback_transfer_commit', 'getTrackVersion', 'readOwnershipGrant'].forEach(marker => contains(ownership, marker));
+  ['normalizePlaybackFenceGrant', 'buildPlaybackFencePayload', 'hasPlaybackFence'].forEach(marker => contains(fence, marker));
+  excludes(fence, /window\.|localStorage|sessionStorage|fetch\(|requestSocialAction|playerCore/, 'Playback fence helper перестал быть pure');
   excludes(ownership, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist|applyFavoritesOnlyFilter)\s*\(/, 'Ownership service обходит узкий PlayerCore API');
   contains(ownership, 'pauseForOwnershipTransfer');
   contains(ownership, 'authorizePlaybackStart');
@@ -204,8 +207,12 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/ci/generate-listen-catalog.mjs', 'trackVersion');
   contains('scripts/ci/generate-listen-catalog.mjs', "createHash('sha256')");
   contains('scripts/ci/generate-listen-catalog.mjs', "trackLines.join('\\n')");
-  ['logicalSessionId', 'ownerEpoch', 'fencingToken', 'trackVersion', 'ownershipFields'].forEach(marker => contains('scripts/analytics/listening-receipts.js', marker));
-  ['requirePlaybackFence', 'renewPlaybackFence', 'closeTransferredListenSegment', 'playback_owner_changed'].forEach(marker => contains(server, marker));
+  contains('service-worker.js', './scripts/analytics/playback-fence.js');
+  excludes(server, /expectedRevision:\s*state\.revision/, 'Неиспользуемый expectedRevision остался в transfer record');
+  excludes(server, /const fencingToken = base64url\(crypto\.randomBytes\(32\)\);\s*const suppliedFencingToken[\s\S]{0,300}const fencingToken =/, 'Повторное объявление fencingToken');
+  ['buildPlaybackFencePayload', 'ownershipFields'].forEach(marker => contains('scripts/analytics/listening-receipts.js', marker));
+  contains('scripts/analytics/playback-ownership.js', 'buildPlaybackFencePayload');
+  ['requirePlaybackFence', 'renewPlaybackFence', 'closeTransferredListenSegment', 'playback_owner_changed', 'logicalListenKey', 'syncLogicalListenSession', 'finalizeLogicalListen', 'mergeLogicalCoverageIntervals', 'fromPositionMs', 'toPositionMs', "receiptKind: 'logical_full'"].forEach(marker => contains(server, marker));
 };
 const validatePlaybackBoundaries = () => {
   const protectedFiles = [...listFiles('scripts/app/games'), ...listFiles('scripts/app/friends'), ...listFiles('scripts/intel')];
