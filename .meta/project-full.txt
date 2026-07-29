@@ -12788,227 +12788,86 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-
 const execFileAsync = promisify(execFile);
-const albums = JSON.parse(
-  fs.readFileSync('albums.json', 'utf8')
-)?.albums || [];
-
+const albums = JSON.parse(fs.readFileSync('albums.json', 'utf8'))?.albums || [];
 const FULL_PATH = 'data/listen-track-catalog.json';
 const ENV_PATH = 'data/listen-track-catalog.env.json';
 const CONCURRENCY = 4;
-
-const safe = value =>
-  String(value == null ? '' : value).trim();
-
+const safe = value => String(value == null ? '' : value).trim();
 const probe = async url => {
-  const { stdout } = await execFileAsync(
-    'ffprobe',
-    [
-      '-v',
-      'error',
-      '-show_entries',
-      'format=duration,size',
-      '-of',
-      'json',
-      url
-    ],
-    {
-      maxBuffer: 1024 * 1024,
-      timeout: 120000
-    }
-  );
-
+  const { stdout } = await execFileAsync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration,size', '-of', 'json', url], { maxBuffer: 1024 * 1024, timeout: 120000 });
   const format = JSON.parse(stdout || '{}')?.format || {};
   const duration = Number(format.duration);
   const bytes = Number(format.size);
-
-  if (
-    !Number.isFinite(duration) ||
-    duration < 10 ||
-    !Number.isFinite(bytes) ||
-    bytes <= 0
-  ) {
+  if (!Number.isFinite(duration) || duration < 10 || !Number.isFinite(bytes) || bytes <= 0) {
     throw new Error(`invalid_media_metadata:${url}`);
   }
-
-  return {
-    duration: Math.round(duration * 1000) / 1000,
-    bytes: Math.floor(bytes)
-  };
+  return { duration: Math.round(duration * 1000) / 1000, bytes: Math.floor(bytes) };
 };
-
 const mapLimit = async (items, limit, worker) => {
   const results = new Array(items.length);
   let cursor = 0;
-
   const run = async () => {
     while (cursor < items.length) {
       const index = cursor++;
       results[index] = await worker(items[index], index);
     }
   };
-
-  await Promise.all(
-    Array.from(
-      { length: Math.min(limit, items.length) },
-      run
-    )
-  );
-
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
   return results;
 };
-
 const readAlbum = async album => {
-  const base = safe(
-    album.yandex_base ||
-    album.github_base ||
-    album.base
-  );
-
+  const base = safe(album.yandex_base || album.github_base || album.base);
   if (!base) {
     throw new Error(`album_base_missing:${album.key}`);
   }
-
   const baseUrl = base.endsWith('/') ? base : `${base}/`;
   const configUrl = new URL('config.json', baseUrl);
   const response = await fetch(configUrl);
-
   if (!response.ok) {
-    throw new Error(
-      `config_fetch_failed:${album.key}:${response.status}`
-    );
+    throw new Error(`config_fetch_failed:${album.key}:${response.status}`);
   }
-
   const config = await response.json();
-  const tracks = Array.isArray(config?.tracks)
-    ? config.tracks
-    : [];
-
-  return tracks.map(track => ({
-    uid: safe(track.uid),
-    title: safe(track.title),
-    album: safe(album.key),
-    albumTitle: safe(config.albumName || album.title),
-    hiUrl: new URL(track.audio, baseUrl).toString(),
-    loUrl: new URL(track.audio_low, baseUrl).toString()
-  }));
+  const tracks = Array.isArray(config?.tracks) ? config.tracks : [];
+  return tracks.map(track => ({ uid: safe(track.uid), title: safe(track.title), album: safe(album.key), albumTitle: safe(config.albumName || album.title), hiUrl: new URL(track.audio, baseUrl).toString(), loUrl: new URL(track.audio_low, baseUrl).toString() }));
 };
-
 const main = async () => {
-  const albumTracks = await Promise.all(
-    albums.map(readAlbum)
-  );
-
+  const albumTracks = await Promise.all(albums.map(readAlbum));
   const tracks = albumTracks.flat();
-
   if (!tracks.length) {
     throw new Error('listen_catalog_empty');
   }
-
-  const duplicate = tracks.find(
-    (track, index) =>
-      tracks.findIndex(item => item.uid === track.uid) !== index
-  );
-
+  const duplicate = tracks.find((track, index) => tracks.findIndex(item => item.uid === track.uid) !== index);
   if (duplicate) {
     throw new Error(`duplicate_track_uid:${duplicate.uid}`);
   }
-
-  const rows = await mapLimit(
-    tracks,
-    CONCURRENCY,
-    async track => {
-      if (!track.uid || !track.hiUrl || !track.loUrl) {
-        throw new Error(
-          `track_metadata_missing:${track.album}:${track.title}`
-        );
-      }
-
-      console.log(`PROBE ${track.uid} · ${track.title}`);
-
-      const [hi, lo] = await Promise.all([
-        probe(track.hiUrl),
-        probe(track.loUrl)
-      ]);
-
-      const durationDifference = Math.abs(
-        hi.duration - lo.duration
-      );
-
-      if (durationDifference > 1) {
-        throw new Error(
-          `duration_mismatch:${track.uid}:` +
-          `${hi.duration}:${lo.duration}`
-        );
-      }
-
-      const duration = Math.max(hi.duration, lo.duration);
-      const trackVersion = crypto.createHash('sha256')
-        .update(JSON.stringify({ uid: track.uid, duration, hiDuration: hi.duration, hiBytes: hi.bytes, loDuration: lo.duration, loBytes: lo.bytes }))
-        .digest('hex')
-        .slice(0, 32);
-
-      return {
-        uid: track.uid,
-        trackVersion,
-        title: track.title,
-        album: track.album,
-        albumTitle: track.albumTitle,
-        duration,
-        hi: {
-          duration: hi.duration,
-          bytes: hi.bytes,
-          url: track.hiUrl
-        },
-        lo: {
-          duration: lo.duration,
-          bytes: lo.bytes,
-          url: track.loUrl
-        }
-      };
+  const rows = await mapLimit(tracks, CONCURRENCY, async track => {
+    if (!track.uid || !track.hiUrl || !track.loUrl) {
+      throw new Error(`track_metadata_missing:${track.album}:${track.title}`);
     }
-  );
-
-  rows.sort((a, b) =>
-    a.album.localeCompare(b.album) ||
-    a.uid.localeCompare(b.uid)
-  );
-
-  const compact = Object.fromEntries(
-    rows.map(track => [
-      track.uid,
-      [
-        track.duration,
-        track.album,
-        track.trackVersion
-      ]
-    ])
-  );
-
+    console.log(`PROBE ${track.uid} · ${track.title}`);
+    const [hi, lo] = await Promise.all([probe(track.hiUrl), probe(track.loUrl)]);
+    const durationDifference = Math.abs(hi.duration - lo.duration);
+    if (durationDifference > 1) {
+      throw new Error(`duration_mismatch:${track.uid}:` + `${hi.duration}:${lo.duration}`);
+    }
+    const duration = Math.max(hi.duration, lo.duration);
+    const trackVersion = crypto
+      .createHash('sha256')
+      .update(JSON.stringify({ uid: track.uid, duration, hiDuration: hi.duration, hiBytes: hi.bytes, loDuration: lo.duration, loBytes: lo.bytes }))
+      .digest('hex')
+      .slice(0, 32);
+    return { uid: track.uid, trackVersion, title: track.title, album: track.album, albumTitle: track.albumTitle, duration, hi: { duration: hi.duration, bytes: hi.bytes, url: track.hiUrl }, lo: { duration: lo.duration, bytes: lo.bytes, url: track.loUrl } };
+  });
+  rows.sort((a, b) => a.album.localeCompare(b.album) || a.uid.localeCompare(b.uid));
+  const compact = Object.fromEntries(rows.map(track => [track.uid, [track.duration, track.album, track.trackVersion]]));
   fs.mkdirSync('data', { recursive: true });
-
-  fs.writeFileSync(
-    FULL_PATH,
-    `${JSON.stringify({
-      version: 1,
-      generatedAt: new Date().toISOString(),
-      tracks: rows
-    }, null, 2)}\n`,
-    'utf8'
-  );
-
-  fs.writeFileSync(
-    ENV_PATH,
-    JSON.stringify(compact),
-    'utf8'
-  );
-
+  fs.writeFileSync(FULL_PATH, `${JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), tracks: rows }, null, 2)}\n`, 'utf8');
+  fs.writeFileSync(ENV_PATH, JSON.stringify(compact), 'utf8');
   console.log(`Generated ${rows.length} tracks`);
   console.log(`Full: ${FULL_PATH}`);
   console.log(`Environment: ${ENV_PATH}`);
 };
-
 main().catch(error => {
   console.error(error);
   process.exit(2);
