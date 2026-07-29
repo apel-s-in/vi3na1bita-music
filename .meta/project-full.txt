@@ -125,7 +125,7 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-delta-contract.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-delta-contract.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
@@ -4416,6 +4416,8 @@ export const getEventDomain = t => ({ LISTEN_START: 'listening', LISTEN_COMPLETE
 export const isBackupNoiseEvent = e => sS(e?.type) === EVENT_TYPES.FEATURE_USED && sS(e?.data?.feature).startsWith('backup');
 export const isCloudServiceEvent = e => [EVENT_TYPES.BACKUP_CREATED, EVENT_TYPES.RESTORE_APPLIED, EVENT_TYPES.SYNC_STATE_CHANGED].includes(sS(e?.type));
 export const isBackupSemanticNoiseEvent = e => isBackupNoiseEvent(e) || isCloudServiceEvent(e);
+export const V7_SYNC_EVENT_TYPES = new Set([EVENT_TYPES.LISTEN_START, EVENT_TYPES.LISTEN_COMPLETE, EVENT_TYPES.LISTEN_SKIP, EVENT_TYPES.FEATURE_USED, EVENT_TYPES.PLAYLIST_CHANGED]);
+export const isV7SyncEvent = event => V7_SYNC_EVENT_TYPES.has(sS(event?.type)) && !isBackupSemanticNoiseEvent(event);
 export const normalizeEventEnvelope = ({ eventId, sessionId, deviceHash, deviceStableId, deviceLabel = '', deviceClass = '', devicePwa = false, deviceOs = '', deviceBrowser = '', deviceLang = '', deviceTimezone = '', deviceScreen = '', platform, type, uid = null, timestamp = Date.now(), data = {}, deviceSeq = 0, prevHash = '', eventHash = '', chainId = '', sourceClock = null, ownerYandexIdHash = '' } = {}) => ({ v: EVENT_SCHEMA_VERSION, eventId: sS(eventId) || crypto.randomUUID(), sessionId: sS(sessionId), deviceHash: sS(deviceHash), deviceStableId: sS(deviceStableId), deviceLabel: sS(deviceLabel), deviceClass: sS(deviceClass), devicePwa: !!devicePwa, deviceOs: sS(deviceOs), deviceBrowser: sS(deviceBrowser), deviceLang: sS(deviceLang), deviceTimezone: sS(deviceTimezone), deviceScreen: sS(deviceScreen), platform: sS(platform || 'web'), domain: getEventDomain(type), type: sS(type || 'UNKNOWN'), uid: uid == null ? null : sS(uid), timestamp: sN(timestamp) || Date.now(), sourceClock: sourceClock && typeof sourceClock === 'object' ? sourceClock : null, chainId: sS(chainId), deviceSeq: sN(deviceSeq), prevHash: sS(prevHash), eventHash: sS(eventHash), ownerYandexIdHash: sS(ownerYandexIdHash), data: data && typeof data === 'object' ? data : {} });
 export const describeEventForUi = ev => {
   const t = sS(ev?.type), d = ev?.data || {};
@@ -4441,7 +4443,7 @@ export const describeEventForUi = ev => {
   if (t === EVENT_TYPES.FEATURE_USED) return { icon: '🛠️', title: 'Функция использована', desc: sS(d.feature) };
   return { icon: '•', title: t || 'Событие', desc: sS(ev?.uid) };
 };
-export default { EVENT_SCHEMA_VERSION, EVENT_TYPES, getEventDomain, isBackupNoiseEvent, isCloudServiceEvent, isBackupSemanticNoiseEvent, normalizeEventEnvelope, describeEventForUi };
+export default { EVENT_SCHEMA_VERSION, EVENT_TYPES, V7_SYNC_EVENT_TYPES, getEventDomain, isBackupNoiseEvent, isCloudServiceEvent, isBackupSemanticNoiseEvent, isV7SyncEvent, normalizeEventEnvelope, describeEventForUi };
 
 //=================================================
 // FILE: /scripts/analytics/event-integrity.js
@@ -6653,6 +6655,184 @@ export class StatsAggregator {
     } finally { this._processing = false; }
   }
 }
+
+//=================================================
+// FILE: /scripts/analytics/stats-shard-contract.js
+// Компактная статистическая проекция immutable event range.
+// Проекция является rebuildable-кэшем и не участвует в серверных достижениях.
+import { isV7SyncEvent } from './event-contract.js';
+import { temporalPartsFromListenEvent } from './temporal-buckets.js';
+import { buildDeltaRangeKey, safeDeltaId } from './backup-delta-contract.js';
+
+export const STATS_SHARD_VERSION = 1;
+const safe = value => String(value == null ? '' : value).trim();
+const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+const countMap = raw => Object.fromEntries(Object.entries(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}).map(([key, value]) => [safe(key), num(value)]).filter(([key, value]) => key && value > 0));
+const fixed = (raw, length) => Array.from({ length }, (_, index) => Math.max(0, Math.floor(num(raw?.[index]))));
+const bump = (map, key, amount = 1) => {
+  const clean = safe(key);
+  const value = num(amount);
+  if (clean && value > 0) map[clean] = num(map[clean]) + value;
+};
+
+const sortObject = value => Array.isArray(value) ? value.map(sortObject) : !value || typeof value !== 'object' ? value : Object.keys(value).sort().reduce((out, key) => {
+  out[key] = sortObject(value[key]);
+  return out;
+}, {});
+
+const sha256Hex = async value => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(sortObject(value)))))]
+  .map(byte => byte.toString(16).padStart(2, '0'))
+  .join('');
+
+export const emptyStatsProjection = () => ({
+  listenMs: 0,
+  validPlays: 0,
+  fullPlays: 0,
+  starts: 0,
+  skips: 0,
+  byHourMs: Array(24).fill(0),
+  byWeekdayMs: Array(7).fill(0),
+  tracks: {},
+  features: {},
+  dimensions: { quality: {}, variant: {}, platform: {}, shuffle: {}, favoritesOnly: {}, launchSource: {} }
+});
+
+const ensureTrack = (projection, uid) => projection.tracks[uid] ||= { listenMs: 0, validPlays: 0, fullPlays: 0, starts: 0, skips: 0, features: {} };
+
+export const buildStatsProjection = events => {
+  const projection = emptyStatsProjection();
+  (Array.isArray(events) ? events : []).filter(isV7SyncEvent).forEach(event => {
+    const type = safe(event?.type);
+    const uid = safe(event?.uid);
+    const data = event?.data || {};
+
+    if (type === 'LISTEN_START') {
+      projection.starts++;
+      if (uid) ensureTrack(projection, uid).starts++;
+      bump(projection.dimensions.quality, data.quality || 'unknown');
+      bump(projection.dimensions.variant, data.variant || 'audio');
+      bump(projection.dimensions.platform, event.platform || 'web');
+      bump(projection.dimensions.shuffle, data.shuffle === true ? 'on' : 'off');
+      bump(projection.dimensions.favoritesOnly, data.favoritesOnly === true ? 'on' : 'off');
+      if (data.launchSource) bump(projection.dimensions.launchSource, data.launchSource);
+      return;
+    }
+
+    if (type === 'LISTEN_SKIP') {
+      projection.skips++;
+      if (uid) ensureTrack(projection, uid).skips++;
+      return;
+    }
+
+    if (type === 'FEATURE_USED') {
+      const feature = safe(data.feature);
+      if (!feature) return;
+      bump(projection.features, feature);
+      if (uid && uid !== 'global') bump(ensureTrack(projection, uid).features, feature);
+      return;
+    }
+
+    if (type !== 'LISTEN_COMPLETE' || !uid) return;
+    const track = ensureTrack(projection, uid);
+    const listenMs = Math.max(0, Math.floor(num(data.listenedSeconds) * 1000));
+    projection.listenMs += listenMs;
+    track.listenMs += listenMs;
+
+    if (data.isValidListen === true) {
+      projection.validPlays++;
+      track.validPlays++;
+    }
+    if (data.isFullListen === true && data.isValidListen === true && data.variant !== 'short') {
+      projection.fullPlays++;
+      track.fullPlays++;
+    }
+
+    temporalPartsFromListenEvent(event).forEach(part => {
+      projection.byHourMs[part.hour] += Math.floor(num(part.creditedMs));
+      projection.byWeekdayMs[part.weekday] += Math.floor(num(part.creditedMs));
+    });
+
+    bump(projection.dimensions.quality, data.quality || 'unknown');
+    bump(projection.dimensions.variant, data.variant || 'audio');
+    bump(projection.dimensions.platform, event.platform || 'web');
+    bump(projection.dimensions.shuffle, data.shuffle === true ? 'on' : 'off');
+    bump(projection.dimensions.favoritesOnly, data.favoritesOnly === true ? 'on' : 'off');
+    if (data.launchSource) bump(projection.dimensions.launchSource, data.launchSource);
+  });
+  return projection;
+};
+
+export const normalizeStatsProjection = raw => ({
+  listenMs: Math.floor(num(raw?.listenMs)),
+  validPlays: Math.floor(num(raw?.validPlays)),
+  fullPlays: Math.floor(num(raw?.fullPlays)),
+  starts: Math.floor(num(raw?.starts)),
+  skips: Math.floor(num(raw?.skips)),
+  byHourMs: fixed(raw?.byHourMs, 24),
+  byWeekdayMs: fixed(raw?.byWeekdayMs, 7),
+  tracks: Object.fromEntries(Object.entries(raw?.tracks && typeof raw.tracks === 'object' ? raw.tracks : {}).map(([uid, row]) => [safe(uid), {
+    listenMs: Math.floor(num(row?.listenMs)),
+    validPlays: Math.floor(num(row?.validPlays)),
+    fullPlays: Math.floor(num(row?.fullPlays)),
+    starts: Math.floor(num(row?.starts)),
+    skips: Math.floor(num(row?.skips)),
+    features: countMap(row?.features)
+  }]).filter(([uid]) => uid)),
+  features: countMap(raw?.features),
+  dimensions: {
+    quality: countMap(raw?.dimensions?.quality),
+    variant: countMap(raw?.dimensions?.variant),
+    platform: countMap(raw?.dimensions?.platform),
+    shuffle: countMap(raw?.dimensions?.shuffle),
+    favoritesOnly: countMap(raw?.dimensions?.favoritesOnly),
+    launchSource: countMap(raw?.dimensions?.launchSource)
+  }
+});
+
+export const buildStatsProjectionShard = async segment => {
+  const events = (Array.isArray(segment?.events) ? segment.events : []).filter(isV7SyncEvent);
+  const branchId = safeDeltaId(segment?.branchId);
+  const deviceStableId = safeDeltaId(segment?.deviceStableId);
+  const fromSeq = Math.floor(num(segment?.fromSeq));
+  const toSeq = Math.floor(num(segment?.toSeq));
+  const sourceHash = safe(segment?.hash);
+  const rangeKey = buildDeltaRangeKey({ branchId, fromSeq, toSeq, hash: sourceHash });
+  const projection = normalizeStatsProjection(buildStatsProjection(events));
+  const hash = await sha256Hex({ rangeKey, projection });
+  return { version: STATS_SHARD_VERSION, rangeKey, deviceStableId, branchId, chainId: safe(segment?.chainId), fromSeq, toSeq, eventCount: events.length, sourceHash, hash, projection, createdAt: Date.now() };
+};
+
+export const mergeStatsProjections = shards => {
+  const output = emptyStatsProjection();
+  const seen = new Set();
+  (Array.isArray(shards) ? shards : []).forEach(shard => {
+    const rangeKey = safe(shard?.rangeKey);
+    if (!rangeKey || seen.has(rangeKey)) return;
+    seen.add(rangeKey);
+    const value = normalizeStatsProjection(shard?.projection);
+    output.listenMs += value.listenMs;
+    output.validPlays += value.validPlays;
+    output.fullPlays += value.fullPlays;
+    output.starts += value.starts;
+    output.skips += value.skips;
+    value.byHourMs.forEach((amount, index) => output.byHourMs[index] += amount);
+    value.byWeekdayMs.forEach((amount, index) => output.byWeekdayMs[index] += amount);
+    Object.entries(value.features).forEach(([key, amount]) => bump(output.features, key, amount));
+    Object.entries(value.dimensions).forEach(([dimension, rows]) => Object.entries(rows).forEach(([key, amount]) => bump(output.dimensions[dimension], key, amount)));
+    Object.entries(value.tracks).forEach(([uid, row]) => {
+      const track = ensureTrack(output, uid);
+      track.listenMs += row.listenMs;
+      track.validPlays += row.validPlays;
+      track.fullPlays += row.fullPlays;
+      track.starts += row.starts;
+      track.skips += row.skips;
+      Object.entries(row.features).forEach(([key, amount]) => bump(track.features, key, amount));
+    });
+  });
+  return normalizeStatsProjection(output);
+};
+
+export default { STATS_SHARD_VERSION, emptyStatsProjection, buildStatsProjection, normalizeStatsProjection, buildStatsProjectionShard, mergeStatsProjections };
 
 //=================================================
 // FILE: /scripts/analytics/stats-state.js
