@@ -2406,13 +2406,6 @@ export const AchievementDictionary = {
     reward: { xp: 200, tier: 4 },
     trigger: { conditions: [{ metric: "pwaInstalled", operator: "gte", target: 1 }] }
   },
-  "backup_saves": {
-    id: "backup_saves", type: "scalable", category: "features",
-    ui: { name: "Бережёного бережёт ур. {level}", short: "Сохраните бэкап {target} раз.", desc: "Защита прогресса в облаке Яндекса.", howTo: "Откройте аккаунт и сохраните резервную копию на Яндекс Диск.", icon: "💽", color: "#00bcd4" },
-    reward: { xpBase: 20, xpMultiplier: 1.5, tierBase: 1 },
-    trigger: { conditions: [{ metric: "backups", operator: "gte" }] },
-    scaling: { math: "custom", steps: [1, 3, 10] }
-  },
   "feature_lyrics": {
     id: "feature_lyrics", type: "static", category: "features",
     ui: { name: "Караоке мастер", short: "Включите лирику во время подтверждённого прослушивания.", desc: "Сервер учитывает использование лирики только после принятого listening heartbeat.", howTo: "Запустите трек, дождитесь начала прослушивания и нажмите кнопку «Т».", icon: "🎤", color: "#4db6ac" },
