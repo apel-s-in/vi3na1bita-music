@@ -166,7 +166,6 @@
 .offline-ind--pinned-loading{opacity:1;color:#f5c842;animation:offline-ind-blink 1s ease-in-out infinite}
 .offline-ind--cloud{opacity:1;color:#5bc0de;text-shadow:0 0 4px rgba(91,192,222,.4)}
 .offline-ind--cloud:hover{color:#29b6f6}
-.offline-ind--cloud-loading{opacity:.4;color:#888;animation:offline-ind-blink 1s ease-in-out infinite}
 @keyframes offline-ind-blink{50%{opacity:.4}}
 
 /* Service Worker update prompt */
