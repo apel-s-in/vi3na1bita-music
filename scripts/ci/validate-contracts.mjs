@@ -212,7 +212,15 @@ const validatePlaybackOwnershipFoundation = () => {
   excludes(server, /const fencingToken = base64url\(crypto\.randomBytes\(32\)\);\s*const suppliedFencingToken[\s\S]{0,300}const fencingToken =/, 'Повторное объявление fencingToken');
   ['buildPlaybackFencePayload', 'ownershipFields'].forEach(marker => contains('scripts/analytics/listening-receipts.js', marker));
   contains('scripts/analytics/playback-ownership.js', 'buildPlaybackFencePayload');
-  ['requirePlaybackFence', 'renewPlaybackFence', 'closeTransferredListenSegment', 'playback_owner_changed', 'logicalListenKey', 'syncLogicalListenSession', 'finalizeLogicalListen', 'mergeLogicalCoverageIntervals', 'fromPositionMs', 'toPositionMs', "receiptKind: 'logical_full'"].forEach(marker => contains(server, marker));
+  contains('scripts/analytics/playback-ownership.js', 'releasePlaybackOwnership');
+  contains('scripts/analytics/playback-ownership.js', 'getLogicalListenDiagnostics');
+  contains('src/PlayerCore.js', "releaseOwnership: false");
+  assertNoMatch([...listFiles('scripts'), ...listFiles('src')], /dormant playback ownership|Dormant ownership service/g, 'Устаревшие dormant-комментарии удалены');
+  ['requirePlaybackFence', 'renewPlaybackFence', 'closeActiveListenSegment', 'playback_owner_changed', 'playback_release', 'logical_listen_get', 'logicalListenKey', 'syncLogicalListenSession', 'finalizeLogicalListen', 'mergeLogicalCoverageIntervals', 'fromPositionMs', 'toPositionMs', "receiptKind: 'logical_full'", 'accountTimezoneRevision', 'listenZonedParts'].forEach(marker => contains(server, marker));
+  excludes(server, /const legacyKey = listenActiveKey\(playerId\)/, 'Legacy listenActive:<playerId> lookup остался');
+  excludes(server, /activeSessions:\s*activeSessions\.map/, 'Legacy activeSessions остался в reward status');
+  excludes(server, /history\.deviceId[\s\S]{0,300}listenActiveKey\(playerId,\s*history\.deviceId\)/, 'History-device fallback остался');
+  excludes(server, /!data\.logicalSessionId\s*&&\s*data\.completionReason\s*===\s*['"]ended['"]/, 'Per-device full calculation остался');
 };
 const validatePlaybackBoundaries = () => {
   const protectedFiles = [...listFiles('scripts/app/games'), ...listFiles('scripts/app/friends'), ...listFiles('scripts/intel')];
