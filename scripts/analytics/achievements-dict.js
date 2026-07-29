@@ -110,7 +110,7 @@ export const AchievementDictionary = {
   },
   "fav_total": {
     id: "fav_total", type: "scalable", category: "collection",
-    ui: { name: "Мой плейлист ур. {level}", short: "Добавьте {target} треков в избранное.", desc: "Широкий пул открывает новые челленджи.", howTo: "Нажимайте на звёздочку справа от трека.", icon: "⭐", color: "#fdd835" },
+    ui: { name: "Моё избранное ур. {level}", short: "Добавьте {target} треков в избранное.", desc: "Сервер считает активные ⭐ вашего Яндекс ID на всех устройствах.", howTo: "Нажимайте на звёздочку справа от трека.", icon: "⭐", color: "#fdd835" },
     reward: { xpBase: 10, xpMultiplier: 1.4, tierBase: 1 },
     trigger: { conditions: [{ metric: "favCount", operator: "gte" }] },
     scaling: { math: "custom", steps: [3, 5, 8, 15, 50] }
