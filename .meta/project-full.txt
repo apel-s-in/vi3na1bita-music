@@ -11689,15 +11689,11 @@ export default { runPostRestoreRefresh };
 // Не управляет playback и не входит в backup.
 
 import { requestSocialAction } from '../../core/social-session.js';
+import { getDeviceId } from '../../core/device-context.js';
 import { syncWebPushSubscription } from './web-push.js';
 import { applyShardRewardResult } from '../shards/reward-notifier.js';
 
-const deviceId = () =>
-  String(
-    localStorage.getItem('deviceStableId') ||
-    localStorage.getItem('deviceHash') ||
-    'web'
-  ).trim();
+const deviceId = () => getDeviceId();
 
 const pushTransport = {
   isReady: () =>
