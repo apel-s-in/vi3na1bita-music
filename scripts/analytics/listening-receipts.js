@@ -18,6 +18,15 @@ const parseJson = (raw, fallback) => {
 };
 const currentYandexId = () => safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
 const currentDeviceId = () => getDeviceId();
+const ownershipFields = () => {
+  const grant = window.PlaybackOwnership?.getGrant?.();
+  return grant ? {
+    logicalSessionId: safe(grant.logicalSessionId),
+    ownerEpoch: Math.max(0, Math.floor(Number(grant.ownerEpoch || 0))),
+    fencingToken: safe(grant.fencingToken),
+    trackVersion: safe(grant.trackVersion)
+  } : {};
+};
 const readCompletionOutbox = () => {
   const rows = parseJson(localStorage.getItem(COMPLETION_OUTBOX_KEY), []);
   if (!Array.isArray(rows)) return [];
@@ -38,7 +47,7 @@ const writeCompletionOutbox = rows => {
 const isTerminalCompletionError = error => {
   const status = Number(error?.status || 0);
   const message = safe(error?.message);
-  return [400, 404, 409, 410].includes(status) && /listen_session_(not_found|not_completable|expired)/.test(message);
+  return [400, 404, 409, 410].includes(status) && /(listen_session_(not_found|not_completable|expired)|playback_(owner_changed|fence_|grant_required))/.test(message);
 };
 class ListeningReceiptService {
   constructor() {
@@ -102,6 +111,14 @@ class ListeningReceiptService {
         }
       });
     });
+    window.addEventListener('playback:ownership-updated', () => {
+      if (!this.session && window.playerCore?.isPlaying?.()) {
+        this.enqueue(() => this.start({ uid: window.playerCore?.getCurrentTrackUid?.(), duration: window.playerCore?.getDuration?.(), type: 'audio' }));
+      }
+    });
+    window.addEventListener('playback:ownership-lost', () => {
+      this.stageCurrentCompletion('ownership_transfer', this.snapshot());
+    });
     window.addEventListener('online', () => {
       this.enqueue(async () => {
         await this.flushCompletionOutbox().catch(() => null);
@@ -140,7 +157,7 @@ class ListeningReceiptService {
       this.clearTimer();
       return null;
     }
-    const payload = this.snapshot({ ...(finalSnapshot || {}), sessionId: current.sessionId, deviceId: current.deviceId || currentDeviceId(), reason: safe(reason) });
+    const payload = this.snapshot({ ...(finalSnapshot || {}), ...ownershipFields(), sessionId: current.sessionId, deviceId: current.deviceId || currentDeviceId(), reason: safe(reason) });
     const ownerYandexId = safe(current.ownerYandexId || currentYandexId());
     const outbox = readCompletionOutbox();
     const existing = outbox.find(item => item.sessionId === current.sessionId);
@@ -165,6 +182,9 @@ class ListeningReceiptService {
     });
   }
   ingestServerResult(result) {
+    if (result?.playback) {
+      window.PlaybackOwnership?.updateLease?.(result.playback);
+    }
     if (result?.progress) {
       this.lastProgress = result.progress;
       this.applyServerProgressToCatalog(result.progress);
@@ -250,6 +270,7 @@ class ListeningReceiptService {
     const result = await requestSocialAction(
       'listen_session_start',
       this.snapshot({
+        ...ownershipFields(),
         trackUid,
         deviceId: currentDeviceId(),
         variant: safe(detail.type || 'audio'),
@@ -268,7 +289,7 @@ class ListeningReceiptService {
   }
   async heartbeat() {
     if (!this.session?.sessionId || !this.isAuthorized() || !networkAllowed()) return null;
-    const result = await requestSocialAction('listen_session_heartbeat', this.snapshot({ sessionId: this.session.sessionId, deviceId: this.session.deviceId || currentDeviceId() }));
+    const result = await requestSocialAction('listen_session_heartbeat', this.snapshot({ ...ownershipFields(), sessionId: this.session.sessionId, deviceId: this.session.deviceId || currentDeviceId() }));
     this.ingestServerResult(result);
     applyShardRewardResult(result);
     if (result?.accepted) {
@@ -294,7 +315,7 @@ class ListeningReceiptService {
     if (!this.session?.sessionId || !this.isAuthorized() || !networkAllowed()) return null;
     const item = [...this.pendingFeatures.values()].find(row => row.trackUid === this.session.trackUid);
     if (!item) return null;
-    const result = await requestSocialAction('music_feature_use', { feature: item.feature, sessionId: this.session.sessionId, trackUid: item.trackUid, deviceId: currentDeviceId() });
+    const result = await requestSocialAction('music_feature_use', { ...ownershipFields(), feature: item.feature, sessionId: this.session.sessionId, trackUid: item.trackUid, deviceId: currentDeviceId() });
     this.pendingFeatures.delete(`${item.feature}:${item.trackUid}`);
     this.ingestServerResult(result);
     applyShardRewardResult(result);
