@@ -50,14 +50,6 @@
 .toast-offline{border-left:4px solid #666}
 
 /* 4. ДОПОЛНИТЕЛЬНЫЕ ОКНА И PWA (Бывшие инъекции) */
-.ios-install-prompt{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;border-radius:20px 20px 0 0;padding:24px 20px;transform:translateY(100%);transition:transform .3s cubic-bezier(.1,.8,.2,1);z-index:10000;box-shadow:0 -4px 30px rgba(0,0,0,.5)}
-.ios-install-prompt.show{transform:translateY(0)}
-.ios-prompt-icon{width:64px;height:64px;margin:0 auto 16px;display:block;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.4)}
-.ios-prompt-title{font-weight:900;font-size:18px;margin-bottom:8px;color:#fff;text-align:center}
-.ios-prompt-text{opacity:.85;margin-bottom:20px;text-align:center;font-size:14px;line-height:1.5;color:#eaf2ff}
-.ios-prompt-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:0;color:#fff;font-size:24px;cursor:pointer;line-height:1;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.ios-prompt-button{background:linear-gradient(135deg,#7c4dff,#4daaff);color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;width:100%;cursor:pointer;font-size:15px}
-
 .pwa-guide{display:flex;flex-direction:column;align-items:center;gap:14px}
 .pwa-guide-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:16px;background:linear-gradient(135deg,rgba(124,77,255,.22),rgba(77,170,255,.16));border:1px solid rgba(124,77,255,.28);font-size:27px}
 .pwa-guide-steps{width:100%;margin:0;padding:0 0 0 24px;color:#eaf2ff;font-size:13px;line-height:1.5}
