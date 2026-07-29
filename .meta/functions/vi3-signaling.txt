@@ -644,16 +644,7 @@ function isValidIanaTimezone(zone) {
 function timezoneOffsetAt(zone, timestamp = now()) {
   if (!isValidIanaTimezone(zone)) throw new Error('timezone_invalid');
   const at = Math.max(0, num(timestamp)) || now();
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: zone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23'
-  }).formatToParts(new Date(at));
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(at));
   const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
   const localAsUtc = Date.UTC(values.year, values.month - 1, values.day, values.hour, values.minute, values.second);
   return Math.round((at - localAsUtc) / 60000);
@@ -674,16 +665,7 @@ function normalizeTimezonePolicy(raw = {}, playerId = '') {
 }
 function publicTimezonePolicy(raw = {}) {
   const policy = normalizeTimezonePolicy(raw, raw.playerId);
-  return {
-    available: !!policy.zone,
-    version: policy.version,
-    zone: policy.zone,
-    revision: policy.revision,
-    source: policy.source,
-    boundAt: policy.boundAt,
-    effectiveFrom: policy.effectiveFrom,
-    updatedAt: policy.updatedAt
-  };
+  return { available: !!policy.zone, version: policy.version, zone: policy.zone, revision: policy.revision, source: policy.source, boundAt: policy.boundAt, effectiveFrom: policy.effectiveFrom, updatedAt: policy.updatedAt };
 }
 async function getTimezonePolicy(playerId) {
   return normalizeTimezonePolicy(payload(await kvGet(timezonePolicyKey(playerId))), playerId);
@@ -732,21 +714,24 @@ async function upsertAccountDevice(playerId, body = {}) {
   const key = accountDeviceKey(playerId, deviceId);
   const old = normalizeAccountDevice(payload(await kvGet(key)), playerId);
   const at = now();
-  const device = normalizeAccountDevice({
-    ...old,
-    playerId,
-    deviceId,
-    label: body.deviceLabel || old.label || 'Устройство',
-    deviceClass: body.deviceClass || old.deviceClass || 'Desktop',
-    platform: body.platform || old.platform || 'web',
-    pwa: body.pwa === true,
-    timezone: body.timezone || old.timezone,
-    timezoneOffsetMin: body.timezoneOffsetMin,
-    revokedAt: old.revokedAt,
-    firstSeenAt: old.firstSeenAt || at,
-    lastSeenAt: at,
-    updatedAt: at
-  }, playerId);
+  const device = normalizeAccountDevice(
+    {
+      ...old,
+      playerId,
+      deviceId,
+      label: body.deviceLabel || old.label || 'Устройство',
+      deviceClass: body.deviceClass || old.deviceClass || 'Desktop',
+      platform: body.platform || old.platform || 'web',
+      pwa: body.pwa === true,
+      timezone: body.timezone || old.timezone,
+      timezoneOffsetMin: body.timezoneOffsetMin,
+      revokedAt: old.revokedAt,
+      firstSeenAt: old.firstSeenAt || at,
+      lastSeenAt: at,
+      updatedAt: at
+    },
+    playerId
+  );
   await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: device });
   return device;
 }
@@ -812,23 +797,19 @@ async function actionTimezonePolicySet(event, body) {
   }
   const old = await getTimezonePolicy(playerId);
   const at = now();
-  const next = normalizeTimezonePolicy({
-    playerId,
-    zone,
-    revision: old.revision + 1,
-    source: 'browser_confirmed',
-    offsetAtBindingMin: expectedOffset,
-    boundAt: at,
-    effectiveFrom: at,
-    updatedAt: at
-  }, playerId);
+  const next = normalizeTimezonePolicy({ playerId, zone, revision: old.revision + 1, source: 'browser_confirmed', offsetAtBindingMin: expectedOffset, boundAt: at, effectiveFrom: at, updatedAt: at }, playerId);
   await kvPut({ pk: timezonePolicyKey(playerId), type: 'timezonePolicy', owner: playerId, data: next });
   return { ok: true, timezonePolicy: publicTimezonePolicy(next) };
 }
 async function actionAccountDeviceList(event, body) {
   const { playerId } = await requirePlayer(event, body);
   const rows = await kvPrefix(`accountDevice:${playerId}:`, 100);
-  const items = rows.map(payload).map(item => normalizeAccountDevice(item, playerId)).filter(item => item.deviceId).sort((left, right) => right.lastSeenAt - left.lastSeenAt).map(publicAccountDevice);
+  const items = rows
+    .map(payload)
+    .map(item => normalizeAccountDevice(item, playerId))
+    .filter(item => item.deviceId)
+    .sort((left, right) => right.lastSeenAt - left.lastSeenAt)
+    .map(publicAccountDevice);
   return { ok: true, items };
 }
 async function actionAccountDeviceUpdate(event, body) {
@@ -839,15 +820,18 @@ async function actionAccountDeviceUpdate(event, body) {
   const row = await kvGet(key);
   if (!row) throw new Error('account_device_not_found');
   const old = normalizeAccountDevice(payload(row), playerId);
-  const next = normalizeAccountDevice({
-    ...old,
-    label: hasOwn(body, 'label') ? safe(body.label).slice(0, 80) || old.label : old.label,
-    takeoverEnabled: hasOwn(body, 'takeoverEnabled') ? body.takeoverEnabled === true : old.takeoverEnabled,
-    remotePauseEnabled: hasOwn(body, 'remotePauseEnabled') ? body.remotePauseEnabled === true : old.remotePauseEnabled,
-    alwaysConfirm: true,
-    revokedAt: hasOwn(body, 'revoked') && body.revoked === true ? now() : old.revokedAt,
-    updatedAt: now()
-  }, playerId);
+  const next = normalizeAccountDevice(
+    {
+      ...old,
+      label: hasOwn(body, 'label') ? safe(body.label).slice(0, 80) || old.label : old.label,
+      takeoverEnabled: hasOwn(body, 'takeoverEnabled') ? body.takeoverEnabled === true : old.takeoverEnabled,
+      remotePauseEnabled: hasOwn(body, 'remotePauseEnabled') ? body.remotePauseEnabled === true : old.remotePauseEnabled,
+      alwaysConfirm: true,
+      revokedAt: hasOwn(body, 'revoked') && body.revoked === true ? now() : old.revokedAt,
+      updatedAt: now()
+    },
+    playerId
+  );
   await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: next });
   return { ok: true, device: publicAccountDevice(next) };
 }
@@ -860,16 +844,7 @@ function playbackIsActive(state, at = now()) {
   return !!state.logicalSessionId && state.status === 'playing' && state.leaseExpiresAt > at;
 }
 function playbackGrant(state, fencingToken) {
-  return {
-    logicalSessionId: state.logicalSessionId,
-    ownerEpoch: state.ownerEpoch,
-    fencingToken,
-    trackUid: state.trackUid,
-    trackVersion: state.trackVersion,
-    position: state.confirmedPosition,
-    leaseExpiresAt: state.leaseExpiresAt,
-    revision: state.revision
-  };
+  return { logicalSessionId: state.logicalSessionId, ownerEpoch: state.ownerEpoch, fencingToken, trackUid: state.trackUid, trackVersion: state.trackVersion, position: state.confirmedPosition, leaseExpiresAt: state.leaseExpiresAt, revision: state.revision };
 }
 async function requirePlaybackDevice(event, body) {
   const auth = await requirePlayer(event, body);
@@ -910,24 +885,27 @@ async function actionPlaybackClaim(event, body) {
     }
     const fencingToken = base64url(crypto.randomBytes(32));
     const sameLogicalTrack = current.logicalSessionId && current.trackUid === track.uid && current.trackVersion === track.trackVersion;
-    const next = normalizePlaybackState({
-      ...current,
-      playerId: auth.playerId,
-      logicalSessionId: sameLogicalTrack ? current.logicalSessionId : rid('playback'),
-      trackUid: track.uid,
-      trackVersion: track.trackVersion,
-      status: 'playing',
-      ownerDeviceId: auth.deviceId,
-      ownerLabel: auth.device.label,
-      ownerSessionId: auth.sessionId,
-      ownerEpoch: current.ownerEpoch + 1,
-      fencingTokenHash: hash(fencingToken),
-      confirmedPosition: sameLogicalTrack ? Math.min(track.duration, Math.max(current.confirmedPosition, num(body.position))) : Math.min(track.duration, Math.max(0, num(body.position))),
-      confirmedAt: at,
-      leaseExpiresAt: at + PLAYBACK_LEASE_MS,
-      revision: current.revision + 1,
-      updatedAt: at
-    }, auth.playerId);
+    const next = normalizePlaybackState(
+      {
+        ...current,
+        playerId: auth.playerId,
+        logicalSessionId: sameLogicalTrack ? current.logicalSessionId : rid('playback'),
+        trackUid: track.uid,
+        trackVersion: track.trackVersion,
+        status: 'playing',
+        ownerDeviceId: auth.deviceId,
+        ownerLabel: auth.device.label,
+        ownerSessionId: auth.sessionId,
+        ownerEpoch: current.ownerEpoch + 1,
+        fencingTokenHash: hash(fencingToken),
+        confirmedPosition: sameLogicalTrack ? Math.min(track.duration, Math.max(current.confirmedPosition, num(body.position))) : Math.min(track.duration, Math.max(0, num(body.position))),
+        confirmedAt: at,
+        leaseExpiresAt: at + PLAYBACK_LEASE_MS,
+        revision: current.revision + 1,
+        updatedAt: at
+      },
+      auth.playerId
+    );
     let changed = false;
     if (!row) {
       try {
@@ -1020,23 +998,26 @@ async function actionPlaybackTransferCommit(event, body) {
     const sameTrack = current.trackUid === track.uid && current.trackVersion === track.trackVersion;
     const fencingToken = base64url(crypto.randomBytes(32));
     const at = now();
-    const next = normalizePlaybackState({
-      ...current,
-      trackUid: track.uid,
-      trackVersion: track.trackVersion,
-      status: 'playing',
-      ownerDeviceId: auth.deviceId,
-      ownerLabel: auth.device.label,
-      ownerSessionId: auth.sessionId,
-      ownerEpoch: current.ownerEpoch + 1,
-      fencingTokenHash: hash(fencingToken),
-      confirmedPosition: sameTrack ? Math.min(track.duration, current.confirmedPosition) : Math.min(track.duration, Math.max(0, num(transfer.requestedPosition))),
-      confirmedAt: at,
-      leaseExpiresAt: at + PLAYBACK_LEASE_MS,
-      transferCount: current.transferCount + 1,
-      revision: current.revision + 1,
-      updatedAt: at
-    }, auth.playerId);
+    const next = normalizePlaybackState(
+      {
+        ...current,
+        trackUid: track.uid,
+        trackVersion: track.trackVersion,
+        status: 'playing',
+        ownerDeviceId: auth.deviceId,
+        ownerLabel: auth.device.label,
+        ownerSessionId: auth.sessionId,
+        ownerEpoch: current.ownerEpoch + 1,
+        fencingTokenHash: hash(fencingToken),
+        confirmedPosition: sameTrack ? Math.min(track.duration, current.confirmedPosition) : Math.min(track.duration, Math.max(0, num(transfer.requestedPosition))),
+        confirmedAt: at,
+        leaseExpiresAt: at + PLAYBACK_LEASE_MS,
+        transferCount: current.transferCount + 1,
+        revision: current.revision + 1,
+        updatedAt: at
+      },
+      auth.playerId
+    );
     if (!(await kvCompareAndPut({ row, type: 'playbackState', owner: auth.playerId, expiresAt: next.leaseExpiresAt + PLAYBACK_LEASE_MS, data: next }))) continue;
     await kvDelete(transferKey).catch(() => null);
     return { ok: true, transferred: true, fromDeviceId: transfer.fromDeviceId, playback: publicPlaybackState(next, auth.deviceId), grant: playbackGrant(next, fencingToken) };
@@ -1050,65 +1031,16 @@ async function actionSocialSessionIssue(event, body) {
   const expiresAt = issuedAt + CFG.socialSessionTtlMs;
   const oldPlayer = payload(await kvGet(`player:${identity.friendId}`));
   const oldProfile = payload(await kvGet(`profile:${identity.friendId}`));
-  const yandexIdHash = hash(
-    `ya:${identity.yandexId}`
-  );
-  const playerChanged =
-    oldPlayer.playerId !== identity.friendId ||
-    num(oldPlayer.authVersion) < 2 ||
-    oldPlayer.yandexIdHash !== yandexIdHash ||
-    safe(oldPlayer.displayName) !==
-      identity.displayName ||
-    safe(oldPlayer.avatarUrl) !==
-      identity.avatarUrl;
-
+  const yandexIdHash = hash(`ya:${identity.yandexId}`);
+  const playerChanged = oldPlayer.playerId !== identity.friendId || num(oldPlayer.authVersion) < 2 || oldPlayer.yandexIdHash !== yandexIdHash || safe(oldPlayer.displayName) !== identity.displayName || safe(oldPlayer.avatarUrl) !== identity.avatarUrl;
   if (playerChanged) {
-    await kvPut({
-      pk: `player:${identity.friendId}`,
-      type: 'player',
-      owner: identity.friendId,
-      data: {
-        ...oldPlayer,
-        playerId: identity.friendId,
-        authVersion: 2,
-        yandexIdHash,
-        displayName: identity.displayName,
-        avatarUrl: identity.avatarUrl,
-        createdAt:
-          oldPlayer.createdAt || issuedAt,
-        updatedAt: issuedAt
-      }
-    });
+    await kvPut({ pk: `player:${identity.friendId}`, type: 'player', owner: identity.friendId, data: { ...oldPlayer, playerId: identity.friendId, authVersion: 2, yandexIdHash, displayName: identity.displayName, avatarUrl: identity.avatarUrl, createdAt: oldPlayer.createdAt || issuedAt, updatedAt: issuedAt } });
   }
-
-  const profileDisplayName =
-    identity.displayName ||
-    oldProfile.displayName ||
-    'Слушатель';
-  const profileAvatar =
-    identity.avatarUrl ||
-    oldProfile.avatarUrl ||
-    '';
-  const profileChanged =
-    oldProfile.friendId !== identity.friendId ||
-    safe(oldProfile.displayName) !==
-      profileDisplayName ||
-    safe(oldProfile.avatarUrl) !==
-      profileAvatar;
-
+  const profileDisplayName = identity.displayName || oldProfile.displayName || 'Слушатель';
+  const profileAvatar = identity.avatarUrl || oldProfile.avatarUrl || '';
+  const profileChanged = oldProfile.friendId !== identity.friendId || safe(oldProfile.displayName) !== profileDisplayName || safe(oldProfile.avatarUrl) !== profileAvatar;
   if (profileChanged) {
-    await kvPut({
-      pk: `profile:${identity.friendId}`,
-      type: 'profile',
-      owner: identity.friendId,
-      data: {
-        ...oldProfile,
-        friendId: identity.friendId,
-        displayName: profileDisplayName,
-        avatarUrl: profileAvatar,
-        updatedAt: issuedAt
-      }
-    });
+    await kvPut({ pk: `profile:${identity.friendId}`, type: 'profile', owner: identity.friendId, data: { ...oldProfile, friendId: identity.friendId, displayName: profileDisplayName, avatarUrl: profileAvatar, updatedAt: issuedAt } });
   }
   const [registrationGrant, accountDevice, timezonePolicy] = await Promise.all([
     ensureRegistrationShardGrant(identity.friendId).catch(error => ({ ok: false, duplicate: false, amount: 0, operationId: '', error: safe(error?.message) })),
@@ -1499,20 +1431,13 @@ async function actionSignalAck(event, body) {
     return { ok: false, reason: 'peer_identity_mismatch' };
   }
   let acked = 0;
-
   for (const seq of seqs) {
     try {
-      await kvDelete(
-        `signal:${roomId}:${peerId}:${seq}`
-      );
+      await kvDelete(`signal:${roomId}:${peerId}:${seq}`);
       acked++;
     } catch {}
   }
-
-  return {
-    ok: true,
-    acked
-  };
+  return { ok: true, acked };
 }
 // ===== FRIENDS / E2EE V2 =====
 async function actionProfileSet(event, body) {
@@ -2277,22 +2202,9 @@ function favoriteRewardCount(raw) {
   return Object.values(state.items).filter(item => item.status === 'active' && item.rewardEligible).length;
 }
 async function actionFavoriteStateGet(event, body) {
-  const { playerId } = await requirePlayer(
-    event,
-    body
-  );
-  const { state } =
-    await getOrCreateFavoriteState(playerId);
-
-  return {
-    ok: true,
-    shadow: CFG.favoriteRewardsShadow,
-    rewardsEnabled:
-      !CFG.favoriteRewardsShadow,
-    state: publicFavoriteState(state),
-    rewards: [],
-    wallet: null
-  };
+  const { playerId } = await requirePlayer(event, body);
+  const { state } = await getOrCreateFavoriteState(playerId);
+  return { ok: true, shadow: CFG.favoriteRewardsShadow, rewardsEnabled: !CFG.favoriteRewardsShadow, state: publicFavoriteState(state), rewards: [], wallet: null };
 }
 async function actionFavoriteStateMutate(event, body) {
   const { playerId } = await requirePlayer(event, body);
@@ -5659,55 +5571,27 @@ async function actionRankedMatchPrepare(event, body) {
     }
     const currentRoom = payload(currentRoomRow);
     const currentMatchId = sanitizeId(currentRoom.rankedMatchId, 120);
-    const currentMatchRow = currentMatchId
-      ? await kvGet(rankedMatchKey(currentMatchId))
-      : null;
+    const currentMatchRow = currentMatchId ? await kvGet(rankedMatchKey(currentMatchId)) : null;
     const currentMatch = payload(currentMatchRow);
-
     if (currentMatchId && !currentMatchRow) {
-      const reservationAge =
-        now() - num(currentRoom.rankedPreparedAt);
-
+      const reservationAge = now() - num(currentRoom.rankedPreparedAt);
       if (reservationAge < 3000) {
-        await new Promise(resolve =>
-          setTimeout(resolve, 100)
-        );
+        await new Promise(resolve => setTimeout(resolve, 100));
         continue;
       }
-
-      const cleared = await kvCompareAndPut({
-        row: currentRoomRow,
-        type: 'room',
-        owner: currentRoom.hostPlayerId,
-        expiresAt: num(currentRoomRow.expires_at),
-        data: {
-          ...currentRoom,
-          rankedMatchId: '',
-          rankedPreparedAt: 0,
-          updatedAt: now()
-        }
-      });
-
+      const cleared = await kvCompareAndPut({ row: currentRoomRow, type: 'room', owner: currentRoom.hostPlayerId, expiresAt: num(currentRoomRow.expires_at), data: { ...currentRoom, rankedMatchId: '', rankedPreparedAt: 0, updatedAt: now() } });
       if (!cleared) continue;
       continue;
     }
-
-    const terminal = isRankedTerminal(
-      currentMatch.status
-    );
-
+    const terminal = isRankedTerminal(currentMatch.status);
     if (currentMatchRow && !terminal) {
       matchId = currentMatchId;
       break;
     }
-
     const candidate = rid('ranked');
     const preparedAt = now();
     const candidateKey = rankedMatchKey(candidate);
-    const candidateExpiresAt =
-      num(currentRoom.reconnectUntil) ||
-      preparedAt + CFG.roomTtlMs;
-
+    const candidateExpiresAt = num(currentRoom.reconnectUntil) || preparedAt + CFG.roomTtlMs;
     try {
       await kvInsert({
         pk: candidateKey,
@@ -5721,27 +5605,9 @@ async function actionRankedMatchPrepare(event, body) {
           gameId: RANKED_GAME_ID,
           participants,
           status: 'pending',
-          rps: {
-            version: 1,
-            status: 'waiting',
-            currentRound: 1,
-            firstPlayerId: '',
-            rounds: {},
-            updatedAt: preparedAt
-          },
+          rps: { version: 1, status: 'waiting', currentRound: 1, firstPlayerId: '', rounds: {}, updatedAt: preparedAt },
           submissions: {},
-          economy: {
-            required: true,
-            status: 'locking',
-            stakeEach: RANKED_STAKE_AMOUNT,
-            escrow: RANKED_STAKE_AMOUNT * 2,
-            lockedPlayers: 0,
-            participants: 2,
-            fundedAt: 0,
-            paidAt: 0,
-            refundedAt: 0,
-            updatedAt: preparedAt
-          },
+          economy: { required: true, status: 'locking', stakeEach: RANKED_STAKE_AMOUNT, escrow: RANKED_STAKE_AMOUNT * 2, lockedPlayers: 0, participants: 2, fundedAt: 0, paidAt: 0, refundedAt: 0, updatedAt: preparedAt },
           createdAt: preparedAt,
           updatedAt: preparedAt
         }
@@ -5749,25 +5615,11 @@ async function actionRankedMatchPrepare(event, body) {
     } catch {
       continue;
     }
-
-    const changed = await kvCompareAndPut({
-      row: currentRoomRow,
-      type: 'room',
-      owner: currentRoom.hostPlayerId,
-      expiresAt: num(currentRoomRow.expires_at),
-      data: {
-        ...currentRoom,
-        rankedMatchId: candidate,
-        rankedPreparedAt: preparedAt,
-        updatedAt: preparedAt
-      }
-    });
-
+    const changed = await kvCompareAndPut({ row: currentRoomRow, type: 'room', owner: currentRoom.hostPlayerId, expiresAt: num(currentRoomRow.expires_at), data: { ...currentRoom, rankedMatchId: candidate, rankedPreparedAt: preparedAt, updatedAt: preparedAt } });
     if (!changed) {
       await kvDelete(candidateKey).catch(() => null);
       continue;
     }
-
     matchId = candidate;
     break;
   }
@@ -5854,39 +5706,17 @@ async function actionRankedMatchAbort(event, body) {
   throw new Error('ranked_abort_conflict');
 }
 async function actionRankedMatchCleanup(event, body) {
-  const admin =
-    headerValue(event, 'x-vi3-admin') ||
-    safe(body.adminSecret);
-  const scheduler =
-    headerValue(event, 'x-vi3-scheduler') ||
-    safe(body.schedulerSecret);
-
-  const adminAllowed =
-    !!CFG.adminSecret &&
-    timingSafeEqualText(admin, CFG.adminSecret);
-  const schedulerAllowed =
-    !!CFG.schedulerSecret &&
-    timingSafeEqualText(
-      scheduler,
-      CFG.schedulerSecret
-    );
-
+  const admin = headerValue(event, 'x-vi3-admin') || safe(body.adminSecret);
+  const scheduler = headerValue(event, 'x-vi3-scheduler') || safe(body.schedulerSecret);
+  const adminAllowed = !!CFG.adminSecret && timingSafeEqualText(admin, CFG.adminSecret);
+  const schedulerAllowed = !!CFG.schedulerSecret && timingSafeEqualText(scheduler, CFG.schedulerSecret);
   if (!adminAllowed && !schedulerAllowed) {
-    const error = new Error(
-      'bad_ranked_cleanup_secret'
-    );
+    const error = new Error('bad_ranked_cleanup_secret');
     error.httpStatus = 403;
     throw error;
   }
-
-  const limit = Math.max(
-    1,
-    Math.min(100, Math.floor(num(body.limit, 50)))
-  );
-  const rows = await kvPrefixOrdered(
-    'rankedMatch:',
-    limit
-  );
+  const limit = Math.max(1, Math.min(100, Math.floor(num(body.limit, 50))));
+  const rows = await kvPrefixOrdered('rankedMatch:', limit);
   const results = [];
   for (const row of rows) {
     const match = payload(row);
@@ -6045,48 +5875,17 @@ async function actionLanCodeRegister(event, body) {
   const ttlMs = Math.min(600000, Math.max(60000, num(body.ttlMs, 300000)));
   const createdAt = now();
   const expiresAt = createdAt + ttlMs;
-  const matchMode = ranked
-    ? 'ranked'
-    : 'casual';
-  const modeChanged =
-    room.ranked !== ranked ||
-    room.localOnly !== localOnly ||
-    room.matchMode !== matchMode;
-
+  const matchMode = ranked ? 'ranked' : 'casual';
+  const modeChanged = room.ranked !== ranked || room.localOnly !== localOnly || room.matchMode !== matchMode;
   if (modeChanged) {
     room.ranked = ranked;
     room.localOnly = localOnly;
     room.matchMode = matchMode;
     room.updatedAt = createdAt;
-
-    await kvPut({
-      pk: `room:${roomId}`,
-      type: 'room',
-      owner: room.hostPlayerId || playerId,
-      expiresAt:
-        room.reconnectUntil || expiresAt,
-      data: room
-    });
+    await kvPut({ pk: `room:${roomId}`, type: 'room', owner: room.hostPlayerId || playerId, expiresAt: room.reconnectUntil || expiresAt, data: room });
   }
   try {
-await kvInsert({
-  pk: codeKey,
-  type: 'lanCode',
-  owner: playerId,
-  expiresAt,
-  data: {
-    code,
-    roomId,
-    roomSecret,
-    gameId: room.gameId,
-    ranked,
-    localOnly,
-    matchMode,
-    hostPlayerId: playerId,
-    createdAt,
-    expiresAt
-  }
-});
+    await kvInsert({ pk: codeKey, type: 'lanCode', owner: playerId, expiresAt, data: { code, roomId, roomSecret, gameId: room.gameId, ranked, localOnly, matchMode, hostPlayerId: playerId, createdAt, expiresAt } });
   } catch {
     return { ok: false, reason: 'lan_code_taken' };
   }
