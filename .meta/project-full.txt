@@ -450,6 +450,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     continue-on-error: true
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
     timeout-minutes: 20
     env:
       BASE_URL: http://127.0.0.1:4173
@@ -461,8 +463,8 @@ jobs:
       - name: Install Playwright
         run: npm install --no-save @playwright/test@1.55.0
 
-      - name: Install WebKit
-        run: npx playwright install --with-deps webkit
+      - name: Verify WebKit
+        run: npx playwright install webkit
 
       - name: Start local server
         run: python3 -m http.server 4173 --bind 127.0.0.1 --directory . > /tmp/vi3-webkit-http.log 2>&1 & echo $! > webkit-server.pid
