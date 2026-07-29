@@ -13114,8 +13114,11 @@ const main = async () => {
   });
   rows.sort((a, b) => a.album.localeCompare(b.album) || a.uid.localeCompare(b.uid));
   const compact = Object.fromEntries(rows.map(track => [track.uid, [track.duration, track.album, track.trackVersion]]));
+  const generatedAt = new Date().toISOString();
+  const trackLines = rows.map((track, index) => `    ${JSON.stringify(track)}${index < rows.length - 1 ? ',' : ''}`);
+  const fullJson = `{\n  "version": 1,\n  "generatedAt": ${JSON.stringify(generatedAt)},\n  "tracks": [\n${trackLines.join('\n')}\n  ]\n}\n`;
   fs.mkdirSync('data', { recursive: true });
-  fs.writeFileSync(FULL_PATH, `${JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), tracks: rows }, null, 2)}\n`, 'utf8');
+  fs.writeFileSync(FULL_PATH, fullJson, 'utf8');
   fs.writeFileSync(ENV_PATH, JSON.stringify(compact), 'utf8');
   console.log(`Generated ${rows.length} tracks`);
   console.log(`Full: ${FULL_PATH}`);
