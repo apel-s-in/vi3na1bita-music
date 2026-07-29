@@ -1,9 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-21T23:17:39.617Z",
+  "generatedAt": "2026-07-29T11:37:41.980Z",
   "tracks": [
     {
       "uid": "GD-01",
+      "trackVersion": "193ece9d41cef5e1c538490bcd3df337",
       "title": "Волна",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -21,6 +22,7 @@
     },
     {
       "uid": "GD-02",
+      "trackVersion": "99d2c9dcdab70816c570920eb357f96f",
       "title": "Цена Счастья",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -38,6 +40,7 @@
     },
     {
       "uid": "GD-03",
+      "trackVersion": "1f3db08774954b35875184c9e41c4a66",
       "title": "Гадкая",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -55,6 +58,7 @@
     },
     {
       "uid": "GD-04",
+      "trackVersion": "fdd265b03ec329b178ee99e391039955",
       "title": "Голос Души",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -72,6 +76,7 @@
     },
     {
       "uid": "GD-05",
+      "trackVersion": "717b3b290408836bc3660332445ce20d",
       "title": "Ангел",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -89,6 +94,7 @@
     },
     {
       "uid": "GD-06",
+      "trackVersion": "5de268b08670968f8f59e122662586e2",
       "title": "Завтра Настанет Всегда",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -106,6 +112,7 @@
     },
     {
       "uid": "GD-07",
+      "trackVersion": "288bf97dd92e561c2736970ba9bb1ccf",
       "title": "Упала Слеза",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -123,6 +130,7 @@
     },
     {
       "uid": "GD-08",
+      "trackVersion": "070b512c2124076bf1bf780b2e276cd4",
       "title": "Путеводная Звезда",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -140,6 +148,7 @@
     },
     {
       "uid": "GD-09",
+      "trackVersion": "9f5ca3d7169272060147c6d030d0a7ee",
       "title": "Мелодии Дождей",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -157,6 +166,7 @@
     },
     {
       "uid": "GD-10",
+      "trackVersion": "9b985f144d1ded2b9b8b3c1228c5a679",
       "title": "Прекрасная Ложь",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -174,6 +184,7 @@
     },
     {
       "uid": "GD-11",
+      "trackVersion": "6ca56a0fe34e5a971e24f0f1a189ba7c",
       "title": "Одиночество",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -191,6 +202,7 @@
     },
     {
       "uid": "GD-12",
+      "trackVersion": "821390583a983b7badd5fd5b25062a2e",
       "title": "Колыбельная",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -208,6 +220,7 @@
     },
     {
       "uid": "GD-13",
+      "trackVersion": "7a5a2ee0830c267e5a8b5c7968f937ad",
       "title": "Улыбка Весны",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -225,6 +238,7 @@
     },
     {
       "uid": "GD-14",
+      "trackVersion": "ef537b13f3209584105c24e3ee0744e8",
       "title": "Лёд",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -242,6 +256,7 @@
     },
     {
       "uid": "KREV-01",
+      "trackVersion": "cf0cd7393ea7bb767fe157c6dc75f2c2",
       "title": "Упала Слеза",
       "album": "krevetochka",
       "albumTitle": "КРЕВЕツTOCHKA",
@@ -259,6 +274,7 @@
     },
     {
       "uid": "KREV-02",
+      "trackVersion": "ef445f5ea8217331561d497e2db62edb",
       "title": "Принц",
       "album": "krevetochka",
       "albumTitle": "КРЕВЕツTOCHKA",
@@ -276,6 +292,7 @@
     },
     {
       "uid": "MZD-01",
+      "trackVersion": "73da7ad14ca46aad9ef100d4553f2ae8",
       "title": "Рулетка",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -293,6 +310,7 @@
     },
     {
       "uid": "MZD-02",
+      "trackVersion": "39caaea7a613b9494c41c9aaacf1473d",
       "title": "Дыхание 24/7",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -310,6 +328,7 @@
     },
     {
       "uid": "MZD-03",
+      "trackVersion": "82d1b84613644a55c397eb9324c7ea78",
       "title": "Витрина разбита",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -327,6 +346,7 @@
     },
     {
       "uid": "MZD-04",
+      "trackVersion": "788235d12bf3900103dc99b68d740d7b",
       "title": "Кошки-мышки",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -344,6 +364,7 @@
     },
     {
       "uid": "MZD-05",
+      "trackVersion": "04cb1db7fd7f084f6186674a7e3b2e88",
       "title": "Всё включено",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -361,6 +382,7 @@
     },
     {
       "uid": "MZD-06",
+      "trackVersion": "ee62545eede9cb9cc3a509dc26daa158",
       "title": "Вырвать сердце",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -378,6 +400,7 @@
     },
     {
       "uid": "MZD-07",
+      "trackVersion": "17068029fb3261554258550be92300b7",
       "title": "Все там будем",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -395,6 +418,7 @@
     },
     {
       "uid": "MZD-08",
+      "trackVersion": "af8b34482423644a2ed4ecf2bbccb354",
       "title": "Зачем цветы с корнями вырываем",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -412,6 +436,7 @@
     },
     {
       "uid": "MZD-09",
+      "trackVersion": "555394a3e4a296aa9f361688eab74470",
       "title": "Память",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -429,6 +454,7 @@
     },
     {
       "uid": "MZD-10",
+      "trackVersion": "2b8fa85a010325f117dccf1c1cda803a",
       "title": "Маша",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -446,6 +472,7 @@
     },
     {
       "uid": "MZD-11",
+      "trackVersion": "691e8ab68856bda8320be80ded3ab77f",
       "title": "Остановись, Планета",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -463,6 +490,7 @@
     },
     {
       "uid": "MZD-12",
+      "trackVersion": "2cbe9f6467ce69e48b71804801a808f7",
       "title": "Прости, я не фейк",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -480,6 +508,7 @@
     },
     {
       "uid": "MZD-13",
+      "trackVersion": "be30a5fb85830e363c3e63dccf6c3e97",
       "title": "Оля у моря",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -497,6 +526,7 @@
     },
     {
       "uid": "MZD-14",
+      "trackVersion": "d12000edccfc09a5c25826feee36b11b",
       "title": "Лови свой миг",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -514,6 +544,7 @@
     },
     {
       "uid": "MZD-15",
+      "trackVersion": "fae7d492c04f86d0d1829563d8f3b321",
       "title": "Призрак",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -531,6 +562,7 @@
     },
     {
       "uid": "MZD-16",
+      "trackVersion": "cb560208eb5343138eb185676b69bcf3",
       "title": "Между злом и добром",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -548,6 +580,7 @@
     },
     {
       "uid": "IVR-14",
+      "trackVersion": "b06dc8c0f3ec65ba6953a6c892266b16",
       "title": "Кораблик",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -565,6 +598,7 @@
     },
     {
       "uid": "NVR-01",
+      "trackVersion": "b24fefbb576d569404e5d1431591d123",
       "title": "Манифест",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -582,6 +616,7 @@
     },
     {
       "uid": "NVR-02",
+      "trackVersion": "38fafb34cf13e39b7ed27c42a34ac131",
       "title": "Страх перемен",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -599,6 +634,7 @@
     },
     {
       "uid": "NVR-03",
+      "trackVersion": "86fd6944ba8dd8cad1aaf576f7ea03da",
       "title": "Им всё равно",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -616,6 +652,7 @@
     },
     {
       "uid": "NVR-04",
+      "trackVersion": "5a54ba1caff252d13b1f63e5c45ca63f",
       "title": "Дремлют дети",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -633,6 +670,7 @@
     },
     {
       "uid": "NVR-05",
+      "trackVersion": "a086cac9f87cb50f7a2b0e9c7f69da03",
       "title": "Сквозь века",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -650,6 +688,7 @@
     },
     {
       "uid": "NVR-06",
+      "trackVersion": "41c6119df5bc4c934432e6e501612ebf",
       "title": "Ромашка",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -667,6 +706,7 @@
     },
     {
       "uid": "NVR-07",
+      "trackVersion": "3c7ec0c795b7d79460e2bdcb2e7cd3a7",
       "title": "От взмаха крыла",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -684,6 +724,7 @@
     },
     {
       "uid": "NVR-08",
+      "trackVersion": "261f27df187a2c3c4d8caa8d4bc9e2b5",
       "title": "Геракл",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -701,6 +742,7 @@
     },
     {
       "uid": "NVR-09",
+      "trackVersion": "7929a734cd960dad153e33d30943d0c6",
       "title": "Муха",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -718,6 +760,7 @@
     },
     {
       "uid": "NVR-10",
+      "trackVersion": "0073e6dc53759246d96075a623207172",
       "title": "Хайп",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -735,6 +778,7 @@
     },
     {
       "uid": "NVR-11",
+      "trackVersion": "f1363bbb50593ab90989ce8975feec6b",
       "title": "Злюка",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -752,6 +796,7 @@
     },
     {
       "uid": "NVR-12",
+      "trackVersion": "d47c395bea8954653f2be979cb39a59b",
       "title": "Прыщик",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -769,6 +814,7 @@
     },
     {
       "uid": "NVR-13",
+      "trackVersion": "55c6964e5bd02ed3a557e3a0c56dc035",
       "title": "ЗвёзДочка",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -786,6 +832,7 @@
     },
     {
       "uid": "NVR-15",
+      "trackVersion": "1218b172cc30217883633155394dbcb5",
       "title": "Рецепт любви",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -803,6 +850,7 @@
     },
     {
       "uid": "NE-01",
+      "trackVersion": "1646f2760d6e031d3bcfaf13924184ed",
       "title": "4145",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -820,6 +868,7 @@
     },
     {
       "uid": "NE-02",
+      "trackVersion": "9de457bf39dfb1a04c0280724a825650",
       "title": "А где-то там война",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -837,6 +886,7 @@
     },
     {
       "uid": "NE-03",
+      "trackVersion": "a12dd6d5862bdbea17d1561734de596a",
       "title": "Живи, Герой",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -854,6 +904,7 @@
     },
     {
       "uid": "NE-04",
+      "trackVersion": "43905aa07dc81c6a283e0a667c7a36bf",
       "title": "Путь к победе",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -871,6 +922,7 @@
     },
     {
       "uid": "NE-05",
+      "trackVersion": "3bc7475b7fdf314077d51d2cb1b7f740",
       "title": "Добро и Зло",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -888,6 +940,7 @@
     },
     {
       "uid": "OS-01",
+      "trackVersion": "8ffe1347213278c710ccaa39d4d714a1",
       "title": "Как Гермиона Грейнджер",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -905,6 +958,7 @@
     },
     {
       "uid": "OS-02",
+      "trackVersion": "d7aa280e48a743a1603b7a38f06e8955",
       "title": "Трусливый Парень",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -922,6 +976,7 @@
     },
     {
       "uid": "OS-03",
+      "trackVersion": "e443ee28fc1286808590c6edeb4b8aae",
       "title": "Заклинание Добра",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -939,6 +994,7 @@
     },
     {
       "uid": "OS-04",
+      "trackVersion": "a0b03406f7d47127fd27f943c3f8d47c",
       "title": "Последний День",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -956,6 +1012,7 @@
     },
     {
       "uid": "OS-05",
+      "trackVersion": "e87646c82e690d36167e287322ba4115",
       "title": "Зазеркалье Души",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -973,6 +1030,7 @@
     },
     {
       "uid": "OS-06",
+      "trackVersion": "20cceaee19dcd8093d256e48cc94270c",
       "title": "Мумия",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -990,6 +1048,7 @@
     },
     {
       "uid": "OS-07",
+      "trackVersion": "36fc2ff493c71a0156741c0e57155e9f",
       "title": "Коварство",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1007,6 +1066,7 @@
     },
     {
       "uid": "OS-08",
+      "trackVersion": "194778e30188fe345d720f956f9f6f8b",
       "title": "Сумерки",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1024,6 +1084,7 @@
     },
     {
       "uid": "OS-09",
+      "trackVersion": "1753a1c383b3bc49edcfc24e9a653a5e",
       "title": "Лунный Круг",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1041,6 +1102,7 @@
     },
     {
       "uid": "OS-10",
+      "trackVersion": "f297cedfbded3195fe76fcdf15f02e57",
       "title": "Нити Судьбы",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1058,6 +1120,7 @@
     },
     {
       "uid": "OS-11",
+      "trackVersion": "4b395ac66f44e86404c03a15eb7db097",
       "title": "Две Души",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1075,6 +1138,7 @@
     },
     {
       "uid": "OS-12",
+      "trackVersion": "28f5c0cb4142b1266cb33d62664f77d2",
       "title": "Ветерок",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1092,6 +1156,7 @@
     },
     {
       "uid": "OS-13",
+      "trackVersion": "9cb7e4946039cb7e56297144f7cc5127",
       "title": "Уроки Музыки",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1109,6 +1174,7 @@
     },
     {
       "uid": "OS-14",
+      "trackVersion": "c6818b65b653867ab06971eae78c399c",
       "title": "Однажды в Сказке",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1126,6 +1192,7 @@
     },
     {
       "uid": "OS-15",
+      "trackVersion": "1673b37fb863428b6f031b5049feb15c",
       "title": "Снежинка",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -1143,6 +1210,7 @@
     },
     {
       "uid": "VS-01",
+      "trackVersion": "68f7fd47f433b38177a1a071b6ac3cf5",
       "title": "Живой",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1160,6 +1228,7 @@
     },
     {
       "uid": "VS-02",
+      "trackVersion": "38b82f28ac1e0e0c18976f04cb3daf9a",
       "title": "Клаустрофобия",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1177,6 +1246,7 @@
     },
     {
       "uid": "VS-03",
+      "trackVersion": "d5ca1ea3d3e1e15881b3b74569b67b79",
       "title": "В ссоре",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1194,6 +1264,7 @@
     },
     {
       "uid": "VS-04",
+      "trackVersion": "7bd630dd91e5473c1031885d5758c671",
       "title": "Тише",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1211,6 +1282,7 @@
     },
     {
       "uid": "VS-05",
+      "trackVersion": "559eaa725484aca33e992ffc00b00314",
       "title": "Мирись",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1228,6 +1300,7 @@
     },
     {
       "uid": "VS-06",
+      "trackVersion": "bc476c1ef41895fccc04f3d53b852226",
       "title": "Monsieur Жор",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1245,6 +1318,7 @@
     },
     {
       "uid": "VS-07",
+      "trackVersion": "4d0508b5c30b951276f0c115536e9538",
       "title": "Закатай губу",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1262,6 +1336,7 @@
     },
     {
       "uid": "VS-08",
+      "trackVersion": "3a3a7146d3e232af73fb8907f88e34e5",
       "title": "Царевна",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1279,6 +1354,7 @@
     },
     {
       "uid": "VS-09",
+      "trackVersion": "0b845cd0f955ae59e34e4425faea1120",
       "title": "Печаль",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -1296,6 +1372,7 @@
     },
     {
       "uid": "VS-10",
+      "trackVersion": "1823a23fdbeb1b68e10dfa01d02221f0",
       "title": "Любовь и Ненависть",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
