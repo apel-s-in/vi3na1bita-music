@@ -14910,10 +14910,10 @@ export default rediscovery;
 
 //=================================================
 // FILE: /scripts/intel/roadmap.js
-export const INTEL_ROADMAP_VERSION = '2026-03-17';
+export const INTEL_ROADMAP_VERSION = '2026-07-29';
 
 export const INTEL_ROADMAP_TEXT = String.raw`
-UID.001_(Playback safety invariant)_(не допустить скрытых остановок плеера)_(intel-слой, sync, backup, recommendations, providers и UI никогда не стопают playback кроме Pause/Stop/SleepTimer и единственного разрешённого favorites-view сценария)
+UID.001_(Playback safety invariant)_(не допустить скрытых остановок плеера)_(intel-слой, sync, backup, recommendations, providers и UI никогда не стопают playback кроме Pause/Stop/SleepTimer, единственного разрешённого favorites-view сценария и узкой pause-only команды после явно подтверждённого переноса playback-владения на другое устройство того же Яндекс ID)
 UID.001.01_(Favorites-view stop exception)_(сохранить единственный допустимый stop-case)_(если текущий трек стал inactive в favorites view и это был последний active, только тогда разрешён STOP)
 UID.001.02_(No volume reset invariant)_(не ломать звук побочными функциями)_(ни sync, ни modals, ни provider actions, ни recommendation UI не имеют права сбрасывать mute/volume)
 UID.001.03_(No playlist hijack invariant)_(не дать новым слоям подменять playing playlist)_(рекомендации, community и semantic UI только предлагают, но не меняют очередь молча)
@@ -15283,7 +15283,11 @@ UID.098_(Device identity registry)_(сделать multi-device поведени
 UID.098.01_(Device as trust signal, not truth)_(не конфликтовать с multi-device моделью)_(device identity helps trust/claim/sync but does not override internal user profile)
 
 UID.099_(Multi-device sync model)_(нормально поддерживать два и более устройства пользователя)_(event logs from devices merge by eventId into one profile with deterministic rebuild)
-UID.099.01_(Simultaneous devices allowed)_(не ломать реальную жизнь пользователя)_(listening on phone and desktop at once is valid; trust layer may flag anomalies but should not hard-break stats by default)
+UID.099.01_(Single active playback owner)_(исключить двойной звук и двойную статистику)_(для одного Яндекс ID сервер допускает только одно активное playback-владение; другое авторизованное устройство может получить его только после явного Play и подтверждения позиции/устройства)
+UID.099.01.01_(Explicit ownership transfer exception)_(согласовать перенос с playback safety invariant)_(после подтверждённого server transfer старое устройство может выполнить только узкую паузу без stop, reset, mute, смены playlist или очистки позиции)
+UID.099.01.02_(No PIN transfer policy)_(сохранить удобство внутри одного Яндекс ID)_(PIN не требуется; transfer разрешён только signed social session того же аккаунта и всегда подтверждается пользователем на новом устройстве)
+UID.099.01.03_(Fencing ownership token)_(не принимать поздние heartbeat старого устройства)_(каждая смена владельца увеличивает ownerEpoch и выдаёт новый fencing token; старый token больше не получает listening credit)
+UID.099.01.04_(Logical multi-device listening session)_(засчитать один трек через последовательный перенос)_(device segments объединяются по logicalSessionId и media coverage без двойного учёта перекрывающихся диапазонов)
 UID.099.02_(Sync revision markers)_(избежать race conditions в merge)_(store sync revision/hash/watermark to compare local vs remote branches before upload)
 UID.099.03_(Conflict classes)_(сделать sync UI и обработку понятными)_(no_conflict/duplicate_overlap/divergent_local/divergent_remote/mixed_merge/suspicious_conflict)
 UID.099.04_(Merge lock semantics)_(не дать двум устройствам испортить snapshot одновременно)_(cloud/hybrid sync should use compare-before-write and soft conflict retries)
