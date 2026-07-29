@@ -9,11 +9,26 @@ export const META_DB_STORES = Object.freeze([
   'hybrid_sync',
   'recommendation_state',
   'collection_state',
-  'intel_runtime'
+  'intel_runtime',
+  'backup_known_ranges',
+  'backup_pending_ranges',
+  'backup_mutations',
+  'backup_sync_state'
+]);
+
+export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
+  'events_hot',
+  'events_warm',
+  'stats',
+  'global',
+  'backup_known_ranges',
+  'backup_pending_ranges',
+  'backup_mutations',
+  'backup_sync_state'
 ]);
 
 export class MetaDB {
-  constructor() { this.dbName = 'MetaDB_v4'; this.version = 2; this.db = null; }
+  constructor() { this.dbName = 'MetaDB_v4'; this.version = 3; this.db = null; }
   async init() {
     if (this.db) return this.db;
     return window.Utils.func.memoAsyncOnce('analytics:meta-db:init', () => new Promise((res, rej) => {
@@ -24,7 +39,8 @@ export class MetaDB {
         ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
-        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
+        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime', 'backup_pending_ranges', 'backup_mutations', 'backup_sync_state'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
+        if (!db.objectStoreNames.contains('backup_known_ranges')) db.createObjectStore('backup_known_ranges', { keyPath: 'rangeKey' });
       };
       req.onsuccess = () => res(this.db = req.result);
       req.onerror = () => rej(req.error);
@@ -55,13 +71,13 @@ export class MetaDB {
 
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction(
-        META_DB_STORES,
+        ACCOUNT_SNAPSHOT_STORES,
         'readonly'
       );
       const snapshot = {};
-      let pending = META_DB_STORES.length;
+      let pending = ACCOUNT_SNAPSHOT_STORES.length;
 
-      META_DB_STORES.forEach(name => {
+      ACCOUNT_SNAPSHOT_STORES.forEach(name => {
         const request = tx.objectStore(name).getAll();
 
         request.onsuccess = () => {
