@@ -18156,8 +18156,13 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       this.prepareContext();
       if (idx != null) {
         if (idx === this.currentIndex && this.sound) {
-          if (opts.autoPlay !== false && !this.isPlaying()) return this.sound.play();
-          return;
+          if (opts.autoPlay !== false && !this.isPlaying()) {
+            const ownership = await this._authorizePlaybackStart(this.getCurrentTrackUid(), this.getPosition(), opts);
+            if (!ownership?.allowed) return false;
+            if (Number.isFinite(ownership.resumePosition)) this.seek(ownership.resumePosition);
+            return this.sound.play();
+          }
+          return true;
         }
         return this.load(idx, { ...opts, autoPlay: opts.autoPlay ?? true });
       }
