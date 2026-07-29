@@ -13536,14 +13536,20 @@ const validateRecommendationsAndStats = () => {
 const validatePlaybackOwnershipFoundation = () => {
   const server = 'cloud-functions/vi3-signaling/index.js';
   const timezone = 'scripts/core/timezone-policy.js';
-  ['timezone_policy_get', 'timezone_policy_set', 'account_device_list', 'account_device_update', 'playback_state_get', 'timezonePolicyKey', 'accountDeviceKey', 'playbackStateKey', 'alwaysConfirm'].forEach(marker => contains(server, marker));
+  ['timezone_policy_get', 'timezone_policy_set', 'account_device_list', 'account_device_update', 'playback_state_get', 'playback_claim', 'playback_transfer_prepare', 'playback_transfer_commit', 'timezonePolicyKey', 'accountDeviceKey', 'playbackStateKey', 'playbackTransferKey', 'fencingTokenHash', 'ownerEpoch', 'alwaysConfirm'].forEach(marker => contains(server, marker));
   ['getDeviceTimezoneContext', 'refreshTimezonePolicy', 'changeAccountTimezone', 'browser_confirmed'].forEach(marker => contains(timezone, marker));
   contains('scripts/core/social-session.js', 'currentDeviceContext');
   contains('scripts/core/social-session.js', 'playback_state_get');
+  contains(server, 'did: sessionDeviceId');
+  const ownership = 'scripts/analytics/playback-ownership.js';
+  ['claimPlaybackOwnership', 'playback_transfer_prepare', 'playback_transfer_commit', 'getTrackVersion', 'readOwnershipGrant'].forEach(marker => contains(ownership, marker));
+  excludes(ownership, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist|applyFavoritesOnlyFilter)\s*\(/, 'Dormant ownership service управляет playback');
   excludes(timezone, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Timezone policy управляет playback');
   excludes('scripts/core/device-identity.js', /resolvedOptions\(\)\.timeZone|hardwareConcurrency|screen\.width|navigator\.platform/, 'Device ID зависит от fingerprint');
   contains('scripts/intel/roadmap.js', 'Single active playback owner');
   contains('scripts/intel/roadmap.js', 'No PIN transfer policy');
+  contains('scripts/ci/generate-listen-catalog.mjs', 'trackVersion');
+  contains('scripts/ci/generate-listen-catalog.mjs', "createHash('sha256')");
 };
 const validatePlaybackBoundaries = () => {
   const protectedFiles = [...listFiles('scripts/app/games'), ...listFiles('scripts/app/friends'), ...listFiles('scripts/intel')];
