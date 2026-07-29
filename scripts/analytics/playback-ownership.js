@@ -2,6 +2,7 @@
 // Управляет только разрешением старта и узкой pause-only реакцией на подтверждённую потерю ownership.
 import { requestSocialAction } from '../core/social-session.js';
 import { getDeviceId } from '../core/device-context.js';
+import { buildPlaybackFencePayload } from './playback-fence.js';
 
 const CATALOG_URL = './data/listen-track-catalog.env.json';
 const GRANT_PREFIX = 'playback:ownership-grant:v1:';
@@ -110,13 +111,9 @@ export const claimPlaybackOwnership = async ({ trackUid, trackVersion = '', posi
   const version = safe(trackVersion) || await getTrackVersion(uid);
   const currentGrant = readOwnershipGrant();
   const base = {
-    deviceId: currentDeviceId(),
+    ...buildPlaybackFencePayload({ grant: currentGrant, deviceId: currentDeviceId(), trackVersion: version }),
     trackUid: uid,
-    trackVersion: version,
-    position: Math.max(0, Number(position || 0)),
-    logicalSessionId: safe(currentGrant?.logicalSessionId),
-    ownerEpoch: Math.max(0, Number(currentGrant?.ownerEpoch || 0)),
-    fencingToken: safe(currentGrant?.fencingToken)
+    position: Math.max(0, Number(position || 0))
   };
   const claimed = await requestSocialAction('playback_claim', base);
   if (claimed?.grant) {
