@@ -5610,12 +5610,13 @@ export const metaDB = new MetaDB();
 // Пассивный playback ownership protocol.
 // На этом этапе модуль не подключён к PlayerCore и не управляет audio transport.
 import { requestSocialAction } from '../core/social-session.js';
+import { getDeviceId } from '../core/device-context.js';
 
 const CATALOG_URL = './data/listen-track-catalog.env.json';
 const GRANT_PREFIX = 'playback:ownership-grant:v1:';
 const safe = value => String(value == null ? '' : value).trim();
 const currentOwner = () => safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
-const currentDeviceId = () => safe(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web');
+const currentDeviceId = () => getDeviceId();
 const grantKey = owner => `${GRANT_PREFIX}${safe(owner)}`;
 let catalogPromise = null;
 
@@ -5698,6 +5699,18 @@ export const getPlaybackOwnershipState = async () => {
   return result?.playback || null;
 };
 
+export const reconcilePlaybackOwnership = async ({ reason = 'foreground' } = {}) => {
+  if (window.YandexAuth?.getSessionStatus?.() !== 'active' || !window.YandexAuth?.isTokenAlive?.()) return null;
+  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null;
+  const playback = await getPlaybackOwnershipState();
+  const grant = readOwnershipGrant();
+  const lost = playback?.active === true && playback.ownerDeviceId && playback.ownerDeviceId !== currentDeviceId();
+  if (!lost) return playback;
+  clearOwnershipGrant();
+  window.dispatchEvent(new CustomEvent('playback:ownership-lost', { detail: { reason, playback, previousGrant: grant ? { ...grant, fencingToken: '' } : null } }));
+  return playback;
+};
+
 export const claimPlaybackOwnership = async ({ trackUid, trackVersion = '', position = 0, confirm = true } = {}) => {
   const uid = safe(trackUid);
   if (!uid) throw new Error('playback_track_required');
@@ -5734,14 +5747,32 @@ export const initPlaybackOwnership = () => {
   if (initialized) return;
   initialized = true;
   window.addEventListener('yandex:auth:changed', event => {
-    if (event.detail?.status !== 'active') clearOwnershipGrant();
+    if (event.detail?.status !== 'active') {
+      clearOwnershipGrant();
+      return;
+    }
+    setTimeout(() => reconcilePlaybackOwnership({ reason: 'auth' }).catch(() => null), 500);
   });
   window.addEventListener('account:data-switching', () => clearOwnershipGrant());
+  window.addEventListener('account:data-switched', () => reconcilePlaybackOwnership({ reason: 'account_switch' }).catch(() => null));
+  window.addEventListener('online', () => {
+    if (!document.hidden) reconcilePlaybackOwnership({ reason: 'online' }).catch(() => null);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) reconcilePlaybackOwnership({ reason: 'foreground' }).catch(() => null);
+  });
+  const onServiceWorkerMessage = event => {
+    if (event.data?.type !== 'PLAYBACK_OWNERSHIP_TRANSFERRED') return;
+    reconcilePlaybackOwnership({ reason: 'webpush' }).catch(() => null);
+  };
+  navigator.serviceWorker?.addEventListener?.('message', onServiceWorkerMessage);
+  window.addEventListener('message', onServiceWorkerMessage);
 };
 
 export const playbackOwnershipService = {
   init: initPlaybackOwnership,
   getState: getPlaybackOwnershipState,
+  reconcile: reconcilePlaybackOwnership,
   claim: claimPlaybackOwnership,
   getTrackVersion,
   getGrant: readOwnershipGrant,
