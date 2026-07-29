@@ -615,6 +615,9 @@ const PLAYBACK_STATE_VERSION = 1;
 function timezonePolicyKey(playerId) {
   return `timezonePolicy:${sanitizeId(playerId, 96)}`;
 }
+function timezonePolicyRevisionKey(playerId, revision) {
+  return `timezonePolicyRevision:${sanitizeId(playerId, 96)}:${String(Math.max(0, Math.floor(num(revision)))).padStart(8, '0')}`;
+}
 function accountDeviceKey(playerId, deviceId) {
   return `accountDevice:${sanitizeId(playerId, 96)}:${sanitizeId(deviceId, 120)}`;
 }
@@ -788,7 +791,10 @@ async function actionTimezonePolicySet(event, body) {
   const old = await getTimezonePolicy(playerId);
   const at = now();
   const next = normalizeTimezonePolicy({ playerId, zone, revision: old.revision + 1, source: 'browser_confirmed', offsetAtBindingMin: expectedOffset, boundAt: at, effectiveFrom: at, updatedAt: at }, playerId);
-  await kvPut({ pk: timezonePolicyKey(playerId), type: 'timezonePolicy', owner: playerId, data: next });
+  await Promise.all([
+    kvPut({ pk: timezonePolicyKey(playerId), type: 'timezonePolicy', owner: playerId, data: next }),
+    kvPut({ pk: timezonePolicyRevisionKey(playerId, next.revision), type: 'timezonePolicyRevision', owner: playerId, data: next })
+  ]);
   return { ok: true, timezonePolicy: publicTimezonePolicy(next) };
 }
 async function actionAccountDeviceList(event, body) {
@@ -926,34 +932,17 @@ async function actionPlaybackRelease(event, body) {
     const row = await kvGet(key);
     if (!row) return { ok: true, released: false, reason: 'playback_not_found' };
     const checked = assertPlaybackFenceState(payload(row), auth, body);
+    const track = LISTEN_TRACK_CATALOG.get(checked.state.trackUid);
     const at = now();
-    const position = - normalizeTimezoneOffsetMin(timezoneOffsetMin) * 60000;
-  const date = new Date(localTimestamp);
-  return { hour: date.getUTCHours(), minute: date.getUTCMinutes(), weekday: date.getUTCDay(), dayKey: date.toISOString().slice(0, 10) };
+    const position = Math.max(0, Math.min(track?.duration || 7200, num(body.position, checked.state.confirmedPosition)));
+    const next = normalizePlaybackState({ ...checked.state, status: 'paused', confirmedPosition: position, confirmedAt: at, leaseExpiresAt: 0, revision: checked.state.revision + 1, updatedAt: at }, auth.playerId);
+    if (!(await kvCompareAndPut({ row, type: 'playbackState', owner: auth.playerId, expiresAt: at + PLAYBACK_LEASE_MS, data: next }))) continue;
+    const closedListenSegment = await closeActiveListenSegment(auth.playerId, auth.deviceId, position, reason).catch(error => ({ error: safe(error?.message) }));
+    return { ok: true, released: true, reason, playback: publicPlaybackState(next, auth.deviceId), logical: closedListenSegment?.logical || null, segmentReceipt: closedListenSegment?.segmentReceipt || null };
+  }
+  throw new Error('playback_release_conflict');
 }
-function listenZonedParts(timestamp, timezone) {
-  const zone = isValidIanaTimezone(timezone) ? safe(timezone) : '';
-  if (!zone) return null;
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: zone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    weekday: 'short',
-    hourCycle: 'h23'
-  }).formatToParts(new Date(num(timestamp) || now()));
-  const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
-  const weekdays = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return {
-    hour: Math.max(0, Math.min(23, Math.floor(num(values.hour)))),
-    minute: Math.max(0, Math.min(59, Math.floor(num(values.minute)))),
-    weekday: weekdays[values.weekday] ?? 0,
-    dayKey: `${values.year}-${values.month}-${values.day}`,
-    timezone: zone
-  };
-}
+async function actionPlaybackClaim(event, body) {
   const auth = await requirePlaybackDevice(event, body);
   await enforceRateLimit({ scope: 'playback_claim', actor: `${auth.playerId}:${auth.deviceId}`, limit: 120, windowMs: 60 * 60 * 1000 });
   const track = listenTrackFromCatalog(body.trackUid);
@@ -974,7 +963,7 @@ function listenZonedParts(timestamp, timezone) {
     const suppliedFencingToken = safe(body.fencingToken);
     const sameOwnerGrant = playbackIsActive(current, at) && current.ownerDeviceId === auth.deviceId && suppliedFencingToken && current.fencingTokenHash === hash(suppliedFencingToken);
     const fencingToken = sameOwnerGrant ? suppliedFencingToken : base64url(crypto.randomBytes(32));
-    const sameLogicalTrack = current.logicalSessionId && current.trackUid === track.uid && current.trackVersion === track.trackVersion;
+    const sameLogicalTrack = playbackIsActive(current, at) && current.logicalSessionId && current.trackUid === track.uid && current.trackVersion === track.trackVersion;
     const next = normalizePlaybackState(
       {
         ...current,
@@ -2430,10 +2419,6 @@ function loyaltyStateKey(playerId) {
 function loyaltyDayKey(timestamp = now()) {
   return new Date(num(timestamp) || now()).toISOString().slice(0, 10);
 }
-function loyaltyDayOrdinal(dayKey) {
-  const timestamp = Date.parse(`${safe(dayKey)}T00:00:00Z`);
-  return Number.isFinite(timestamp) ? Math.floor(timestamp / 86400000) : 0;
-}
 function loyaltyWindowIndex(cycleStartedAt, at = now()) {
   const startedAt = Math.max(0, num(cycleStartedAt));
   if (!startedAt || at < startedAt) return 0;
@@ -2929,6 +2914,14 @@ function listenLocalParts(timestamp, timezoneOffsetMin = 0) {
   const date = new Date(localTimestamp);
   return { hour: date.getUTCHours(), minute: date.getUTCMinutes(), weekday: date.getUTCDay(), dayKey: date.toISOString().slice(0, 10) };
 }
+function listenZonedParts(timestamp, timezone) {
+  const zone = isValidIanaTimezone(timezone) ? safe(timezone) : '';
+  if (!zone) return null;
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(new Date(num(timestamp) || now()));
+  const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+  const weekdays = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return { hour: Math.max(0, Math.min(23, Math.floor(num(values.hour)))), minute: Math.max(0, Math.min(59, Math.floor(num(values.minute)))), weekday: weekdays[values.weekday] ?? 0, dayKey: `${values.year}-${values.month}-${values.day}`, timezone: zone };
+}
 function normalizeListenCreditSegments(raw) {
   return (Array.isArray(raw) ? raw : [])
     .map(segment => ({
@@ -3131,8 +3124,10 @@ async function syncLogicalListenSession(sessionRaw) {
       .filter(interval => !knownIntervals.has(interval.intervalId));
     const at = now();
     const ended = session.status === 'completed' && session.completionReason === 'ended';
+    const terminal = session.status === 'completed' && session.completionReason !== 'ownership_transfer';
+    const interrupted = terminal && !ended;
     const first = !row || !current.logicalSessionId;
-    const invalidated = current.invalidated || session.rejectedHeartbeats > 0 || session.continuityBroken === true;
+    const invalidated = current.invalidated || interrupted || session.rejectedHeartbeats > 0 || session.continuityBroken === true;
     const next = normalizeLogicalListen(
       {
         ...current,
@@ -3142,7 +3137,7 @@ async function syncLogicalListenSession(sessionRaw) {
         trackVersion: session.trackVersion,
         album: session.album,
         durationMs: Math.floor(track.duration * 1000),
-        status: ended ? 'completed' : 'active',
+        status: terminal ? 'completed' : 'active',
         initialStartedPositionMs: first ? Math.floor(session.startedPosition * 1000) : current.initialStartedPositionMs,
         finalPositionMs: ended ? Math.floor(session.lastPosition * 1000) : Math.max(current.finalPositionMs, Math.floor(session.lastPosition * 1000)),
         acceptedCreditMs: current.acceptedCreditMs + additions.reduce((sum, interval) => sum + interval.creditMs, 0),
@@ -3152,9 +3147,9 @@ async function syncLogicalListenSession(sessionRaw) {
         deviceIds: [...current.deviceIds, session.deviceId],
         transferCount: Math.max(current.transferCount, Math.max(0, current.deviceIds.includes(session.deviceId) ? current.transferCount : current.deviceIds.length)),
         invalidated,
-        invalidReason: invalidated ? current.invalidReason || session.lastRejectReason || 'segment_continuity' : '',
+        invalidReason: invalidated ? current.invalidReason || session.lastRejectReason || (interrupted ? session.completionReason : 'segment_continuity') : '',
         reachedEndNaturally: current.reachedEndNaturally || ended,
-        completionReason: ended ? 'ended' : current.completionReason,
+        completionReason: terminal ? session.completionReason : current.completionReason,
         contextVersion: first ? session.contextVersion : current.contextVersion,
         quality: first ? session.quality : current.quality,
         accountTimezone: first ? session.accountTimezone : current.accountTimezone,
@@ -3167,7 +3162,7 @@ async function syncLogicalListenSession(sessionRaw) {
         favoriteOrderIndexAtStart: first ? session.favoriteOrderIndexAtStart : current.favoriteOrderIndexAtStart,
         favoriteOrderSizeAtStart: first ? session.favoriteOrderSizeAtStart : current.favoriteOrderSizeAtStart,
         startedAt: first ? session.startedAt : current.startedAt,
-        completedAt: ended ? session.completedAt : current.completedAt,
+        completedAt: terminal ? session.completedAt : current.completedAt,
         createdAt: current.createdAt || session.startedAt || at,
         updatedAt: at
       },
@@ -3186,9 +3181,27 @@ async function syncLogicalListenSession(sessionRaw) {
   }
   throw new Error('logical_listen_sync_conflict');
 }
+function publicLogicalListenDiagnostics(raw = {}) {
+  const logical = normalizeLogicalListen(raw, raw?.playerId);
+  const coverage = logicalCoverageMetrics(logical.coverageIntervals, logical.durationMs);
+  return { ...publicLogicalListen(logical), segmentIds: [...logical.segmentIds], deviceIds: [...logical.deviceIds], mergedCoverage: coverage.merged.map(interval => ({ ...interval })), coverageIntervals: logical.coverageIntervals.map(interval => ({ ...interval })) };
+}
+async function actionLogicalListenGet(event, body) {
+  const auth = await requirePlayer(event, body);
+  let logicalSessionId = sanitizeId(body.logicalSessionId, 120);
+  if (!logicalSessionId) {
+    const playback = normalizePlaybackState(payload(await kvGet(playbackStateKey(auth.playerId))), auth.playerId);
+    logicalSessionId = playback.logicalSessionId;
+  }
+  if (!logicalSessionId) return { ok: true, available: false, logical: null };
+  const row = await kvGet(logicalListenKey(auth.playerId, logicalSessionId));
+  const logical = normalizeLogicalListen(payload(row), auth.playerId);
+  if (!row || logical.playerId !== auth.playerId || logical.logicalSessionId !== logicalSessionId) return { ok: true, available: false, logical: null };
+  return { ok: true, available: true, logical: publicLogicalListenDiagnostics(logical) };
+}
 async function finalizeLogicalListen(logicalRaw) {
   const logical = normalizeLogicalListen(logicalRaw, logicalRaw?.playerId);
-  if (!logical.playerId || !logical.logicalSessionId || logical.status !== 'completed' || !logical.reachedEndNaturally) return null;
+  if (!logical.playerId || !logical.logicalSessionId || logical.status !== 'completed') return null;
   const receiptId = logical.fullReceiptId || `llr_${hash([logical.playerId, logical.logicalSessionId, logical.trackUid, logical.trackVersion].join(':')).slice(0, 36)}`;
   const receiptPk = listenReceiptKey(logical.playerId, receiptId);
   const oldRow = await kvGet(receiptPk);
@@ -3198,7 +3211,8 @@ async function finalizeLogicalListen(logicalRaw) {
     return { receipt: oldReceipt, progress, rewards: { enabled: true, grants: [], wallet: null }, duplicate: true };
   }
   const requiredCoverageMs = Math.floor(logical.durationMs * LOGICAL_COVERAGE_REQUIRED_RATIO);
-  const full = !logical.invalidated && logical.initialStartedPositionMs <= 2000 && logical.finalPositionMs >= Math.max(0, logical.durationMs - 3000) && logical.coveredMs >= requiredCoverageMs && logical.acceptedCreditMs >= requiredCoverageMs && logical.maxGapMs <= LOGICAL_COVERAGE_MAX_GAP_MS;
+  const valid = logical.acceptedCreditMs >= LISTEN_VALID_MIN_SEC * 1000;
+  const full = logical.reachedEndNaturally && !logical.invalidated && logical.initialStartedPositionMs <= 2000 && logical.finalPositionMs >= Math.max(0, logical.durationMs - 3000) && logical.coveredMs >= requiredCoverageMs && logical.acceptedCreditMs >= requiredCoverageMs && logical.maxGapMs <= LOGICAL_COVERAGE_MAX_GAP_MS;
   const receipt = {
     version: LISTEN_RECEIPT_VERSION,
     receiptId,
@@ -3217,11 +3231,11 @@ async function finalizeLogicalListen(logicalRaw) {
     coveredMs: logical.coveredMs,
     coverageRatio: logical.coverageRatio,
     maxGapMs: logical.maxGapMs,
-    valid: false,
+    valid,
     full,
     acceptedHeartbeats: logical.coverageIntervals.length,
     rejectedHeartbeats: logical.invalidated ? 1 : 0,
-    completionReason: 'ended',
+    completionReason: logical.completionReason || (logical.reachedEndNaturally ? 'ended' : 'unknown'),
     contextVersion: logical.contextVersion,
     quality: logical.quality,
     accountTimezone: logical.accountTimezone,
@@ -3930,12 +3944,10 @@ async function finalizeListenSession(session) {
   await applyVerifiedListenTimeProgress(data);
   const observedSec = Math.max(0, Math.floor(data.observedMs / 1000));
   const progressRatio = data.duration > 0 ? data.lastPosition / data.duration : 0;
-  const transferred = data.completionReason === 'ownership_transfer';
-  const valid = !transferred && observedSec >= LISTEN_VALID_MIN_SEC;
+  const valid = !data.logicalSessionId && observedSec >= LISTEN_VALID_MIN_SEC;
   const fullPositionToleranceSec = 3;
   const fullObservedMinSec = Math.max(LISTEN_VALID_MIN_SEC, Math.floor(data.duration * 0.95));
-  const segmentFull =
-    !data.logicalSessionId && data.completionReason === 'ended' && data.startedPosition <= 2 && data.lastPosition >= Math.max(0, data.duration - fullPositionToleranceSec) && observedSec >= fullObservedMinSec && data.acceptedHeartbeats > 0 && data.rejectedHeartbeats === 0 && data.continuityBroken !== true;
+  const segmentFull = false;
   const receipt = {
     version: LISTEN_RECEIPT_VERSION,
     receiptId,
@@ -4129,8 +4141,8 @@ async function actionListenSessionHeartbeat(event, body) {
   throw new Error('listen_heartbeat_conflict');
 }
 async function actionListenSessionComplete(event, body) {
-  const fenced = await requirePlaybackFence(event, body);
-  const { playerId } = fenced.auth;
+  const auth = await requirePlaybackDevice(event, body);
+  const { playerId } = auth;
   const sessionId = sanitizeId(body.sessionId, 120);
   if (!sessionId) {
     throw new Error('listen_session_required');
@@ -4142,6 +4154,11 @@ async function actionListenSessionComplete(event, body) {
     const useActive = resolved.active;
     if (!row || current.playerId !== playerId || current.sessionId !== sessionId) {
       throw new Error('listen_session_not_found');
+    }
+    const suppliedEpoch = Math.max(0, Math.floor(num(body.ownerEpoch)));
+    const suppliedToken = safe(body.fencingToken);
+    if (current.deviceId !== auth.deviceId || !suppliedEpoch || current.ownerEpoch !== suppliedEpoch || !suppliedToken || current.fencingTokenHash !== hash(suppliedToken)) {
+      throw new Error('playback_owner_changed');
     }
     if (current.status === 'completed') {
       const finalized = await finalizeListenSession(current);
@@ -4165,6 +4182,7 @@ async function actionListenSessionComplete(event, body) {
     if (!['active', 'replaced'].includes(current.status)) {
       throw new Error('listen_session_not_completable');
     }
+    const fenced = await requirePlaybackFence(event, body);
     if (current.ownerEpoch !== fenced.state.ownerEpoch || current.fencingTokenHash !== fenced.state.fencingTokenHash || current.deviceId !== fenced.auth.deviceId) {
       throw new Error('playback_owner_changed');
     }
@@ -4497,22 +4515,18 @@ async function actionPwaLaunchVerify(event, body) {
   throw new Error('pwa_verification_conflict');
 }
 async function actionMusicFeatureUse(event, body) {
-  const { playerId } = await requirePlayer(event, body);
+  const fenced = await requirePlaybackFence(event, body);
+  const { playerId, deviceId } = fenced.auth;
   await enforceRateLimit({ scope: 'music_feature_use', actor: playerId, limit: 60, windowMs: 60 * 60 * 1000 });
   const feature = sanitizeId(body.feature, 40);
   const sessionId = sanitizeId(body.sessionId, 120);
   const trackUid = sanitizeId(body.trackUid, 160);
-  if (feature !== 'lyrics') {
-    throw new Error('music_feature_not_supported');
-  }
-  if (!sessionId || !trackUid) {
-    throw new Error('music_feature_session_required');
-  }
-  const resolved = await resolveListenSessionRow(playerId, sessionId, body.deviceId);
+  if (feature !== 'lyrics') throw new Error('music_feature_not_supported');
+  if (!sessionId || !trackUid) throw new Error('music_feature_session_required');
+  const resolved = await resolveListenSessionRow(playerId, sessionId, deviceId);
   const session = resolved.session;
-  if (!resolved.row || session.playerId !== playerId || session.sessionId !== sessionId || session.trackUid !== trackUid || !['active', 'completed'].includes(session.status)) {
-    throw new Error('music_feature_session_mismatch');
-  }
+  if (!resolved.active || !resolved.row || session.playerId !== playerId || session.sessionId !== sessionId || session.trackUid !== trackUid || session.status !== 'active') throw new Error('music_feature_session_mismatch');
+  if (session.ownerEpoch !== fenced.state.ownerEpoch || session.fencingTokenHash !== fenced.state.fencingTokenHash || session.deviceId !== deviceId) throw new Error('playback_owner_changed');
   if (session.acceptedHeartbeats < 1 || session.observedMs < 5000) {
     const error = new Error('music_feature_observation_required');
     error.httpStatus = 409;
@@ -4520,20 +4534,8 @@ async function actionMusicFeatureUse(event, body) {
   }
   const receiptId = `feature_${hash([playerId, sessionId, feature].join(':')).slice(0, 40)}`;
   const applied = await applyVerifiedFeatureProgress(playerId, { receiptId, field: 'lyricsUsed', value: 1 });
-  const [rewards, loyalty] = await Promise.all([reconcileAchievementRewards(playerId, applied.progress), applyLoyaltyActivity(playerId, { activityId: `loyalty:${receiptId}`, kind: 'feature', deviceId: body.deviceId })]);
-  return {
-    ok: true,
-    duplicate: applied.duplicate,
-    feature,
-    receiptId,
-    shadow: CFG.featureRewardsShadow,
-    rewardsEnabled: !CFG.featureRewardsShadow,
-    rewards: rewards.grants,
-    loyaltyRewards: loyalty.loyaltyRewards,
-    loyalty: loyalty.loyalty,
-    wallet: publicShardWallet(loyalty.wallet || rewards.wallet),
-    progress: publicAchievementProgress(applied.progress)
-  };
+  const [rewards, loyalty] = await Promise.all([reconcileAchievementRewards(playerId, applied.progress), applyLoyaltyActivity(playerId, { activityId: `loyalty:${receiptId}`, kind: 'feature', deviceId })]);
+  return { ok: true, duplicate: applied.duplicate, feature, receiptId, shadow: CFG.featureRewardsShadow, rewardsEnabled: !CFG.featureRewardsShadow, rewards: rewards.grants, loyaltyRewards: loyalty.loyaltyRewards, loyalty: loyalty.loyalty, wallet: publicShardWallet(loyalty.wallet || rewards.wallet), progress: publicAchievementProgress(applied.progress) };
 }
 async function actionBackupAchievementReceipt(event, body) {
   const secret = headerValue(event, 'x-vi3-backup-secret');
@@ -4594,16 +4596,11 @@ async function actionBackupAchievementReceipt(event, body) {
   throw new Error('backup_receipt_conflict');
 }
 async function actionAchievementRewardStatus(event, body) {
-  const { playerId } = await requirePlayer(event, body);
-  const [legacyActiveRow, deviceActiveRows] = await Promise.all([kvGet(listenActiveKey(playerId)), kvPrefix(`${listenActiveKey(playerId)}:`, 30)]);
-  const activeSessions = [legacyActiveRow, ...deviceActiveRows]
-    .filter(Boolean)
-    .map(payload)
-    .map(normalizeListenSession)
-    .filter(session => session.playerId === playerId && session.status === 'active')
-    .filter((session, index, rows) => rows.findIndex(item => item.sessionId === session.sessionId) === index)
-    .sort((left, right) => num(right.updatedAt) - num(left.updatedAt));
-  const active = activeSessions[0] || normalizeListenSession();
+  const auth = await requirePlayer(event, body);
+  const { playerId } = auth;
+  const playback = normalizePlaybackState(payload(await kvGet(playbackStateKey(playerId))), playerId);
+  const activeRow = playback.ownerDeviceId ? await kvGet(listenActiveKey(playerId, playback.ownerDeviceId)) : null;
+  const active = normalizeListenSession(payload(activeRow));
   const progress = normalizeAchievementProgress(payload(await kvGet(achievementProgressKey(playerId))), playerId);
   const favoriteState = normalizeFavoriteState(payload(await kvGet(favoriteStateKey(playerId))), playerId);
   const [rewards, loyalty] = await Promise.all([reconcileAchievementRewards(playerId, progress), getLoyaltyStatus(playerId)]);
@@ -4614,8 +4611,8 @@ async function actionAchievementRewardStatus(event, body) {
     rewardChannels: publicRewardChannels(),
     currency: { code: 'shards', symbol: '♦', rewardPolicy: 'server_catalog', legacyNominalMigrated: true },
     catalog: { configured: LISTEN_TRACK_CATALOG.size > 0, tracks: LISTEN_TRACK_CATALOG.size, rewards: achievementRewardCatalog(progress).length, rewardItems: publicAchievementRewardItems({ playerId, progress, favoriteState, wallet: rewards.wallet }) },
-    activeSession: active.playerId === playerId && active.status === 'active' ? publicListenSession(active) : null,
-    activeSessions: activeSessions.map(publicListenSession),
+    activeSession: activeRow && active.playerId === playerId && active.status === 'active' ? publicListenSession(active) : null,
+    playback: publicPlaybackState(playback, auth.deviceId),
     grants: rewards.grants,
     loyaltyRewards: loyalty.loyaltyRewards,
     loyalty: loyalty.loyalty,
@@ -4626,7 +4623,6 @@ async function actionAchievementRewardStatus(event, body) {
 }
 const SHARD_WALLET_VERSION = 1;
 const REGISTRATION_SHARD_REWARD = 100;
-const WALLET_GRANT_HISTORY = 300;
 const SHARD_AVATAR_CATALOG = Object.freeze([Object.freeze({ id: 'avatar_dragon', avatar: '🐉', title: 'Дракон Витрины', price: 100 }), Object.freeze({ id: 'avatar_planet', avatar: '🪐', title: 'Осколок Вселенной', price: 500 }), Object.freeze({ id: 'avatar_crown', avatar: '👑', title: 'Корона Башни', price: 1000 })]);
 function walletKey(playerId) {
   return `wallet:${sanitizeId(playerId, 96)}`;
@@ -6445,6 +6441,7 @@ const ACTIONS = {
   account_device_update: actionAccountDeviceUpdate,
   playback_state_get: actionPlaybackStateGet,
   playback_claim: actionPlaybackClaim,
+  playback_release: actionPlaybackRelease,
   playback_transfer_prepare: actionPlaybackTransferPrepare,
   playback_transfer_commit: actionPlaybackTransferCommit,
   player_register: actionPlayerRegister,
@@ -6481,6 +6478,7 @@ const ACTIONS = {
   listen_session_start: actionListenSessionStart,
   listen_session_heartbeat: actionListenSessionHeartbeat,
   listen_session_complete: actionListenSessionComplete,
+  logical_listen_get: actionLogicalListenGet,
   achievement_reward_status: actionAchievementRewardStatus,
   loyalty_preference_set: actionLoyaltyPreferenceSet,
   loyalty_vacation_set: actionLoyaltyVacationSet,
