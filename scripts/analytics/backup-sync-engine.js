@@ -4,13 +4,12 @@ import { isWatchedStorageKey, markStorageKeyDirty, DOMAIN_DEBOUNCE_MS } from './
 import { isSyncEnabled, isSyncReady, setSyncEnabledState, markSyncReady, markRestoreOrSkipDone, isRestoreOrSkipDone, shouldMarkStatsDirty, suspendSyncForAccountSwitch as suspendSyncState } from './sync-state.js';
 import { cancelScheduledSync, scheduleSync } from './sync-scheduler.js';
 
-let _bound = false, _lastUnlockedSeen = -1;
+let _bound = false;
 
 export const setSyncEnabled = value => { setSyncEnabledState(!!value); if (!value) cancelScheduledSync(); };
 
 export const initBackupSyncEngine = () => {
   if (_bound) return; _bound = true;
-  window.addEventListener('achievements:updated', e => { const n = Number(e.detail?.unlocked || 0); if (_lastUnlockedSeen < 0) { _lastUnlockedSeen = n; return; } if (n > _lastUnlockedSeen && isSyncReady()) scheduleSync({ immediate: true, domain: 'achievements' }); _lastUnlockedSeen = Math.max(_lastUnlockedSeen, n); });
   window.addEventListener('backup:domain-dirty', e => isSyncReady() && scheduleSync({ immediate: !!e.detail?.immediate, domain: e.detail?.domain || 'generic' }));
   window.addEventListener('analytics:logUpdated', () => isSyncReady() && shouldMarkStatsDirty(60000) && scheduleSync({ immediate: false, domain: 'stats' }));
   window.addEventListener('storage', e => { if (isSyncReady() && isWatchedStorageKey(e.key)) { const state = markStorageKeyDirty(e.key); scheduleSync({ immediate: false, domain: state?.domains?.[state.domains.length - 1] || 'generic' }); } });
