@@ -2,6 +2,7 @@ import { safeNum, getLocalBackupUiSnapshot } from '../../analytics/backup-summar
 import { getCloudCompareViewModel, formatCloudTimeOnly } from './cloud-ui-helpers.js';
 import { esc } from './profile-render-kit.js';
 import { bindAccountDevicesBlock } from './account-devices-view.js';
+import { bindAccountTimezoneBlock } from './account-timezone-view.js';
 import { getSyncStatusLine } from '../../analytics/sync-revisions.js';
 import { renderYandexConnectedBlock, renderYandexLoggedOutBlock } from './account-cloud-renderers.js';
 
@@ -63,6 +64,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
   } else root.innerHTML = renderYandexLoggedOutBlock({ statusLabel:sL, statusColor:sC });
 
   bindYandexActions(root, rr);
+  bindAccountTimezoneBlock(root, rr);
   bindAccountDevicesBlock(root, rr);
   bindReactiveEvents(root, rr);
   updateSyncDot(root);
