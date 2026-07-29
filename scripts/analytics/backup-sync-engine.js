@@ -20,7 +20,7 @@ export const initBackupSyncEngine = () => {
   setTimeout(() => !isSyncReady() && (console.warn('[BackupSyncEngine] timeout fallback reached'), window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'timeout_fallback', blocked: true } }))), 300000);
 };
 
-export const getSyncIntervalSec = () => Math.round(DOMAIN_DEBOUNCE_MS.favorites / 1000);
+export const getSyncIntervalSec = () => Math.round(DOMAIN_DEBOUNCE_MS.playlists / 1000);
 
 export const suspendSyncForAccountSwitch = () => {
   cancelScheduledSync();
