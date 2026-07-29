@@ -3084,7 +3084,6 @@ import { getSharedSnapshotLocalEntries, getDeviceSnapshotLocalEntries, isSharedS
 import { normalizeDeviceSettingsSnapshot, shouldApplyDeviceSettingKey, isPlaybackSensitiveDeviceSettingKey } from './device-settings-contract.js';
 import { normalizeEventList } from './backup-event-cleanup.js';
 import { readLocalEventLog, mergeEventLogs, rebuildStatsFromEvents } from './stats-state.js';
-import { buildAchievementBackupState, normalizeAchievementState, mergeAchievementStates, applyAchievementStateToMetaDB, deriveAchievementUnlockMetaFromEvents } from './achievement-state.js';
 import { AccountDataContext } from './account-data-boundary.js';
 
 export const rebuildStatsFromWarmEvents = async () => rebuildStatsFromEvents(metaDB, normalizeEventList(await metaDB.getEvents('events_warm').catch(() => []), { limit: 10000 }), { reason: 'legacy_warm_rebuild' }).catch(() => false);
@@ -3106,18 +3105,14 @@ export const applyBackupImportObject = async (backup, mode = 'all') => {
     }
 
     if (mode === 'all' || mode === 'stats') {
-      const [lE, lA, lM, lS, lR] = await Promise.all([readLocalEventLog(metaDB, { forceFlush: true }), metaDB.getGlobal('unlocked_achievements'), metaDB.getGlobal('achievement_unlock_meta'), metaDB.getGlobal('global_streak'), metaDB.getGlobal('user_profile_rpg')]);
-      const mergedEvents = mergeEventLogs(lE, Array.isArray(backup.data.eventLog.warm) ? backup.data.eventLog.warm : []);
+      const localEvents = await readLocalEventLog(metaDB, { forceFlush: true });
+      const mergedEvents = mergeEventLogs(localEvents, Array.isArray(backup.data.eventLog?.warm) ? backup.data.eventLog.warm : []);
       await rebuildStatsFromEvents(metaDB, mergedEvents, { reason: 'backup_restore' });
 
       try {
         const rbC = toNum((Array.isArray(backup?.data?.stats) ? backup.data.stats : []).find(s => s?.uid === 'global')?.featuresUsed?.backup);
         if (rbC > 0) await metaDB.updateStat('global', s => { s.featuresUsed = s.featuresUsed || {}; s.featuresUsed.backup = Math.max(toNum(s.featuresUsed.backup), rbC); return s; });
       } catch {}
-
-      const evMeta = deriveAchievementUnlockMetaFromEvents(mergedEvents), mAch = mergeAchievementStates(mergeAchievementStates(buildAchievementBackupState({ unlocked: lA?.value || {}, unlockMeta: lM?.value || {}, profileRpg: lR?.value || { xp: 0, level: 1 }, streaks: lS?.value || {}, events: lE }), normalizeAchievementState(backup.data.achievementState || { unlocked: backup.data.achievements || {}, unlockMeta: {}, profileRpg: backup.data.userProfileRpg || {}, streaks: backup.data.streaks || {} })), buildAchievementBackupState({ unlocked: Object.fromEntries(Object.entries(evMeta).map(([id, x]) => [id, x.unlockedAt])), unlockMeta: evMeta }));
-      await applyAchievementStateToMetaDB(metaDB, mAch);
-      if (window.achievementEngine) Object.assign(window.achievementEngine, { unlocked: mAch.unlocked, profile: mAch.profileRpg, unlockMeta: mAch.unlockMeta, achievements: window.achievementEngine._buildUIArray?.() || window.achievementEngine.achievements || [] });
 
       const intel = backup.data.intel || {};
       for (const st of ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime']) await replaceStoreRows(st, intel[st === 'listener_profile' ? 'listenerProfile' : st === 'provider_identity' ? 'providerIdentity' : st === 'hybrid_sync' ? 'hybridSync' : st === 'recommendation_state' ? 'recommendationState' : st === 'collection_state' ? 'collectionState' : 'intelRuntime']);
