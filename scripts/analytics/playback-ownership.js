@@ -176,6 +176,27 @@ export const authorizePlaybackStart = async ({ trackUid, position = 0, timeoutMs
     throw error;
   }
 };
+export const releasePlaybackOwnership = async ({ reason = 'pause', position = 0 } = {}) => {
+  const releaseReason = safe(reason);
+  const grant = readOwnershipGrant();
+  if (!['pause', 'stop'].includes(releaseReason) || !grant || document.hidden) return { ok: false, skipped: true };
+  if (window.YandexAuth?.getSessionStatus?.() !== 'active' || !window.YandexAuth?.isTokenAlive?.()) return { ok: false, skipped: true };
+  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return { ok: false, skipped: true };
+  const result = await requestSocialAction('playback_release', {
+    ...buildPlaybackFencePayload({ grant, deviceId: currentDeviceId() }),
+    reason: releaseReason,
+    position: Math.max(0, Number(position || 0))
+  });
+  if (result?.released) clearOwnershipGrant();
+  return result;
+};
+
+export const getLogicalListenDiagnostics = async logicalSessionId => {
+  const result = await requestSocialAction('logical_listen_get', {
+    logicalSessionId: safe(logicalSessionId || readOwnershipGrant()?.logicalSessionId)
+  });
+  return result?.logical || null;
+};
 
 export const updateOwnershipLease = playback => {
   const grant = readOwnershipGrant();
@@ -220,6 +241,8 @@ export const playbackOwnershipService = {
   reconcile: reconcilePlaybackOwnership,
   authorize: authorizePlaybackStart,
   claim: claimPlaybackOwnership,
+  release: releasePlaybackOwnership,
+  getLogicalDiagnostics: getLogicalListenDiagnostics,
   updateLease: updateOwnershipLease,
   getTrackVersion,
   getGrant: readOwnershipGrant,
