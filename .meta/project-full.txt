@@ -137,7 +137,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
 [/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
-[/scripts/core/] bootstrap.js, config.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
+[/scripts/core/] bootstrap.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-disk.js, yandex-device-settings-disk.js, yandex-disk-transport.js, yandex-disk.js, yandex-event-archive-disk.js, yandex-ledger-disk.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
@@ -13637,6 +13637,60 @@ if (typeof window !== 'undefined') {
 }
 
 //=================================================
+// FILE: /scripts/core/device-context.js
+// Канонический runtime-контекст текущей установки.
+// Не является security authority, не входит в backup и не управляет playback.
+const safe = value => String(value == null ? '' : value).trim();
+
+const detectPlatform = () => {
+  const info = window.Utils?.getPlatform?.() || {};
+  const ua = safe(navigator.userAgent);
+  const iPadOs = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  const isIOS = info.isIOS === true || /iPhone|iPad|iPod/i.test(ua) || iPadOs;
+  const isAndroid = info.isAndroid === true || /Android/i.test(ua);
+  return isIOS ? 'ios' : isAndroid ? 'android' : 'web';
+};
+
+const detectPwa = () => {
+  const info = window.Utils?.getPlatform?.() || {};
+  return info.isPWA === true || window.matchMedia?.('(display-mode: standalone)')?.matches === true || navigator.standalone === true;
+};
+
+const defaultDeviceClass = platform => platform === 'ios' ? 'iPhone' : platform === 'android' ? 'Android' : 'Desktop';
+const defaultDeviceLabel = platform => platform === 'ios' ? 'Мой iPhone' : platform === 'android' ? 'Моё Android устройство' : 'Мой Desktop';
+
+export const getDeviceId = () => safe(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web') || 'web';
+export const getDevicePlatform = () => detectPlatform();
+export const isDevicePwa = () => detectPwa();
+export const getDeviceTimezone = () => safe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+export const getDeviceTimezoneOffsetMin = (timestamp = Date.now()) => new Date(Number(timestamp) || Date.now()).getTimezoneOffset();
+
+export const getDeviceContext = (timestamp = Date.now()) => {
+  const platform = detectPlatform();
+  return {
+    deviceId: getDeviceId(),
+    deviceLabel: safe(localStorage.getItem('yandex:onboarding:device_label')) || defaultDeviceLabel(platform),
+    deviceClass: defaultDeviceClass(platform),
+    platform,
+    pwa: detectPwa(),
+    timezone: getDeviceTimezone(),
+    timezoneOffsetMin: getDeviceTimezoneOffsetMin(timestamp)
+  };
+};
+
+export const getDeviceContextForServer = (timestamp = Date.now()) => ({ ...getDeviceContext(timestamp) });
+
+export default {
+  getDeviceId,
+  getDevicePlatform,
+  isDevicePwa,
+  getDeviceTimezone,
+  getDeviceTimezoneOffsetMin,
+  getDeviceContext,
+  getDeviceContextForServer
+};
+
+//=================================================
 // FILE: /scripts/core/device-identity.js
 // Стабильная идентификация установки.
 // Существующие ID сохраняются, новые создаются случайно и не зависят от timezone, экрана или User-Agent.
@@ -16527,15 +16581,16 @@ export default { openTrackStatisticsModal };
 
 //=================================================
 // FILE: /data/listen-track-catalog.env.json
-{"GD-01":[217.056,"golos-dushi"],"GD-02":[249.048,"golos-dushi"],"GD-03":[258.408,"golos-dushi"],"GD-04":[316.08,"golos-dushi"],"GD-05":[271.056,"golos-dushi"],"GD-06":[207.936,"golos-dushi"],"GD-07":[288.384,"golos-dushi"],"GD-08":[232.056,"golos-dushi"],"GD-09":[226.848,"golos-dushi"],"GD-10":[263.856,"golos-dushi"],"GD-11":[337.968,"golos-dushi"],"GD-12":[228.048,"golos-dushi"],"GD-13":[251.976,"golos-dushi"],"GD-14":[254.856,"golos-dushi"],"KREV-01":[264.888,"krevetochka"],"KREV-02":[211.488,"krevetochka"],"MZD-01":[210.26,"mezhdu-zlom-i-dobrom"],"MZD-02":[248.976,"mezhdu-zlom-i-dobrom"],"MZD-03":[224.313,"mezhdu-zlom-i-dobrom"],"MZD-04":[220.464,"mezhdu-zlom-i-dobrom"],"MZD-05":[208.17,"mezhdu-zlom-i-dobrom"],"MZD-06":[219.22,"mezhdu-zlom-i-dobrom"],"MZD-07":[237.096,"mezhdu-zlom-i-dobrom"],"MZD-08":[229.248,"mezhdu-zlom-i-dobrom"],"MZD-09":[219.115,"mezhdu-zlom-i-dobrom"],"MZD-10":[295.968,"mezhdu-zlom-i-dobrom"],"MZD-11":[216.816,"mezhdu-zlom-i-dobrom"],"MZD-12":[171.984,"mezhdu-zlom-i-dobrom"],"MZD-13":[215.876,"mezhdu-zlom-i-dobrom"],"MZD-14":[222.407,"mezhdu-zlom-i-dobrom"],"MZD-15":[229.433,"mezhdu-zlom-i-dobrom"],"MZD-16":[200.928,"mezhdu-zlom-i-dobrom"],"IVR-14":[328.224,"ne-vse-ravno"],"NVR-01":[242.064,"ne-vse-ravno"],"NVR-02":[235.944,"ne-vse-ravno"],"NVR-03":[275.208,"ne-vse-ravno"],"NVR-04":[266.208,"ne-vse-ravno"],"NVR-05":[212.256,"ne-vse-ravno"],"NVR-06":[212.784,"ne-vse-ravno"],"NVR-07":[201.648,"ne-vse-ravno"],"NVR-08":[257.088,"ne-vse-ravno"],"NVR-09":[219.576,"ne-vse-ravno"],"NVR-10":[219.528,"ne-vse-ravno"],"NVR-11":[184.536,"ne-vse-ravno"],"NVR-12":[161.736,"ne-vse-ravno"],"NVR-13":[208.584,"ne-vse-ravno"],"NVR-15":[307.368,"ne-vse-ravno"],"NE-01":[273.528,"neizvestniy"],"NE-02":[247.92,"neizvestniy"],"NE-03":[225.144,"neizvestniy"],"NE-04":[284.832,"neizvestniy"],"NE-05":[329.832,"neizvestniy"],"OS-01":[251.616,"odnazhdy-v-skazke"],"OS-02":[236.016,"odnazhdy-v-skazke"],"OS-03":[255.048,"odnazhdy-v-skazke"],"OS-04":[204.936,"odnazhdy-v-skazke"],"OS-05":[232.776,"odnazhdy-v-skazke"],"OS-06":[172.248,"odnazhdy-v-skazke"],"OS-07":[234.984,"odnazhdy-v-skazke"],"OS-08":[294.024,"odnazhdy-v-skazke"],"OS-09":[247.968,"odnazhdy-v-skazke"],"OS-10":[254.448,"odnazhdy-v-skazke"],"OS-11":[259.416,"odnazhdy-v-skazke"],"OS-12":[184.248,"odnazhdy-v-skazke"],"OS-13":[230.856,"odnazhdy-v-skazke"],"OS-14":[212.016,"odnazhdy-v-skazke"],"OS-15":[279.768,"odnazhdy-v-skazke"],"VS-01":[332.28,"v-ssore"],"VS-02":[249.288,"v-ssore"],"VS-03":[321.048,"v-ssore"],"VS-04":[325.656,"v-ssore"],"VS-05":[254.784,"v-ssore"],"VS-06":[306.36,"v-ssore"],"VS-07":[335.856,"v-ssore"],"VS-08":[421.056,"v-ssore"],"VS-09":[303.024,"v-ssore"],"VS-10":[383.88,"v-ssore"]}
+{"GD-01":[217.056,"golos-dushi","193ece9d41cef5e1c538490bcd3df337"],"GD-02":[249.048,"golos-dushi","99d2c9dcdab70816c570920eb357f96f"],"GD-03":[258.408,"golos-dushi","1f3db08774954b35875184c9e41c4a66"],"GD-04":[316.08,"golos-dushi","fdd265b03ec329b178ee99e391039955"],"GD-05":[271.056,"golos-dushi","717b3b290408836bc3660332445ce20d"],"GD-06":[207.936,"golos-dushi","5de268b08670968f8f59e122662586e2"],"GD-07":[288.384,"golos-dushi","288bf97dd92e561c2736970ba9bb1ccf"],"GD-08":[232.056,"golos-dushi","070b512c2124076bf1bf780b2e276cd4"],"GD-09":[226.848,"golos-dushi","9f5ca3d7169272060147c6d030d0a7ee"],"GD-10":[263.856,"golos-dushi","9b985f144d1ded2b9b8b3c1228c5a679"],"GD-11":[337.968,"golos-dushi","6ca56a0fe34e5a971e24f0f1a189ba7c"],"GD-12":[228.048,"golos-dushi","821390583a983b7badd5fd5b25062a2e"],"GD-13":[251.976,"golos-dushi","7a5a2ee0830c267e5a8b5c7968f937ad"],"GD-14":[254.856,"golos-dushi","ef537b13f3209584105c24e3ee0744e8"],"KREV-01":[264.888,"krevetochka","cf0cd7393ea7bb767fe157c6dc75f2c2"],"KREV-02":[211.488,"krevetochka","ef445f5ea8217331561d497e2db62edb"],"MZD-01":[210.26,"mezhdu-zlom-i-dobrom","73da7ad14ca46aad9ef100d4553f2ae8"],"MZD-02":[248.976,"mezhdu-zlom-i-dobrom","39caaea7a613b9494c41c9aaacf1473d"],"MZD-03":[224.313,"mezhdu-zlom-i-dobrom","82d1b84613644a55c397eb9324c7ea78"],"MZD-04":[220.464,"mezhdu-zlom-i-dobrom","788235d12bf3900103dc99b68d740d7b"],"MZD-05":[208.17,"mezhdu-zlom-i-dobrom","04cb1db7fd7f084f6186674a7e3b2e88"],"MZD-06":[219.22,"mezhdu-zlom-i-dobrom","ee62545eede9cb9cc3a509dc26daa158"],"MZD-07":[237.096,"mezhdu-zlom-i-dobrom","17068029fb3261554258550be92300b7"],"MZD-08":[229.248,"mezhdu-zlom-i-dobrom","af8b34482423644a2ed4ecf2bbccb354"],"MZD-09":[219.115,"mezhdu-zlom-i-dobrom","555394a3e4a296aa9f361688eab74470"],"MZD-10":[295.968,"mezhdu-zlom-i-dobrom","2b8fa85a010325f117dccf1c1cda803a"],"MZD-11":[216.816,"mezhdu-zlom-i-dobrom","691e8ab68856bda8320be80ded3ab77f"],"MZD-12":[171.984,"mezhdu-zlom-i-dobrom","2cbe9f6467ce69e48b71804801a808f7"],"MZD-13":[215.876,"mezhdu-zlom-i-dobrom","be30a5fb85830e363c3e63dccf6c3e97"],"MZD-14":[222.407,"mezhdu-zlom-i-dobrom","d12000edccfc09a5c25826feee36b11b"],"MZD-15":[229.433,"mezhdu-zlom-i-dobrom","fae7d492c04f86d0d1829563d8f3b321"],"MZD-16":[200.928,"mezhdu-zlom-i-dobrom","cb560208eb5343138eb185676b69bcf3"],"IVR-14":[328.224,"ne-vse-ravno","b06dc8c0f3ec65ba6953a6c892266b16"],"NVR-01":[242.064,"ne-vse-ravno","b24fefbb576d569404e5d1431591d123"],"NVR-02":[235.944,"ne-vse-ravno","38fafb34cf13e39b7ed27c42a34ac131"],"NVR-03":[275.208,"ne-vse-ravno","86fd6944ba8dd8cad1aaf576f7ea03da"],"NVR-04":[266.208,"ne-vse-ravno","5a54ba1caff252d13b1f63e5c45ca63f"],"NVR-05":[212.256,"ne-vse-ravno","a086cac9f87cb50f7a2b0e9c7f69da03"],"NVR-06":[212.784,"ne-vse-ravno","41c6119df5bc4c934432e6e501612ebf"],"NVR-07":[201.648,"ne-vse-ravno","3c7ec0c795b7d79460e2bdcb2e7cd3a7"],"NVR-08":[257.088,"ne-vse-ravno","261f27df187a2c3c4d8caa8d4bc9e2b5"],"NVR-09":[219.576,"ne-vse-ravno","7929a734cd960dad153e33d30943d0c6"],"NVR-10":[219.528,"ne-vse-ravno","0073e6dc53759246d96075a623207172"],"NVR-11":[184.536,"ne-vse-ravno","f1363bbb50593ab90989ce8975feec6b"],"NVR-12":[161.736,"ne-vse-ravno","d47c395bea8954653f2be979cb39a59b"],"NVR-13":[208.584,"ne-vse-ravno","55c6964e5bd02ed3a557e3a0c56dc035"],"NVR-15":[307.368,"ne-vse-ravno","1218b172cc30217883633155394dbcb5"],"NE-01":[273.528,"neizvestniy","1646f2760d6e031d3bcfaf13924184ed"],"NE-02":[247.92,"neizvestniy","9de457bf39dfb1a04c0280724a825650"],"NE-03":[225.144,"neizvestniy","a12dd6d5862bdbea17d1561734de596a"],"NE-04":[284.832,"neizvestniy","43905aa07dc81c6a283e0a667c7a36bf"],"NE-05":[329.832,"neizvestniy","3bc7475b7fdf314077d51d2cb1b7f740"],"OS-01":[251.616,"odnazhdy-v-skazke","8ffe1347213278c710ccaa39d4d714a1"],"OS-02":[236.016,"odnazhdy-v-skazke","d7aa280e48a743a1603b7a38f06e8955"],"OS-03":[255.048,"odnazhdy-v-skazke","e443ee28fc1286808590c6edeb4b8aae"],"OS-04":[204.936,"odnazhdy-v-skazke","a0b03406f7d47127fd27f943c3f8d47c"],"OS-05":[232.776,"odnazhdy-v-skazke","e87646c82e690d36167e287322ba4115"],"OS-06":[172.248,"odnazhdy-v-skazke","20cceaee19dcd8093d256e48cc94270c"],"OS-07":[234.984,"odnazhdy-v-skazke","36fc2ff493c71a0156741c0e57155e9f"],"OS-08":[294.024,"odnazhdy-v-skazke","194778e30188fe345d720f956f9f6f8b"],"OS-09":[247.968,"odnazhdy-v-skazke","1753a1c383b3bc49edcfc24e9a653a5e"],"OS-10":[254.448,"odnazhdy-v-skazke","f297cedfbded3195fe76fcdf15f02e57"],"OS-11":[259.416,"odnazhdy-v-skazke","4b395ac66f44e86404c03a15eb7db097"],"OS-12":[184.248,"odnazhdy-v-skazke","28f5c0cb4142b1266cb33d62664f77d2"],"OS-13":[230.856,"odnazhdy-v-skazke","9cb7e4946039cb7e56297144f7cc5127"],"OS-14":[212.016,"odnazhdy-v-skazke","c6818b65b653867ab06971eae78c399c"],"OS-15":[279.768,"odnazhdy-v-skazke","1673b37fb863428b6f031b5049feb15c"],"VS-01":[332.28,"v-ssore","68f7fd47f433b38177a1a071b6ac3cf5"],"VS-02":[249.288,"v-ssore","38b82f28ac1e0e0c18976f04cb3daf9a"],"VS-03":[321.048,"v-ssore","d5ca1ea3d3e1e15881b3b74569b67b79"],"VS-04":[325.656,"v-ssore","7bd630dd91e5473c1031885d5758c671"],"VS-05":[254.784,"v-ssore","559eaa725484aca33e992ffc00b00314"],"VS-06":[306.36,"v-ssore","bc476c1ef41895fccc04f3d53b852226"],"VS-07":[335.856,"v-ssore","4d0508b5c30b951276f0c115536e9538"],"VS-08":[421.056,"v-ssore","3a3a7146d3e232af73fb8907f88e34e5"],"VS-09":[303.024,"v-ssore","0b845cd0f955ae59e34e4425faea1120"],"VS-10":[383.88,"v-ssore","1823a23fdbeb1b68e10dfa01d02221f0"]}
 //=================================================
 // FILE: /data/listen-track-catalog.json
 {
   "version": 1,
-  "generatedAt": "2026-07-21T23:17:39.617Z",
+  "generatedAt": "2026-07-29T11:37:41.980Z",
   "tracks": [
     {
       "uid": "GD-01",
+      "trackVersion": "193ece9d41cef5e1c538490bcd3df337",
       "title": "Волна",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16553,6 +16608,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-02",
+      "trackVersion": "99d2c9dcdab70816c570920eb357f96f",
       "title": "Цена Счастья",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16570,6 +16626,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-03",
+      "trackVersion": "1f3db08774954b35875184c9e41c4a66",
       "title": "Гадкая",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16587,6 +16644,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-04",
+      "trackVersion": "fdd265b03ec329b178ee99e391039955",
       "title": "Голос Души",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16604,6 +16662,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-05",
+      "trackVersion": "717b3b290408836bc3660332445ce20d",
       "title": "Ангел",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16621,6 +16680,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-06",
+      "trackVersion": "5de268b08670968f8f59e122662586e2",
       "title": "Завтра Настанет Всегда",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16638,6 +16698,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-07",
+      "trackVersion": "288bf97dd92e561c2736970ba9bb1ccf",
       "title": "Упала Слеза",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16655,6 +16716,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-08",
+      "trackVersion": "070b512c2124076bf1bf780b2e276cd4",
       "title": "Путеводная Звезда",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16672,6 +16734,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-09",
+      "trackVersion": "9f5ca3d7169272060147c6d030d0a7ee",
       "title": "Мелодии Дождей",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16689,6 +16752,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-10",
+      "trackVersion": "9b985f144d1ded2b9b8b3c1228c5a679",
       "title": "Прекрасная Ложь",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16706,6 +16770,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-11",
+      "trackVersion": "6ca56a0fe34e5a971e24f0f1a189ba7c",
       "title": "Одиночество",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16723,6 +16788,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-12",
+      "trackVersion": "821390583a983b7badd5fd5b25062a2e",
       "title": "Колыбельная",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16740,6 +16806,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-13",
+      "trackVersion": "7a5a2ee0830c267e5a8b5c7968f937ad",
       "title": "Улыбка Весны",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16757,6 +16824,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "GD-14",
+      "trackVersion": "ef537b13f3209584105c24e3ee0744e8",
       "title": "Лёд",
       "album": "golos-dushi",
       "albumTitle": "Голос Души",
@@ -16774,6 +16842,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "KREV-01",
+      "trackVersion": "cf0cd7393ea7bb767fe157c6dc75f2c2",
       "title": "Упала Слеза",
       "album": "krevetochka",
       "albumTitle": "КРЕВЕツTOCHKA",
@@ -16791,6 +16860,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "KREV-02",
+      "trackVersion": "ef445f5ea8217331561d497e2db62edb",
       "title": "Принц",
       "album": "krevetochka",
       "albumTitle": "КРЕВЕツTOCHKA",
@@ -16808,6 +16878,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-01",
+      "trackVersion": "73da7ad14ca46aad9ef100d4553f2ae8",
       "title": "Рулетка",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16825,6 +16896,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-02",
+      "trackVersion": "39caaea7a613b9494c41c9aaacf1473d",
       "title": "Дыхание 24/7",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16842,6 +16914,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-03",
+      "trackVersion": "82d1b84613644a55c397eb9324c7ea78",
       "title": "Витрина разбита",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16859,6 +16932,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-04",
+      "trackVersion": "788235d12bf3900103dc99b68d740d7b",
       "title": "Кошки-мышки",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16876,6 +16950,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-05",
+      "trackVersion": "04cb1db7fd7f084f6186674a7e3b2e88",
       "title": "Всё включено",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16893,6 +16968,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-06",
+      "trackVersion": "ee62545eede9cb9cc3a509dc26daa158",
       "title": "Вырвать сердце",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16910,6 +16986,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-07",
+      "trackVersion": "17068029fb3261554258550be92300b7",
       "title": "Все там будем",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16927,6 +17004,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-08",
+      "trackVersion": "af8b34482423644a2ed4ecf2bbccb354",
       "title": "Зачем цветы с корнями вырываем",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16944,6 +17022,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-09",
+      "trackVersion": "555394a3e4a296aa9f361688eab74470",
       "title": "Память",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16961,6 +17040,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-10",
+      "trackVersion": "2b8fa85a010325f117dccf1c1cda803a",
       "title": "Маша",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16978,6 +17058,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-11",
+      "trackVersion": "691e8ab68856bda8320be80ded3ab77f",
       "title": "Остановись, Планета",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -16995,6 +17076,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-12",
+      "trackVersion": "2cbe9f6467ce69e48b71804801a808f7",
       "title": "Прости, я не фейк",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -17012,6 +17094,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-13",
+      "trackVersion": "be30a5fb85830e363c3e63dccf6c3e97",
       "title": "Оля у моря",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -17029,6 +17112,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-14",
+      "trackVersion": "d12000edccfc09a5c25826feee36b11b",
       "title": "Лови свой миг",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -17046,6 +17130,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-15",
+      "trackVersion": "fae7d492c04f86d0d1829563d8f3b321",
       "title": "Призрак",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -17063,6 +17148,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "MZD-16",
+      "trackVersion": "cb560208eb5343138eb185676b69bcf3",
       "title": "Между злом и добром",
       "album": "mezhdu-zlom-i-dobrom",
       "albumTitle": "Между Злом и Добром",
@@ -17080,6 +17166,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "IVR-14",
+      "trackVersion": "b06dc8c0f3ec65ba6953a6c892266b16",
       "title": "Кораблик",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17097,6 +17184,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-01",
+      "trackVersion": "b24fefbb576d569404e5d1431591d123",
       "title": "Манифест",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17114,6 +17202,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-02",
+      "trackVersion": "38fafb34cf13e39b7ed27c42a34ac131",
       "title": "Страх перемен",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17131,6 +17220,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-03",
+      "trackVersion": "86fd6944ba8dd8cad1aaf576f7ea03da",
       "title": "Им всё равно",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17148,6 +17238,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-04",
+      "trackVersion": "5a54ba1caff252d13b1f63e5c45ca63f",
       "title": "Дремлют дети",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17165,6 +17256,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-05",
+      "trackVersion": "a086cac9f87cb50f7a2b0e9c7f69da03",
       "title": "Сквозь века",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17182,6 +17274,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-06",
+      "trackVersion": "41c6119df5bc4c934432e6e501612ebf",
       "title": "Ромашка",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17199,6 +17292,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-07",
+      "trackVersion": "3c7ec0c795b7d79460e2bdcb2e7cd3a7",
       "title": "От взмаха крыла",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17216,6 +17310,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-08",
+      "trackVersion": "261f27df187a2c3c4d8caa8d4bc9e2b5",
       "title": "Геракл",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17233,6 +17328,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-09",
+      "trackVersion": "7929a734cd960dad153e33d30943d0c6",
       "title": "Муха",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17250,6 +17346,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-10",
+      "trackVersion": "0073e6dc53759246d96075a623207172",
       "title": "Хайп",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17267,6 +17364,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-11",
+      "trackVersion": "f1363bbb50593ab90989ce8975feec6b",
       "title": "Злюка",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17284,6 +17382,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-12",
+      "trackVersion": "d47c395bea8954653f2be979cb39a59b",
       "title": "Прыщик",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17301,6 +17400,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-13",
+      "trackVersion": "55c6964e5bd02ed3a557e3a0c56dc035",
       "title": "ЗвёзДочка",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17318,6 +17418,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NVR-15",
+      "trackVersion": "1218b172cc30217883633155394dbcb5",
       "title": "Рецепт любви",
       "album": "ne-vse-ravno",
       "albumTitle": "Не всё равно",
@@ -17335,6 +17436,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NE-01",
+      "trackVersion": "1646f2760d6e031d3bcfaf13924184ed",
       "title": "4145",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -17352,6 +17454,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NE-02",
+      "trackVersion": "9de457bf39dfb1a04c0280724a825650",
       "title": "А где-то там война",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -17369,6 +17472,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NE-03",
+      "trackVersion": "a12dd6d5862bdbea17d1561734de596a",
       "title": "Живи, Герой",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -17386,6 +17490,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NE-04",
+      "trackVersion": "43905aa07dc81c6a283e0a667c7a36bf",
       "title": "Путь к победе",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -17403,6 +17508,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "NE-05",
+      "trackVersion": "3bc7475b7fdf314077d51d2cb1b7f740",
       "title": "Добро и Зло",
       "album": "neizvestniy",
       "albumTitle": "Неизвестный",
@@ -17420,6 +17526,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-01",
+      "trackVersion": "8ffe1347213278c710ccaa39d4d714a1",
       "title": "Как Гермиона Грейнджер",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17437,6 +17544,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-02",
+      "trackVersion": "d7aa280e48a743a1603b7a38f06e8955",
       "title": "Трусливый Парень",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17454,6 +17562,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-03",
+      "trackVersion": "e443ee28fc1286808590c6edeb4b8aae",
       "title": "Заклинание Добра",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17471,6 +17580,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-04",
+      "trackVersion": "a0b03406f7d47127fd27f943c3f8d47c",
       "title": "Последний День",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17488,6 +17598,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-05",
+      "trackVersion": "e87646c82e690d36167e287322ba4115",
       "title": "Зазеркалье Души",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17505,6 +17616,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-06",
+      "trackVersion": "20cceaee19dcd8093d256e48cc94270c",
       "title": "Мумия",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17522,6 +17634,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-07",
+      "trackVersion": "36fc2ff493c71a0156741c0e57155e9f",
       "title": "Коварство",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17539,6 +17652,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-08",
+      "trackVersion": "194778e30188fe345d720f956f9f6f8b",
       "title": "Сумерки",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17556,6 +17670,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-09",
+      "trackVersion": "1753a1c383b3bc49edcfc24e9a653a5e",
       "title": "Лунный Круг",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17573,6 +17688,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-10",
+      "trackVersion": "f297cedfbded3195fe76fcdf15f02e57",
       "title": "Нити Судьбы",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17590,6 +17706,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-11",
+      "trackVersion": "4b395ac66f44e86404c03a15eb7db097",
       "title": "Две Души",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17607,6 +17724,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-12",
+      "trackVersion": "28f5c0cb4142b1266cb33d62664f77d2",
       "title": "Ветерок",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17624,6 +17742,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-13",
+      "trackVersion": "9cb7e4946039cb7e56297144f7cc5127",
       "title": "Уроки Музыки",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17641,6 +17760,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-14",
+      "trackVersion": "c6818b65b653867ab06971eae78c399c",
       "title": "Однажды в Сказке",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17658,6 +17778,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "OS-15",
+      "trackVersion": "1673b37fb863428b6f031b5049feb15c",
       "title": "Снежинка",
       "album": "odnazhdy-v-skazke",
       "albumTitle": "Однажды в Сказке",
@@ -17675,6 +17796,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-01",
+      "trackVersion": "68f7fd47f433b38177a1a071b6ac3cf5",
       "title": "Живой",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17692,6 +17814,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-02",
+      "trackVersion": "38b82f28ac1e0e0c18976f04cb3daf9a",
       "title": "Клаустрофобия",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17709,6 +17832,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-03",
+      "trackVersion": "d5ca1ea3d3e1e15881b3b74569b67b79",
       "title": "В ссоре",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17726,6 +17850,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-04",
+      "trackVersion": "7bd630dd91e5473c1031885d5758c671",
       "title": "Тише",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17743,6 +17868,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-05",
+      "trackVersion": "559eaa725484aca33e992ffc00b00314",
       "title": "Мирись",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17760,6 +17886,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-06",
+      "trackVersion": "bc476c1ef41895fccc04f3d53b852226",
       "title": "Monsieur Жор",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17777,6 +17904,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-07",
+      "trackVersion": "4d0508b5c30b951276f0c115536e9538",
       "title": "Закатай губу",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17794,6 +17922,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-08",
+      "trackVersion": "3a3a7146d3e232af73fb8907f88e34e5",
       "title": "Царевна",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17811,6 +17940,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-09",
+      "trackVersion": "0b845cd0f955ae59e34e4425faea1120",
       "title": "Печаль",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
@@ -17828,6 +17958,7 @@ export default { openTrackStatisticsModal };
     },
     {
       "uid": "VS-10",
+      "trackVersion": "1823a23fdbeb1b68e10dfa01d02221f0",
       "title": "Любовь и Ненависть",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
