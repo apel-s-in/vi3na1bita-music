@@ -1577,7 +1577,7 @@ class AlbumsManager {
   _renderIcons() {
     const root = $('album-icons');
     if (!root) return;
-    root.innerHTML = renderAlbumIconRows({ config: C, albumsIndex: W.albumsIndex || [], mobile: isMobileUA(), profileKey: PROFILE, logo: LOGO, escapeHtml: escHtml });
+    root.innerHTML = renderAlbumIconRows({ config: C, albumsIndex: W.albumsIndex || [], mobile: isMobileUA(), logo: LOGO, escapeHtml: escHtml });
     this.albumCarousel?.destroy?.();
     this.albumCarousel = mountAlbumCarousel({
       root: $('album-icons-albums'),
