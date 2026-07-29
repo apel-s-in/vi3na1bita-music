@@ -34,9 +34,7 @@ const CFG = {
   listeningReceiptsShadow: safe(process.env.LISTENING_RECEIPTS_SHADOW || '1') === '1',
   listeningContextRewardsShadow: safe(process.env.LISTENING_CONTEXT_REWARDS_SHADOW || '1') === '1',
   favoriteRewardsShadow: safe(process.env.FAVORITE_REWARDS_SHADOW || '1') === '1',
-  backupRewardsShadow: safe(process.env.BACKUP_REWARDS_SHADOW || '1') === '1',
   featureRewardsShadow: safe(process.env.FEATURE_REWARDS_SHADOW || '1') === '1',
-  backupReceiptSecret: safe(process.env.BACKUP_RECEIPT_SECRET || ''),
   schedulerSecret: safe(process.env.SCHEDULER_SECRET || ''),
   listenHeartbeatMinMs: Math.max(5000, Math.min(num(process.env.LISTEN_HEARTBEAT_MIN_MS, 8000), 30000)),
   listenHeartbeatMaxGapMs: Math.max(30000, Math.min(num(process.env.LISTEN_HEARTBEAT_MAX_GAP_MS, 90000), 180000)),
@@ -3449,7 +3447,6 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
     listenByWeekdayMs,
     listenMsByTrack,
     listenTimeBySession,
-    backupSaves: Math.max(0, Math.floor(num(raw.backupSaves))),
     lyricsUsed: Math.max(0, Math.min(1, Math.floor(num(raw.lyricsUsed)))),
     pwaInstalled: Math.max(0, Math.min(1, Math.floor(num(raw.pwaInstalled)))),
     sleepTimerTriggers: Math.max(0, Math.floor(num(raw.sleepTimerTriggers))),
@@ -3477,7 +3474,6 @@ function normalizeAchievementProgress(raw = {}, playerId = '') {
     activeDays: [...new Set((Array.isArray(raw.activeDays) ? raw.activeDays : []).map(value => sanitizeId(value, 20)).filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)))].sort().slice(-400),
     activeDaysLocal: [...new Set((Array.isArray(raw.activeDaysLocal) ? raw.activeDaysLocal : []).map(value => sanitizeId(value, 20)).filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)))].sort().slice(-400),
     receiptIds: [...new Set((Array.isArray(raw.receiptIds) ? raw.receiptIds : []).map(value => sanitizeId(value, 120)).filter(Boolean))].slice(-LISTEN_PROGRESS_RECEIPT_LIMIT),
-    backupReceiptIds: [...new Set((Array.isArray(raw.backupReceiptIds) ? raw.backupReceiptIds : []).map(value => sanitizeId(value, 120)).filter(Boolean))].slice(-1000),
     featureReceiptIds: [...new Set((Array.isArray(raw.featureReceiptIds) ? raw.featureReceiptIds : []).map(value => sanitizeId(value, 160)).filter(Boolean))].slice(-2000),
     updatedAt: num(raw.updatedAt)
   };
@@ -3581,7 +3577,6 @@ function publicAchievementProgress(progress) {
     totalListenMs: data.totalListenMs,
     totalSec: data.totalSec,
     trackedTimeSessions: Object.keys(data.listenTimeBySession).length,
-    backupSaves: data.backupSaves,
     lyricsUsed: data.lyricsUsed,
     pwaInstalled: data.pwaInstalled,
     sleepTimerTriggers: data.sleepTimerTriggers,
@@ -4538,64 +4533,7 @@ async function actionMusicFeatureUse(event, body) {
   const [rewards, loyalty] = await Promise.all([reconcileAchievementRewards(playerId, applied.progress), applyLoyaltyActivity(playerId, { activityId: `loyalty:${receiptId}`, kind: 'feature', deviceId })]);
   return { ok: true, duplicate: applied.duplicate, feature, receiptId, shadow: CFG.featureRewardsShadow, rewardsEnabled: !CFG.featureRewardsShadow, rewards: rewards.grants, loyaltyRewards: loyalty.loyaltyRewards, loyalty: loyalty.loyalty, wallet: publicShardWallet(loyalty.wallet || rewards.wallet), progress: publicAchievementProgress(applied.progress) };
 }
-async function actionBackupAchievementReceipt(event, body) {
-  const secret = headerValue(event, 'x-vi3-backup-secret');
-  if (!CFG.backupReceiptSecret || !timingSafeEqualText(secret, CFG.backupReceiptSecret)) {
-    throw new Error('bad_backup_receipt_secret');
-  }
-  const ownerYandexId = safe(body.ownerYandexId);
-  const payloadHash = safe(body.payloadHash).toLowerCase();
-  if (!ownerYandexId || !/^[a-f0-9]{64}$/.test(payloadHash)) {
-    throw new Error('bad_backup_receipt');
-  }
-  const playerId = makeFriendId(ownerYandexId);
-  const receiptId = `backup_${hash(`${ownerYandexId}:${payloadHash}`).slice(0, 40)}`;
-  const key = achievementProgressKey(playerId);
-  for (let attempt = 0; attempt < 10; attempt++) {
-    let row = await kvGet(key);
-    if (!row) {
-      try {
-        await kvInsert({ pk: key, type: 'achievementProgress', owner: playerId, data: normalizeAchievementProgress({}, playerId) });
-      } catch {}
-      row = await kvGet(key);
-      if (!row) continue;
-    }
-    const progress = normalizeAchievementProgress(payload(row), playerId);
-    if (progress.backupReceiptIds.includes(receiptId)) {
-      const [rewards, loyalty] = await Promise.all([reconcileAchievementRewards(playerId, progress), applyLoyaltyActivity(playerId, { activityId: `loyalty:${receiptId}`, kind: 'backup' })]);
-      return {
-        ok: true,
-        duplicate: true,
-        receiptId,
-        shadow: CFG.backupRewardsShadow,
-        rewardsEnabled: !CFG.backupRewardsShadow,
-        rewards: rewards.grants,
-        loyaltyRewards: loyalty.loyaltyRewards,
-        loyalty: loyalty.loyalty,
-        wallet: publicShardWallet(loyalty.wallet || rewards.wallet),
-        progress: publicAchievementProgress(progress)
-      };
-    }
-    const next = normalizeAchievementProgress({ ...progress, backupSaves: progress.backupSaves + 1, backupReceiptIds: [...progress.backupReceiptIds, receiptId], updatedAt: now() }, playerId);
-    if (!(await kvCompareAndPut({ row, type: 'achievementProgress', owner: playerId, data: next }))) {
-      continue;
-    }
-    const [rewards, loyalty] = await Promise.all([reconcileAchievementRewards(playerId, next), applyLoyaltyActivity(playerId, { activityId: `loyalty:${receiptId}`, kind: 'backup' })]);
-    return {
-      ok: true,
-      duplicate: false,
-      receiptId,
-      shadow: CFG.backupRewardsShadow,
-      rewardsEnabled: !CFG.backupRewardsShadow,
-      rewards: rewards.grants,
-      loyaltyRewards: loyalty.loyaltyRewards,
-      loyalty: loyalty.loyalty,
-      wallet: publicShardWallet(loyalty.wallet || rewards.wallet),
-      progress: publicAchievementProgress(next)
-    };
-  }
-  throw new Error('backup_receipt_conflict');
-}
+
 async function actionAchievementRewardStatus(event, body) {
   const auth = await requirePlayer(event, body);
   const { playerId } = auth;
@@ -4807,9 +4745,6 @@ function achievementMetricValue(progress, reward, context = {}) {
   if (reward.metric === 'favCount') {
     return favoriteRewardCount(context.favoriteState || {});
   }
-  if (reward.metric === 'backupSaves') {
-    return Math.max(0, Math.floor(num(progress.backupSaves)));
-  }
   if (reward.metric === 'lyricsUsed') {
     return progress.lyricsUsed;
   }
@@ -4930,8 +4865,7 @@ async function reconcileAchievementRewards(playerId, progressRaw, { metrics = nu
     const registration = await ensureRegistrationShardGrant(playerId);
     latestWallet = registration.wallet;
   }
-  return { enabled: !CFG.listeningReceiptsShadow || !CFG.listeningContextRewardsShadow || !CFG.favoriteRewardsShadow || !CFG.backupRewardsShadow || !CFG.featureRewardsShadow, grants, wallet: latestWallet };
-}
+  return { enabled: !CFG.listeningReceiptsShadow || !CFG.listeningContextRewardsShadow || !CFG.favoriteRewardsShadow || !CFG.featureRewardsShadow, grants, wallet: latestWallet };
 async function actionWalletGet(event, body) {
   const { playerId } = await requirePlayer(event, body);
   const grant = await ensureRegistrationShardGrant(playerId);
@@ -6486,7 +6420,6 @@ const ACTIONS = {
   sleep_timer_start: actionSleepTimerStart,
   sleep_timer_complete: actionSleepTimerComplete,
   sleep_timer_cancel: actionSleepTimerCancel,
-  backup_achievement_receipt: actionBackupAchievementReceipt,
   rtc_config: actionRtcConfig,
   webpush_config: actionWebPushConfig,
   webpush_subscribe: actionWebPushSubscribe,
@@ -6571,7 +6504,6 @@ exports.handler = async event => {
         },
         continuousListeningRewards: { enabled: true, shadow: CFG.listeningReceiptsShadow, metric: 'speedRunnerObservedMs', targetMs: 10800000, transitionGapMs: 30000 },
         featureRewards: { enabled: true, shadow: CFG.featureRewardsShadow, actions: ['music_feature_use', 'pwa_install_intent', 'pwa_launch_verify', 'sleep_timer_start', 'sleep_timer_complete', 'sleep_timer_cancel'], metrics: ['lyricsUsed', 'pwaInstalled', 'sleepTimerTriggers'] },
-        backupRewards: { enabled: true, shadow: CFG.backupRewardsShadow, receiptSecretConfigured: !!CFG.backupReceiptSecret },
         ts: now()
       });
     }
