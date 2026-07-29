@@ -132,7 +132,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/games/] bridge-host.js, config.js, host.js
 [/scripts/app/player/] favorites-only-actions.js, favorites-only-resolver.js, playback-clock.js, playback-context-source.js, restore-gesture.js
 [/scripts/app/player-ui/] lyrics.js
-[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-devices-view.js, achievements-view.js, actions-trash.js, actions.js, archive-maintenance-modal.js, archive-render-kit.js, auth-onboarding-orchestrator.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, cloud-ui-helpers.js, fresh-restore-modal.js, ledger-health-modal.js, live-bindings.js, logs-formatters.js, logs-view.js, loyalty-card.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, restore-backup-runner.js, restore-card-render-kit.js, restore-decision.js, restore-diff.js, restore-preview-modal.js, settings-conflict-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, view.js, yandex-actions.js, yandex-auth-view.js, yandex-auto-sync.js, yandex-preload-cache.js, yandex-runtime-refresh.js
+[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-devices-view.js, account-timezone-view.js, achievements-view.js, actions-trash.js, actions.js, archive-maintenance-modal.js, archive-render-kit.js, auth-onboarding-orchestrator.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, cloud-ui-helpers.js, fresh-restore-modal.js, ledger-health-modal.js, live-bindings.js, logs-formatters.js, logs-view.js, loyalty-card.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, restore-backup-runner.js, restore-card-render-kit.js, restore-decision.js, restore-diff.js, restore-preview-modal.js, settings-conflict-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, view.js, yandex-actions.js, yandex-auth-view.js, yandex-auto-sync.js, yandex-preload-cache.js, yandex-runtime-refresh.js
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
@@ -10204,6 +10204,47 @@ export const bindAccountDevicesBlock = (root, rerender) => {
 };
 
 export default { renderAccountDevicesBlock, bindAccountDevicesBlock };
+
+//=================================================
+// FILE: /scripts/app/profile/account-timezone-view.js
+import { changeAccountTimezone, getDeviceTimezoneContext, readCachedTimezonePolicy, refreshTimezonePolicy, setAccountTimezone } from '../../core/timezone-policy.js';
+import { esc, fmtDateTime, renderMetaBox } from './profile-render-kit.js';
+
+const currentOwner = () => String(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id || '').trim();
+
+export const renderAccountTimezoneBlock = () => {
+  const policy = readCachedTimezonePolicy(currentOwner());
+  const device = getDeviceTimezoneContext();
+  const zone = policy.available ? policy.zone : 'Не закреплён';
+  const status = policy.available ? 'Используется для наград и календарных достижений' : 'Подтвердите зону для наград и календарной статистики';
+  return `<section class="yandex-auth-note account-timezone-card" id="ya-timezone-block"><div class="account-card-heading"><span>🕒 Часовой пояс аккаунта</span><button type="button" class="om-btn om-btn--ghost" id="ya-timezone-refresh">↻</button></div><div class="account-timezone-status">${esc(status)}</div><div class="yandex-auth-meta">${renderMetaBox({ label: 'Зона аккаунта', value: zone })}${renderMetaBox({ label: 'Текущая зона устройства', value: device.timezone || '—' })}${renderMetaBox({ label: 'Revision', value: policy.revision || '—' })}${renderMetaBox({ label: 'Действует с', value: policy.effectiveFrom ? fmtDateTime(policy.effectiveFrom) : '—' })}</div><div class="account-timezone-note">Путешествия меняют локальную статистику устройства, но не наградную зону аккаунта и не дедлайн «Преданности».</div><button type="button" class="om-btn om-btn--outline om-fullw" id="ya-timezone-change">${policy.available ? 'Изменить на текущую зону устройства' : `Подтвердить ${esc(device.timezone || 'текущую зону')}`}</button></section>`;
+};
+
+export const bindAccountTimezoneBlock = (root, rerender) => {
+  const block = root?.querySelector('#ya-timezone-block');
+  if (!block || block._bound) return;
+  block._bound = true;
+  block.addEventListener('click', async event => {
+    if (event.target.closest('#ya-timezone-refresh')) {
+      await refreshTimezonePolicy().catch(() => null);
+      rerender?.();
+      return;
+    }
+    if (!event.target.closest('#ya-timezone-change')) return;
+    const policy = readCachedTimezonePolicy(currentOwner());
+    const device = getDeviceTimezoneContext();
+    try {
+      if (policy.available) await changeAccountTimezone();
+      else await setAccountTimezone(device.timezone);
+      window.NotificationSystem?.success?.('Часовой пояс аккаунта сохранён');
+      rerender?.();
+    } catch (error) {
+      window.NotificationSystem?.error?.(`Не удалось сохранить часовой пояс: ${error?.message || 'ошибка'}`);
+    }
+  });
+};
+
+export default { renderAccountTimezoneBlock, bindAccountTimezoneBlock };
 
 //=================================================
 // FILE: /scripts/app/profile/achievements-view.js
