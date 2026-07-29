@@ -284,6 +284,9 @@ import { getDeviceId } from '../scripts/core/device-context.js';
 
       if (!t || !uid) return false;
 
+      this._pendingIndex = targetIndex;
+      this._pendingUid = uid;
+
       const autoPlay = opts.autoPlay ?? this.isPlaying();
       if (autoPlay) {
         const ownership = await this._authorizePlaybackStart(uid, Number(opts.resumePosition) || 0, opts);
@@ -299,8 +302,6 @@ import { getDeviceId } from '../scripts/core/device-context.js';
       }
       const reason = String(opts.reason || (opts.isAutoSkip ? 'auto_skip' : (opts._forceReload ? 'transport_reload' : 'selection')));
       opts = { ...opts, autoPlay, reason };
-      this._pendingIndex = targetIndex;
-      this._pendingUid = uid;
 
       if (!opts.isAutoSkip) this._skips = 0;
 
