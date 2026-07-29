@@ -13378,6 +13378,18 @@ const validateRecommendationsAndStats = () => {
   excludes('scripts/app/profile/carousel-flat.js', /oldTabs/, 'legacy oldTabs');
   ['const activeDays = new Set', 'if (lSec > 0)', 's.globalListenSeconds += lSec', 'calculateStreakSummary'].forEach(marker => contains('scripts/analytics/stats-aggregator.js', marker));
 };
+const validatePlaybackOwnershipFoundation = () => {
+  const server = 'cloud-functions/vi3-signaling/index.js';
+  const timezone = 'scripts/core/timezone-policy.js';
+  ['timezone_policy_get', 'timezone_policy_set', 'account_device_list', 'account_device_update', 'playback_state_get', 'timezonePolicyKey', 'accountDeviceKey', 'playbackStateKey', 'alwaysConfirm'].forEach(marker => contains(server, marker));
+  ['getDeviceTimezoneContext', 'refreshTimezonePolicy', 'changeAccountTimezone', 'browser_confirmed'].forEach(marker => contains(timezone, marker));
+  contains('scripts/core/social-session.js', 'currentDeviceContext');
+  contains('scripts/core/social-session.js', 'playback_state_get');
+  excludes(timezone, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Timezone policy управляет playback');
+  excludes('scripts/core/device-identity.js', /resolvedOptions\(\)\.timeZone|hardwareConcurrency|screen\.width|navigator\.platform/, 'Device ID зависит от fingerprint');
+  contains('scripts/intel/roadmap.js', 'Single active playback owner');
+  contains('scripts/intel/roadmap.js', 'No PIN transfer policy');
+};
 const validatePlaybackBoundaries = () => {
   const protectedFiles = [...listFiles('scripts/app/games'), ...listFiles('scripts/app/friends'), ...listFiles('scripts/intel')];
   assertNoMatch(protectedFiles, /playerCore(?:\?\.|\.)\s*(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist|applyFavoritesOnlyFilter)\s*\(/g, 'Games, Friends или Intel мутируют PlayerCore');
@@ -13516,6 +13528,7 @@ const main = async () => {
   validatePwaAndLegacy();
   validateDataBoundaries();
   validateRecommendationsAndStats();
+  validatePlaybackOwnershipFoundation();
   validatePlaybackBoundaries();
   validateLoyaltyReleaseD();
   validateBackupProxy();
