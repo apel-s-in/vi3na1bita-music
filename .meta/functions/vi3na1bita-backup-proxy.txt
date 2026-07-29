@@ -21,7 +21,6 @@ const VERSION_RE = /^app:\/Backup\/vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3ba
 const META_ONLY_TIMEOUT_MS = 10000;
 const DEFAULT_TIMEOUT_MS = 20000;
 const DOWNLOAD_TIMEOUT_MS = 25000;
-const RECEIPT_TIMEOUT_MS = 5000;
 const MAX_BACKUP_BODY_BYTES = 10 * 1024 * 1024;
 const MAX_BODY_BYTES = MAX_BACKUP_BODY_BYTES;
 const MAX_UPLOAD_BODY_BYTES = MAX_BACKUP_BODY_BYTES;
@@ -53,12 +52,6 @@ const ALLOWED_MODES = new Set([
   'lease_acquire',
   'lease_release'
 ]);
-const SIGNALING_URL = String(process.env.SIGNALING_URL || '').trim();
-const BACKUP_RECEIPT_SECRET = String(process.env.BACKUP_RECEIPT_SECRET || '').trim();
-const BACKUP_RECEIPT_OUTBOX_PATH = `${APP_ROOT}/pending-backup-receipts.json`;
-const BACKUP_RECEIPT_OUTBOX_LIMIT = 100;
-const BACKUP_RECEIPT_OUTBOX_TTL_MS = 90 * 24 * 60 * 60 * 1000;
-const BACKUP_RECEIPT_FLUSH_LIMIT = 5;
 const safeString = v => String(v == null ? '' : v).trim();
 const safeNum = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const nowTs = () => Date.now();
@@ -125,27 +118,7 @@ function httpsPut(url, body = '', customHeaders = {}, timeoutMs = DEFAULT_TIMEOU
     req.end();
   });
 }
-function httpsPostJson(url, data = {}, customHeaders = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
-  return new Promise((resolve, reject) => {
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(url);
-    } catch {
-      return reject(new Error('invalid_url'));
-    }
-    const body = Buffer.from(JSON.stringify(data || {}), 'utf8');
-    const req = https.request({ hostname: parsedUrl.hostname, path: parsedUrl.pathname + parsedUrl.search, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': body.length, Accept: 'application/json', ...customHeaders } }, res => {
-      let responseBody = '';
-      res.setEncoding('utf8');
-      res.on('data', chunk => (responseBody += chunk));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: responseBody }));
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error('timeout')));
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
-}
+
 function httpsDelete(url, customHeaders = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     let parsedUrl;
@@ -304,113 +277,7 @@ async function validateBackupUpload(token, backup) {
   }
   return { ok: true, ownerYandexId, payloadHash: payloadCheck.actual, eventHashes };
 }
-async function emitBackupAchievementReceipt(validation) {
-  if (!SIGNALING_URL || !BACKUP_RECEIPT_SECRET || !validation?.ownerYandexId || !validation?.payloadHash) {
-    return { ok: false, skipped: true, reason: 'backup_receipt_not_configured' };
-  }
-  const response = await httpsPostJson(
-    SIGNALING_URL,
-    {
-      action: 'backup_achievement_receipt',
-      ownerYandexId: validation.ownerYandexId,
-      payloadHash: validation.payloadHash
-    },
-    {
-      'X-Vi3-Backup-Secret': BACKUP_RECEIPT_SECRET
-    },
-    RECEIPT_TIMEOUT_MS
-  );
-  const data = safeParse(response.body) || {};
-  return { ok: response.status >= 200 && response.status < 300 && data.ok === true, status: response.status, duplicate: data.duplicate === true, shadow: data.shadow !== false, receiptId: safeString(data.receiptId), error: safeString(data.error) };
-}
-function normalizeBackupReceiptOutbox(raw = {}, ownerYandexId = '') {
-  const owner = safeString(ownerYandexId);
-  const cutoff = nowTs() - BACKUP_RECEIPT_OUTBOX_TTL_MS;
-  const source = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
-  const items = [
-    ...new Map(
-      source
-        .map(item => {
-          const itemOwner = safeString(item?.ownerYandexId);
-          const payloadHash = safeString(item?.payloadHash).toLowerCase();
-          const queuedAt = safeNum(item?.queuedAt) || nowTs();
-          if (!itemOwner || itemOwner !== owner || !/^[a-f0-9]{64}$/.test(payloadHash) || queuedAt < cutoff) {
-            return null;
-          }
-          const id = `backup_${sha256Hex(`${itemOwner}:${payloadHash}`).slice(0, 40)}`;
-          return [id, { id, ownerYandexId: itemOwner, payloadHash, queuedAt, attempts: Math.max(0, Math.floor(safeNum(item?.attempts))), lastAttemptAt: Math.max(0, safeNum(item?.lastAttemptAt)), lastError: safeString(item?.lastError).slice(0, 200) }];
-        })
-        .filter(Boolean)
-    ).values()
-  ]
-    .sort((left, right) => left.queuedAt - right.queuedAt)
-    .slice(-BACKUP_RECEIPT_OUTBOX_LIMIT);
-  return { version: 1, ownerYandexId: owner, updatedAt: nowTs(), items };
-}
-async function readBackupReceiptOutbox(token, ownerYandexId) {
-  const result = await downloadJsonResourceByPath(token, BACKUP_RECEIPT_OUTBOX_PATH, { link: 'backup_receipt_outbox_link', parse: 'backup_receipt_outbox_link_parse', file: 'backup_receipt_outbox_file', json: 'backup_receipt_outbox_json' });
-  if (result.type === 'not_found') {
-    return { exists: false, outbox: normalizeBackupReceiptOutbox({}, ownerYandexId) };
-  }
-  if (result.type !== 'ok') {
-    throw new Error(`backup_receipt_outbox_read_failed:${result.type}`);
-  }
-  return { exists: true, outbox: normalizeBackupReceiptOutbox(result.data, ownerYandexId) };
-}
-async function writeBackupReceiptOutbox(token, outbox) {
-  await ensureDiskDir(token, APP_ROOT).catch(() => false);
-  const result = await uploadJsonResourceByPath(token, BACKUP_RECEIPT_OUTBOX_PATH, outbox);
-  if (!result.ok) {
-    throw new Error('backup_receipt_outbox_write_failed');
-  }
-  return true;
-}
-async function flushBackupAchievementReceipts(token, validation) {
-  if (!SIGNALING_URL || !BACKUP_RECEIPT_SECRET) {
-    return emitBackupAchievementReceipt(validation);
-  }
-  let stored;
-  try {
-    stored = await readBackupReceiptOutbox(token, validation.ownerYandexId);
-  } catch (error) {
-    const direct = await emitBackupAchievementReceipt(validation).catch(sendError => ({ ok: false, skipped: false, error: normalizeErrMessage(sendError) }));
-    return { ...direct, durable: false, outboxError: normalizeErrMessage(error) };
-  }
-  const currentId = `backup_${sha256Hex(`${validation.ownerYandexId}:${validation.payloadHash}`).slice(0, 40)}`;
-  const rows = new Map(stored.outbox.items.map(item => [item.id, item]));
-  if (!rows.has(currentId)) {
-    rows.set(currentId, { id: currentId, ownerYandexId: validation.ownerYandexId, payloadHash: validation.payloadHash, queuedAt: nowTs(), attempts: 0, lastAttemptAt: 0, lastError: '' });
-  }
-  const ordered = [...rows.values()].sort((left, right) => left.queuedAt - right.queuedAt);
-  const pending = [];
-  const results = [];
-  let delivered = 0;
-  for (let index = 0; index < ordered.length; index++) {
-    const item = ordered[index];
-    if (index >= BACKUP_RECEIPT_FLUSH_LIMIT) {
-      pending.push(item);
-      continue;
-    }
-    let result;
-    try {
-      result = await emitBackupAchievementReceipt(item);
-    } catch (error) {
-      result = { ok: false, skipped: false, error: normalizeErrMessage(error) };
-    }
-    results.push({ id: item.id, ok: result.ok === true, duplicate: result.duplicate === true, status: safeNum(result.status), error: safeString(result.error) });
-    if (result.ok || result.duplicate) {
-      delivered++;
-      continue;
-    }
-    pending.push({ ...item, attempts: item.attempts + 1, lastAttemptAt: nowTs(), lastError: safeString(result.error || result.reason || `http_${result.status || 0}`).slice(0, 200) });
-  }
-  const nextOutbox = normalizeBackupReceiptOutbox({ items: pending }, validation.ownerYandexId);
-  if (stored.exists || nextOutbox.items.length) {
-    await writeBackupReceiptOutbox(token, nextOutbox);
-  }
-  const currentResult = results.find(item => item.id === currentId) || null;
-  return { ok: nextOutbox.items.length === 0 && currentResult?.ok === true, durable: true, delivered, pending: nextOutbox.items.length, current: currentResult, results };
-}
+
 function validateEventSegmentUpload(segment) {
   if (!segment || typeof segment !== 'object' || !Array.isArray(segment.events)) {
     return { ok: false, status: 400, error: 'event_segment_invalid' };
@@ -943,8 +810,6 @@ module.exports.handler = async event => {
       method: method || 'unknown',
       uploadLimitBytes: MAX_UPLOAD_BODY_BYTES,
       downloadLimitBytes: MAX_BODY_BYTES,
-      signalingConfigured: !!SIGNALING_URL,
-      backupReceiptConfigured: !!BACKUP_RECEIPT_SECRET,
       time: nowTs()
     }));
   }
