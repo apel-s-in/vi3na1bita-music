@@ -14446,8 +14446,10 @@ const validateLoyaltyReleaseD = () => {
 };
 const validateBackupProxy = () => {
   const proxy = 'cloud-functions/vi3na1bita-backup-proxy/index.js';
+  const signaling = 'cloud-functions/vi3-signaling/index.js';
   const transport = 'scripts/core/yandex-disk-transport.js';
   const archiveTransport = 'scripts/core/yandex-event-archive-disk.js';
+  ['backup_device_authorize', 'actionBackupDeviceAuthorize', 'backup_device_session_required', 'backup_device_identity_mismatch', 'backup_device_not_registered', 'backup_device_revoked', 'backup_owner_identity_mismatch', 'ownerYandexIdHash', 'server_account_device'].forEach(marker => contains(signaling, marker));
   ['requestContext?.http?.method', 'requestContext?.httpMethod', "method === 'OPTIONS'", 'x-yandex-auth', 'upload_backup', 'upload_event_segment', 'archive_delete_segments'].forEach(marker => contains(proxy, marker));
   excludes(proxy, /backup_achievement_receipt|pending-backup-receipts|BACKUP_RECEIPT_SECRET|SIGNALING_URL/, 'Legacy backup reward transport остался в proxy');
   assert(/const\s+mode\s*=\s*requestedMode\s*\|\|\s*['"]ping['"]/.test(read(proxy)), 'Backup proxy: корневой вызов является ping');
