@@ -640,7 +640,7 @@ jobs:
         run: |
           test -s data/listen-track-catalog.json
           test -s data/listen-track-catalog.env.json
-          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('data/listen-track-catalog.env.json','utf8'));if(!Object.keys(x).length)process.exit(2);console.log('tracks:',Object.keys(x).length)"
+          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('data/listen-track-catalog.env.json','utf8'));const rows=Object.entries(x);if(!rows.length||rows.some(([uid,v])=>!uid||!Array.isArray(v)||v.length<3||typeof v[2]!=='string'||v[2].length<16))process.exit(2);console.log('tracks:',rows.length)"
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
