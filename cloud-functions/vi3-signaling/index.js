@@ -607,6 +607,241 @@ function expectedPeerForPlayer(room, playerId) {
 function isRoomViewer(room, playerId) {
   return isRoomParticipant(room, playerId) || safe(room?.invitedPlayerId) === safe(playerId);
 }
+const TIMEZONE_POLICY_VERSION = 1;
+const ACCOUNT_DEVICE_VERSION = 1;
+const PLAYBACK_STATE_VERSION = 1;
+function timezonePolicyKey(playerId) {
+  return `timezonePolicy:${sanitizeId(playerId, 96)}`;
+}
+function accountDeviceKey(playerId, deviceId) {
+  return `accountDevice:${sanitizeId(playerId, 96)}:${sanitizeId(deviceId, 120)}`;
+}
+function playbackStateKey(playerId) {
+  return `playbackState:${sanitizeId(playerId, 96)}`;
+}
+function isValidIanaTimezone(zone) {
+  const value = safe(zone);
+  if (!value || value.length > 80) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function timezoneOffsetAt(zone, timestamp = now()) {
+  if (!isValidIanaTimezone(zone)) throw new Error('timezone_invalid');
+  const at = Math.max(0, num(timestamp)) || now();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date(at));
+  const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+  const localAsUtc = Date.UTC(values.year, values.month - 1, values.day, values.hour, values.minute, values.second);
+  return Math.round((at - localAsUtc) / 60000);
+}
+function normalizeTimezonePolicy(raw = {}, playerId = '') {
+  const zone = isValidIanaTimezone(raw.zone) ? safe(raw.zone) : '';
+  return {
+    version: TIMEZONE_POLICY_VERSION,
+    playerId: sanitizeId(playerId || raw.playerId, 96),
+    zone,
+    revision: Math.max(0, Math.floor(num(raw.revision))),
+    source: sanitizeId(raw.source || 'browser_confirmed', 40),
+    offsetAtBindingMin: Math.max(-840, Math.min(840, Math.round(num(raw.offsetAtBindingMin)))),
+    boundAt: Math.max(0, Math.floor(num(raw.boundAt))),
+    effectiveFrom: Math.max(0, Math.floor(num(raw.effectiveFrom))),
+    updatedAt: Math.max(0, Math.floor(num(raw.updatedAt)))
+  };
+}
+function publicTimezonePolicy(raw = {}) {
+  const policy = normalizeTimezonePolicy(raw, raw.playerId);
+  return {
+    available: !!policy.zone,
+    version: policy.version,
+    zone: policy.zone,
+    revision: policy.revision,
+    source: policy.source,
+    boundAt: policy.boundAt,
+    effectiveFrom: policy.effectiveFrom,
+    updatedAt: policy.updatedAt
+  };
+}
+async function getTimezonePolicy(playerId) {
+  return normalizeTimezonePolicy(payload(await kvGet(timezonePolicyKey(playerId))), playerId);
+}
+function normalizeAccountDevice(raw = {}, playerId = '') {
+  return {
+    version: ACCOUNT_DEVICE_VERSION,
+    playerId: sanitizeId(playerId || raw.playerId, 96),
+    deviceId: sanitizeId(raw.deviceId, 120),
+    label: safe(raw.label || 'Устройство').slice(0, 80),
+    deviceClass: safe(raw.deviceClass || 'Desktop').slice(0, 40),
+    platform: sanitizeId(raw.platform || 'web', 30),
+    pwa: raw.pwa === true,
+    timezone: isValidIanaTimezone(raw.timezone) ? safe(raw.timezone) : '',
+    timezoneOffsetMin: Math.max(-840, Math.min(840, Math.round(num(raw.timezoneOffsetMin)))),
+    takeoverEnabled: raw.takeoverEnabled !== false,
+    remotePauseEnabled: raw.remotePauseEnabled !== false,
+    alwaysConfirm: raw.alwaysConfirm !== false,
+    revokedAt: Math.max(0, num(raw.revokedAt)),
+    firstSeenAt: Math.max(0, num(raw.firstSeenAt)),
+    lastSeenAt: Math.max(0, num(raw.lastSeenAt)),
+    updatedAt: Math.max(0, num(raw.updatedAt))
+  };
+}
+function publicAccountDevice(raw = {}) {
+  const device = normalizeAccountDevice(raw, raw.playerId);
+  return {
+    version: device.version,
+    deviceId: device.deviceId,
+    label: device.label,
+    deviceClass: device.deviceClass,
+    platform: device.platform,
+    pwa: device.pwa,
+    timezone: device.timezone,
+    takeoverEnabled: device.takeoverEnabled,
+    remotePauseEnabled: device.remotePauseEnabled,
+    alwaysConfirm: device.alwaysConfirm,
+    revokedAt: device.revokedAt,
+    firstSeenAt: device.firstSeenAt,
+    lastSeenAt: device.lastSeenAt,
+    updatedAt: device.updatedAt
+  };
+}
+async function upsertAccountDevice(playerId, body = {}) {
+  const deviceId = sanitizeId(body.deviceId || 'web', 120) || 'web';
+  const key = accountDeviceKey(playerId, deviceId);
+  const old = normalizeAccountDevice(payload(await kvGet(key)), playerId);
+  const at = now();
+  const device = normalizeAccountDevice({
+    ...old,
+    playerId,
+    deviceId,
+    label: body.deviceLabel || old.label || 'Устройство',
+    deviceClass: body.deviceClass || old.deviceClass || 'Desktop',
+    platform: body.platform || old.platform || 'web',
+    pwa: body.pwa === true,
+    timezone: body.timezone || old.timezone,
+    timezoneOffsetMin: body.timezoneOffsetMin,
+    revokedAt: 0,
+    firstSeenAt: old.firstSeenAt || at,
+    lastSeenAt: at,
+    updatedAt: at
+  }, playerId);
+  await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: device });
+  return device;
+}
+function normalizePlaybackState(raw = {}, playerId = '') {
+  return {
+    version: PLAYBACK_STATE_VERSION,
+    playerId: sanitizeId(playerId || raw.playerId, 96),
+    logicalSessionId: sanitizeId(raw.logicalSessionId, 120),
+    trackUid: sanitizeId(raw.trackUid, 160),
+    trackVersion: safe(raw.trackVersion).slice(0, 96),
+    status: sanitizeId(raw.status || 'idle', 30),
+    ownerDeviceId: sanitizeId(raw.ownerDeviceId, 120),
+    ownerLabel: safe(raw.ownerLabel).slice(0, 80),
+    ownerEpoch: Math.max(0, Math.floor(num(raw.ownerEpoch))),
+    confirmedPosition: Math.max(0, num(raw.confirmedPosition)),
+    confirmedAt: Math.max(0, num(raw.confirmedAt)),
+    leaseExpiresAt: Math.max(0, num(raw.leaseExpiresAt)),
+    transferCount: Math.max(0, Math.floor(num(raw.transferCount))),
+    revision: Math.max(0, Math.floor(num(raw.revision))),
+    updatedAt: Math.max(0, num(raw.updatedAt))
+  };
+}
+function publicPlaybackState(raw = {}, currentDeviceId = '') {
+  const state = normalizePlaybackState(raw, raw.playerId);
+  const active = !!state.logicalSessionId && state.status === 'playing' && state.leaseExpiresAt > now();
+  return {
+    available: !!state.logicalSessionId,
+    active,
+    version: state.version,
+    logicalSessionId: state.logicalSessionId,
+    trackUid: state.trackUid,
+    trackVersion: state.trackVersion,
+    status: active ? state.status : state.logicalSessionId ? 'stale' : 'idle',
+    ownerDeviceId: state.ownerDeviceId,
+    ownerLabel: state.ownerLabel,
+    isCurrentDeviceOwner: !!currentDeviceId && state.ownerDeviceId === sanitizeId(currentDeviceId, 120),
+    ownerEpoch: state.ownerEpoch,
+    confirmedPosition: state.confirmedPosition,
+    confirmedAt: state.confirmedAt,
+    leaseExpiresAt: state.leaseExpiresAt,
+    transferCount: state.transferCount,
+    revision: state.revision,
+    updatedAt: state.updatedAt
+  };
+}
+async function actionTimezonePolicyGet(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  return { ok: true, timezonePolicy: publicTimezonePolicy(await getTimezonePolicy(playerId)) };
+}
+async function actionTimezonePolicySet(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  await enforceRateLimit({ scope: 'timezone_policy', actor: playerId, limit: 12, windowMs: 24 * 60 * 60 * 1000 });
+  const zone = safe(body.timezone);
+  if (!isValidIanaTimezone(zone)) throw new Error('timezone_invalid');
+  const suppliedOffset = Number(body.timezoneOffsetMin);
+  const expectedOffset = timezoneOffsetAt(zone);
+  if (!Number.isFinite(suppliedOffset) || Math.abs(expectedOffset - suppliedOffset) > 2) {
+    const error = new Error('timezone_offset_mismatch');
+    error.httpStatus = 409;
+    throw error;
+  }
+  const old = await getTimezonePolicy(playerId);
+  const at = now();
+  const next = normalizeTimezonePolicy({
+    playerId,
+    zone,
+    revision: old.revision + 1,
+    source: 'browser_confirmed',
+    offsetAtBindingMin: expectedOffset,
+    boundAt: at,
+    effectiveFrom: at,
+    updatedAt: at
+  }, playerId);
+  await kvPut({ pk: timezonePolicyKey(playerId), type: 'timezonePolicy', owner: playerId, data: next });
+  return { ok: true, timezonePolicy: publicTimezonePolicy(next) };
+}
+async function actionAccountDeviceList(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  const rows = await kvPrefix(`accountDevice:${playerId}:`, 100);
+  const items = rows.map(payload).map(item => normalizeAccountDevice(item, playerId)).filter(item => item.deviceId).sort((left, right) => right.lastSeenAt - left.lastSeenAt).map(publicAccountDevice);
+  return { ok: true, items };
+}
+async function actionAccountDeviceUpdate(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  const deviceId = sanitizeId(body.deviceId, 120);
+  if (!deviceId) throw new Error('account_device_required');
+  const key = accountDeviceKey(playerId, deviceId);
+  const row = await kvGet(key);
+  if (!row) throw new Error('account_device_not_found');
+  const old = normalizeAccountDevice(payload(row), playerId);
+  const next = normalizeAccountDevice({
+    ...old,
+    label: hasOwn(body, 'label') ? safe(body.label).slice(0, 80) || old.label : old.label,
+    takeoverEnabled: hasOwn(body, 'takeoverEnabled') ? body.takeoverEnabled === true : old.takeoverEnabled,
+    remotePauseEnabled: hasOwn(body, 'remotePauseEnabled') ? body.remotePauseEnabled === true : old.remotePauseEnabled,
+    alwaysConfirm: true,
+    revokedAt: hasOwn(body, 'revoked') && body.revoked === true ? now() : old.revokedAt,
+    updatedAt: now()
+  }, playerId);
+  await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: next });
+  return { ok: true, device: publicAccountDevice(next) };
+}
+async function actionPlaybackStateGet(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  const state = normalizePlaybackState(payload(await kvGet(playbackStateKey(playerId))), playerId);
+  return { ok: true, playback: publicPlaybackState(state, body.deviceId) };
+}
 async function actionSocialSessionIssue(event, body) {
   if (!CFG.socialSessionSecret) throw new Error('social_session_not_configured');
   const identity = await verifyYandexOAuth(event, body);
@@ -674,7 +909,11 @@ async function actionSocialSessionIssue(event, body) {
       }
     });
   }
-  const registrationGrant = await ensureRegistrationShardGrant(identity.friendId).catch(error => ({ ok: false, duplicate: false, amount: 0, operationId: '', error: safe(error?.message) }));
+  const [registrationGrant, accountDevice, timezonePolicy] = await Promise.all([
+    ensureRegistrationShardGrant(identity.friendId).catch(error => ({ ok: false, duplicate: false, amount: 0, operationId: '', error: safe(error?.message) })),
+    upsertAccountDevice(identity.friendId, body).catch(() => null),
+    getTimezonePolicy(identity.friendId).catch(() => normalizeTimezonePolicy({}, identity.friendId))
+  ]);
   const sessionJti = rid('ss');
   const session = issueSocialSession({ sub: identity.friendId, yidHash: hash(`ya:${identity.yandexId}`), iat: issuedAt, exp: expiresAt, jti: sessionJti, v: 2 });
   const loyalty = await applyLoyaltyActivity(identity.friendId, { activityId: `loyalty:auth:${sessionJti}`, kind: 'authorization', deviceId: body.deviceId }).catch(error => ({ loyalty: null, loyaltyRewards: [], wallet: null, error: safe(error?.message) }));
@@ -688,6 +927,9 @@ async function actionSocialSessionIssue(event, body) {
     loyaltyRewards: loyalty.loyaltyRewards || [],
     loyaltyError: safe(loyalty.error),
     wallet: loyalty.wallet ? publicShardWallet(loyalty.wallet) : registrationGrant.wallet ? publicShardWallet(registrationGrant.wallet) : null,
+    timezonePolicy: publicTimezonePolicy(timezonePolicy),
+    needsTimezoneConfirmation: !timezonePolicy.zone,
+    accountDevice: accountDevice ? publicAccountDevice(accountDevice) : null,
     profile: { friendId: identity.friendId, displayName: identity.displayName, avatarUrl: identity.avatarUrl }
   };
 }
@@ -5751,6 +5993,11 @@ async function actionLoyaltyDueRun(event, body) {
 }
 const ACTIONS = {
   social_session_issue: actionSocialSessionIssue,
+  timezone_policy_get: actionTimezonePolicyGet,
+  timezone_policy_set: actionTimezonePolicySet,
+  account_device_list: actionAccountDeviceList,
+  account_device_update: actionAccountDeviceUpdate,
+  playback_state_get: actionPlaybackStateGet,
   player_register: actionPlayerRegister,
   presence_heartbeat: actionHeartbeat,
   friend_status_check: actionFriendStatus,
@@ -5907,7 +6154,7 @@ exports.handler = async event => {
         status = 404;
       } else if (/listen_session_(not_active|not_completable)|chat_revision_conflict|ranked_.*conflict|crypto_.*(?:missing|not_ready|conflict)|chat_e2ee_disabled/i.test(msg)) {
         status = 409;
-      } else if (/required|bad_|not_found/i.test(msg)) {
+      } else if (/required|bad_|not_found|invalid|timezone_|account_device_/i.test(msg)) {
         status = 400;
       } else {
         status = 500;
