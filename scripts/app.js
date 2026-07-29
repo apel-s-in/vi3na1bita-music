@@ -108,6 +108,7 @@
     } catch {}
     try {
       await import('./analytics/playback-ownership.js').then(m => m.initPlaybackOwnership?.());
+      await import('./app/playback-return-ui.js').then(m => m.initPlaybackReturnUi?.());
     } catch {}
     try {
       await import('./analytics/favorite-mirror.js').then(m => m.favoriteMirrorService?.initialize?.());
