@@ -90,7 +90,6 @@
 .om-mode-card__head>div:first-child{flex:1;min-width:0}
 .om-mode-card__name{font:600 14px inherit;color:#fff;margin-bottom:2px}
 .om-mode-card__desc{font-size:12px;color:var(--om-muted);line-height:1.4}
-.om-mode-card__hint{font-size:12px;color:rgba(255,255,255,.35);margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
 .om-mode-card--disabled{opacity:.45;pointer-events:none;position:relative}
 .om-mode-card--disabled::after{content:'';position:absolute;inset:0;border-radius:var(--om-r);background:repeating-linear-gradient(135deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 20px)}
 .om-mode-card--disabled .om-mode-btn{cursor:not-allowed}
