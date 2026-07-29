@@ -840,6 +840,55 @@ async function actionAccountDeviceUpdate(event, body) {
   await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: next });
   return { ok: true, device: publicAccountDevice(next) };
 }
+function backupAuthorizationError(message, status = 403) {
+  const error = new Error(message);
+  error.httpStatus = status;
+  return error;
+}
+async function actionBackupDeviceAuthorize(event, body) {
+  const auth = await requirePlayer(event, body);
+  const requestedDeviceId = sanitizeId(body.deviceId, 120);
+
+  if (!auth.deviceId) {
+    throw backupAuthorizationError('backup_device_session_required', 401);
+  }
+  if (requestedDeviceId && requestedDeviceId !== auth.deviceId) {
+    throw backupAuthorizationError('backup_device_identity_mismatch');
+  }
+  if (!/^[a-f0-9]{64}$/.test(auth.yandexIdHash)) {
+    throw backupAuthorizationError('backup_owner_hash_invalid', 401);
+  }
+
+  const [deviceRow, playerRow] = await Promise.all([
+    kvGet(accountDeviceKey(auth.playerId, auth.deviceId)),
+    kvGet(`player:${auth.playerId}`)
+  ]);
+  const device = normalizeAccountDevice(payload(deviceRow), auth.playerId);
+  const player = payload(playerRow);
+
+  if (!deviceRow || !device.deviceId || device.deviceId !== auth.deviceId) {
+    throw backupAuthorizationError('backup_device_not_registered');
+  }
+  if (device.revokedAt > 0) {
+    throw backupAuthorizationError('backup_device_revoked');
+  }
+  if (!playerRow || safe(player.yandexIdHash) !== auth.yandexIdHash) {
+    throw backupAuthorizationError('backup_owner_identity_mismatch');
+  }
+
+  return {
+    ok: true,
+    authorization: {
+      version: 1,
+      playerId: auth.playerId,
+      ownerYandexIdHash: auth.yandexIdHash,
+      deviceId: auth.deviceId,
+      sessionExpiresAt: auth.expiresAt,
+      authorizedAt: now(),
+      device: publicAccountDevice(device)
+    }
+  };
+}
 const PLAYBACK_LEASE_MS = 20 * 60 * 1000;
 const PLAYBACK_TRANSFER_TTL_MS = 2 * 60 * 1000;
 function playbackTransferKey(playerId, transferId) {
@@ -1189,7 +1238,14 @@ async function requirePlayer(event, body) {
   }
   const row = await kvGet(`player:${claims.sub}`);
   if (!row) throw new Error('player_not_registered');
-  return { playerId: claims.sub, sessionId: safe(claims.jti), deviceId: sanitizeId(claims.did, 120), expiresAt: num(claims.exp), authVersion: Math.max(2, Math.floor(num(claims.v, 2))) };
+  return {
+    playerId: claims.sub,
+    sessionId: safe(claims.jti),
+    deviceId: sanitizeId(claims.did, 120),
+    yandexIdHash: safe(claims.yidHash),
+    expiresAt: num(claims.exp),
+    authVersion: Math.max(2, Math.floor(num(claims.v, 2)))
+  };
 }
 async function actionPlayerRegister(event, body) {
   const { playerId } = await requirePlayer(event, body);
@@ -6381,6 +6437,7 @@ const ACTIONS = {
   timezone_policy_set: actionTimezonePolicySet,
   account_device_list: actionAccountDeviceList,
   account_device_update: actionAccountDeviceUpdate,
+  backup_device_authorize: actionBackupDeviceAuthorize,
   playback_state_get: actionPlaybackStateGet,
   playback_claim: actionPlaybackClaim,
   playback_release: actionPlaybackRelease,
@@ -6490,6 +6547,12 @@ exports.handler = async event => {
         vapidPublicConfigured: !!CFG.vapidPublicKey,
         socialSessionConfigured: !!CFG.socialSessionSecret,
         authMode: 'signed-social-session-only',
+        backupDeviceAuthorization: {
+          enabled: true,
+          action: 'backup_device_authorize',
+          version: 1,
+          authority: 'server_account_device'
+        },
         chatE2eeV2: CFG.chatE2eeV2,
         chatMode: 'e2ee-v2-only',
         temporaryTurnConfigured: !!CFG.turnSharedSecret,
