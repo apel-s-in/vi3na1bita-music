@@ -4884,18 +4884,13 @@ export default {
 // Server-observed listening receipts.
 // Режим наград задаёт сервер; клиент никогда не управляет playback.
 import { getSocialServerBackoffState, requestSocialAction } from '../core/social-session.js';
+import { getDeviceContext, getDeviceId } from '../core/device-context.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 const HEARTBEAT_MS = 20000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
 const COMPLETION_OUTBOX_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const safe = value => String(value == null ? '' : value).trim();
-const platform = () => {
-  const info = window.Utils?.getPlatform?.() || {};
-  if (info.isIOS) return 'ios';
-  if (info.isAndroid) return 'android';
-  return 'web';
-};
 const networkAllowed = () => window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
 const parseJson = (raw, fallback) => {
   try {
@@ -4905,7 +4900,7 @@ const parseJson = (raw, fallback) => {
   }
 };
 const currentYandexId = () => safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
-const currentDeviceId = () => safe(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web');
+const currentDeviceId = () => getDeviceId();
 const readCompletionOutbox = () => {
   const rows = parseJson(localStorage.getItem(COMPLETION_OUTBOX_KEY), []);
   if (!Array.isArray(rows)) return [];
@@ -5019,7 +5014,8 @@ class ListeningReceiptService {
   }
   snapshot(extra = {}) {
     const player = window.playerCore;
-    return { position: Math.max(0, Number(player?.getPosition?.() || 0)), visibility: document.visibilityState || 'visible', platform: platform(), quality: safe(player?.qMode || ''), muted: !!player?.isMuted?.(), volume: Number(player?.getVolume?.() ?? 100), ...extra };
+    const device = getDeviceContext();
+    return { position: Math.max(0, Number(player?.getPosition?.() || 0)), visibility: document.visibilityState || 'visible', platform: device.platform, timezone: device.timezone, timezoneOffsetMin: device.timezoneOffsetMin, quality: safe(player?.qMode || ''), muted: !!player?.isMuted?.(), volume: Number(player?.getVolume?.() ?? 100), ...extra };
   }
   stageCurrentCompletion(reason = 'unknown', finalSnapshot = null) {
     const current = this.session;
@@ -5140,7 +5136,7 @@ class ListeningReceiptService {
         trackUid,
         deviceId: currentDeviceId(),
         variant: safe(detail.type || 'audio'),
-        timezoneOffsetMin: new Date().getTimezoneOffset(),
+        timezoneOffsetMin: getDeviceContext().timezoneOffsetMin,
         shuffle: !!window.playerCore?.isShuffle?.(),
         favoritesOnly: localStorage.getItem('favoritesOnlyMode') === '1',
         favoriteAtStart: !!window.playerCore?.isFavorite?.(trackUid)
