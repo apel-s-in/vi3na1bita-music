@@ -18076,7 +18076,24 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
     getCurrentTrackUid() { return sUid(this.getCurrentTrack()?.uid); }
 
     isPlaying() { return !!this.sound?.playing(); }
-    play(idx, opts = {}) {
+
+    async _authorizePlaybackStart(uid, position = 0, opts = {}) {
+      const ownership = W.PlaybackOwnership;
+      if (!ownership?.authorize) return { allowed: true, reason: 'ownership_service_unavailable' };
+      try {
+        return await ownership.authorize({
+          trackUid: uid,
+          position,
+          confirm: opts.confirmOwnership !== false,
+          timeoutMs: document.hidden ? 800 : Math.max(1200, Number(opts.ownershipTimeoutMs || 3500))
+        });
+      } catch (error) {
+        W.NotificationSystem?.warning?.(`Воспроизведение уже используется другим устройством: ${error?.message || 'конфликт'}`);
+        return { allowed: false, reason: String(error?.message || 'playback_ownership_failed') };
+      }
+    }
+
+    async play(idx, opts = {}) {
       this.prepareContext();
       if (idx != null) {
         if (idx === this.currentIndex && this.sound) {
@@ -18086,14 +18103,34 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
         return this.load(idx, { ...opts, autoPlay: opts.autoPlay ?? true });
       }
       if (this.sound) {
-        if (!this.isPlaying()) return this.sound.play();
-        return;
+        if (!this.isPlaying()) {
+          const ownership = await this._authorizePlaybackStart(this.getCurrentTrackUid(), this.getPosition(), opts);
+          if (!ownership?.allowed) return false;
+          if (Number.isFinite(ownership.resumePosition)) this.seek(ownership.resumePosition);
+          return this.sound.play();
+        }
+        return true;
       }
       if (this.currentIndex >= 0) return this.load(this.currentIndex, { autoPlay: true });
     }
     pause() {
       this._cancelPendingLoad();
       this.sound?.pause();
+    }
+
+    pauseForOwnershipTransfer(detail = {}) {
+      const playback = detail?.playback || {};
+      const ownerDeviceId = String(playback.ownerDeviceId || '').trim();
+      const currentDeviceId = String(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web').trim();
+      if (!playback.active || !ownerDeviceId || ownerDeviceId === currentDeviceId || !this.sound) return false;
+      const uid = this.getCurrentTrackUid();
+      const position = this.getPosition();
+      this._cancelPendingLoad();
+      this.sound.pause();
+      this._persistPlaybackState(true);
+      emitG('player:ownershipTransferred', { uid, position, ownerDeviceId, ownerLabel: String(playback.ownerLabel || ''), ownerEpoch: Number(playback.ownerEpoch || 0) });
+      W.NotificationSystem?.info?.(`Воспроизведение продолжено на «${playback.ownerLabel || 'другом устройстве'}»`);
+      return true;
     }
 
     stop() {
@@ -18147,6 +18184,18 @@ import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.
       if (!t || !uid) return false;
 
       const autoPlay = opts.autoPlay ?? this.isPlaying();
+      if (autoPlay) {
+        const ownership = await this._authorizePlaybackStart(uid, Number(opts.resumePosition) || 0, opts);
+        if (req !== this._loadReq) return false;
+        if (!ownership?.allowed) {
+          this._pendingIndex = null;
+          this._pendingUid = null;
+          return false;
+        }
+        if (Number.isFinite(ownership.resumePosition)) {
+          opts = { ...opts, resumePosition: ownership.resumePosition };
+        }
+      }
       const reason = String(opts.reason || (opts.isAutoSkip ? 'auto_skip' : (opts._forceReload ? 'transport_reload' : 'selection')));
       opts = { ...opts, autoPlay, reason };
       this._pendingIndex = targetIndex;
