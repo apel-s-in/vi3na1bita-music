@@ -322,6 +322,8 @@ const main = async () => {
   await validateAchievements();
   validateListening();
   validateRewards();
+  excludes('scripts/analytics/achievements-dict.js', /["']backup_saves["']/, 'Достижение за технический backup осталось в словаре');
+  excludes('cloud-functions/vi3-signaling/index.js', /id:\s*['"]backup_saves['"]/, 'Серверное достижение за backup осталось в reward catalog');
   validatePwaAndLegacy();
   validateDataBoundaries();
   validateRecommendationsAndStats();
@@ -329,6 +331,13 @@ const main = async () => {
   validatePlaybackBoundaries();
   validateLoyaltyReleaseD();
   validateBackupProxy();
+  contains('scripts/analytics/backup-builders.js', "version: '6.1'");
+  excludes('scripts/analytics/backup-builders.js', /achievementState:\s*buildAchievementBackupState/, 'Backup 6.1 содержит legacy achievement state');
+  excludes('scripts/analytics/backup-builders.js', /achievements:\s*a\?\.value/, 'Backup 6.1 содержит локальные достижения');
+  excludes('scripts/analytics/backup-upload-runner.js', /HISTORY_MATERIAL_DOMAINS/, 'Autosync продолжает создавать versioned full-history backup');
+  excludes('scripts/app/profile/cloud-action-render-kit.js', /backup-export-manual|backup-import-manual|archive-maintenance|recovery-snapshot|trust-check|ledger-health/, 'Пользовательские ручные служебные backup-действия остались');
+  contains('scripts/analytics/sync-domains.js', 'stats: 24 * 60 * 60 * 1000');
+  contains('scripts/analytics/backup-upload-runner.js', 'maxSegments: 1');
   validateCloudFunctionFiles();
   validateWorkflows();
   if (failures.length) {
