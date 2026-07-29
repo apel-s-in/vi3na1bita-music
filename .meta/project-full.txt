@@ -14028,6 +14028,7 @@ export default { getSocialSession, invalidateSocialSession, requestSocialAction 
 // Серверная зона аккаунта изменяется только после явного подтверждения.
 // Модуль не управляет playback и не входит в backup.
 import { getSocialSession, requestSocialAction } from './social-session.js';
+import { getDeviceTimezone, getDeviceTimezoneOffsetMin } from './device-context.js';
 
 const CACHE_PREFIX = 'account:timezone-policy:v1:';
 const PROMPT_PREFIX = 'account:timezone-prompted:v1:';
@@ -14037,8 +14038,8 @@ const cacheKey = owner => `${CACHE_PREFIX}${safe(owner)}`;
 const promptKey = owner => `${PROMPT_PREFIX}${safe(owner)}`;
 
 export const getDeviceTimezoneContext = (timestamp = Date.now()) => ({
-  timezone: safe(Intl.DateTimeFormat().resolvedOptions().timeZone),
-  timezoneOffsetMin: new Date(Number(timestamp) || Date.now()).getTimezoneOffset()
+  timezone: getDeviceTimezone(),
+  timezoneOffsetMin: getDeviceTimezoneOffsetMin(timestamp)
 });
 
 export const normalizeTimezonePolicy = raw => {
