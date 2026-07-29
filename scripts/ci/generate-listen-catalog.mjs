@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -158,12 +159,19 @@ const main = async () => {
         );
       }
 
+      const duration = Math.max(hi.duration, lo.duration);
+      const trackVersion = crypto.createHash('sha256')
+        .update(JSON.stringify({ uid: track.uid, duration, hiDuration: hi.duration, hiBytes: hi.bytes, loDuration: lo.duration, loBytes: lo.bytes }))
+        .digest('hex')
+        .slice(0, 32);
+
       return {
         uid: track.uid,
+        trackVersion,
         title: track.title,
         album: track.album,
         albumTitle: track.albumTitle,
-        duration: Math.max(hi.duration, lo.duration),
+        duration,
         hi: {
           duration: hi.duration,
           bytes: hi.bytes,
@@ -188,7 +196,8 @@ const main = async () => {
       track.uid,
       [
         track.duration,
-        track.album
+        track.album,
+        track.trackVersion
       ]
     ])
   );
