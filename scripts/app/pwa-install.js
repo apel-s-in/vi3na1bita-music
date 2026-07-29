@@ -1,6 +1,7 @@
 // PWA installation bridge.
 // Не управляет playback и подтверждает установку только после standalone-запуска.
 import { requestSocialAction } from '../core/social-session.js';
+import { getDeviceId, getDevicePlatform, isDevicePwa } from '../core/device-context.js';
 import { applyShardRewardResult } from './shards/reward-notifier.js';
 const W = window;
 const D = document;
@@ -10,15 +11,9 @@ let deferredPrompt = null;
 let verificationPromise = null;
 const safe = value => String(value == null ? '' : value).trim();
 const currentOwner = () => safe(W.YandexAuth?.getProfile?.()?.yandexId || W.YandexAuth?.getProfile?.()?.id);
-const currentDeviceId = () => safe(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web');
-const isStandalone = () => W.matchMedia?.('(display-mode: standalone)')?.matches === true || navigator.standalone === true;
-const platform = () => {
-  const ua = navigator.userAgent || '';
-  const iPadOs = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-  if (/iPhone|iPad|iPod/i.test(ua) || iPadOs) return 'ios';
-  if (/Android/i.test(ua)) return 'android';
-  return 'desktop';
-};
+const currentDeviceId = () => getDeviceId();
+const isStandalone = () => isDevicePwa();
+const platform = () => getDevicePlatform() === 'web' ? 'desktop' : getDevicePlatform();
 const intentKey = owner => `${INTENT_PREFIX}${safe(owner)}`;
 const readIntent = owner => {
   try {
