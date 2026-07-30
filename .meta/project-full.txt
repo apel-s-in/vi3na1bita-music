@@ -125,7 +125,7 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-delta-contract.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-v7-range.js, backup-v7-sync.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, favorites-storage-merge.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, archive-branch-validation.js, archive-maintenance.js, backup-branch-compare.js, backup-builders.js, backup-debug.js, backup-delta-contract.js, backup-event-cleanup.js, backup-importers.js, backup-recovery.js, backup-summary.js, backup-sync-engine.js, backup-upload-runner.js, backup-v7-range.js, backup-v7-sync.js, backup-vault.js, cloud-contract.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-archive-contract.js, event-archive-restore.js, event-archive-sync.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-cloud-guard.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, sync-scheduler.js, sync-state.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
@@ -5885,53 +5885,6 @@ export const mergeFavoritePair = (leftRaw, rightRaw, policy = 'ask') => {
   return normalizeFavoriteItem({ ...oldest, ...newest, status: 'inactive', inactiveAt: Math.max(num(left.inactiveAt), num(right.inactiveAt)) || fallbackNow, deletedAt: 0, updatedAt: Math.max(favoriteClock(left), favoriteClock(right)) });
 };
 export default { FAVORITE_STATUSES, favoriteStatus, favoriteClock, normalizeFavoriteItem, normalizeFavoriteList, localToRemote, remoteToLocal, favoriteSignature, mergeFavoritePair };
-
-//=================================================
-// FILE: /scripts/analytics/favorites-storage-merge.js
-import { getBackupConflictPolicy } from './storage-merge-utils.js';
-import {
-  mergeFavoritePair,
-  normalizeFavoriteItem
-} from './favorite-state-contract.js';
-
-const parseRows = raw => {
-  try {
-    const rows = JSON.parse(raw || '[]');
-    return Array.isArray(rows) ? rows : [];
-  } catch {
-    return [];
-  }
-};
-
-export const mergeFavoritesStorageSafe = (
-  localRaw,
-  remoteRaw,
-  policy = getBackupConflictPolicy()
-) => {
-  const items = new Map();
-
-  [...parseRows(localRaw), ...parseRows(remoteRaw)]
-    .map(item => normalizeFavoriteItem(item))
-    .filter(Boolean)
-    .forEach(item => {
-      items.set(
-        item.uid,
-        items.has(item.uid)
-          ? mergeFavoritePair(
-              items.get(item.uid),
-              item,
-              policy
-            )
-          : item
-      );
-    });
-
-  return JSON.stringify([...items.values()]);
-};
-
-export default {
-  mergeFavoritesStorageSafe
-};
 
 //=================================================
 // FILE: /scripts/analytics/listening-receipts.js
