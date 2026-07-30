@@ -23,6 +23,13 @@ const ownershipFields = () => buildPlaybackFencePayload({
   grant: window.PlaybackOwnership?.getGrant?.(),
   deviceId: currentDeviceId()
 });
+const ownershipFieldsForTrack = trackUid => {
+  const uid = safe(trackUid);
+  const grant = window.PlaybackOwnership?.getGrant?.();
+  if (!grant || safe(grant.trackUid) !== uid) return null;
+  const fields = buildPlaybackFencePayload({ grant, deviceId: currentDeviceId() });
+  return fields.logicalSessionId && fields.ownerEpoch > 0 && fields.fencingToken && fields.trackVersion ? fields : null;
+};
 const readCompletionOutbox = () => {
   const rows = parseJson(localStorage.getItem(COMPLETION_OUTBOX_KEY), []);
   if (!Array.isArray(rows)) return [];
@@ -274,6 +281,8 @@ class ListeningReceiptService {
     await this.flushCompletionOutbox().catch(() => null);
     const trackUid = safe(detail.uid || window.playerCore?.getCurrentTrackUid?.());
     if (!trackUid) return null;
+    const fence = ownershipFieldsForTrack(trackUid);
+    if (!fence) return null;
     if (this.session?.trackUid === trackUid && this.session?.sessionId) {
       this.startTimer();
       return this.session;
@@ -287,7 +296,7 @@ class ListeningReceiptService {
     const result = await requestSocialAction(
       'listen_session_start',
       this.snapshot({
-        ...ownershipFields(),
+        ...fence,
         trackUid,
         deviceId: currentDeviceId(),
         variant: safe(detail.type || 'audio'),
