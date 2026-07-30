@@ -3532,7 +3532,7 @@ export const initBackupSyncEngine = () => {
   };
 
   window.addEventListener('backup:domain-dirty', event => {
-    if (event.detail?.domain === 'favorites') return;
+    if (window.__backupV7SharedApplying || event.detail?.domain === 'favorites') return;
     markDirty();
   });
   window.addEventListener('analytics:logUpdated', markDirty);
