@@ -193,43 +193,55 @@ function sanitizeId(v, max = 96) {
     .slice(0, max);
 }
 function parseListenTrackCatalog(raw) {
-  let parsed;
-  try {
-    parsed = JSON.parse(String(raw || '{}'));
-  } catch {
-    parsed = {};
+  let parsed = raw;
+  for (let attempt = 0; attempt < 2 && typeof parsed === 'string'; attempt++) {
+    try {
+      parsed = JSON.parse(parsed || '{}');
+    } catch {
+      parsed = {};
+      break;
+    }
   }
+
+  if (!parsed || typeof parsed !== 'object') parsed = {};
+
+  const unwrap = value => {
+    if (Array.isArray(value)) return value;
+    if (!value || typeof value !== 'object') return value;
+    if (Array.isArray(value.tracks)) return value.tracks;
+
+    const wrapped = Object.entries(value)
+      .filter(([key, item]) => key.startsWith('LISTEN_TRACK_CATALOG_') && item && typeof item === 'object' && !Array.isArray(item))
+      .map(([, item]) => item);
+
+    return wrapped.length ? Object.assign({}, ...wrapped) : value;
+  };
+
+  parsed = unwrap(parsed);
   const rows = Array.isArray(parsed)
     ? parsed
-    : Object.entries(parsed && typeof parsed === 'object' ? parsed : {}).map(([uid, value]) => {
+    : Object.entries(parsed).map(([uid, value]) => {
         if (Array.isArray(value)) {
           return { uid, duration: value[0], album: value[1], trackVersion: value[2] };
         }
         return { uid, ...(value && typeof value === 'object' ? value : { duration: value }) };
       });
-  return new Map(
-    rows
-      .map(item => {
-        const uid = sanitizeId(item?.uid, 160);
-        const rawDuration = Number(item?.duration);
-        const album = sanitizeId(item?.album, 120);
-        if (!uid || !album || !Number.isFinite(rawDuration) || rawDuration < 10 || rawDuration > 7200) {
-          return null;
-        }
-        const duration = Math.round(rawDuration * 1000) / 1000;
-        const trackVersion = safe(item?.trackVersion).slice(0, 96) || hash(stableStringify({ uid, duration, album })).slice(0, 32);
-        return [uid, Object.freeze({ uid, duration, album, trackVersion })];
-      })
-      .filter(Boolean)
-  );
+
+  return new Map(rows.map(item => {
+    const uid = sanitizeId(item?.uid, 160);
+    const rawDuration = Number(item?.duration);
+    const album = sanitizeId(item?.album, 120);
+    if (!uid || !album || !Number.isFinite(rawDuration) || rawDuration < 10 || rawDuration > 7200) return null;
+    const duration = Math.round(rawDuration * 1000) / 1000;
+    const trackVersion = safe(item?.trackVersion).slice(0, 96) || hash(stableStringify({ uid, duration, album })).slice(0, 32);
+    return [uid, Object.freeze({ uid, duration, album, trackVersion })];
+  }).filter(Boolean));
 }
+
 function parseListenTrackCatalogSources(sources = []) {
   const output = new Map();
   (Array.isArray(sources) ? sources : []).forEach(source => {
-    if (!safe(source)) return;
-    parseListenTrackCatalog(source).forEach((track, uid) => {
-      output.set(uid, track);
-    });
+    parseListenTrackCatalog(source).forEach((track, uid) => output.set(uid, track));
   });
   return output;
 }
@@ -237,6 +249,17 @@ function parseListenTrackCatalogSources(sources = []) {
 const LISTEN_TRACK_CATALOG_ENV_KEYS = Object.keys(process.env)
   .filter(key => key.startsWith('LISTEN_TRACK_CATALOG_ALBUM_'))
   .sort();
+
+const LISTEN_TRACK_CATALOG_SOURCE_STATS = [
+  ...(safe(process.env.LISTEN_TRACK_CATALOG_JSON)
+    ? [{ key: 'LISTEN_TRACK_CATALOG_JSON', tracks: parseListenTrackCatalog(process.env.LISTEN_TRACK_CATALOG_JSON).size, chars: safe(process.env.LISTEN_TRACK_CATALOG_JSON).length }]
+    : []),
+  ...LISTEN_TRACK_CATALOG_ENV_KEYS.map(key => ({
+    key,
+    tracks: parseListenTrackCatalog(process.env[key]).size,
+    chars: safe(process.env[key]).length
+  }))
+];
 
 const LISTEN_TRACK_CATALOG = parseListenTrackCatalogSources([
   process.env.LISTEN_TRACK_CATALOG_JSON,
@@ -6704,8 +6727,10 @@ exports.handler = async event => {
           validListenMinSec: LISTEN_VALID_MIN_SEC,
           catalogConfigured: LISTEN_TRACK_CATALOG.size > 0,
           catalogTracks: LISTEN_TRACK_CATALOG.size,
-          catalogSources: LISTEN_TRACK_CATALOG_ENV_KEYS.length + (safe(process.env.LISTEN_TRACK_CATALOG_JSON) ? 1 : 0),
+          catalogSources: LISTEN_TRACK_CATALOG_SOURCE_STATS.length,
           catalogAlbumVariables: LISTEN_TRACK_CATALOG_ENV_KEYS,
+          catalogSourceStats: LISTEN_TRACK_CATALOG_SOURCE_STATS,
+          catalogReady: LISTEN_TRACK_CATALOG.size === 77,
           rewardEntries: achievementRewardCatalog({}).length,
           heartbeatMinMs: CFG.listenHeartbeatMinMs,
           heartbeatMaxGapMs: CFG.listenHeartbeatMaxGapMs,
