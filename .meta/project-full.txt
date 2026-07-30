@@ -644,13 +644,26 @@ jobs:
         run: |
           test -s data/listen-track-catalog.json
           test -s data/listen-track-catalog.env.json
-          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('data/listen-track-catalog.env.json','utf8'));const rows=Object.entries(x);if(!rows.length||rows.some(([uid,v])=>!uid||!Array.isArray(v)||v.length<3||typeof v[2]!=='string'||v[2].length<16))process.exit(2);console.log('tracks:',rows.length)"
+          test -s data/listen-track-catalog.function-env.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const flat = JSON.parse(fs.readFileSync('data/listen-track-catalog.env.json', 'utf8'));
+          const albums = JSON.parse(fs.readFileSync('data/listen-track-catalog.function-env.json', 'utf8'));
+          const flatRows = Object.entries(flat);
+          const albumRows = Object.entries(albums);
+          if (!flatRows.length || flatRows.some(([uid, value]) => !uid || !Array.isArray(value) || value.length < 3 || typeof value[2] !== 'string' || value[2].length < 16)) process.exit(2);
+          if (!albumRows.length || albumRows.some(([key, value]) => !key.startsWith('LISTEN_TRACK_CATALOG_ALBUM_') || !value || typeof value !== 'object' || Array.isArray(value) || JSON.stringify(value).length > 4096)) process.exit(2);
+          const merged = Object.assign({}, ...albumRows.map(([, value]) => value));
+          if (Object.keys(merged).length !== flatRows.length) process.exit(2);
+          console.log('tracks:', flatRows.length);
+          albumRows.forEach(([key, value]) => console.log(key, Object.keys(value).length, JSON.stringify(value).length));
+          NODE
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: update listening track catalog"
           branch: ${{ github.ref_name }}
-          file_pattern: "data/listen-track-catalog.json data/listen-track-catalog.env.json"
+          file_pattern: "data/listen-track-catalog.json data/listen-track-catalog.env.json data/listen-track-catalog.function-env.json"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
 
