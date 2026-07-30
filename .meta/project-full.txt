@@ -3398,7 +3398,8 @@ import { syncBackupV7, getBackupV7Status, rebuildBackupV7LocalAnalytics } from '
 const LS_SYNC = 'backup:autosync:enabled';
 const LS_DUE = 'backup:v71:next-sync-at';
 const LS_DIRTY = 'backup:v71:dirty';
-const INTERVAL_MS = 24 * 60 * 60 * 1000;
+const LS_PHASE = 'backup:v71:next-phase';
+const SLOT_MS = 12 * 60 * 60 * 1000;
 const JITTER_MS = 30 * 60 * 1000;
 let bound = false;
 let timer = 0;
@@ -3411,6 +3412,8 @@ export const markRestoreOrSkipDone = () => true;
 
 const nextDueAt = () => Math.max(0, Number(localStorage.getItem(LS_DUE) || 0));
 const setNextDue = at => localStorage.setItem(LS_DUE, String(Math.max(0, Number(at) || 0)));
+const readPhase = () => localStorage.getItem(LS_PHASE) === 'pull' ? 'pull' : 'push';
+const setPhase = phase => localStorage.setItem(LS_PHASE, phase === 'pull' ? 'pull' : 'push');
 const markDirty = () => localStorage.setItem(LS_DIRTY, '1');
 const clearDirty = () => localStorage.removeItem(LS_DIRTY);
 
@@ -3459,9 +3462,16 @@ const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
   }
 
   try {
-    await syncBackupV7({ reason, includeSettings: true });
-    clearDirty();
-    const next = Date.now() + INTERVAL_MS + Math.floor(Math.random() * JITTER_MS);
+    const phase = force ? 'full' : readPhase();
+    await syncBackupV7({
+      reason: `${reason}:${phase}`,
+      pushEnabled: phase !== 'pull',
+      includeSettings: phase !== 'pull',
+      maxPullRanges: phase === 'push' ? 5 : 50
+    });
+    if (phase !== 'pull') clearDirty();
+    if (!force) setPhase(phase === 'push' ? 'pull' : 'push');
+    const next = Date.now() + SLOT_MS + Math.floor(Math.random() * JITTER_MS);
     setNextDue(next);
     scheduleAt(next);
     return true;
@@ -3516,7 +3526,7 @@ export const initBackupSyncEngine = () => {
 
     await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_startup_repair' }).catch(() => null);
     const status = await getBackupV7Status().catch(() => null);
-    const due = nextDueAt() || (status?.lastSyncAt ? status.lastSyncAt + INTERVAL_MS : Date.now());
+    const due = nextDueAt() || (status?.lastSyncAt ? status.lastSyncAt + SLOT_MS : Date.now());
     setNextDue(due);
     if (!document.hidden) runDueSync({ reason: 'startup_due' }).catch(() => null);
   };
@@ -3544,7 +3554,7 @@ export const initBackupSyncEngine = () => {
   enable();
 };
 
-export const getSyncIntervalSec = () => INTERVAL_MS / 1000;
+export const getSyncIntervalSec = () => SLOT_MS / 1000;
 export { syncBackupV7, getBackupV7Status };
 export default {
   initBackupSyncEngine,
