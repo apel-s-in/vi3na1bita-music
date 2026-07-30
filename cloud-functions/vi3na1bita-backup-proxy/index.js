@@ -15,6 +15,7 @@ const LEGACY_V7_VERSION = '7.0';
 const ROOT = 'app:/Backup/v7';
 const DEVICES_DIR = `${ROOT}/devices`;
 const SHARED_PATH = `${ROOT}/shared.json`;
+const SHARED_SCHEMA_VERSION = 2;
 const MAX_SHARED_PLAYLISTS = 500;
 const MAX_SHARED_PLAYLIST_TRACKS = 2000;
 const MAX_SHARED_PLAYLIST_OPS = 300;
@@ -699,7 +700,8 @@ async function pullUnknownLegacyRanges(auth, knownRangeKeys) {
 }
 const uniqueIds = (rows, limit) => [...new Set((Array.isArray(rows) ? rows : []).map(value => safeId(value, 160)).filter(Boolean))].slice(0, limit);
 const sharedPlaylistClock = playlist => Math.max(integer(playlist?.updatedAt), integer(playlist?.deletedAt), integer(playlist?.createdAt));
-function normalizeSharedProfile(raw = {}) {
+
+function normalizeLegacySharedProfile(raw = {}) {
   return {
     name: safe(raw.name || 'Слушатель').slice(0, 80) || 'Слушатель',
     avatar: safe(raw.avatar || '😎').slice(0, 80) || '😎',
@@ -707,6 +709,7 @@ function normalizeSharedProfile(raw = {}) {
     updatedAt: integer(raw.updatedAt)
   };
 }
+
 function normalizeSharedPlaylist(raw = {}) {
   const id = safeId(raw.id, 160);
   if (!id) return null;
@@ -729,34 +732,56 @@ function normalizeSharedPlaylist(raw = {}) {
     deletedAt: integer(raw.deletedAt)
   };
 }
+
 function normalizeSharedPlaylists(raw) {
   const rows = (Array.isArray(raw) ? raw : []).map(normalizeSharedPlaylist).filter(Boolean);
   return [...new Map(rows.map(row => [row.id, row])).values()]
     .sort((left, right) => left.id.localeCompare(right.id))
     .slice(0, MAX_SHARED_PLAYLISTS);
 }
-function sharedDocumentCore(raw = {}, ownerYandexIdHash = '') {
+
+function legacySharedDocumentCore(raw = {}, ownerYandexIdHash = '') {
   return {
     version: VERSION,
     ownerYandexIdHash: safe(ownerYandexIdHash || raw.ownerYandexIdHash),
     revision: integer(raw.revision),
-    profile: normalizeSharedProfile(raw.profile),
+    profile: normalizeLegacySharedProfile(raw.profile),
     playlists: normalizeSharedPlaylists(raw.playlists),
     updatedAt: integer(raw.updatedAt)
   };
 }
+
+function sharedDocumentCore(raw = {}, ownerYandexIdHash = '') {
+  return {
+    version: VERSION,
+    schemaVersion: SHARED_SCHEMA_VERSION,
+    ownerYandexIdHash: safe(ownerYandexIdHash || raw.ownerYandexIdHash),
+    revision: integer(raw.revision),
+    playlists: normalizeSharedPlaylists(raw.playlists),
+    updatedAt: integer(raw.updatedAt)
+  };
+}
+
 function normalizeSharedDocument(raw, auth, { stored = false } = {}) {
   if (!isObject(raw)) throw makeError(stored ? 'shared_document_invalid' : 'shared_payload_invalid', stored ? 502 : 400);
-  const core = sharedDocumentCore(raw, stored ? raw.ownerYandexIdHash : auth.ownerYandexIdHash);
-  if (core.ownerYandexIdHash !== auth.ownerYandexIdHash) {
-    throw makeError('shared_owner_mismatch', 403);
-  }
+  const ownerYandexIdHash = stored ? safe(raw.ownerYandexIdHash) : auth.ownerYandexIdHash;
+  if (ownerYandexIdHash !== auth.ownerYandexIdHash) throw makeError('shared_owner_mismatch', 403);
+
+  const core = sharedDocumentCore(raw, ownerYandexIdHash);
   const expectedHash = hash(stableStringify(core));
-  if (stored && (!isHash(raw.hash) || safe(raw.hash) !== expectedHash)) {
-    throw makeError('shared_hash_mismatch', 502);
+  if (!stored) return { ...core, hash: expectedHash, legacy: false };
+
+  if (isHash(raw.hash) && safe(raw.hash) === expectedHash) {
+    return { ...core, hash: expectedHash, legacy: false };
   }
-  return { ...core, hash: expectedHash };
+
+  const legacyCore = legacySharedDocumentCore(raw, ownerYandexIdHash);
+  const legacyHash = hash(stableStringify(legacyCore));
+  if (!isHash(raw.hash) || safe(raw.hash) !== legacyHash) throw makeError('shared_hash_mismatch', 502);
+
+  return { ...core, hash: expectedHash, legacy: true };
 }
+
 function pickSharedRow(left, right, clock) {
   if (!left) return right;
   if (!right) return left;
@@ -766,42 +791,65 @@ function pickSharedRow(left, right, clock) {
   if (leftClock > rightClock) return left;
   return hash(stableStringify(right)) > hash(stableStringify(left)) ? right : left;
 }
+
 function mergeSharedDocuments(currentRaw, incomingRaw, auth) {
-  const current = currentRaw ? normalizeSharedDocument(currentRaw, auth, { stored: true }) : null;
+  const current = currentRaw ? normalizeSharedDocument(currentRaw, auth, { stored: currentRaw.legacy !== false }) : null;
   const incoming = normalizeSharedDocument(incomingRaw, auth);
-  const currentProfile = current?.profile || null;
-  const incomingProfile = incoming.profile;
-  const profile = pickSharedRow(currentProfile, incomingProfile, value => integer(value?.updatedAt) || integer(value?.createdAt));
   const playlists = new Map((current?.playlists || []).map(playlist => [playlist.id, playlist]));
+
   incoming.playlists.forEach(playlist => {
     playlists.set(playlist.id, pickSharedRow(playlists.get(playlist.id), playlist, sharedPlaylistClock));
   });
+
   const mergedBase = {
     version: VERSION,
+    schemaVersion: SHARED_SCHEMA_VERSION,
     ownerYandexIdHash: auth.ownerYandexIdHash,
     revision: integer(current?.revision),
-    profile,
     playlists: [...playlists.values()].sort((left, right) => left.id.localeCompare(right.id)),
     updatedAt: Math.max(integer(current?.updatedAt), integer(incoming.updatedAt), now())
   };
-  const oldSemantic = current ? stableStringify({ profile: current.profile, playlists: current.playlists }) : '';
-  const nextSemantic = stableStringify({ profile: mergedBase.profile, playlists: mergedBase.playlists });
+  const oldSemantic = current ? stableStringify(current.playlists) : '';
+  const nextSemantic = stableStringify(mergedBase.playlists);
   const changed = oldSemantic !== nextSemantic;
-  const core = { ...mergedBase, revision: integer(current?.revision) + (changed ? 1 : 0) };
-  return { changed, document: { ...core, hash: hash(stableStringify(core)) } };
+  const migrated = current?.legacy === true;
+  const core = { ...mergedBase, revision: integer(current?.revision) + (changed || migrated ? 1 : 0) };
+  return { changed, migrated, document: { ...core, hash: hash(stableStringify(core)), legacy: false } };
 }
+
+function publicSharedDocument(raw) {
+  if (!raw) return null;
+  const { legacy, ...document } = raw;
+  return document;
+}
+
 async function exchangeSharedDocument(auth, rawShared, knownHash = '') {
   await ensureDirs(auth.oauthToken, ['app:/Backup', ROOT]);
   const storedRaw = await downloadJson(auth.oauthToken, SHARED_PATH, { maxBytes: 2 * 1024 * 1024 });
   const current = storedRaw ? normalizeSharedDocument(storedRaw, auth, { stored: true }) : null;
+
   if (!isObject(rawShared)) {
-    return { changed: false, pushed: false, current: current && current.hash !== safe(knownHash) ? current : null, hash: current?.hash || '' };
+    return {
+      changed: false,
+      migrated: false,
+      pushed: false,
+      current: current && current.hash !== safe(knownHash) ? publicSharedDocument(current) : null,
+      hash: current?.hash || ''
+    };
   }
+
   const merged = mergeSharedDocuments(current, rawShared, auth);
-  if (merged.changed || !current) {
-    await uploadJson(auth.oauthToken, SHARED_PATH, merged.document, { overwrite: true });
+  if (merged.changed || merged.migrated || !current) {
+    await uploadJson(auth.oauthToken, SHARED_PATH, publicSharedDocument(merged.document), { overwrite: true });
   }
-  return { changed: merged.changed || !current, pushed: true, current: merged.document, hash: merged.document.hash };
+
+  return {
+    changed: merged.changed || merged.migrated || !current,
+    migrated: merged.migrated,
+    pushed: true,
+    current: publicSharedDocument(merged.document),
+    hash: merged.document.hash
+  };
 }
 function normalizeCachePolicies(raw) {
   if (!isObject(raw)) return {};
@@ -996,7 +1044,7 @@ module.exports.handler = async event => {
           chainHeads: true,
           watermarks: true,
           batchSync: true,
-          sharedDocument: { enabled: true, path: SHARED_PATH, domains: ['profile', 'playlists'] },
+          sharedDocument: { enabled: true, schemaVersion: SHARED_SCHEMA_VERSION, path: SHARED_PATH, domains: ['playlists'] },
           rawEventsPermanent: true,
           rollups: { supported: false, planned: 'client_rebuildable_verified_rollups' },
           maxRangeEvents: MAX_RANGE_EVENTS,
