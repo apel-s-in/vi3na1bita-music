@@ -25,13 +25,13 @@ export const applyShardRewardResult = (
     ...loyaltyGrants
   ];
 
-  if (
-    refreshWallet &&
-    (result?.wallet || grants.length)
-  ) {
-    window.ShardWallet
-      ?.refresh?.({ force: true })
-      .catch(() => null);
+  if (refreshWallet && result?.wallet) {
+    window.ShardWallet?.ingest?.(result.wallet, {
+      catalog: result?.catalog?.avatars || result?.avatarCatalog || null,
+      reason: 'reward_result'
+    });
+  } else if (refreshWallet && grants.length) {
+    window.ShardWallet?.refresh?.({ force: true }).catch(() => null);
   }
 
   const amount = grants.reduce(
