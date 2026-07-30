@@ -3429,11 +3429,26 @@ export const initBackupSyncEngine = () => {
   if (bound) return;
   bound = true;
 
-  const enable = () => {
+  const enable = async () => {
     if (window.YandexAuth?.getSessionStatus?.() !== 'active' || !window.YandexAuth?.isTokenAlive?.()) {
       markSyncReady('no_auth_local_only');
       return;
     }
+
+    try {
+      const { getSocialSession } = await import('../core/social-session.js');
+      const session = await getSocialSession();
+      if (session?.accountDeviceInitializationRequired || session?.accountDevice?.initializationPending === true) {
+        ready = false;
+        window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'device_initialization_pending', blocked: true } }));
+        return;
+      }
+    } catch {
+      ready = false;
+      window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'device_authorization_unavailable', blocked: true } }));
+      return;
+    }
+
     ready = true;
     window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'backup_v7_ready' } }));
     scheduleBackupV7Sync({ immediate: true, reason: 'startup' });
