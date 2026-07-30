@@ -4249,7 +4249,7 @@ const applySettingsDocument = async settings => {
   return { applied, deferred: false };
 };
 
-const runSync = async ({ reason = 'autosync', includeSettings = true } = {}) => {
+const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
@@ -4264,7 +4264,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true } = {}) => 
   if (!deviceId) throw new Error('backup_v71_device_required');
 
   const state = await readBackupV7State();
-  const batch = await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash });
+  const batch = pushEnabled ? await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash }) : null;
   const watermarks = await readWatermarks();
 
   const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
@@ -4278,8 +4278,8 @@ const runSync = async ({ reason = 'autosync', includeSettings = true } = {}) => 
     knownSettingsHash: state.settingsServerHash,
     settings: sendSettings ? settingsPayload : null,
     settingsTemplateDeviceId,
-    includeDeviceCatalog: false,
-    maxPullRanges: 50
+    includeDeviceCatalog: includeDeviceCatalog === true,
+    maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
   });
 
   const authorization = result?.authorization;
