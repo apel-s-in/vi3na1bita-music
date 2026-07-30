@@ -17986,9 +17986,9 @@ import { getDeviceId } from '../scripts/core/device-context.js';
       });
 
       if (!isSame) {
-        this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 });
+        return this.load(idx, { autoPlay: true, dir: Number(opts.dir) || 1 }).then(result => result !== false);
       }
-      else emitG('playlist:changed', { reason: 'seamless_switch' });
+      emitG('playlist:changed', { reason: 'seamless_switch' });
       return true;
     }
 
