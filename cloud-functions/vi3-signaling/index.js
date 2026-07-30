@@ -223,7 +223,26 @@ function parseListenTrackCatalog(raw) {
       .filter(Boolean)
   );
 }
-const LISTEN_TRACK_CATALOG = parseListenTrackCatalog(process.env.LISTEN_TRACK_CATALOG_JSON);
+function parseListenTrackCatalogSources(sources = []) {
+  const output = new Map();
+  (Array.isArray(sources) ? sources : []).forEach(source => {
+    if (!safe(source)) return;
+    parseListenTrackCatalog(source).forEach((track, uid) => {
+      output.set(uid, track);
+    });
+  });
+  return output;
+}
+
+const LISTEN_TRACK_CATALOG_ENV_KEYS = Object.keys(process.env)
+  .filter(key => key.startsWith('LISTEN_TRACK_CATALOG_ALBUM_'))
+  .sort();
+
+const LISTEN_TRACK_CATALOG = parseListenTrackCatalogSources([
+  process.env.LISTEN_TRACK_CATALOG_JSON,
+  ...LISTEN_TRACK_CATALOG_ENV_KEYS.map(key => process.env[key])
+]);
+
 const LISTEN_ALBUM_TRACKS = new Map();
 for (const track of LISTEN_TRACK_CATALOG.values()) {
   if (!LISTEN_ALBUM_TRACKS.has(track.album)) {
@@ -1128,13 +1147,9 @@ async function actionPlaybackRelease(event, body) {
 async function actionPlaybackClaim(event, body) {
   const auth = await requirePlaybackDevice(event, body);
   await enforceRateLimit({ scope: 'playback_claim', actor: `${auth.playerId}:${auth.deviceId}`, limit: 120, windowMs: 60 * 60 * 1000 });
+  // UID приходит от клиента, а trackVersion всегда определяет серверный каталог.
+  // Устаревший клиентский каталог не должен блокировать Next/Prev или Play.
   const track = listenTrackFromCatalog(body.trackUid);
-  const requestedVersion = safe(body.trackVersion).slice(0, 96);
-  if (requestedVersion && requestedVersion !== track.trackVersion) {
-    const error = new Error('playback_track_version_mismatch');
-    error.httpStatus = 409;
-    throw error;
-  }
   const key = playbackStateKey(auth.playerId);
   for (let attempt = 0; attempt < 10; attempt++) {
     const row = await kvGet(key);
@@ -1197,12 +1212,7 @@ async function actionPlaybackTransferPrepare(event, body) {
   if (sourceDevice.revokedAt > 0) throw new Error('playback_source_device_revoked');
   if (sourceDevice.remotePauseEnabled === false) throw new Error('playback_remote_pause_disabled');
   const targetTrack = listenTrackFromCatalog(body.trackUid || state.trackUid);
-  const targetVersion = safe(body.trackVersion).slice(0, 96) || targetTrack.trackVersion;
-  if (targetVersion !== targetTrack.trackVersion) {
-    const error = new Error('playback_track_version_mismatch');
-    error.httpStatus = 409;
-    throw error;
-  }
+  const targetVersion = targetTrack.trackVersion;
   const transferId = rid('transfer');
   const transferToken = base64url(crypto.randomBytes(32));
   const createdAt = now();
@@ -6694,6 +6704,8 @@ exports.handler = async event => {
           validListenMinSec: LISTEN_VALID_MIN_SEC,
           catalogConfigured: LISTEN_TRACK_CATALOG.size > 0,
           catalogTracks: LISTEN_TRACK_CATALOG.size,
+          catalogSources: LISTEN_TRACK_CATALOG_ENV_KEYS.length + (safe(process.env.LISTEN_TRACK_CATALOG_JSON) ? 1 : 0),
+          catalogAlbumVariables: LISTEN_TRACK_CATALOG_ENV_KEYS,
           rewardEntries: achievementRewardCatalog({}).length,
           heartbeatMinMs: CFG.listenHeartbeatMinMs,
           heartbeatMaxGapMs: CFG.listenHeartbeatMaxGapMs,
