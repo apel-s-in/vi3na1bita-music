@@ -32,18 +32,14 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
 
   pencilBtn?.addEventListener('click', () => { if (!nInp) return; nInp.classList.remove('name-inactive'); requestAnimationFrame(() => { nInp.focus(); nInp.setSelectionRange(nInp.value.length, nInp.value.length); }); });
 
-  if (avatarBtn) avatarBtn.onclick = () => {
-    const purchased = window.ShardWallet
-      ?.getSnapshot?.()
-      ?.purchasedAvatars || [];
-
-    const items = [
-      '😎',
-      '🎧',
-      '💔',
-      ...purchased.map(item => item.avatar),
-      '🔄'
-    ];
+  if (avatarBtn) avatarBtn.onclick = async () => {
+    const { shardWallet } = await import('../shards/wallet-service.js');
+    let wallet = shardWallet.getSnapshot();
+    if (shardWallet.isAuthorized() && !wallet.available) {
+      wallet = await shardWallet.refresh().catch(() => wallet);
+    }
+    const purchased = wallet.purchasedAvatars || [];
+    const items = ['😎', '🎧', '💔', ...purchased.map(item => item.avatar), '🔄'];
 
     return window.Utils?.profileModals?.avatarPicker?.({
     title: 'Аватар профиля', items: [...new Set(items)],
