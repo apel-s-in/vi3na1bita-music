@@ -33,6 +33,26 @@ class EventLogger {
     if (this.queue.length > 20) this.flush();
     return ev;
   }
+  async rotateChain({ chainId = `chain_v71_${crypto.randomUUID()}`, reason = 'backup_v71' } = {}) {
+    await this.flush();
+    await window.statsAggregator?.waitForIdle?.().catch(() => null);
+
+    const checkpoint = await writeLedgerCheckpoint(metaDB, {
+      chainId,
+      deviceSeq: 0,
+      headHash: '',
+      deviceStableId: this.deviceStableId || localStorage.getItem('deviceStableId') || '',
+      deviceHash: this.deviceHash || localStorage.getItem('deviceHash') || '',
+      updatedAt: Date.now(),
+      repairedAt: 0,
+      repairReason: reason,
+      repairedEvents: 0
+    });
+
+    this.sessionId = crypto.randomUUID();
+    window.dispatchEvent(new CustomEvent('event-ledger:rotated', { detail: checkpoint }));
+    return checkpoint;
+  }
   flush() {
     if (this._flushPromise) { this._rerun = true; return this._flushPromise; }
     this._flushPromise = (async () => {
