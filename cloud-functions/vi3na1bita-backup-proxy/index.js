@@ -14,10 +14,10 @@ const VERSION = '7.1';
 const LEGACY_V7_VERSION = '7.0';
 const ROOT = 'app:/Backup/v7';
 const DEVICES_DIR = `${ROOT}/devices`;
-const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
-const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
-const RESPONSE_RESERVE_BYTES = 384 * 1024;
-const MAX_RANGE_BYTES = 2 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 3 * 1024 * 1024;
+const MAX_RESPONSE_BYTES = 3 * 1024 * 1024;
+const RESPONSE_RESERVE_BYTES = 256 * 1024;
+const MAX_RANGE_BYTES = 768 * 1024;
 const MAX_RANGE_EVENTS = 500;
 const MAX_PUSH_RANGES = 20;
 const MAX_PULL_RANGES = 50;
@@ -450,6 +450,9 @@ function verifyStoredRange(raw, expected = {}) {
   if (expected.fromSeq && core.fromSeq !== expected.fromSeq) {
     throw makeError('stored_range_sequence_mismatch', 502);
   }
+  if (expected.ownerYandexIdHash && core.ownerYandexIdHash !== expected.ownerYandexIdHash) {
+    throw makeError('stored_range_owner_mismatch', 403);
+  }
   return { ...raw, hash: actualHash, rangeKey: actualKey };
 }
 function buildHead(range) {
@@ -493,7 +496,12 @@ async function writeImmutableRange(auth, rawRange) {
   if (head && range.fromSeq <= integer(head.lastToSeq)) {
     const existing = await downloadJson(auth.oauthToken, path, { maxBytes: MAX_RANGE_BYTES });
     if (existing && sameStoredRange(existing, range)) {
-      verifyStoredRange(existing, { deviceId: auth.deviceId, chainId: range.chainId, fromSeq: range.fromSeq });
+      verifyStoredRange(existing, {
+        ownerYandexIdHash: auth.ownerYandexIdHash,
+        deviceId: auth.deviceId,
+        chainId: range.chainId,
+        fromSeq: range.fromSeq
+      });
       return { duplicate: true, repairedHead: false, range, head, path };
     }
     throw makeError('immutable_range_conflict', 409);
@@ -574,8 +582,35 @@ async function pullAfterWatermarks(auth, rawWatermarks, { maxRanges = MAX_PULL_R
     const known = watermarks.get(key) || { deviceId: head.deviceId, chainId: head.chainId, toSeq: 0, lastRangeHash: '' };
     let cursor = integer(known.toSeq);
     let lastRangeHash = safe(known.lastRangeHash);
-    if (cursor >= head.lastToSeq) {
-      nextWatermarks.push({ deviceId: head.deviceId, chainId: head.chainId, toSeq: cursor, lastRangeHash: lastRangeHash || head.lastRangeHash });
+
+    if (cursor > head.lastToSeq) {
+      throw makeError('watermark_ahead_of_server_head', 409, {
+        deviceId: head.deviceId,
+        chainId: head.chainId,
+        clientToSeq: cursor,
+        serverToSeq: head.lastToSeq
+      });
+    }
+    if (cursor === 0 && lastRangeHash) {
+      throw makeError('watermark_genesis_hash_invalid', 409);
+    }
+    if (cursor > 0 && !isHash(lastRangeHash)) {
+      throw makeError('watermark_hash_required', 409);
+    }
+    if (cursor === head.lastToSeq) {
+      if (lastRangeHash !== head.lastRangeHash) {
+        throw makeError('watermark_head_hash_mismatch', 409, {
+          deviceId: head.deviceId,
+          chainId: head.chainId,
+          toSeq: cursor
+        });
+      }
+      nextWatermarks.push({
+        deviceId: head.deviceId,
+        chainId: head.chainId,
+        toSeq: cursor,
+        lastRangeHash
+      });
       continue;
     }
     while (cursor < head.lastToSeq) {
@@ -589,7 +624,12 @@ async function pullAfterWatermarks(auth, rawWatermarks, { maxRanges = MAX_PULL_R
       if (!range) {
         throw makeError('range_chain_file_missing', 502, { deviceId: head.deviceId, chainId: head.chainId, fromSeq: nextFromSeq });
       }
-      const verified = verifyStoredRange(range, { deviceId: head.deviceId, chainId: head.chainId, fromSeq: nextFromSeq });
+      const verified = verifyStoredRange(range, {
+        ownerYandexIdHash: auth.ownerYandexIdHash,
+        deviceId: head.deviceId,
+        chainId: head.chainId,
+        fromSeq: nextFromSeq
+      });
       if (verified.version === VERSION && safe(verified.previousRangeHash) !== lastRangeHash) {
         throw makeError('range_pull_previous_hash_mismatch', 502);
       }
@@ -636,7 +676,12 @@ async function pullUnknownLegacyRanges(auth, knownRangeKeys) {
       const path = `${chainDir(head.deviceId, head.chainId)}/${file.name}`;
       const range = await downloadJson(auth.oauthToken, path, { maxBytes: MAX_RANGE_BYTES });
       if (!range) continue;
-      const verified = verifyStoredRange(range, { deviceId: head.deviceId, chainId: head.chainId, fromSeq });
+      const verified = verifyStoredRange(range, {
+        ownerYandexIdHash: auth.ownerYandexIdHash,
+        deviceId: head.deviceId,
+        chainId: head.chainId,
+        fromSeq
+      });
       if (known.has(verified.rangeKey)) continue;
       unknownTotal++;
       if (ranges.length >= MAX_PULL_RANGES) continue;
@@ -789,8 +834,15 @@ async function runBatchSync(auth, body) {
   const settings = currentSettings && currentSettings.hash !== knownSettingsHash ? currentSettings : null;
   let templateSettings = null;
   const templateDeviceId = safeId(body.settingsTemplateDeviceId, 120);
-  if (templateDeviceId && templateDeviceId !== auth.deviceId) {
-    templateSettings = await getSettings(auth, templateDeviceId).catch(() => null);
+
+  if (templateDeviceId) {
+    if (templateDeviceId === auth.deviceId) {
+      throw makeError('settings_template_current_device_forbidden', 409);
+    }
+    if (!auth.settingsSourceDeviceId || templateDeviceId !== auth.settingsSourceDeviceId) {
+      throw makeError('settings_template_device_not_authorized', 403);
+    }
+    templateSettings = await getSettings(auth, templateDeviceId);
   }
   const deviceCatalog = body.includeDeviceCatalog === true ? await listDeviceSettingsCatalog(auth) : null;
   return {
