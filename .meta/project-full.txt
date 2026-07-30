@@ -12318,6 +12318,14 @@ class ShardWalletService {
     ));
   }
 
+  ingest(wallet, { catalog = null, reason = 'server_result' } = {}) {
+    if (!wallet || typeof wallet !== 'object' || Array.isArray(wallet)) return this.getSnapshot();
+    this.wallet = { ...emptyWallet(), ...wallet, available: wallet.available === true };
+    if (Array.isArray(catalog)) this.catalog = catalog.map(item => ({ ...item }));
+    this.emit(reason);
+    return this.getSnapshot();
+  }
+
   reset(reason = 'logout') {
     this.wallet = emptyWallet();
     this.catalog = [];
@@ -12330,21 +12338,13 @@ class ShardWalletService {
       return this.getSnapshot();
     }
 
-    if (!force && this.loading) return this.loading;
+    if (this.loading) return this.loading;
 
     this.loading = requestSocialAction('wallet_get', {})
-      .then(result => {
-        this.wallet = {
-          ...emptyWallet(),
-          ...(result?.wallet || {}),
-          available: result?.wallet?.available === true
-        };
-        this.catalog = Array.isArray(result?.catalog)
-          ? result.catalog.map(item => ({ ...item }))
-          : [];
-        this.emit('refresh');
-        return this.getSnapshot();
-      })
+      .then(result => this.ingest(result?.wallet, {
+        catalog: result?.catalog,
+        reason: 'refresh'
+      }))
       .finally(() => {
         this.loading = null;
       });
