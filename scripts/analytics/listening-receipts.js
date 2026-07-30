@@ -224,12 +224,12 @@ class ListeningReceiptService {
     }
     return result;
   }
-  scheduleStatusRefresh(delayMs = 5000) {
+  scheduleStatusRefresh(delayMs = 60000) {
     clearTimeout(this.statusRefreshTimer);
     this.statusRefreshTimer = setTimeout(() => {
       this.statusRefreshTimer = 0;
       if (!document.hidden) this.refreshStatus().catch(() => null);
-    }, Math.max(1000, Number(delayMs) || 5000));
+    }, Math.max(10000, Number(delayMs) || 60000));
   }
   applyCompletionResult(result) {
     this.ingestServerResult(result);
