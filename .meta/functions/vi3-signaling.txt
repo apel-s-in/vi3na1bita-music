@@ -590,26 +590,44 @@ async function kvPrefixOrdered(prefix, limit = 100) {
 async function enforceRateLimit({ scope, actor, limit, windowMs }) {
   const cleanScope = sanitizeId(scope, 60);
   const cleanActor = safe(actor);
-  if (!cleanScope || !cleanActor) {
-    throw new Error('rate_limit_identity_required');
-  }
+  if (!cleanScope || !cleanActor) throw new Error('rate_limit_identity_required');
   const duration = Math.max(1000, Math.min(num(windowMs), 24 * 60 * 60 * 1000));
   const max = Math.max(1, Math.min(num(limit), 1000));
   const at = now();
   const bucket = Math.floor(at / duration);
+  const resetAt = (bucket + 1) * duration;
   const actorHash = hash(`rate:${cleanActor}`).slice(0, 24);
-  const prefix = `rate:${cleanScope}:${actorHash}:${bucket}:`;
-  const pk = `${prefix}${rid('hit')}`;
-  const expiresAt = (bucket + 1) * duration + 60000;
-  await kvPut({ pk, type: 'rateLimit', owner: actorHash, expiresAt, data: { scope: cleanScope, at } });
-  const rows = await kvPrefix(prefix, max + 1);
-  if (rows.length > max) {
-    await kvDelete(pk).catch(() => null);
-    const error = new Error('rate_limit_exceeded');
-    error.httpStatus = 429;
-    throw error;
+  const pk = `rateBucket:${cleanScope}:${actorHash}:${bucket}`;
+  const expiresAt = resetAt + 60000;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const row = await kvGet(pk);
+    const current = Math.max(0, Math.floor(num(payload(row)?.count)));
+    if (current >= max) {
+      const error = new Error('rate_limit_exceeded');
+      error.httpStatus = 429;
+      error.retryAfterMs = Math.max(1000, resetAt - at);
+      throw error;
+    }
+
+    const data = { scope: cleanScope, actorHash, bucket, count: current + 1, resetAt, updatedAt: at };
+    if (!row) {
+      try {
+        await kvInsert({ pk, type: 'rateLimitBucket', owner: actorHash, expiresAt, data });
+        return { ok: true, remaining: Math.max(0, max - 1), resetAt };
+      } catch {
+        continue;
+      }
+    }
+
+    if (await kvCompareAndPut({ row, type: 'rateLimitBucket', owner: actorHash, expiresAt, data })) {
+      return { ok: true, remaining: Math.max(0, max - data.count), resetAt };
+    }
   }
-  return { ok: true, remaining: Math.max(0, max - rows.length), resetAt: (bucket + 1) * duration };
+
+  const error = new Error('rate_limit_conflict');
+  error.httpStatus = 429;
+  throw error;
 }
 async function areFriends(a, b) {
   const aa = sanitizeId(a);
@@ -1063,6 +1081,7 @@ async function actionBackupDeviceAuthorize(event, body) {
 }
 const PLAYBACK_LEASE_MS = 20 * 60 * 1000;
 const PLAYBACK_TRANSFER_TTL_MS = 2 * 60 * 1000;
+const PLAYBACK_DEVICE_ACTIVE_MS = 30 * 60 * 1000;
 function playbackTransferKey(playerId, transferId) {
   return `playbackTransfer:${sanitizeId(playerId, 96)}:${sanitizeId(transferId, 120)}`;
 }
@@ -1153,10 +1172,40 @@ async function closeActiveListenSegment(playerId, deviceId, position, reason = '
   }
   throw new Error('playback_listen_close_conflict');
 }
+async function getPlaybackCoordinationState(playerId, currentDeviceId = '') {
+  const deviceId = sanitizeId(currentDeviceId, 120);
+  const cutoff = now() - PLAYBACK_DEVICE_ACTIVE_MS;
+  const [deviceRows, playbackRow] = await Promise.all([
+    kvPrefix(`accountDevice:${sanitizeId(playerId, 96)}:`, 100),
+    kvGet(playbackStateKey(playerId))
+  ]);
+  const peers = deviceRows
+    .map(payload)
+    .map(item => normalizeAccountDevice(item, playerId))
+    .filter(item => item.deviceId && item.deviceId !== deviceId && item.revokedAt <= 0 && item.initializationPending !== true && item.lastSeenAt >= cutoff)
+    .sort((left, right) => right.lastSeenAt - left.lastSeenAt);
+  const playback = normalizePlaybackState(payload(playbackRow), playerId);
+  const remoteOwnerActive = playbackIsActive(playback) && !!playback.ownerDeviceId && playback.ownerDeviceId !== deviceId;
+  return {
+    known: true,
+    required: remoteOwnerActive || peers.length > 0,
+    reason: remoteOwnerActive ? 'remote_playback_owner' : peers.length ? 'recent_peer_activity' : 'single_device',
+    activePeerCount: peers.length,
+    activePeerDeviceIds: peers.map(item => item.deviceId).slice(0, 10),
+    remoteOwnerActive,
+    checkedAt: now(),
+    activeWindowMs: PLAYBACK_DEVICE_ACTIVE_MS
+  };
+}
+
 async function actionPlaybackStateGet(event, body) {
   const auth = await requirePlayer(event, body);
   const state = normalizePlaybackState(payload(await kvGet(playbackStateKey(auth.playerId))), auth.playerId);
-  return { ok: true, playback: publicPlaybackState(state, auth.deviceId || body.deviceId) };
+  return {
+    ok: true,
+    playback: publicPlaybackState(state, auth.deviceId || body.deviceId),
+    coordination: await getPlaybackCoordinationState(auth.playerId, auth.deviceId || body.deviceId)
+  };
 }
 async function actionPlaybackRelease(event, body) {
   const auth = await requirePlaybackDevice(event, body);
@@ -1377,6 +1426,16 @@ async function actionSocialSessionIssue(event, body) {
     getTimezonePolicy(identity.friendId).catch(() => normalizeTimezonePolicy({}, identity.friendId))
   ]);
   const accountDevice = accountDeviceRegistration?.device || null;
+  const playbackCoordination = await getPlaybackCoordinationState(identity.friendId, accountDevice?.deviceId || body.deviceId).catch(() => ({
+    known: false,
+    required: false,
+    reason: 'coordination_check_unavailable',
+    activePeerCount: 0,
+    activePeerDeviceIds: [],
+    remoteOwnerActive: false,
+    checkedAt: now(),
+    activeWindowMs: PLAYBACK_DEVICE_ACTIVE_MS
+  }));
   const sessionJti = rid('ss');
   const sessionDeviceId = sanitizeId(body.deviceId || 'web', 120) || 'web';
   const session = issueSocialSession({ sub: identity.friendId, yidHash: hash(`ya:${identity.yandexId}`), did: sessionDeviceId, iat: issuedAt, exp: expiresAt, jti: sessionJti, v: 3 });
@@ -1399,6 +1458,7 @@ async function actionSocialSessionIssue(event, body) {
     accountDevicePreviousLastSeenAt: num(accountDeviceRegistration?.previousLastSeenAt),
     accountDeviceInitializationRequired: accountDevice?.initializationPending === true,
     accountDevice: accountDevice ? publicAccountDevice(accountDevice) : null,
+    playbackCoordination,
     profile: { friendId: identity.friendId, displayName: identity.displayName, avatarUrl: identity.avatarUrl }
   };
 }
