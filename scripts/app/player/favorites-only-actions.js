@@ -9,9 +9,30 @@ export const openFavoritesOnlyConflictModal = ({ track, onDisable, onAddFavorite
 export const makeFavoritesOnlyAfterPlay = ({ highlight, ensureBlock } = {}) => ({ index = -1, uid = '', albumKey = '' } = {}) => { highlight?.(index, { uid, albumKey }); ensureBlock?.(index, { userInitiated: true }); W.PlayerUI?.updatePlaylistFiltering?.(); };
 
 export const playWithFavoritesOnlyResolution = ({ list = [], uid, albumKey = '', track = null, hidden = false, play, addFavorite, disableMode, afterPlay } = {}) => {
-  const pc = W.playerCore, gate = W.FavoritesOnlyResolver?.canLaunchTrackInFavoritesOnlyContext?.({ uid, albumKey }) || { ok: true }, runPlay = () => { const ok = play?.(list, uid); if (ok !== false) { pc?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true }); afterPlay?.(); } return ok; };
+  const pc = W.playerCore;
+  const gate = W.FavoritesOnlyResolver?.canLaunchTrackInFavoritesOnlyContext?.({ uid, albumKey }) || { ok: true };
+  const runPlay = async () => {
+    const ok = await play?.(list, uid);
+    if (ok === false) return false;
+    if (isFavOnlyOn()) pc?.applyFavoritesOnlyFilter?.({ autoPlayIfNeeded: true, forceReload: false });
+    afterPlay?.();
+    return true;
+  };
   if (!isFavOnlyOn() || gate.ok) return runPlay();
-  return openFavoritesOnlyConflictModal({ track, hidden: hidden || gate.reason === 'hidden', onDisable: () => { disableMode?.(); runPlay(); }, onAddFavorite: (hidden || gate.reason === 'hidden') ? null : () => { addFavorite?.(uid); runPlay(); } });
+  return openFavoritesOnlyConflictModal({
+    track,
+    hidden: hidden || gate.reason === 'hidden',
+    onDisable: async () => {
+      disableMode?.();
+      await runPlay();
+    },
+    onAddFavorite: hidden || gate.reason === 'hidden'
+      ? null
+      : async () => {
+          addFavorite?.(uid);
+          await runPlay();
+        }
+  });
 };
 
 export const syncFavoritesOnlyUiFrame = ({ applyDomFilter = () => W.PlayerUI?.applyFavoritesOnlyDomFilter?.() } = {}) => { applyDomFilter?.(); requestAnimationFrame(() => applyDomFilter?.()); };
