@@ -13598,8 +13598,6 @@ export default { initYandexActions };
 
 //=================================================
 // FILE: /scripts/app/profile/yandex-auth-view.js
-import { safeNum, getLocalBackupUiSnapshot } from '../../analytics/backup-summary.js';
-import { getCloudCompareViewModel, formatCloudTimeOnly } from './cloud-ui-helpers.js';
 import { esc } from './profile-render-kit.js';
 import { bindAccountDevicesBlock } from './account-devices-view.js';
 import { bindAccountTimezoneBlock } from './account-timezone-view.js';
@@ -13651,16 +13649,13 @@ const bindReactiveEvents = (rt, r) => {
 export function renderYandexAuthBlock({ root, localProfile }) {
   if (!root || !window.YandexAuth) return;
   const ya = window.YandexAuth, rr = () => renderYandexAuthBlock({ root, localProfile }), st = ya.getSessionStatus(), pr = ya.getProfile(), aL = ya.isAutoRelogin(), hDA = !!ya.hasDiskAccess?.();
-  const bM = (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_meta') || 'null'); } catch { return null; } })();
-  const lI = getLocalBackupUiSnapshot(localProfile), cI = bM || (() => { try { return JSON.parse(localStorage.getItem('yandex:last_backup_check') || 'null'); } catch { return null; } })(), cmp = getCloudCompareViewModel(lI, cI);
   const sL = { active:'Подключено', expired:'Сессия истекла', logged_out:'Не подключено' }[st] || 'Не подключено', sC = { active:'#4caf50', expired:'#ff9800', logged_out:'#888' }[st] || '#888';
-  const lSL = (() => { const t = Number(localStorage.getItem('yandex:last_backup_local_ts') || 0); return getSyncStatusLine() || (t > 0 ? `последнее: ${formatCloudTimeOnly(t)}` : 'ещё не сохранялось'); })();
+  const lSL = getSyncStatusLine() || 'ещё не сохранялось';
   const aCh = (() => { try { return localStorage.getItem('backup:autosync:enabled') !== '0' ? 'checked' : ''; } catch { return 'checked'; } })();
 
   if (st === 'active' && pr) {
     const avatarHtml = pr.avatar ? `<img class="yandex-auth-avatar" src="${esc(pr.avatar)}" alt="avatar" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'yandex-auth-avatar--fallback',textContent:'Я'}))">` : `<div class="yandex-auth-avatar--fallback">Я</div>`;
-    let restoreDone = false; try { restoreDone = localStorage.getItem('backup:restore_or_skip_done') === '1'; } catch {}
-    root.innerHTML = renderYandexConnectedBlock({ profile:pr, statusLabel:sL, statusColor:sC, hasDiskAccess:hDA, avatarHtml, cloudInfo:cI, compareVm:cmp, restoreDone, lastSyncLabel:lSL, autosaveChecked:aCh, autoRelogin:aL });
+    root.innerHTML = renderYandexConnectedBlock({ profile:pr, statusLabel:sL, statusColor:sC, hasDiskAccess:hDA, avatarHtml, cloudInfo:null, compareVm:null, restoreDone:true, lastSyncLabel:lSL, autosaveChecked:aCh, autoRelogin:aL });
   } else root.innerHTML = renderYandexLoggedOutBlock({ statusLabel:sL, statusColor:sC });
 
   bindYandexActions(root, rr);
