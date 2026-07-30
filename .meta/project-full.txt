@@ -13900,6 +13900,7 @@ let pendingSession = null;
 let pendingYandexId = '';
 let serverBackoffUntil = 0;
 let serverBackoffMs = 5000;
+let playbackCoordination = { known: false, required: false, reason: 'not_checked', activePeerCount: 0, remoteOwnerActive: false, checkedAt: 0, activeWindowMs: 0 };
 const coalescedActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get']);
 const actionRequests = new Map();
 const safe = value => String(value == null ? '' : value).trim();
@@ -13912,7 +13913,23 @@ const readTimezonePolicyRevision = yandexId => {
   }
 };
 const isRealtimeAction = action => /^(room_|signal_|lan_code_|ranked_)/.test(action) || action === 'push_send';
+const normalizePlaybackCoordination = raw => ({
+  known: raw?.known === true,
+  required: raw?.required === true,
+  reason: safe(raw?.reason || 'not_checked'),
+  activePeerCount: Math.max(0, Math.floor(Number(raw?.activePeerCount || 0))),
+  remoteOwnerActive: raw?.remoteOwnerActive === true,
+  checkedAt: Math.max(0, Number(raw?.checkedAt || 0)),
+  activeWindowMs: Math.max(0, Number(raw?.activeWindowMs || 0))
+});
 export const getSocialServerBackoffState = () => ({ active: Date.now() < serverBackoffUntil, retryAt: serverBackoffUntil, remainingMs: Math.max(0, serverBackoffUntil - Date.now()) });
+export const getPlaybackCoordinationState = () => ({ ...playbackCoordination });
+export const isPlaybackCoordinationRequired = () => playbackCoordination.required === true;
+export const markPlaybackCoordinationRequired = (reason = 'runtime_peer_signal') => {
+  playbackCoordination = { ...playbackCoordination, known: true, required: true, reason: safe(reason), checkedAt: Date.now() };
+  window.dispatchEvent(new CustomEvent('playback:coordination-changed', { detail: { ...playbackCoordination } }));
+  return getPlaybackCoordinationState();
+};
 const readProfile = () => {
   const auth = window.YandexAuth;
   const active = auth?.getSessionStatus?.() === 'active' && auth?.isTokenAlive?.();
@@ -13942,6 +13959,7 @@ export const invalidateSocialSession = ({ resetBackoff = false } = {}) => {
   cachedYandexId = '';
   pendingSession = null;
   pendingYandexId = '';
+  playbackCoordination = { known: false, required: false, reason: 'session_invalidated', activePeerCount: 0, remoteOwnerActive: false, checkedAt: 0, activeWindowMs: 0 };
   if (resetBackoff) {
     serverBackoffUntil = 0;
     serverBackoffMs = 5000;
@@ -13988,6 +14006,8 @@ export const getSocialSession = async ({ force = false } = {}) => {
     if (!currentYandexId || currentYandexId !== yandexId) {
       throw new Error('social_session_account_changed');
     }
+    playbackCoordination = normalizePlaybackCoordination(result.playbackCoordination);
+    window.dispatchEvent(new CustomEvent('playback:coordination-changed', { detail: { ...playbackCoordination } }));
     cachedSession = result;
     cachedYandexId = yandexId;
     window.ListeningReceipts?.ingestServerResult?.(result);
