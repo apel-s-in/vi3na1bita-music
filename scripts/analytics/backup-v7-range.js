@@ -29,6 +29,7 @@ export const readBackupV7State = async () => {
     lastSyncAt: num(value.lastSyncAt),
     settingsLocalHash: safe(value.settingsLocalHash),
     settingsServerHash: safe(value.settingsServerHash),
+    sharedServerHash: safe(value.sharedServerHash),
     settingsTemplateApplied: value.settingsTemplateApplied === true,
     lastError: safe(value.lastError)
   };
