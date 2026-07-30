@@ -14006,7 +14006,11 @@ export const getSocialSession = async ({ force = false } = {}) => {
 export const requestSocialAction = (action, data = {}, { retryAuth = true } = {}) => {
   const cleanAction = safe(action);
   const coalesced = coalescedActions.has(cleanAction);
-  const requestKey = coalesced ? cleanAction : '';
+  const requestKey = coalesced
+    ? cleanAction
+    : cleanAction === 'playback_claim'
+      ? `${cleanAction}:${safe(data.trackUid)}:${safe(data.deviceId)}`
+      : '';
   if (requestKey && actionRequests.has(requestKey)) {
     return actionRequests.get(requestKey);
   }
