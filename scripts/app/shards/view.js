@@ -215,12 +215,10 @@ export const loadShardsView = async ctx => {
   };
 
   try {
-    await Promise.all([
-      shardWallet.refresh({ force: true }),
-      window.ListeningReceipts
-        ?.refreshStatus?.()
-        .catch(() => null)
-    ]);
+    await window.ListeningReceipts?.refreshStatus?.().catch(() => null);
+    if (!shardWallet.getSnapshot().available) {
+      await shardWallet.refresh({ force: true });
+    }
     render();
   } catch (error) {
     root.innerHTML = `
