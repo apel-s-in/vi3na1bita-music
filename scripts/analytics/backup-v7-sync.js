@@ -1,266 +1,313 @@
-// Backup v7 sync engine.
-// Не управляет playback и применяет каждый rangeKey ровно один раз.
+// Backup v7.1 sync engine.
+// Не управляет playback. Raw ranges являются источником общей локальной аналитики.
 import { metaDB } from './meta-db.js';
-import { normalizeStatsProjection } from './stats-shard-contract.js';
-import { mergePlaylistsStorageSafe } from './playlists-storage-merge.js';
 import { collectDeviceSettingsLocalStorage, isPlaybackSensitiveDeviceSettingKey, shouldApplyDeviceSettingKey } from './device-settings-contract.js';
+import { exportAccountCachePolicies, applyAccountCachePolicies } from '../offline/cache-db.js';
+import { getDeviceContext } from '../core/device-context.js';
+import { getSocialSession } from '../core/social-session.js';
 import { AccountDataContext } from './account-data-boundary.js';
+import { normalizeEventList } from './backup-event-cleanup.js';
+import { rebuildStatsFromEvents } from './stats-state.js';
 import YandexBackupV7 from '../core/yandex-backup-v7.js';
 import {
-  buildNextBackupV7Range,
-  clearPendingBackupV7Range,
+  buildPendingBackupV7Batch,
+  commitUploadedBackupV7Batch,
   readBackupV7State,
   verifyBackupV7Range,
   writeBackupV7State
 } from './backup-v7-range.js';
+import { stableStringify, sha256Hex } from './event-integrity.js';
 import { recordSyncRevision } from './sync-revisions.js';
 
+const TEMPLATE_KEY = 'backup:v7:settings-template-device';
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 let syncPromise = null;
+let repairBound = false;
 
-const knownRangeKeys = async () => {
+const getAllRows = async store => {
   await metaDB.init();
   return new Promise((resolve, reject) => {
-    const request = metaDB.db.transaction('backup_known_ranges', 'readonly').objectStore('backup_known_ranges').getAllKeys();
-    request.onsuccess = () => resolve((request.result || []).map(safe).filter(Boolean));
+    const request = metaDB.db.transaction(store, 'readonly').objectStore(store).getAll();
+    request.onsuccess = () => resolve(request.result || []);
     request.onerror = () => reject(request.error);
   });
 };
 
-const applyCountMap = (target, source) => {
-  const output = { ...(target || {}) };
-  Object.entries(source || {}).forEach(([key, amount]) => {
-    output[key] = num(output[key]) + num(amount);
-  });
-  return output;
-};
+const readWatermarks = async () => (await getAllRows('backup_chain_watermarks')).map(row => ({
+  deviceId: safe(row.deviceId),
+  chainId: safe(row.chainId),
+  toSeq: num(row.toSeq),
+  lastRangeHash: safe(row.lastRangeHash)
+})).filter(row => row.deviceId && row.chainId);
 
-const applyVerifiedRange = async range => {
-  const verified = await verifyBackupV7Range(range);
+const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceId = '' } = {}) => {
+  const verified = [];
+  for (const range of ranges) verified.push(await verifyBackupV7Range(range));
   await metaDB.init();
 
   return new Promise((resolve, reject) => {
-    const stores = ['backup_known_ranges', 'backup_mutations', 'stats', 'global'];
-    const tx = metaDB.db.transaction(stores, 'readwrite');
-    const known = tx.objectStore('backup_known_ranges');
-    const mutations = tx.objectStore('backup_mutations');
-    const stats = tx.objectStore('stats');
-    const global = tx.objectStore('global');
-    let skipped = false;
+    const tx = metaDB.db.transaction(['backup_event_ranges', 'backup_known_ranges', 'backup_chain_watermarks'], 'readwrite');
+    const rangeStore = tx.objectStore('backup_event_ranges');
+    const knownStore = tx.objectStore('backup_known_ranges');
+    const watermarkStore = tx.objectStore('backup_chain_watermarks');
+    let inserted = 0;
 
-    const knownRequest = known.get(verified.rangeKey);
-    knownRequest.onsuccess = () => {
-      if (knownRequest.result) {
-        skipped = true;
-        return;
-      }
-
-      const projection = normalizeStatsProjection(verified.projection);
-      Object.entries(projection.tracks).forEach(([uid, value]) => {
-        const request = stats.get(uid);
-        request.onsuccess = () => {
-          const row = request.result || {
-            uid,
-            globalListenSeconds: 0,
-            globalValidListenCount: 0,
-            globalFullListenCount: 0,
-            firstPlayedAt: verified.createdAt,
-            lastPlayedAt: verified.createdAt,
-            featuresUsed: {}
-          };
-          const byHourMs = Array.from({ length: 24 }, (_, index) => num(row.byHourMs?.[index]) + num(projection.byHourMs[index] && value.listenMs ? 0 : 0));
-          const byWeekdayMs = Array.from({ length: 7 }, (_, index) => num(row.byWeekdayMs?.[index]));
-          stats.put({
-            ...row,
-            globalListenSeconds: num(row.globalListenSeconds) + value.listenMs / 1000,
-            globalValidListenCount: num(row.globalValidListenCount) + value.validPlays,
-            globalFullListenCount: num(row.globalFullListenCount) + value.fullPlays,
-            lastPlayedAt: Math.max(num(row.lastPlayedAt), num(verified.createdAt)),
-            featuresUsed: applyCountMap(row.featuresUsed, value.features),
-            byHourMs,
-            byWeekdayMs,
-            byHour: byHourMs.map(amount => amount / 1000),
-            byWeekday: byWeekdayMs.map(amount => amount / 1000)
-          });
-        };
-      });
-
-      const globalRequest = stats.get('global');
-      globalRequest.onsuccess = () => {
-        const row = globalRequest.result || { uid: 'global', globalListenSeconds: 0, globalValidListenCount: 0, globalFullListenCount: 0, firstPlayedAt: verified.createdAt, lastPlayedAt: verified.createdAt, featuresUsed: {} };
-        stats.put({ ...row, featuresUsed: applyCountMap(row.featuresUsed, projection.features), lastPlayedAt: Math.max(num(row.lastPlayedAt), num(verified.createdAt)) });
+    verified.forEach(range => {
+      const request = rangeStore.get(range.rangeKey);
+      request.onsuccess = () => {
+        if (request.result) return;
+        inserted++;
+        const own = safe(range.deviceId) === safe(currentDeviceId);
+        rangeStore.put({
+          ...range,
+          projected: own,
+          storedAt: Date.now(),
+          projectedAt: own ? Date.now() : 0
+        });
+        knownStore.put({
+          rangeKey: range.rangeKey,
+          deviceId: range.deviceId,
+          chainId: range.chainId,
+          fromSeq: range.fromSeq,
+          toSeq: range.toSeq,
+          hash: range.hash,
+          appliedAt: own ? Date.now() : 0
+        });
       };
+    });
 
-      const mutationRows = Object.values(verified.mutations || {}).filter(item => item?.key);
-      mutationRows.forEach(item => {
-        const key = safe(item.key);
-        const request = mutations.get(key);
-        request.onsuccess = () => {
-          const old = request.result;
-          if (num(old?.updatedAt) > num(item.updatedAt)) return;
-
-          if (key === 'profile') {
-            global.put({ key: 'user_profile', value: item.value || { name: 'Слушатель', avatar: '😎' } });
-          } else if (key === 'sc3:playlists') {
-            const remote = JSON.stringify(Array.isArray(item.value) ? item.value : []);
-            localStorage.setItem(key, mergePlaylistsStorageSafe(localStorage.getItem(key), remote, 'latest'));
-          } else if (['sc3:default', 'sc3:albumColors'].includes(key)) {
-            localStorage.setItem(key, JSON.stringify(item.value || {}));
-          }
-          mutations.put({ key, updatedAt: num(item.updatedAt), rangeKey: verified.rangeKey });
-        };
+    (Array.isArray(watermarks) ? watermarks : []).forEach(item => {
+      const deviceId = safe(item?.deviceId);
+      const chainId = safe(item?.chainId);
+      if (!deviceId || !chainId) return;
+      watermarkStore.put({
+        key: `${deviceId}:${chainId}`,
+        deviceId,
+        chainId,
+        toSeq: num(item.toSeq),
+        lastRangeHash: safe(item.lastRangeHash),
+        updatedAt: Date.now()
       });
+    });
 
-      known.put({
-        rangeKey: verified.rangeKey,
-        deviceId: safe(verified.deviceId),
-        chainId: safe(verified.chainId),
-        fromSeq: num(verified.fromSeq),
-        toSeq: num(verified.toSeq),
-        hash: safe(verified.hash),
-        appliedAt: Date.now()
-      });
-    };
-
-    tx.oncomplete = () => resolve({ applied: !skipped, skipped, rangeKey: verified.rangeKey });
+    tx.oncomplete = () => resolve({ inserted, verified: verified.length });
     tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error || new Error('backup_v7_apply_aborted'));
+    tx.onabort = () => reject(tx.error || new Error('backup_v71_range_store_aborted'));
   });
 };
 
-const pullAll = async () => {
+const readCompleteEventTruth = async () => {
+  const [ranges, warm, hot] = await Promise.all([
+    getAllRows('backup_event_ranges'),
+    metaDB.getEvents('events_warm').catch(() => []),
+    metaDB.getEvents('events_hot').catch(() => [])
+  ]);
+
+  return normalizeEventList([
+    ...ranges.flatMap(range => Array.isArray(range.events) ? range.events : []),
+    ...warm,
+    ...hot
+  ], {
+    limit: 0,
+    dropNoise: true,
+    sort: true,
+    dedupeAchievementUnlocks: false
+  });
+};
+
+const markRangesProjected = async () => {
+  const rows = await getAllRows('backup_event_ranges');
+  await metaDB.tx('backup_event_ranges', 'readwrite', store => {
+    rows.forEach(row => store.put({ ...row, projected: true, projectedAt: Date.now() }));
+  });
+};
+
+export const rebuildBackupV7LocalAnalytics = async ({ reason = 'backup_v71_rebuild', force = false } = {}) => {
+  if (!force && window.playerCore?.isPlaying?.()) return { rebuilt: false, deferred: true };
+
+  const rows = await getAllRows('backup_event_ranges');
+  if (!rows.some(row => row.projected !== true)) return { rebuilt: false, deferred: false };
+
+  const events = await readCompleteEventTruth();
+  await rebuildStatsFromEvents(metaDB, events, { reason });
+  await markRangesProjected();
+
+  window.dispatchEvent(new CustomEvent('analytics:logUpdated', { detail: { reason, events: events.length } }));
+  window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason } }));
+  return { rebuilt: true, deferred: false, events: events.length };
+};
+
+const bindDeferredRepair = () => {
+  if (repairBound) return;
+  repairBound = true;
+  const repair = () => {
+    if (window.playerCore?.isPlaying?.()) return;
+    rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_deferred_rebuild' }).catch(() => null);
+  };
+  window.addEventListener('player:pause', repair);
+  window.addEventListener('player:stop', repair);
+  window.addEventListener('player:ended', repair);
+};
+
+const settingsSemanticHash = value => sha256Hex(stableStringify(value));
+
+const buildSettingsPayload = async () => ({
+  version: '7.1',
+  device: getDeviceContext(),
+  preferences: collectDeviceSettingsLocalStorage(localStorage),
+  cachePolicies: await exportAccountCachePolicies().catch(() => ({}))
+});
+
+const applySettingsDocument = async settings => {
+  if (!settings || typeof settings !== 'object') return { applied: 0 };
+  if (window.playerCore?.isPlaying?.()) return { applied: 0, deferred: true };
+
   let applied = 0;
-  let remaining = 0;
-
-  for (let page = 0; page < 100; page++) {
-    const known = await knownRangeKeys();
-    const result = await YandexBackupV7.pullRanges(known);
-    const ranges = Array.isArray(result.ranges) ? result.ranges : [];
-
-    for (const range of ranges) {
-      const apply = await applyVerifiedRange(range);
-      if (apply.applied) applied++;
-    }
-
-    remaining = num(result.remaining);
-    if (!ranges.length || remaining <= 0) break;
-  }
-
-  if (applied) {
-    window.dispatchEvent(new CustomEvent('stats:updated', { detail: { reason: 'backup_v7_pull', ranges: applied } }));
-    window.dispatchEvent(new CustomEvent('analytics:logUpdated', { detail: { reason: 'backup_v7_pull', ranges: applied } }));
-    window.dispatchEvent(new CustomEvent('playlists:updated', { detail: { reason: 'backup_v7_pull' } }));
-    window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason: 'backup_v7_pull' } }));
-  }
-  return { applied, remaining };
-};
-
-const pushAll = async auth => {
-  let uploaded = 0;
-  let duplicate = 0;
-
-  for (let page = 0; page < 100; page++) {
-    const range = await buildNextBackupV7Range({
-      deviceId: auth.deviceId,
-      ownerYandexIdHash: auth.ownerYandexIdHash
-    });
-    if (!range) break;
-
-    const result = await YandexBackupV7.pushRange(range);
-    const serverRange = {
-      ...range,
-      hash: safe(result.hash),
-      rangeKey: safe(result.rangeKey),
-      deviceId: safe(result.deviceId || auth.deviceId)
-    };
-    await verifyBackupV7Range(serverRange);
-    await metaDB.tx('backup_known_ranges', 'readwrite', store => store.put({
-      rangeKey: serverRange.rangeKey,
-      deviceId: serverRange.deviceId,
-      chainId: serverRange.chainId,
-      fromSeq: serverRange.fromSeq,
-      toSeq: serverRange.toSeq,
-      hash: serverRange.hash,
-      appliedAt: Date.now(),
-      uploadedByCurrentDevice: true
-    }));
-    await writeBackupV7State({ uploadedSeq: serverRange.toSeq, lastError: '' });
-    await clearPendingBackupV7Range();
-
-    if (result.duplicate) duplicate++;
-    else uploaded++;
-  }
-  return { uploaded, duplicate };
-};
-
-const putSettings = async () => {
-  const settings = { version: '7.0', localStorage: collectDeviceSettingsLocalStorage(localStorage) };
-  return YandexBackupV7.putSettings(settings);
-};
-
-const getSettings = async () => {
-  const result = await YandexBackupV7.getSettings();
-  const settings = result?.settings;
-  if (!result?.exists || !settings?.localStorage) return { applied: 0 };
-
-  const playing = !!window.playerCore?.isPlaying?.();
-  let applied = 0;
-  Object.entries(settings.localStorage).forEach(([key, value]) => {
-    if (!shouldApplyDeviceSettingKey(key)) return;
-    if (playing && isPlaybackSensitiveDeviceSettingKey(key)) return;
+  Object.entries(settings.preferences || settings.localStorage || {}).forEach(([key, value]) => {
+    if (!shouldApplyDeviceSettingKey(key) || isPlaybackSensitiveDeviceSettingKey(key)) return;
     try {
       localStorage.setItem(key, String(value));
       applied++;
     } catch {}
   });
-  return { applied };
+
+  await applyAccountCachePolicies(settings.cachePolicies || {}).catch(() => null);
+  window.OfflineIndicators?.refreshAllIndicators?.().catch(() => null);
+  return { applied, deferred: false };
 };
 
 const runSync = async ({ reason = 'autosync', includeSettings = true } = {}) => {
-  await AccountDataContext.requireCurrentOwner();
-  const authorization = (await YandexBackupV7.authorize()).authorization;
-  if (!authorization?.deviceId || !authorization?.ownerYandexIdHash) throw new Error('backup_v7_authorization_invalid');
+  if (document.hidden) throw new Error('backup_v71_foreground_required');
+  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
-  const pull = await pullAll();
-  const push = await pushAll(authorization);
-  const settingsPull = includeSettings ? await getSettings().catch(() => ({ applied: 0 })) : { applied: 0 };
-  const settingsPush = includeSettings ? await putSettings().catch(() => null) : null;
+  await AccountDataContext.requireCurrentOwner();
+  bindDeferredRepair();
+
+  const social = await getSocialSession();
+  const ownerYandexIdHash = safe(social?.ownerYandexIdHash || social?.authorization?.ownerYandexIdHash);
+  const deviceId = safe(social?.accountDevice?.deviceId || localStorage.getItem('deviceStableId'));
+  if (!deviceId) throw new Error('backup_v71_device_required');
+
+  const state = await readBackupV7State();
+  const batch = await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash });
+  const watermarks = await readWatermarks();
+
+  const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
+  const localSettingsHash = settingsPayload ? await settingsSemanticHash(settingsPayload) : '';
+  const settingsTemplateDeviceId = safe(localStorage.getItem(TEMPLATE_KEY));
+  const sendSettings = !!settingsPayload && !settingsTemplateDeviceId && localSettingsHash !== state.settingsLocalHash;
+
+  const result = await YandexBackupV7.sync({
+    pushRanges: batch?.ranges || [],
+    watermarks,
+    knownSettingsHash: state.settingsServerHash,
+    settings: sendSettings ? settingsPayload : null,
+    settingsTemplateDeviceId,
+    includeDeviceCatalog: false,
+    maxPullRanges: 50
+  });
+
+  const authorization = result?.authorization;
+  if (!authorization?.deviceId || !authorization?.ownerYandexIdHash) {
+    throw new Error('backup_v71_authorization_invalid');
+  }
+  if (safe(authorization.deviceId) !== deviceId) throw new Error('backup_v71_device_identity_mismatch');
+  if (authorization.initializationRequired) throw new Error('backup_device_initialization_required');
+
+  const pulledRanges = Array.isArray(result?.pull?.ranges) ? result.pull.ranges : [];
+  const stored = await saveVerifiedRanges({
+    ranges: [...(batch?.ranges || []), ...pulledRanges],
+    watermarks: result?.pull?.watermarks || [],
+    currentDeviceId: deviceId
+  });
+
+  if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
+
+  let templateApplied = false;
+  if (settingsTemplateDeviceId && result?.settings?.template) {
+    const applied = await applySettingsDocument(result.settings.template);
+    if (!applied.deferred) {
+      templateApplied = true;
+      localStorage.removeItem(TEMPLATE_KEY);
+    }
+  }
+
+  const serverSettingsHash = safe(
+    result?.settings?.pushed?.hash ||
+    result?.settings?.current?.hash ||
+    state.settingsServerHash
+  );
   const at = Date.now();
 
-  await writeBackupV7State({ lastSyncAt: at, lastError: '' });
+  await writeBackupV7State({
+    lastSyncAt: at,
+    settingsLocalHash: sendSettings ? localSettingsHash : state.settingsLocalHash,
+    settingsServerHash: serverSettingsHash,
+    settingsTemplateApplied: state.settingsTemplateApplied || templateApplied,
+    lastError: ''
+  });
+
+  const rebuild = await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_sync' });
   localStorage.setItem('yandex:last_backup_local_ts', String(at));
+
+  const push = {
+    uploaded: Number(result?.push?.accepted || 0),
+    duplicate: Number(result?.push?.duplicates || 0)
+  };
+  const pull = {
+    applied: stored.inserted,
+    returned: Number(result?.pull?.returned || 0),
+    remaining: Number(result?.pull?.remaining || 0)
+  };
+
   recordSyncRevision({
-    hash: '',
     timestamp: at,
-    domains: ['v7'],
+    domains: ['v7.1'],
     uploadedShared: push.uploaded > 0 || push.duplicate > 0,
-    uploadedDevice: !!settingsPush?.ok,
-    uploadedEventArchive: false,
+    uploadedDevice: result?.settings?.pushed?.changed === true,
+    uploadedEventArchive: push.uploaded > 0,
     reason,
     ok: true
   });
+
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok' } }));
-  return { ok: true, authorization, pull, push, settingsPull, settingsPush };
+  return { ok: true, authorization, push, pull, rebuild, settings: result.settings || null };
 };
 
 export const syncBackupV7 = options => {
   if (syncPromise) return syncPromise;
+
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'syncing' } }));
   syncPromise = runSync(options).catch(async error => {
-    await writeBackupV7State({ lastError: safe(error?.message || 'backup_v7_sync_failed') }).catch(() => null);
-    recordSyncRevision({ reason: options?.reason || 'autosync', ok: false, error: safe(error?.message || 'backup_v7_sync_failed') });
+    await writeBackupV7State({ lastError: safe(error?.message || 'backup_v71_sync_failed') }).catch(() => null);
+    recordSyncRevision({ reason: options?.reason || 'autosync', ok: false, error: safe(error?.message || 'backup_v71_sync_failed') });
     window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'idle' } }));
     throw error;
   }).finally(() => {
     syncPromise = null;
   });
+
   return syncPromise;
 };
 
 export const getBackupV7Status = async () => {
   const state = await readBackupV7State();
-  return { ...state, syncing: !!syncPromise, knownRanges: (await knownRangeKeys()).length };
+  const [ranges, watermarks] = await Promise.all([
+    getAllRows('backup_event_ranges'),
+    getAllRows('backup_chain_watermarks')
+  ]);
+  return {
+    ...state,
+    syncing: !!syncPromise,
+    storedRanges: ranges.length,
+    pendingProjectionRanges: ranges.filter(row => row.projected !== true).length,
+    watermarks: watermarks.length
+  };
 };
 
-export default { syncBackupV7, getBackupV7Status };
+export default {
+  syncBackupV7,
+  getBackupV7Status,
+  rebuildBackupV7LocalAnalytics
+};
