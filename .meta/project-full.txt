@@ -15130,7 +15130,11 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/analytics/playback-ownership.js', 'buildPlaybackFencePayload');
   contains('scripts/analytics/playback-ownership.js', 'releasePlaybackOwnership');
   contains('scripts/analytics/playback-ownership.js', 'getLogicalListenDiagnostics');
-  ['account_device_list', 'account_device_update', 'takeoverEnabled', 'remotePauseEnabled', 'alwaysConfirm'].forEach(marker => contains('scripts/app/profile/account-devices-view.js', marker));
+  ['account_device_list', 'account_device_update', 'takeoverEnabled', 'remotePauseEnabled', 'alwaysConfirm', 'initializationPending', 'inheritedFromDeviceId'].forEach(marker => contains('scripts/app/profile/account-devices-view.js', marker));
+  ['resolveAccountDeviceInitialization', 'account_device_initialize', 'account_device_list', 'accountDevicesAreCompatible', "mode: 'new'", "mode: 'inherit'"].forEach(marker => contains('scripts/app/profile/account-device-initialization.js', marker));
+  excludes('scripts/core/yandex-auth.js', /auth-onboarding-orchestrator|startPreload|runOnboardingFlow|NEW_DEVICE_CONFIRMED_KEY/, 'Yandex Auth продолжает запускать legacy restore onboarding');
+  excludes('scripts/core/yandex-auth.js', /yandexId\s*:\s*yandexId|yandexId\s*:\s*yId/, 'Raw Yandex ID записывается в AUTH_EVENT');
+  contains('service-worker.js', './scripts/app/profile/account-device-initialization.js');
   contains('scripts/app/playback-return-ui.js', 'Вернуть сюда');
   contains('scripts/app/playback-return-ui.js', 'window.playerCore?.play?.()');
   excludes('scripts/app/playback-return-ui.js', /\.(pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist)\s*\(/, 'Return UI управляет playback помимо явного Play');
