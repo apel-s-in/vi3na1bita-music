@@ -3806,8 +3806,8 @@ export const BACKUP_V7_MAX_EVENTS = 500;
 export const BACKUP_V7_MAX_PUSH_RANGES = 20;
 const STATE_KEY = 'v71';
 const PENDING_KEY = 'v71_batch';
-const MAX_BATCH_BYTES = 8 * 1024 * 1024;
-const MAX_RANGE_BYTES = 1800 * 1024;
+const MAX_BATCH_BYTES = 2500 * 1024;
+const MAX_RANGE_BYTES = 700 * 1024;
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Math.floor(Number(value))) : 0;
 const byteLength = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
@@ -3981,9 +3981,13 @@ export const buildPendingBackupV7Batch = async ({ deviceId, ownerYandexIdHash } 
   return batch;
 };
 
-export const verifyBackupV7Range = async range => {
+export const verifyBackupV7Range = async (range, { ownerYandexIdHash = '' } = {}) => {
   if (!range || typeof range !== 'object' || Array.isArray(range)) throw new Error('backup_v71_range_invalid');
   if (safe(range.version) !== BACKUP_V7_VERSION) throw new Error('backup_v71_version_invalid');
+  if (!/^[a-f0-9]{64}$/.test(safe(range.ownerYandexIdHash))) throw new Error('backup_v71_range_owner_invalid');
+  if (ownerYandexIdHash && safe(range.ownerYandexIdHash) !== safe(ownerYandexIdHash)) {
+    throw new Error('backup_v71_range_owner_mismatch');
+  }
 
   const events = Array.isArray(range.events) ? range.events : [];
   const fromSeq = num(range.fromSeq);
