@@ -14809,9 +14809,33 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
       i >= 0 ? a.splice(i, 1, n) : a.push(n);
       Store.setPl(a);
       emitPlDirty();
-      try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: prev?.deletedAt ? 'restore_update' : (prev ? 'update' : 'create'), playlistId: p.id, name: p.name || '', orderCount: (p.order || []).length, hiddenCount: (p.hidden || []).length }); } catch {}
+      try {
+        window.eventLogger?.log?.('PLAYLIST_CHANGED', null, {
+          action: prev?.deletedAt ? 'restore_update' : prev ? 'update' : 'create',
+          playlistId: n.id,
+          mutationId: `playlist_${crypto.randomUUID()}`,
+          playlist: deep(n)
+        });
+      } catch {}
     },
-    del: id => { const a = Store.allPl(), i = a.findIndex(x => x.id === id); if (i < 0) return false; const ts = nowTs(), p = a[i]; a[i] = { ...p, deletedAt: ts, updatedAt: Math.max(Number(p.updatedAt || 0), ts) }; Store.setPl(a); emitPlDirty(); try { window.eventLogger?.log?.('PLAYLIST_CHANGED', null, { action: 'delete', playlistId: id, name: p?.name || '' }); } catch {} return true; },
+    del: id => {
+      const rows = Store.allPl();
+      const index = rows.findIndex(item => item.id === id);
+      if (index < 0) return false;
+      const timestamp = nowTs();
+      rows[index] = { ...rows[index], deletedAt: timestamp, updatedAt: Math.max(Number(rows[index].updatedAt || 0), timestamp) };
+      Store.setPl(rows);
+      emitPlDirty();
+      try {
+        window.eventLogger?.log?.('PLAYLIST_CHANGED', null, {
+          action: 'delete',
+          playlistId: id,
+          mutationId: `playlist_${crypto.randomUUID()}`,
+          playlist: deep(rows[index])
+        });
+      } catch {}
+      return true;
+    },
     act: () => jGet('activeId', '__default__'), setAct: id => jSet('activeId', id),
     ui: () => jGet('ui_v2', { viewMode: 'flat', showNumbers: false, showHidden: false, hiddenPlacement: 'inline' }), setUi: v => jSet('ui_v2', v),
     cols: () => jGet('albumColors', {}), setCols: v => jSet('albumColors', v),
