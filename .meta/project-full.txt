@@ -1407,18 +1407,8 @@ const EXACT_STORAGE_KEYS = new Set([
   'sc3:default',
   'sc3:albumColors',
   'backup:device_registry:v1',
-  'backup:last_local_summary:v1',
-  'backup:last_shared_semantic_hash:v1',
-  'backup:last_history_upload_at:v1',
-  'backup:last_dirty_domains:v1',
-  'backup:local_dirty_ts',
-  'backup:restore_or_skip_done',
   'backup:sync_revisions:v1',
-  'yandex:last_backup_check',
-  'yandex:last_backup_meta',
   'yandex:last_backup_local_ts',
-  'yandex:last_backup_check_ts',
-  'yandex:onboarding:skip:until',
   'intel:internal-user-id',
   'intel:provider-identity:v1',
   'intel:provider-consents:v1',
@@ -1429,7 +1419,7 @@ const EXACT_STORAGE_KEYS = new Set([
   'listeningReceipts:completionOutbox:v1',
   'vf_unread'
 ]);
-const STORAGE_PREFIXES = Object.freeze(['gc_data_', 'backup:last_device_settings_hash:v1:', 'backup:event_archive:last_seq:v2:', 'backup:event_archive:last_hash:v2:', 'vf_webpush_sync_']);
+const STORAGE_PREFIXES = Object.freeze(['gc_data_', 'vf_webpush_sync_']);
 const safe = value => String(value == null ? '' : value).trim();
 const currentYandexId = () => safe(window.YandexAuth?.getProfile?.()?.yandexId);
 const isAccountStorageKey = key => EXACT_STORAGE_KEYS.has(key) || STORAGE_PREFIXES.some(prefix => key.startsWith(prefix));
