@@ -19,7 +19,7 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
     profile.createdAt ||= profile.updatedAt;
     nInp.classList.add('name-inactive'); nInp.blur();
     await metaDB?.setGlobal?.('user_profile', profile).catch(() => {});
-    try { window.eventLogger?.log?.('PROFILE_UPDATED', null, { field: 'name', value: profile.name }); window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'profile',immediate:true}})); } catch {}
+    try { window.eventLogger?.log?.('PROFILE_UPDATED', null, { field: 'name', value: profile.name }); } catch {}
     window.NotificationSystem?.success?.('Имя сохранено'); onProfileChanged?.(); syncShardMeta();
   };
 
@@ -50,7 +50,7 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
     onPick: async (v, m) => {
       const isReset = v === '🔄'; profile.avatar = isReset ? '😎' : v; profile.updatedAt = Date.now(); profile.createdAt ||= profile.updatedAt; avatarBtn.textContent = profile.avatar;
       await metaDB?.setGlobal?.('user_profile', profile).catch(() => {});
-      try { window.eventLogger?.log?.('PROFILE_UPDATED', null, { field: 'avatar', reset: isReset, value: profile.avatar }); window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'profile',immediate:true}})); } catch {}
+      try { window.eventLogger?.log?.('PROFILE_UPDATED', null, { field: 'avatar', reset: isReset, value: profile.avatar }); } catch {}
       m?.remove?.(); onProfileChanged?.(); if (isReset) window.NotificationSystem?.info?.('Аватар сброшен');
     }
   });
