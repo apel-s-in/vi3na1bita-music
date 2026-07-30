@@ -4248,8 +4248,10 @@ const runSync = async ({ reason = 'autosync', includeSettings = true } = {}) => 
   bindDeferredRepair();
 
   const social = await getSocialSession();
-  const ownerYandexIdHash = safe(social?.ownerYandexIdHash || social?.authorization?.ownerYandexIdHash);
+  const yandexId = safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
+  const ownerYandexIdHash = safe(social?.ownerYandexIdHash || social?.authorization?.ownerYandexIdHash) || (yandexId ? await sha256Hex(`ya:${yandexId}`) : '');
   const deviceId = safe(social?.accountDevice?.deviceId || localStorage.getItem('deviceStableId'));
+  if (!/^[a-f0-9]{64}$/.test(ownerYandexIdHash)) throw new Error('backup_v71_owner_hash_required');
   if (!deviceId) throw new Error('backup_v71_device_required');
 
   const state = await readBackupV7State();
