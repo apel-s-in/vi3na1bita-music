@@ -144,6 +144,9 @@ const validatePwaAndLegacy = () => {
   const pwa = 'scripts/app/pwa-install.js';
   ['pwa_install_intent', 'pwa_launch_verify', 'isDevicePwa'].forEach(marker => contains(pwa, marker));
   contains('scripts/core/device-context.js', 'display-mode: standalone');
+  contains('scripts/app/promocode.js', 'W.PromocodeGate');
+  contains('scripts/app/promocode.js', 'refresh:bind');
+  contains('scripts/e2e/utils.js', 'window.PromocodeGate?.refresh?.()');
   excludes(pwa, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'PWA bridge управляет playback');
   const applicationFiles = [...listFiles('scripts').filter(file => !file.startsWith('scripts/ci/') && !file.startsWith('scripts/e2e/')), ...listFiles('data')];
   assertNoMatch(applicationFiles, /socials_all_visited|socialVisitAll|social_visit_all|Подписчик всего/g, 'Удалённое социальное достижение отсутствует');
