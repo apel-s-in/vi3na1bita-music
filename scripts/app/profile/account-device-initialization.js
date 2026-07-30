@@ -136,11 +136,20 @@ export const resolveAccountDeviceInitialization = async ({ session = null } = {}
     throw new Error('account_device_initialization_incomplete');
   }
 
+  const settingsSourceDeviceId = safe(initialized.settingsSourceDeviceId);
+  try {
+    if (choice.mode === 'inherit' && settingsSourceDeviceId) {
+      localStorage.setItem('backup:v7:settings-template-device', settingsSourceDeviceId);
+    } else {
+      localStorage.removeItem('backup:v7:settings-template-device');
+    }
+  } catch {}
+
   window.dispatchEvent(new CustomEvent('account:device-initialized', {
     detail: {
       mode: choice.mode,
       device: initialized.device,
-      settingsSourceDeviceId: safe(initialized.settingsSourceDeviceId)
+      settingsSourceDeviceId
     }
   }));
 
