@@ -143,7 +143,7 @@ export const claimPlaybackOwnership = async ({ trackUid, position = 0, confirm =
 const isTransportFailure = error => {
   const status = Number(error?.status || 0);
   const message = safe(error?.message);
-  return !status || status === 429 || status >= 500 || /network|fetch|timeout|backoff|offline|unavailable/i.test(message);
+  return !status || status === 429 || status >= 500 || /network|fetch|timeout|backoff|offline|unavailable|listen_track_not_catalogued|playback_track_version_mismatch/i.test(message);
 };
 
 const withTimeout = (promise, timeoutMs) => Promise.race([
