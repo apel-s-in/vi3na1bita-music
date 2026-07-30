@@ -1820,104 +1820,35 @@ export class AchievementEngine {
       this._checkAgain = true;
       return;
     }
+
     this._checking = true;
     try {
-      const statsArr = await metaDB.getAllStats(),
-        gStat = statsArr.find(s => s.uid === 'global')?.featuresUsed || {};
-      const trStats = statsArr.filter(s => s.uid !== 'global'),
-        strk = (await metaDB.getGlobal('global_streak'))?.value?.current || 0;
-      const favCount = window.FavoritesManager ? window.FavoritesManager.getSnapshot().filter(i => !i.inactiveAt && !i.deletedAt).length : 0;
-      const agg = trStats.reduce(
-        (a, b) => {
-          const f = b.featuresUsed || {};
-          a.validPlays += b.globalValidListenCount || 0;
-          a.fullPlays += b.globalFullListenCount || 0;
-          a.totalSec += b.globalListenSeconds || 0;
-          if (b.globalValidListenCount > 0) a.uniqueTracks++;
-          a.maxOneTrackFull = Math.max(a.maxOneTrackFull, b.globalFullListenCount || 0);
-          ['lyrics', 'nightPlay', 'earlyPlay', 'hiQuality', 'shufflePlay'].forEach((k, i) => (a[['featLyrics', 'nightPlays', 'earlyPlays', 'hiPlays', 'shufflePlays'][i]] += f[k] || 0));
-          return a;
-        },
-        {
-          validPlays: 0,
-          fullPlays: 0,
-          totalSec: 0,
-          uniqueTracks: 0,
-          maxOneTrackFull: 0,
-          featLyrics: 0,
-          nightPlays: 0,
-          earlyPlays: 0,
-          hiPlays: 0,
-          shufflePlays: 0,
-          favCount,
-          streak: strk,
-          play11_11: gStat.play_11_11 || 0,
-          weekendPlays: gStat.weekend_play || 0,
-          backups: gStat.backup || 0,
-          pwaInstalled: gStat.pwa_installed || 0,
-          sleepTimerTriggers: gStat.sleep_timer || 0
-        }
-      );
-      if (window.TrackRegistry) {
-        const allReg = window.TrackRegistry.getAllUids().map(u => window.TrackRegistry.getTrackByUid(u)),
-          playedUids = new Set(trStats.filter(s => s.globalFullListenCount > 0).map(s => s.uid));
-        new Set(allReg.map(t => t.sourceAlbum).filter(Boolean)).forEach(aKey => {
-          const aT = allReg.filter(t => t.sourceAlbum === aKey);
-          agg[`album_${aKey}_complete`] = aT.filter(t => playedUids.has(t.uid)).length >= aT.length && aT.length > 0 ? 1 : 0;
-        });
+      const service = window.ListeningReceipts;
+      if (service && (force || !service.getRewardCatalog?.().length)) {
+        await service.refreshStatus?.().catch(() => null);
       }
-      let chg = false,
-        now = Date.now();
-      const unlock = (id, name, icon) => {
-        this.unlocked[id] = now;
-        const ev = this._notifyUnlock(name, icon, id);
-        this.unlockMeta[id] = normalizeAchievementUnlockMetaRow(id, {
-          unlockedAt: now,
-          eventId: ev?.eventId,
-          sessionId: ev?.sessionId,
-          deviceStableId: ev?.deviceStableId,
-          deviceHash: ev?.deviceHash,
-          deviceLabel: ev?.deviceLabel,
-          deviceClass: ev?.deviceClass,
-          devicePwa: ev?.devicePwa,
-          platform: ev?.platform,
-          source: 'achievement_engine'
-        });
+
+      const progress = service?.lastProgress || {};
+      this.lastAgg = {
+        validPlays: Number(progress.validPlays || 0),
+        fullPlays: Number(progress.fullPlays || 0),
+        totalSec: Number(progress.totalSec || 0),
+        uniqueTracks: Number(progress.uniqueTracks || 0),
+        maxOneTrackFull: Number(progress.maxOneTrackFull || 0),
+        hiPlays: Number(progress.hiFullPlays || 0),
+        earlyPlays: Number(progress.earlyFullPlays || 0),
+        nightPlays: Number(progress.nightFullPlays || 0),
+        weekendPlays: Number(progress.weekendValidPlays || 0),
+        shufflePlays: Number(progress.shuffleFullPlays || 0),
+        streak: Number(progress.longestStreak || progress.streak || 0)
       };
-      for (const [k, r] of Object.entries(this.dict)) {
-        if (r.seasonal && ((r.seasonal.start && now < r.seasonal.start) || (r.seasonal.end && now > r.seasonal.end) || (r.seasonal.months && !r.seasonal.months.includes(new Date().getMonth())))) continue;
-        // Наградные достижения подтверждает только сервер.
-        // Локальные stats используются лишь как предварительный progress.
-        if (this._requiresServerVerification(r)) continue;
-        if (r.type === 'static' && !this.unlocked[k]) {
-          if (r.trigger.conditions.every(c => this._evalCondition({ ...c, target: c.target }, agg))) {
-            unlock(k, r.ui.name, r.ui.icon);
-            chg = true;
-          }
-        } else if (r.type === 'scalable') {
-          let lvl = 1,
-            safety = 50;
-          while (this.unlocked[`${k}_${lvl}`]) lvl++;
-          while (safety-- > 0 && this._hasScalableLevel(r, lvl)) {
-            const completed = r.trigger.conditions.every(condition => this._evalCondition({ ...condition, target: this._getSc(r, lvl, false) }, agg));
-            if (!completed) break;
-            const id = `${k}_${lvl}`;
-            unlock(id, r.ui.name.replace('{level}', lvl), r.ui.icon);
-            chg = true;
-            lvl++;
-          }
-        }
-      }
-      this.lastAgg = agg;
-      if (chg) {
-        await Promise.all([metaDB.setGlobal('unlocked_achievements', this.unlocked), metaDB.setGlobal('achievement_unlock_meta', this.unlockMeta)]);
-        window.ListeningReceipts?.refreshStatus?.().catch(() => null);
-        try {
-          window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'achievements', immediate: true } }));
-        } catch {}
-      }
+
       this.achievements = this._buildUIArray();
-      this.broadcast(agg.streak, { reason });
+      this.broadcast(this.lastAgg.streak, {
+        reason: reason || 'server_overlay',
+        serverConfirmed: true,
+        pending: !service?.getRewardCatalog?.().length
+      });
     } finally {
       this._checking = false;
       if (this._checkAgain) {
