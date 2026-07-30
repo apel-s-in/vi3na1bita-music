@@ -107,6 +107,8 @@ const validateListening = () => {
   contains(server, 'splitListenInterval');
   contains(server, 'assertConfirmedListeningInvariants');
   contains(server, 'publicConfirmedListeningStats');
+  contains(server, 'timeConsistent');
+  excludes(server, /function publicConfirmedListeningStats[\s\S]{0,300}assertConfirmedListeningInvariants\(progress\)/, 'Read-only server statistics снова падает на legacy invariant');
   contains('scripts/analytics/confirmed-listening-stats.js', 'resolveListeningStatsViewModel');
   contains('scripts/analytics/temporal-buckets.js', 'splitTemporalInterval');
   contains('scripts/analytics/session-tracker.js', 'creditedSegments');
@@ -125,6 +127,9 @@ const validateListening = () => {
 const validateRewards = () => {
   const engine = 'scripts/analytics/achievement-engine.js';
   ['_requiresServerVerification', 'isAuthorized', 'server_catalog_pending', 'getCompletedCount', '_hasScalableLevel', 'server_wallet'].forEach(marker => contains(engine, marker));
+  contains('scripts/app.js', 'await W.achievementEngine._initBoot()');
+  contains(engine, "reason || 'server_overlay'");
+  excludes(engine, /const statsArr = await metaDB\.getAllStats\(\)/, 'Server-only Achievement Engine снова строит полный локальный aggregate');
   contains(engine, 'return true;');
   excludes(engine, /completed\s*=\s*.*localUnlocked/, 'Локальный unlock участвует в completion достижения');
   excludes(engine, /reward\?\.current\s*\?\?\s*localCurrent/, 'Локальный progress подменяет серверный');
@@ -232,6 +237,10 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/ci/generate-listen-catalog.mjs', "trackLines.join('\\n')");
   contains('scripts/ci/generate-listen-catalog.mjs', 'listen-track-catalog.function-env.json');
   contains(server, 'LISTEN_TRACK_CATALOG_ALBUM_');
+  contains(server, 'playbackTrackFromCatalog');
+  contains(server, 'catalogSourceStats');
+  contains(server, 'catalogReady');
+  contains(ownership, 'listen_track_not_catalogued');
   excludes(server, /requestedVersion\s*&&\s*requestedVersion\s*!==\s*track\.trackVersion/, 'Playback claim снова блокируется устаревшей клиентской версией каталога');
   excludes(ownership, /const version = safe\(trackVersion\) \|\| await getTrackVersion\(uid\)/, 'Ownership claim снова зависит от клиентского trackVersion');
   contains('service-worker.js', './scripts/analytics/playback-fence.js');
