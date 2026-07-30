@@ -10080,13 +10080,10 @@ export const refreshAccountDevices = async ({ force = false } = {}) => {
   state.loading = true;
   state.error = '';
   try {
-    const [devices, playback] = await Promise.all([
-      requestSocialAction('account_device_list', {}),
-      requestSocialAction('playback_state_get', { deviceId: getDeviceId() }).catch(() => null)
-    ]);
+    const devices = await requestSocialAction('account_device_list', {});
     state.owner = currentOwner;
     state.items = (Array.isArray(devices?.items) ? devices.items : []).map(normalizeDevice).filter(item => item.deviceId).sort((left, right) => right.lastSeenAt - left.lastSeenAt);
-    state.playback = playback?.playback || null;
+    state.playback = null;
     state.loaded = true;
     state.retryAt = 0;
     window.dispatchEvent(new CustomEvent('account:devices-updated', { detail: { count: state.items.length } }));
