@@ -19,7 +19,7 @@ const readTimezonePolicyRevision = yandexId => {
     return 0;
   }
 };
-const isRealtimeAction = action => /^(room_|signal_|lan_code_|ranked_|playback_)/.test(action) || action === 'push_send';
+const isRealtimeAction = action => /^(room_|signal_|lan_code_|ranked_)/.test(action) || action === 'push_send';
 export const getSocialServerBackoffState = () => ({ active: Date.now() < serverBackoffUntil, retryAt: serverBackoffUntil, remainingMs: Math.max(0, serverBackoffUntil - Date.now()) });
 const readProfile = () => {
   const auth = window.YandexAuth;
