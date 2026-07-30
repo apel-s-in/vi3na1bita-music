@@ -91,15 +91,27 @@ export class SessionTracker {
 
     if (creditedMs > 0) {
       this.s.accumulatedMs += creditedMs;
-      this.s.creditedSegments.push({
-        startedAt: rt.prevTickAt,
-        endedAt: rt.now,
-        creditedMs
-      });
+      const last = this.s.creditedSegments[this.s.creditedSegments.length - 1];
+      const contiguous = last && Math.abs(Number(last.endedAt || 0) - Number(rt.prevTickAt || 0)) <= 1500;
 
-      if (this.s.creditedSegments.length > 500) {
-        this.s.creditedSegments =
-          this.s.creditedSegments.slice(-500);
+      if (contiguous) {
+        last.endedAt = rt.now;
+        last.creditedMs += creditedMs;
+      } else {
+        this.s.creditedSegments.push({
+          startedAt: rt.prevTickAt,
+          endedAt: rt.now,
+          creditedMs
+        });
+      }
+
+      if (this.s.creditedSegments.length > 512) {
+        const first = this.s.creditedSegments.shift();
+        const next = this.s.creditedSegments[0];
+        if (first && next && Math.abs(Number(first.endedAt || 0) - Number(next.startedAt || 0)) <= 1500) {
+          next.startedAt = first.startedAt;
+          next.creditedMs += first.creditedMs;
+        }
       }
     }
   }
