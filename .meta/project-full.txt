@@ -4107,6 +4107,46 @@ const getAllRows = async store => {
   });
 };
 
+const parseRows = raw => {
+  try {
+    const value = JSON.parse(raw || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+};
+
+export const buildBackupV7SharedDocument = async () => {
+  const profile = (await metaDB.getGlobal('user_profile').catch(() => null))?.value || {};
+  return {
+    version: '7.1',
+    profile: {
+      name: safe(profile.name || 'Слушатель') || 'Слушатель',
+      avatar: safe(profile.avatar || '😎') || '😎',
+      createdAt: num(profile.createdAt),
+      updatedAt: num(profile.updatedAt)
+    },
+    playlists: parseRows(localStorage.getItem('sc3:playlists')),
+    updatedAt: Date.now()
+  };
+};
+
+export const applyBackupV7SharedDocument = async document => {
+  if (!document || typeof document !== 'object' || Array.isArray(document)) return { applied: false };
+  const profile = document.profile && typeof document.profile === 'object' ? document.profile : null;
+  const playlists = Array.isArray(document.playlists) ? document.playlists : null;
+  window.__backupV7SharedApplying = true;
+  try {
+    if (profile) await metaDB.setGlobal('user_profile', { ...profile });
+    if (playlists) localStorage.setItem('sc3:playlists', JSON.stringify(playlists));
+  } finally {
+    window.__backupV7SharedApplying = false;
+  }
+  if (profile) window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason: 'backup_v71_shared' } }));
+  if (playlists) window.dispatchEvent(new CustomEvent('playlists:updated', { detail: { reason: 'backup_v71_shared' } }));
+  return { applied: !!profile || !!playlists, profile: !!profile, playlists: playlists?.length || 0 };
+};
+
 const readWatermarks = async () => (await getAllRows('backup_chain_watermarks')).map(row => ({
   deviceId: safe(row.deviceId),
   chainId: safe(row.chainId),
@@ -4280,6 +4320,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
 
   const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
   const localSettingsHash = settingsPayload ? await settingsSemanticHash(settingsPayload) : '';
+  const sharedPayload = pushEnabled ? await buildBackupV7SharedDocument() : null;
   const settingsTemplateDeviceId = safe(localStorage.getItem(TEMPLATE_KEY));
   const sendSettings = !!settingsPayload && !settingsTemplateDeviceId && localSettingsHash !== state.settingsLocalHash;
 
@@ -4287,6 +4328,8 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
     pushRanges: batch?.ranges || [],
     watermarks,
     knownSettingsHash: state.settingsServerHash,
+    knownSharedHash: state.sharedServerHash,
+    shared: sharedPayload,
     settings: sendSettings ? settingsPayload : null,
     settingsTemplateDeviceId,
     includeDeviceCatalog: includeDeviceCatalog === true,
@@ -4311,6 +4354,9 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
 
   if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
 
+  const sharedDocument = result?.shared?.current || null;
+  const sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
+
   let templateApplied = false;
   if (settingsTemplateDeviceId && result?.settings?.template) {
     const applied = await applySettingsDocument(result.settings.template);
@@ -4331,6 +4377,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
     lastSyncAt: at,
     settingsLocalHash: sendSettings ? localSettingsHash : state.settingsLocalHash,
     settingsServerHash: serverSettingsHash,
+    sharedServerHash: safe(result?.shared?.hash || state.sharedServerHash),
     settingsTemplateApplied: state.settingsTemplateApplied || templateApplied,
     lastError: ''
   });
@@ -4359,7 +4406,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   });
 
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok' } }));
-  return { ok: true, authorization, push, pull, rebuild, settings: result.settings || null };
+  return { ok: true, authorization, push, pull, rebuild, shared: { applied: sharedApplied.applied === true, changed: result?.shared?.changed === true, hash: safe(result?.shared?.hash) }, settings: result.settings || null };
 };
 
 export const syncBackupV7 = options => {
