@@ -1172,7 +1172,7 @@ async function actionPlaybackClaim(event, body) {
   await enforceRateLimit({ scope: 'playback_claim', actor: `${auth.playerId}:${auth.deviceId}`, limit: 120, windowMs: 60 * 60 * 1000 });
   // UID приходит от клиента, а trackVersion всегда определяет серверный каталог.
   // Устаревший клиентский каталог не должен блокировать Next/Prev или Play.
-  const track = listenTrackFromCatalog(body.trackUid);
+  const track = playbackTrackFromCatalog(body.trackUid);
   const key = playbackStateKey(auth.playerId);
   for (let attempt = 0; attempt < 10; attempt++) {
     const row = await kvGet(key);
@@ -1234,7 +1234,7 @@ async function actionPlaybackTransferPrepare(event, body) {
   const sourceDevice = normalizeAccountDevice(payload(sourceRow), auth.playerId);
   if (sourceDevice.revokedAt > 0) throw new Error('playback_source_device_revoked');
   if (sourceDevice.remotePauseEnabled === false) throw new Error('playback_remote_pause_disabled');
-  const targetTrack = listenTrackFromCatalog(body.trackUid || state.trackUid);
+  const targetTrack = playbackTrackFromCatalog(body.trackUid || state.trackUid);
   const targetVersion = targetTrack.trackVersion;
   const transferId = rid('transfer');
   const transferToken = base64url(crypto.randomBytes(32));
@@ -1283,7 +1283,7 @@ async function actionPlaybackTransferCommit(event, body) {
       error.httpStatus = 409;
       throw error;
     }
-    const track = listenTrackFromCatalog(transfer.targetTrackUid);
+    const track = playbackTrackFromCatalog(transfer.targetTrackUid);
     if (track.trackVersion !== transfer.targetTrackVersion) {
       const error = new Error('playback_track_version_mismatch');
       error.httpStatus = 409;
@@ -3122,6 +3122,19 @@ function listenTrackFromCatalog(trackUid) {
   }
   return track;
 }
+
+function playbackTrackFromCatalog(trackUid) {
+  const uid = sanitizeId(trackUid, 160);
+  if (!uid) throw new Error('playback_track_required');
+  return LISTEN_TRACK_CATALOG.get(uid) || Object.freeze({
+    uid,
+    album: '',
+    duration: 7200,
+    trackVersion: `catalog_pending_${hash(uid).slice(0, 32)}`,
+    catalogued: false
+  });
+}
+
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
@@ -3763,7 +3776,10 @@ function publicListenSession(session) {
 }
 function publicConfirmedListeningStats(progressRaw) {
   const progress = normalizeAchievementProgress(progressRaw, progressRaw?.playerId);
-  assertConfirmedListeningInvariants(progress);
+  const byHourMs = sumNumbers(progress.listenByHourMs);
+  const byWeekdayMs = sumNumbers(progress.listenByWeekdayMs);
+  const byTrackMs = sumObjectNumbers(progress.listenMsByTrack);
+  const timeConsistent = byHourMs === progress.classifiedListenMs && byWeekdayMs === progress.classifiedListenMs && byTrackMs === progress.classifiedListenMs && progress.totalListenMs === progress.classifiedListenMs + progress.legacyUnclassifiedMs;
   const trackUids = new Set([...Object.keys(progress.listenMsByTrack), ...Object.keys(progress.perTrackValid), ...Object.keys(progress.perTrackFull)]);
   return {
     version: 1,
@@ -3781,16 +3797,17 @@ function publicConfirmedListeningStats(progressRaw) {
       .map(uid => ({ uid, listenMs: Math.max(0, Math.floor(num(progress.listenMsByTrack[uid]))), validPlays: Math.max(0, Math.floor(num(progress.perTrackValid[uid]))), fullPlays: Math.max(0, Math.floor(num(progress.perTrackFull[uid]))) }))
       .sort((left, right) => right.listenMs - left.listenMs || left.uid.localeCompare(right.uid)),
     invariant: {
-      byHourMs: sumNumbers(progress.listenByHourMs),
-      byWeekdayMs: sumNumbers(progress.listenByWeekdayMs),
-      byTrackMs: sumObjectNumbers(progress.listenMsByTrack),
+      byHourMs,
+      byWeekdayMs,
+      byTrackMs,
       classifiedListenMs: progress.classifiedListenMs,
       totalListenMs: progress.totalListenMs,
       fullPlaysByTrack: sumObjectNumbers(progress.perTrackFull),
       validPlaysByTrack: sumObjectNumbers(progress.perTrackValid),
       fullCountersConsistent: progress.fullPlays === sumObjectNumbers(progress.perTrackFull),
       validCountersConsistent: progress.validPlays === sumObjectNumbers(progress.perTrackValid),
-      exact: progress.legacyUnclassifiedMs === 0
+      timeConsistent,
+      exact: timeConsistent && progress.legacyUnclassifiedMs === 0
     },
     updatedAt: progress.updatedAt
   };
@@ -4768,7 +4785,11 @@ async function actionAchievementRewardStatus(event, body) {
   const active = normalizeListenSession(payload(activeRow));
   const progress = normalizeAchievementProgress(payload(await kvGet(achievementProgressKey(playerId))), playerId);
   const favoriteState = normalizeFavoriteState(payload(await kvGet(favoriteStateKey(playerId))), playerId);
-  const [rewards, loyalty] = await Promise.all([reconcileAchievementRewards(playerId, progress), getLoyaltyStatus(playerId)]);
+  const storedWallet = normalizeShardWallet(payload(await kvGet(walletKey(playerId))), playerId);
+  const [rewards, loyalty] = await Promise.all([
+    reconcileAchievementRewards(playerId, progress).catch(error => ({ enabled: false, grants: [], wallet: storedWallet, error: safe(error?.message) })),
+    getLoyaltyStatus(playerId).catch(error => ({ loyalty: publicLoyaltyState(normalizeLoyaltyState({}, playerId)), loyaltyRewards: [], wallet: storedWallet, error: safe(error?.message) }))
+  ]);
   return {
     ok: true,
     shadow: CFG.listeningReceiptsShadow,
@@ -4779,6 +4800,7 @@ async function actionAchievementRewardStatus(event, body) {
     activeSession: activeRow && active.playerId === playerId && active.status === 'active' ? publicListenSession(active) : null,
     playback: publicPlaybackState(playback, auth.deviceId),
     grants: rewards.grants,
+    warnings: [safe(rewards.error), safe(loyalty.error)].filter(Boolean),
     loyaltyRewards: loyalty.loyaltyRewards,
     loyalty: loyalty.loyalty,
     wallet: publicShardWallet(loyalty.wallet || rewards.wallet),
