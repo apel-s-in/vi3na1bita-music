@@ -13,7 +13,7 @@ export const renderCloudMetaPair = ({ cloudInfo = null, compareVm = null, restor
 export const renderYandexActionGrid = (items = null) => {
   const rows = items || [
     ['rename', '✏️ Имя'],
-    ['save-backup', '☁️ Передать плейлисты и данные'],
+    ['save-backup', '☁️ Синхронизировать сейчас'],
     ['sync-log', '📜 Что изменилось']
   ];
   return `<div class="yandex-auth-actions">${rows.map(([act, text]) => `<button class="modal-action-btn" data-ya-action="${esc(act)}">${esc(text)}</button>`).join('')}</div>`;
