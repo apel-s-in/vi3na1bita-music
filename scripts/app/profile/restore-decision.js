@@ -1,9 +1,0 @@
-import { safeNum } from '../../analytics/backup-summary.js';
-export const RESTORE_SKIP_REMINDER_KEY = 'yandex:onboarding:skip:until';
-const sS = v => String(v == null ? '' : v).trim();
-export const sessionKeyForCloudSnapshot = ts => `yandex:onboarding:shown:${Number(ts || 0)}`;
-export const isReminderSuppressedForSnapshot = cT => { try{return localStorage.getItem('backup:restore_or_skip_done')==='1' && cT>0 && safeNum(localStorage.getItem('yandex:last_backup_local_ts'))>0 && Math.abs(cT-safeNum(localStorage.getItem('yandex:last_backup_local_ts')))<5000;}catch{return false;} };
-export const isSnoozedUntilNow = () => { try{const u=safeNum(localStorage.getItem(RESTORE_SKIP_REMINDER_KEY)); return u>0 && Date.now()<u;}catch{return false;} };
-export const snoozeReminder = (h = 24) => { try{localStorage.setItem(RESTORE_SKIP_REMINDER_KEY, String(Date.now()+Math.max(1,safeNum(h)||24)*3600000));}catch{} };
-export const pickDeviceSettingsRestoreKey = () => sS(localStorage.getItem('deviceStableId') || '');
-export default { RESTORE_SKIP_REMINDER_KEY, sessionKeyForCloudSnapshot, isReminderSuppressedForSnapshot, isSnoozedUntilNow, snoozeReminder, pickDeviceSettingsRestoreKey };
