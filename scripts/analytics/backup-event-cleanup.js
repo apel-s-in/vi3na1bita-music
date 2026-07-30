@@ -1,7 +1,7 @@
 // UID.003_(Event log truth)_(единая очистка event log перед backup/restore/rebuild)_(dedupe/filter/trim должны быть одинаковыми во всех местах) UID.099_(Multi-device sync model)_(merge по eventId)_(не раздувать backup дублями событий) UID.096_(Helper-first anti-duplication policy)_(убрать копипасту cleanup из builders/importers/app)
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 
-export const WARM_EVENT_LIMIT = 10000;
+export const WARM_EVENT_LIMIT = 0;
 const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 
 export const normalizeEventList = (events = [], { limit = WARM_EVENT_LIMIT, dropNoise = true, sort = true, dedupeAchievementUnlocks = true } = {}) => {
