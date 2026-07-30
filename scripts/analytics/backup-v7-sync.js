@@ -217,7 +217,7 @@ const applySettingsDocument = async settings => {
   return { applied, deferred: false };
 };
 
-const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
+const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false, legacyCleanup = null } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
@@ -250,6 +250,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
     settings: sendSettings ? settingsPayload : null,
     settingsTemplateDeviceId,
     includeDeviceCatalog: includeDeviceCatalog === true,
+    legacyCleanup: legacyCleanup && typeof legacyCleanup === 'object' && !Array.isArray(legacyCleanup) ? legacyCleanup : null,
     maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
   });
 
@@ -323,7 +324,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   });
 
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok' } }));
-  return { ok: true, authorization, push, pull, rebuild, shared: { applied: sharedApplied.applied === true, changed: result?.shared?.changed === true, hash: safe(result?.shared?.hash) }, settings: result.settings || null };
+  return { ok: true, authorization, push, pull, rebuild, shared: { applied: sharedApplied.applied === true, changed: result?.shared?.changed === true, hash: safe(result?.shared?.hash) }, legacyCleanup: result?.legacyCleanup || null, settings: result.settings || null };
 };
 
 export const syncBackupV7 = options => {
@@ -340,6 +341,20 @@ export const syncBackupV7 = options => {
   });
 
   return syncPromise;
+};
+export const cleanupLegacyBackupV6 = async ({ confirmed = false } = {}) => {
+  const result = await syncBackupV7({
+    reason: confirmed ? 'legacy_v6_cleanup' : 'legacy_v6_cleanup_preview',
+    includeSettings: false,
+    pushEnabled: false,
+    maxPullRanges: 1,
+    legacyCleanup: {
+      dryRun: confirmed !== true,
+      confirm: confirmed === true ? 'DELETE_LEGACY_V6' : ''
+    }
+  });
+  if (!result?.legacyCleanup) throw new Error('legacy_cleanup_result_missing');
+  return result.legacyCleanup;
 };
 
 export const getBackupV7Status = async () => {
@@ -359,6 +374,7 @@ export const getBackupV7Status = async () => {
 
 export default {
   syncBackupV7,
+  cleanupLegacyBackupV6,
   getBackupV7Status,
   rebuildBackupV7LocalAnalytics
 };
