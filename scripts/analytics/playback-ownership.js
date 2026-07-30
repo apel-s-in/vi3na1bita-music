@@ -105,13 +105,13 @@ export const reconcilePlaybackOwnership = async ({ reason = 'foreground' } = {})
   return playback;
 };
 
-export const claimPlaybackOwnership = async ({ trackUid, trackVersion = '', position = 0, confirm = true } = {}) => {
+export const claimPlaybackOwnership = async ({ trackUid, position = 0, confirm = true } = {}) => {
   const uid = safe(trackUid);
   if (!uid) throw new Error('playback_track_required');
-  const version = safe(trackVersion) || await getTrackVersion(uid);
   const currentGrant = readOwnershipGrant();
   const base = {
-    ...buildPlaybackFencePayload({ grant: currentGrant, deviceId: currentDeviceId(), trackVersion: version }),
+    ...buildPlaybackFencePayload({ grant: currentGrant, deviceId: currentDeviceId() }),
+    trackVersion: '',
     trackUid: uid,
     position: Math.max(0, Number(position || 0))
   };
