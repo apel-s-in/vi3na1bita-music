@@ -11733,7 +11733,7 @@ const backupRows = () => DeviceRegistry.normalizeDeviceRegistry(DeviceRegistry.g
 const renderBackupHistoryRow = device => renderSmallListRow({
   icon: icon(device),
   title: device.label || 'Историческое устройство',
-  desc: `${[device.class, device.platform, device.pwa ? 'PWA' : '', device.lastSeenAt ? fmt(device.lastSeenAt) : ''].filter(Boolean).join(' · ')} · только история backup`,
+  desc: `${[device.class, device.platform, device.pwa ? 'PWA' : '', device.lastSeenAt ? fmt(device.lastSeenAt) : ''].filter(Boolean).join(' · ')} · локальная история установки`,
   style: 'width:100%;text-align:left;opacity:.62'
 });
 const renderLoading = () => state.error ? `<div class="fav-empty">Ошибка загрузки: ${esc(state.error)}</div>` : '<div class="fav-empty">Получаем серверный список…</div>';
@@ -11743,7 +11743,7 @@ export const renderAccountDevicesBlock = () => {
   const active = state.items.filter(item => !item.revokedAt);
   const backup = backupRows();
   const playbackOwner = state.playback?.active ? state.playback.ownerLabel || 'другое устройство' : 'нет активного владельца';
-  return `<section class="yandex-auth-note account-devices-card" id="ya-devices-block"><div class="account-card-heading"><span>📱 Playback и безопасность</span><button type="button" class="om-btn om-btn--ghost" id="ya-devices-refresh">↻</button></div><div class="account-device-summary">Активных устройств: <b>${active.length}</b> · серверный owner: <b>${esc(playbackOwner)}</b></div><div class="account-device-list">${state.loaded ? (state.items.length ? state.items.slice(0, 4).map(renderServerRow).join('') : '<div class="fav-empty">Серверные устройства не найдены</div>') : renderLoading()}</div>${state.items.length > 4 ? '<button type="button" class="om-btn om-btn--outline om-fullw" id="ya-devices-open">Показать все серверные устройства</button>' : ''}<div class="account-backup-device-note"><b>История backup: ${backup.length}</b><br>Эти записи не дают playback-доступ и не являются доверенными server devices.</div>${backup.length ? `<div class="account-device-list">${backup.slice(0, 6).map(renderBackupHistoryRow).join('')}</div>` : ''}<button type="button" class="om-btn om-btn--ghost om-fullw" id="ya-playback-diagnostics">Диагностика playback</button></section>`;
+  return `<section class="yandex-auth-note account-devices-card" id="ya-devices-block"><div class="account-card-heading"><span>📱 Playback и безопасность</span><button type="button" class="om-btn om-btn--ghost" id="ya-devices-refresh">↻</button></div><div class="account-device-summary">Активных устройств: <b>${active.length}</b> · серверный owner: <b>${esc(playbackOwner)}</b></div><div class="account-device-list">${state.loaded ? (state.items.length ? state.items.slice(0, 4).map(renderServerRow).join('') : '<div class="fav-empty">Серверные устройства не найдены</div>') : renderLoading()}</div>${state.items.length > 4 ? '<button type="button" class="om-btn om-btn--outline om-fullw" id="ya-devices-open">Показать все серверные устройства</button>' : ''}<div class="account-backup-device-note"><b>Локальная история установок: ${backup.length}</b><br>Эти записи используются только как подписи локальных событий, не дают playback-доступ и не являются доверенными server devices.</div>${backup.length ? `<div class="account-device-list">${backup.slice(0, 6).map(renderBackupHistoryRow).join('')}</div>` : ''}<button type="button" class="om-btn om-btn--ghost om-fullw" id="ya-playback-diagnostics">Диагностика playback</button></section>`;
 };
 
 const updateDevice = async (deviceId, patch) => {
