@@ -1,9 +1,8 @@
-// Backup v7 transport.
-// Передаёт OAuth и signed social session, не управляет playback.
+// Backup v7.1 batch transport.
+// Один вызов выполняет authorization, push, pull и settings exchange.
 import { getSocialSession } from './social-session.js';
 
 export const YANDEX_BACKUP_V7_PROXY = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
-
 const safe = value => String(value == null ? '' : value).trim();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -37,6 +36,7 @@ const request = async (mode, data = {}, { retries = 1 } = {}) => {
         body: JSON.stringify({ mode, ...data })
       });
       const result = await readJson(response);
+
       if (!response.ok || result.ok === false) {
         const error = new Error(safe(result.error || `backup_v7_http_${response.status}`));
         error.status = response.status;
@@ -47,24 +47,19 @@ const request = async (mode, data = {}, { retries = 1 } = {}) => {
     } catch (error) {
       lastError = error;
       if (attempt >= retries || ![0, 401, 429, 502, 503, 504].includes(Number(error?.status || 0))) break;
-      await sleep(600 * (attempt + 1));
+      await sleep(700 * (attempt + 1));
     }
   }
+
   throw lastError || new Error('backup_v7_request_failed');
 };
 
-export const authorizeBackupV7 = () => request('v7_authorize', {}, { retries: 1 });
-export const pushBackupV7Range = range => request('v7_push_range', { range }, { retries: 1 });
-export const pullBackupV7Ranges = knownRangeKeys => request('v7_pull_ranges', { knownRangeKeys: Array.isArray(knownRangeKeys) ? knownRangeKeys : [] }, { retries: 1 });
-export const putBackupV7Settings = settings => request('v7_put_settings', { settings }, { retries: 1 });
-export const getBackupV7Settings = () => request('v7_get_settings', {}, { retries: 1 });
+export const syncBackupV7Batch = data => request('v7_sync', data, { retries: 1 });
+export const pingBackupV7 = () => fetch(YANDEX_BACKUP_V7_PROXY, { cache: 'no-store' }).then(readJson);
 
 export const YandexBackupV7 = {
-  authorize: authorizeBackupV7,
-  pushRange: pushBackupV7Range,
-  pullRanges: pullBackupV7Ranges,
-  putSettings: putBackupV7Settings,
-  getSettings: getBackupV7Settings
+  sync: syncBackupV7Batch,
+  ping: pingBackupV7
 };
 
 window.YandexBackupV7 = YandexBackupV7;
