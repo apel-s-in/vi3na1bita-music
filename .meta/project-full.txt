@@ -11436,6 +11436,8 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
   const saveName = async () => {
     if (!nInp) return;
     profile.name = nInp.value.trim() || 'Слушатель';
+    profile.updatedAt = Date.now();
+    profile.createdAt ||= profile.updatedAt;
     nInp.classList.add('name-inactive'); nInp.blur();
     await metaDB?.setGlobal?.('user_profile', profile).catch(() => {});
     try { window.eventLogger?.log?.('PROFILE_UPDATED', null, { field: 'name', value: profile.name }); window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'profile',immediate:true}})); } catch {}
@@ -11467,7 +11469,7 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
     return window.Utils?.profileModals?.avatarPicker?.({
     title: 'Аватар профиля', items: [...new Set(items)],
     onPick: async (v, m) => {
-      const isReset = v === '🔄'; profile.avatar = isReset ? '😎' : v; avatarBtn.textContent = profile.avatar;
+      const isReset = v === '🔄'; profile.avatar = isReset ? '😎' : v; profile.updatedAt = Date.now(); profile.createdAt ||= profile.updatedAt; avatarBtn.textContent = profile.avatar;
       await metaDB?.setGlobal?.('user_profile', profile).catch(() => {});
       try { window.eventLogger?.log?.('PROFILE_UPDATED', null, { field: 'avatar', reset: isReset, value: profile.avatar }); window.dispatchEvent(new CustomEvent('backup:domain-dirty',{detail:{domain:'profile',immediate:true}})); } catch {}
       m?.remove?.(); onProfileChanged?.(); if (isReset) window.NotificationSystem?.info?.('Аватар сброшен');
