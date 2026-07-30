@@ -12,7 +12,8 @@ const CFG = {
 const API = 'https://cloud-api.yandex.net/v1/disk';
 const VERSION = '7.1';
 const LEGACY_V7_VERSION = '7.0';
-const ROOT = 'app:/Backup/v7';
+const BACKUP_ROOT = 'app:/Backup';
+const ROOT = `${BACKUP_ROOT}/v7`;
 const DEVICES_DIR = `${ROOT}/devices`;
 const SHARED_PATH = `${ROOT}/shared.json`;
 const SHARED_SCHEMA_VERSION = 2;
@@ -27,14 +28,13 @@ const MAX_RANGE_EVENTS = 500;
 const MAX_PUSH_RANGES = 20;
 const MAX_PULL_RANGES = 50;
 const MAX_PULL_CHAINS = 200;
-const MAX_LEGACY_KNOWN_KEYS = 50000;
 const MAX_DEVICE_CATALOG = 100;
 const MAX_SETTINGS_KEYS = 500;
 const MAX_CACHE_POLICIES = 5000;
 const DEFAULT_TIMEOUT_MS = 20000;
 const DOWNLOAD_TIMEOUT_MS = 30000;
 const IMMUTABLE_UPLOAD_QUERY = 'overwrite=false';
-const ALLOWED_MODES = new Set(['ping', 'v7_sync', 'v7_authorize', 'v7_push_range', 'v7_pull_ranges', 'v7_put_settings', 'v7_get_settings']);
+const ALLOWED_MODES = new Set(['ping', 'v7_sync']);
 const DEVICE_SETTING_KEYS = new Set([
   'sourcePref',
   'favoritesOnlyMode',
@@ -311,6 +311,18 @@ async function listFolder(token, path, maxItems = 1000) {
     if (items.length < limit) break;
   }
   return output.slice(0, maxItems);
+}
+async function deleteResource(token, path) {
+  const cleanPath = safe(path);
+  if (!cleanPath || cleanPath === BACKUP_ROOT || cleanPath === ROOT || cleanPath.startsWith(`${ROOT}/`)) {
+    throw makeError('legacy_cleanup_path_forbidden', 403);
+  }
+  const response = await diskJson('DELETE', `${API}/resources?path=${encodeURIComponent(cleanPath)}&permanently=true`, token, null, 30000);
+  if (response.status === 404) return { ok: true, missing: true, path: cleanPath };
+  if (![200, 202, 204].includes(response.status)) {
+    throw makeError(`disk_delete_failed:${response.status}`, [401, 403].includes(response.status) ? response.status : 502, { path: cleanPath });
+  }
+  return { ok: true, missing: false, path: cleanPath, asynchronous: response.status === 202 };
 }
 const deviceDir = deviceId => `${DEVICES_DIR}/${safeId(deviceId, 120)}`;
 const chainDir = (deviceId, chainId) => `${deviceDir(deviceId)}/${safeId(chainId, 160)}`;
@@ -656,48 +668,6 @@ async function pullAfterWatermarks(auth, rawWatermarks, { maxRanges = MAX_PULL_R
   }
   return { ranges, heads, watermarks: nextWatermarks, returned: ranges.length, remaining, bytes };
 }
-async function pullUnknownLegacyRanges(auth, knownRangeKeys) {
-  const known = new Set((Array.isArray(knownRangeKeys) ? knownRangeKeys : []).map(safe).filter(Boolean));
-  if (known.size > MAX_LEGACY_KNOWN_KEYS) {
-    throw makeError('known_range_keys_limit', 413);
-  }
-  const heads = await listChainHeads(auth);
-  const ranges = [];
-  let bytes = 0;
-  let totalRanges = 0;
-  let unknownTotal = 0;
-  for (const head of heads) {
-    const files = await listFolder(auth.oauthToken, chainDir(head.deviceId, head.chainId), Math.max(1000, head.ranges + 10));
-    const rangeFiles = files
-      .filter(file => /^range_\d+\.json$/.test(safe(file?.name)))
-      .sort((left, right) => {
-        const a = integer(safe(left.name).match(/^range_(\d+)\.json$/)?.[1]);
-        const b = integer(safe(right.name).match(/^range_(\d+)\.json$/)?.[1]);
-        return a - b;
-      });
-    totalRanges += rangeFiles.length;
-    for (const file of rangeFiles) {
-      const fromSeq = integer(safe(file.name).match(/^range_(\d+)\.json$/)?.[1]);
-      const path = `${chainDir(head.deviceId, head.chainId)}/${file.name}`;
-      const range = await downloadJson(auth.oauthToken, path, { maxBytes: MAX_RANGE_BYTES });
-      if (!range) continue;
-      const verified = verifyStoredRange(range, {
-        ownerYandexIdHash: auth.ownerYandexIdHash,
-        deviceId: head.deviceId,
-        chainId: head.chainId,
-        fromSeq
-      });
-      if (known.has(verified.rangeKey)) continue;
-      unknownTotal++;
-      if (ranges.length >= MAX_PULL_RANGES) continue;
-      const encodedBytes = byteLength(verified);
-      if (bytes + encodedBytes > MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES && ranges.length) continue;
-      bytes += encodedBytes;
-      ranges.push(verified);
-    }
-  }
-  return { ranges, returned: ranges.length, totalRanges, remaining: Math.max(0, unknownTotal - ranges.length), bytes };
-}
 const uniqueIds = (rows, limit) => [...new Set((Array.isArray(rows) ? rows : []).map(value => safeId(value, 160)).filter(Boolean))].slice(0, limit);
 const sharedPlaylistClock = playlist => Math.max(integer(playlist?.updatedAt), integer(playlist?.deletedAt), integer(playlist?.createdAt));
 
@@ -824,7 +794,7 @@ function publicSharedDocument(raw) {
 }
 
 async function exchangeSharedDocument(auth, rawShared, knownHash = '') {
-  await ensureDirs(auth.oauthToken, ['app:/Backup', ROOT]);
+  await ensureDirs(auth.oauthToken, [BACKUP_ROOT, ROOT]);
   const storedRaw = await downloadJson(auth.oauthToken, SHARED_PATH, { maxBytes: 2 * 1024 * 1024 });
   const current = storedRaw ? normalizeSharedDocument(storedRaw, auth, { stored: true }) : null;
 
@@ -850,6 +820,54 @@ async function exchangeSharedDocument(auth, rawShared, knownHash = '') {
     current: publicSharedDocument(merged.document),
     hash: merged.document.hash
   };
+}
+const LEGACY_BACKUP_FILE_RE = /^vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3bak$/i;
+const LEGACY_ROOT_FILES = new Set(['vi3na1bita_backup_meta.json']);
+const LEGACY_ROOT_DIRS = new Set(['events', 'device-settings']);
+
+async function inspectLegacyBackupResources(auth) {
+  const [rootItems, heads, sharedRaw] = await Promise.all([
+    listFolder(auth.oauthToken, BACKUP_ROOT, 2000),
+    listChainHeads(auth),
+    downloadJson(auth.oauthToken, SHARED_PATH, { maxBytes: 2 * 1024 * 1024 }).catch(() => null)
+  ]);
+  let shared = null;
+  try {
+    shared = sharedRaw ? normalizeSharedDocument(sharedRaw, auth, { stored: true }) : null;
+  } catch {}
+  const candidates = rootItems
+    .map(item => {
+      const name = safe(item?.name);
+      const type = safe(item?.type);
+      const legacyFile = type === 'file' && (LEGACY_BACKUP_FILE_RE.test(name) || LEGACY_ROOT_FILES.has(name));
+      const legacyDir = type === 'dir' && LEGACY_ROOT_DIRS.has(name);
+      if (!legacyFile && !legacyDir) return null;
+      return { name, type, path: `${BACKUP_ROOT}/${name}`, size: integer(item?.size), modified: safe(item?.modified) };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.type.localeCompare(right.type) || left.name.localeCompare(right.name));
+  const knownFileBytes = candidates.filter(item => item.type === 'file').reduce((sum, item) => sum + item.size, 0);
+  return {
+    ready: heads.length > 0 && shared?.schemaVersion === SHARED_SCHEMA_VERSION && !!shared.hash,
+    v7: { heads: heads.length, shared: !!shared, sharedSchemaVersion: integer(shared?.schemaVersion), sharedHash: safe(shared?.hash) },
+    candidates,
+    count: candidates.length,
+    knownFileBytes,
+    note: 'directory_sizes_are_not_included'
+  };
+}
+
+async function cleanupLegacyBackupResources(auth, request) {
+  if (!isObject(request)) return null;
+  const preview = await inspectLegacyBackupResources(auth);
+  if (request.dryRun !== false) return { ...preview, dryRun: true, deleted: 0, results: [] };
+  if (safe(request.confirm) !== 'DELETE_LEGACY_V6') throw makeError('legacy_cleanup_confirmation_required', 409);
+  if (!preview.ready) throw makeError('legacy_cleanup_v7_not_ready', 409, { v7: preview.v7 });
+  const results = [];
+  for (const item of preview.candidates) {
+    results.push({ ...item, ...(await deleteResource(auth.oauthToken, item.path)) });
+  }
+  return { ...preview, dryRun: false, deleted: results.filter(item => item.ok).length, results, completedAt: now() };
 }
 function normalizeCachePolicies(raw) {
   if (!isObject(raw)) return {};
@@ -1004,6 +1022,7 @@ async function runBatchSync(auth, body) {
     templateSettings = await getSettings(auth, templateDeviceId);
   }
   const deviceCatalog = body.includeDeviceCatalog === true ? await listDeviceSettingsCatalog(auth) : null;
+  const legacyCleanup = isObject(body.legacyCleanup) ? await cleanupLegacyBackupResources(auth, body.legacyCleanup) : null;
   return {
     ok: true,
     version: VERSION,
@@ -1011,6 +1030,7 @@ async function runBatchSync(auth, body) {
     push: { accepted: push.filter(item => !item.duplicate).length, duplicates: push.filter(item => item.duplicate).length, ranges: push },
     pull,
     shared,
+    legacyCleanup,
     settings: { changed: !!settings, current: settings, pushed: settingsPush ? { changed: settingsPush.changed, hash: settingsPush.settings.hash, updatedAt: settingsPush.settings.updatedAt } : null, template: templateSettings, catalog: deviceCatalog },
     serverTime: now()
   };
@@ -1044,6 +1064,8 @@ module.exports.handler = async event => {
           chainHeads: true,
           watermarks: true,
           batchSync: true,
+          splitModesRemoved: true,
+          legacyCleanup: { enabled: true, transport: 'v7_sync', confirmation: 'required', protectsV7Root: true },
           sharedDocument: { enabled: true, schemaVersion: SHARED_SCHEMA_VERSION, path: SHARED_PATH, domains: ['playlists'] },
           rawEventsPermanent: true,
           rollups: { supported: false, planned: 'client_rebuildable_verified_rollups' },
@@ -1065,32 +1087,6 @@ module.exports.handler = async event => {
     const auth = await authorizeRequest(event, body);
     if (mode === 'v7_sync') {
       return reply(event, 200, await runBatchSync(auth, body), id);
-    }
-    if (mode === 'v7_authorize') {
-      return reply(event, 200, { ok: true, authorization: publicAuthorization(auth) }, id);
-    }
-    if (mode === 'v7_push_range') {
-      const written = await writeImmutableRange(auth, body.range || body.data);
-      return reply(
-        event,
-        200,
-        { ok: true, duplicate: written.duplicate, repairedHead: written.repairedHead, rangeKey: written.range.rangeKey, hash: written.range.hash, path: written.path, deviceId: written.range.deviceId, chainId: written.range.chainId, fromSeq: written.range.fromSeq, toSeq: written.range.toSeq, head: written.head },
-        id
-      );
-    }
-    if (mode === 'v7_pull_ranges') {
-      if (Array.isArray(body.knownRangeKeys)) {
-        return reply(event, 200, { ok: true, version: VERSION, ...(await pullUnknownLegacyRanges(auth, body.knownRangeKeys)) }, id);
-      }
-      return reply(event, 200, { ok: true, version: VERSION, ...(await pullAfterWatermarks(auth, body.watermarks || body.knownWatermarks || [])) }, id);
-    }
-    if (mode === 'v7_put_settings') {
-      const result = await putSettings(auth, body.settings || body.data);
-      return reply(event, 200, { ok: true, changed: result.changed, path: result.path, hash: result.settings.hash, updatedAt: result.settings.updatedAt, deviceId: auth.deviceId }, id);
-    }
-    if (mode === 'v7_get_settings') {
-      const settings = await getSettings(auth);
-      return reply(event, 200, { ok: true, exists: !!settings, settings, deviceId: auth.deviceId }, id);
     }
     return reply(event, 400, { ok: false, error: 'bad_mode' }, id);
   } catch (error) {
