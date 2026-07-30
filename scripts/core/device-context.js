@@ -16,8 +16,22 @@ const detectPwa = () => {
   return info.isPWA === true || window.matchMedia?.('(display-mode: standalone)')?.matches === true || navigator.standalone === true;
 };
 
-const defaultDeviceClass = platform => platform === 'ios' ? 'iPhone' : platform === 'android' ? 'Android' : 'Desktop';
-const defaultDeviceLabel = platform => platform === 'ios' ? 'Мой iPhone' : platform === 'android' ? 'Моё Android устройство' : 'Мой Desktop';
+const detectDeviceClass = platform => {
+  const ua = safe(navigator.userAgent);
+  const iPadOs = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  if (platform === 'ios') return /iPad/i.test(ua) || iPadOs ? 'iPad' : 'iPhone';
+  if (platform === 'android') return /Tablet|Nexus 7|Nexus 9|Nexus 10|SM-T|Lenovo Tab|Pixel C/i.test(ua) ? 'Tablet' : 'Android';
+  return 'Desktop';
+};
+
+const defaultDeviceLabel = platform => {
+  const deviceClass = detectDeviceClass(platform);
+  if (deviceClass === 'iPad') return 'Мой iPad';
+  if (deviceClass === 'iPhone') return 'Мой iPhone';
+  if (deviceClass === 'Tablet') return 'Мой планшет';
+  if (platform === 'android') return 'Моё Android устройство';
+  return 'Мой компьютер';
+};
 
 export const getDeviceId = () => safe(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web') || 'web';
 export const getDevicePlatform = () => detectPlatform();
@@ -30,7 +44,7 @@ export const getDeviceContext = (timestamp = Date.now()) => {
   return {
     deviceId: getDeviceId(),
     deviceLabel: safe(localStorage.getItem('yandex:onboarding:device_label')) || defaultDeviceLabel(platform),
-    deviceClass: defaultDeviceClass(platform),
+    deviceClass: detectDeviceClass(platform),
     platform,
     pwa: detectPwa(),
     timezone: getDeviceTimezone(),
