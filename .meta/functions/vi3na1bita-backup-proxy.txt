@@ -238,7 +238,17 @@ async function authorizeRequest(event, body) {
   }
   const deviceId = safeId(authorization.deviceId, 120);
   if (!deviceId) throw makeError('backup_authorized_device_missing', 403);
-  return { oauthToken, playerId: safeId(authorization.playerId, 96), ownerYandexIdHash: identity.ownerYandexIdHash, deviceId, device: authorization.device || {}, sessionExpiresAt: integer(authorization.sessionExpiresAt) };
+  return {
+    oauthToken,
+    playerId: safeId(authorization.playerId, 96),
+    ownerYandexIdHash: identity.ownerYandexIdHash,
+    deviceId,
+    device: authorization.device || {},
+    sessionExpiresAt: integer(authorization.sessionExpiresAt),
+    initializationRequired: authorization.initializationRequired === true,
+    initializationMode: safe(authorization.initializationMode),
+    settingsSourceDeviceId: safeId(authorization.settingsSourceDeviceId, 120)
+  };
 }
 async function diskJson(method, url, token, body = null, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const response = await request(method, url, { headers: oauthHeaders(token), body, timeoutMs });
@@ -749,9 +759,23 @@ async function listDeviceSettingsCatalog(auth) {
   return output.sort((left, right) => right.updatedAt - left.updatedAt);
 }
 function publicAuthorization(auth) {
-  return { version: 2, playerId: auth.playerId, ownerYandexIdHash: auth.ownerYandexIdHash, deviceId: auth.deviceId, sessionExpiresAt: auth.sessionExpiresAt, device: auth.device };
+  return {
+    version: 2,
+    playerId: auth.playerId,
+    ownerYandexIdHash: auth.ownerYandexIdHash,
+    deviceId: auth.deviceId,
+    sessionExpiresAt: auth.sessionExpiresAt,
+    initializationRequired: auth.initializationRequired,
+    initializationMode: auth.initializationMode,
+    settingsSourceDeviceId: auth.settingsSourceDeviceId,
+    device: auth.device
+  };
 }
 async function runBatchSync(auth, body) {
+  if (auth.initializationRequired) {
+    throw makeError('backup_device_initialization_required', 409);
+  }
+
   const pushRanges = Array.isArray(body.pushRanges) ? body.pushRanges : Array.isArray(body.ranges) ? body.ranges : body.range ? [body.range] : [];
   if (pushRanges.length > MAX_PUSH_RANGES) {
     throw makeError('push_ranges_limit', 413);
