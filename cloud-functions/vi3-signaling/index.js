@@ -674,6 +674,10 @@ function normalizeAccountDevice(raw = {}, playerId = '') {
     takeoverEnabled: raw.takeoverEnabled !== false,
     remotePauseEnabled: raw.remotePauseEnabled !== false,
     alwaysConfirm: raw.alwaysConfirm !== false,
+    initializationPending: raw.initializationPending === true,
+    initializationMode: ['new', 'inherit', 'legacy'].includes(safe(raw.initializationMode)) ? safe(raw.initializationMode) : '',
+    initializedAt: Math.max(0, num(raw.initializedAt)),
+    inheritedFromDeviceId: sanitizeId(raw.inheritedFromDeviceId, 120),
     revokedAt: Math.max(0, num(raw.revokedAt)),
     firstSeenAt: Math.max(0, num(raw.firstSeenAt)),
     lastSeenAt: Math.max(0, num(raw.lastSeenAt)),
@@ -693,6 +697,10 @@ function publicAccountDevice(raw = {}) {
     takeoverEnabled: device.takeoverEnabled,
     remotePauseEnabled: device.remotePauseEnabled,
     alwaysConfirm: device.alwaysConfirm,
+    initializationPending: device.initializationPending,
+    initializationMode: device.initializationMode,
+    initializedAt: device.initializedAt,
+    inheritedFromDeviceId: device.inheritedFromDeviceId,
     revokedAt: device.revokedAt,
     firstSeenAt: device.firstSeenAt,
     lastSeenAt: device.lastSeenAt,
@@ -702,8 +710,15 @@ function publicAccountDevice(raw = {}) {
 async function upsertAccountDevice(playerId, body = {}) {
   const deviceId = sanitizeId(body.deviceId || 'web', 120) || 'web';
   const key = accountDeviceKey(playerId, deviceId);
-  const old = normalizeAccountDevice(payload(await kvGet(key)), playerId);
+  const oldRow = await kvGet(key);
+  const oldRaw = payload(oldRow);
+  const old = normalizeAccountDevice(oldRaw, playerId);
   const at = now();
+  const legacyKnown = !!oldRow && !hasOwn(oldRaw, 'initializationPending');
+  const initializationPending = oldRow ? (legacyKnown ? false : old.initializationPending) : true;
+  const initializedAt = oldRow ? (legacyKnown ? old.initializedAt || old.firstSeenAt || at : old.initializedAt) : 0;
+  const initializationMode = oldRow ? (legacyKnown ? old.initializationMode || 'legacy' : old.initializationMode) : '';
+  const previousLastSeenAt = old.lastSeenAt;
   const device = normalizeAccountDevice(
     {
       ...old,
@@ -715,6 +730,10 @@ async function upsertAccountDevice(playerId, body = {}) {
       pwa: body.pwa === true,
       timezone: body.timezone || old.timezone,
       timezoneOffsetMin: body.timezoneOffsetMin,
+      initializationPending,
+      initializationMode,
+      initializedAt,
+      inheritedFromDeviceId: old.inheritedFromDeviceId,
       revokedAt: old.revokedAt,
       firstSeenAt: old.firstSeenAt || at,
       lastSeenAt: at,
@@ -723,7 +742,13 @@ async function upsertAccountDevice(playerId, body = {}) {
     playerId
   );
   await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: device });
-  return device;
+  return {
+    device,
+    wasKnown: !!oldRow && initializationPending === false,
+    createdAt: device.firstSeenAt,
+    previousLastSeenAt,
+    initializationPending: device.initializationPending
+  };
 }
 function normalizePlaybackState(raw = {}, playerId = '') {
   return {
@@ -805,6 +830,23 @@ async function actionAccountDeviceList(event, body) {
     .map(publicAccountDevice);
   return { ok: true, items };
 }
+function accountDeviceCompatibilityKey(raw = {}) {
+  const device = normalizeAccountDevice(raw, raw?.playerId);
+  const platform = safe(device.platform).toLowerCase();
+  const deviceClass = safe(device.deviceClass).toLowerCase();
+
+  if (platform === 'ios') {
+    return deviceClass.includes('ipad') || deviceClass.includes('tablet') ? 'ios-tablet' : 'ios-phone';
+  }
+  if (platform === 'android') {
+    return deviceClass.includes('tablet') ? 'android-tablet' : 'android-mobile';
+  }
+  return 'desktop';
+}
+
+function accountDevicesAreCompatible(left, right) {
+  return accountDeviceCompatibilityKey(left) === accountDeviceCompatibilityKey(right);
+}
 async function actionAccountDeviceUpdate(event, body) {
   const auth = await requirePlayer(event, body);
   const { playerId } = auth;
@@ -830,6 +872,91 @@ async function actionAccountDeviceUpdate(event, body) {
   await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: next });
   return { ok: true, device: publicAccountDevice(next) };
 }
+
+async function actionAccountDeviceInitialize(event, body) {
+  const auth = await requirePlayer(event, body);
+  const mode = sanitizeId(body.mode, 20);
+  const sourceDeviceId = sanitizeId(body.sourceDeviceId, 120);
+
+  if (!auth.deviceId) throw new Error('account_device_session_required');
+  if (!['new', 'inherit'].includes(mode)) throw new Error('account_device_initialization_mode_invalid');
+  if (mode === 'inherit' && (!sourceDeviceId || sourceDeviceId === auth.deviceId)) {
+    throw new Error('account_device_initialization_source_required');
+  }
+
+  await enforceRateLimit({
+    scope: 'account_device_initialize',
+    actor: `${auth.playerId}:${auth.deviceId}`,
+    limit: 20,
+    windowMs: 24 * 60 * 60 * 1000
+  });
+
+  const key = accountDeviceKey(auth.playerId, auth.deviceId);
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const row = await kvGet(key);
+    if (!row) throw new Error('account_device_not_found');
+
+    const current = normalizeAccountDevice(payload(row), auth.playerId);
+    if (current.revokedAt > 0) throw new Error('account_device_revoked');
+
+    let source = null;
+    if (mode === 'inherit') {
+      const sourceRow = await kvGet(accountDeviceKey(auth.playerId, sourceDeviceId));
+      source = normalizeAccountDevice(payload(sourceRow), auth.playerId);
+
+      if (!sourceRow || !source.deviceId) throw new Error('account_device_initialization_source_not_found');
+      if (source.revokedAt > 0) throw new Error('account_device_initialization_source_revoked');
+      if (source.initializationPending) throw new Error('account_device_initialization_source_pending');
+      if (!accountDevicesAreCompatible(current, source)) {
+        const error = new Error('account_device_initialization_class_mismatch');
+        error.httpStatus = 409;
+        throw error;
+      }
+    }
+
+    if (
+      current.initializationPending === false &&
+      current.initializationMode === mode &&
+      safe(current.inheritedFromDeviceId) === (mode === 'inherit' ? sourceDeviceId : '')
+    ) {
+      return {
+        ok: true,
+        duplicate: true,
+        device: publicAccountDevice(current),
+        settingsSourceDeviceId: current.inheritedFromDeviceId || ''
+      };
+    }
+
+    const at = now();
+    const next = normalizeAccountDevice(
+      {
+        ...current,
+        initializationPending: false,
+        initializationMode: mode,
+        initializedAt: current.initializedAt || at,
+        inheritedFromDeviceId: mode === 'inherit' ? sourceDeviceId : '',
+        updatedAt: at
+      },
+      auth.playerId
+    );
+
+    if (!(await kvCompareAndPut({ row, type: 'accountDevice', owner: auth.playerId, data: next }))) {
+      continue;
+    }
+
+    return {
+      ok: true,
+      duplicate: false,
+      device: publicAccountDevice(next),
+      settingsSourceDeviceId: next.inheritedFromDeviceId || '',
+      sourceDevice: source ? publicAccountDevice(source) : null
+    };
+  }
+
+  throw new Error('account_device_initialization_conflict');
+}
+
 function backupAuthorizationError(message, status = 403) {
   const error = new Error(message);
   error.httpStatus = status;
@@ -875,6 +1002,9 @@ async function actionBackupDeviceAuthorize(event, body) {
       deviceId: auth.deviceId,
       sessionExpiresAt: auth.expiresAt,
       authorizedAt: now(),
+      initializationRequired: device.initializationPending === true,
+      initializationMode: device.initializationMode,
+      settingsSourceDeviceId: device.inheritedFromDeviceId,
       device: publicAccountDevice(device)
     }
   };
@@ -1193,11 +1323,12 @@ async function actionSocialSessionIssue(event, body) {
   if (profileChanged) {
     await kvPut({ pk: `profile:${identity.friendId}`, type: 'profile', owner: identity.friendId, data: { ...oldProfile, friendId: identity.friendId, displayName: profileDisplayName, avatarUrl: profileAvatar, updatedAt: issuedAt } });
   }
-  const [registrationGrant, accountDevice, timezonePolicy] = await Promise.all([
+  const [registrationGrant, accountDeviceRegistration, timezonePolicy] = await Promise.all([
     ensureRegistrationShardGrant(identity.friendId).catch(error => ({ ok: false, duplicate: false, amount: 0, operationId: '', error: safe(error?.message) })),
     upsertAccountDevice(identity.friendId, body).catch(() => null),
     getTimezonePolicy(identity.friendId).catch(() => normalizeTimezonePolicy({}, identity.friendId))
   ]);
+  const accountDevice = accountDeviceRegistration?.device || null;
   const sessionJti = rid('ss');
   const sessionDeviceId = sanitizeId(body.deviceId || 'web', 120) || 'web';
   const session = issueSocialSession({ sub: identity.friendId, yidHash: hash(`ya:${identity.yandexId}`), did: sessionDeviceId, iat: issuedAt, exp: expiresAt, jti: sessionJti, v: 3 });
@@ -1214,6 +1345,10 @@ async function actionSocialSessionIssue(event, body) {
     wallet: loyalty.wallet ? publicShardWallet(loyalty.wallet) : registrationGrant.wallet ? publicShardWallet(registrationGrant.wallet) : null,
     timezonePolicy: publicTimezonePolicy(timezonePolicy),
     needsTimezoneConfirmation: !timezonePolicy.zone,
+    accountDeviceWasKnown: accountDeviceRegistration?.wasKnown === true,
+    accountDeviceCreatedAt: num(accountDeviceRegistration?.createdAt),
+    accountDevicePreviousLastSeenAt: num(accountDeviceRegistration?.previousLastSeenAt),
+    accountDeviceInitializationRequired: accountDevice?.initializationPending === true,
     accountDevice: accountDevice ? publicAccountDevice(accountDevice) : null,
     profile: { friendId: identity.friendId, displayName: identity.displayName, avatarUrl: identity.avatarUrl }
   };
@@ -6427,6 +6562,7 @@ const ACTIONS = {
   timezone_policy_set: actionTimezonePolicySet,
   account_device_list: actionAccountDeviceList,
   account_device_update: actionAccountDeviceUpdate,
+  account_device_initialize: actionAccountDeviceInitialize,
   backup_device_authorize: actionBackupDeviceAuthorize,
   playback_state_get: actionPlaybackStateGet,
   playback_claim: actionPlaybackClaim,
@@ -6540,8 +6676,12 @@ exports.handler = async event => {
         backupDeviceAuthorization: {
           enabled: true,
           action: 'backup_device_authorize',
-          version: 1,
-          authority: 'server_account_device'
+          version: 2,
+          authority: 'server_account_device',
+          initializationAction: 'account_device_initialize',
+          initializationModes: ['new', 'inherit'],
+          compatibleSettingsInheritance: true,
+          identityInheritance: false
         },
         chatE2eeV2: CFG.chatE2eeV2,
         chatMode: 'e2ee-v2-only',
