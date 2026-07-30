@@ -6661,8 +6661,13 @@ export default { TRUST_STATE_KEY, computeTrustState, refreshTrustState, readTrus
       await W.statsAggregator.processHotEvents().catch(() => {});
       import('./analytics/stats-state.js').then(m => m.migrateLocalTemporalV2?.(M.metaDB)).catch(() => {});
       await LS.liveStatsTracker.initialize();
+      const receiptsModule = await import('./analytics/listening-receipts.js');
+      receiptsModule.listeningReceiptService?.initialize?.();
       W.achievementEngine = new AE.AchievementEngine();
-      import('./analytics/listening-receipts.js').then(m => m.listeningReceiptService?.initialize?.()).catch(() => {});
+      await W.achievementEngine._initBoot().catch(() => {
+        W.achievementEngine.achievements = W.achievementEngine._buildUIArray();
+        W.achievementEngine.broadcast(0, { reason: 'achievement_boot_degraded' });
+      });
       try {
         const MK = 'migration:cleanup_duplicates:v3';
         if (!localStorage.getItem(MK)) {
