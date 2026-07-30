@@ -14849,7 +14849,6 @@ export const createShowcaseStore = ({ trk, getCat, ls = localStorage }) => {
   const jGet = (k, d = null) => { try { const v = ls.getItem(NS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
   const jSet = (k, v) => {
     try { ls.setItem(NS + k, JSON.stringify(v)); } catch {}
-    if (['default', 'albumColors'].includes(k)) emitPlDirty();
     if (['activeId', 'ui_v2'].includes(k)) emitDevDirty();
   };
 
