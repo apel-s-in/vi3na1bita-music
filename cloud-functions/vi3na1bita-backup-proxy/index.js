@@ -763,7 +763,7 @@ function pickSharedRow(left, right, clock) {
 }
 
 function mergeSharedDocuments(currentRaw, incomingRaw, auth) {
-  const current = currentRaw ? normalizeSharedDocument(currentRaw, auth, { stored: currentRaw.legacy !== false }) : null;
+  const current = currentRaw ? { ...currentRaw } : null;
   const incoming = normalizeSharedDocument(incomingRaw, auth);
   const playlists = new Map((current?.playlists || []).map(playlist => [playlist.id, playlist]));
 
