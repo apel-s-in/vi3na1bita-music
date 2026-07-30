@@ -8,6 +8,7 @@ const execFileAsync = promisify(execFile);
 const albums = JSON.parse(fs.readFileSync('albums.json', 'utf8'))?.albums || [];
 const FULL_PATH = 'data/listen-track-catalog.json';
 const ENV_PATH = 'data/listen-track-catalog.env.json';
+const FUNCTION_ENV_PATH = 'data/listen-track-catalog.function-env.json';
 const CONCURRENCY = 4;
 const safe = value => String(value == null ? '' : value).trim();
 const probe = async url => {
@@ -77,15 +78,28 @@ const main = async () => {
   });
   rows.sort((a, b) => a.album.localeCompare(b.album) || a.uid.localeCompare(b.uid));
   const compact = Object.fromEntries(rows.map(track => [track.uid, [track.duration, track.album, track.trackVersion]]));
+  const albumKeys = [...new Set(rows.map(track => track.album))].sort();
+  const functionEnv = Object.fromEntries(albumKeys.map(album => {
+    const envKey = `LISTEN_TRACK_CATALOG_ALBUM_${album.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')}`;
+    const value = Object.fromEntries(rows.filter(track => track.album === album).map(track => [track.uid, [track.duration, track.album, track.trackVersion]]));
+    return [envKey, value];
+  }));
   const generatedAt = new Date().toISOString();
   const trackLines = rows.map((track, index) => `    ${JSON.stringify(track)}${index < rows.length - 1 ? ',' : ''}`);
+  const envLines = Object.entries(functionEnv).map(([key, value], index, all) => `  ${JSON.stringify(key)}: ${JSON.stringify(value)}${index < all.length - 1 ? ',' : ''}`);
   const fullJson = `{\n  "version": 1,\n  "generatedAt": ${JSON.stringify(generatedAt)},\n  "tracks": [\n${trackLines.join('\n')}\n  ]\n}\n`;
+  const functionEnvJson = `{\n${envLines.join('\n')}\n}\n`;
   fs.mkdirSync('data', { recursive: true });
   fs.writeFileSync(FULL_PATH, fullJson, 'utf8');
   fs.writeFileSync(ENV_PATH, JSON.stringify(compact), 'utf8');
+  fs.writeFileSync(FUNCTION_ENV_PATH, functionEnvJson, 'utf8');
   console.log(`Generated ${rows.length} tracks`);
   console.log(`Full: ${FULL_PATH}`);
-  console.log(`Environment: ${ENV_PATH}`);
+  console.log(`Browser environment: ${ENV_PATH}`);
+  console.log(`Cloud Function album variables: ${FUNCTION_ENV_PATH}`);
+  Object.entries(functionEnv).forEach(([key, value]) => {
+    console.log(`${key}: ${Object.keys(value).length} tracks, ${JSON.stringify(value).length} chars`);
+  });
 };
 main().catch(error => {
   console.error(error);
