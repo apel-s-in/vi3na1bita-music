@@ -15623,6 +15623,12 @@ const main = async () => {
   contains('scripts/analytics/backup-sync-engine.js', "phase === 'push' ? 'pull' : 'push'");
   contains('scripts/analytics/backup-v7-sync.js', 'pushEnabled');
   contains('scripts/analytics/backup-v7-sync.js', 'maxPullRanges');
+  contains('scripts/analytics/backup-v7-sync.js', 'buildBackupV7SharedDocument');
+  contains('scripts/analytics/backup-v7-sync.js', 'applyBackupV7SharedDocument');
+  contains('scripts/analytics/backup-v7-range.js', 'sharedServerHash');
+  contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'SHARED_PATH');
+  contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'exchangeSharedDocument');
+  contains('cloud-functions/vi3na1bita-backup-proxy/index.js', "domains: ['profile', 'playlists']");
   excludes('scripts/core/yandex-backup-v7.js', /v7_authorize|v7_push_range|v7_pull_ranges|v7_put_settings|v7_get_settings/, 'Клиент продолжает использовать раздельные v7 вызовы');
   excludes('scripts/analytics/backup-v7-sync.js', /knownRangeKeys|normalizeStatsProjection|projection\.tracks/, 'Sync продолжает применять projection или knownRangeKeys');
   excludes('scripts/analytics/snapshot-contract.js', /sleepTimerState:v2|app:first-install-ts|backup:conflict_policy:v1/, 'Runtime/legacy settings остались в device backup');
