@@ -38,9 +38,9 @@ export const bindProfileAccount = ({ container: c, profile, metaDB, onProfileCha
       ?.purchasedAvatars || [];
 
     const items = [
-      '😎','🎧','🎸','🦄','🦇','👽','🤖','🐱','🦊','🐼',
-      '🔥','💎','🎵','🌟','🦁','🐯','🎮','🎤','🎹','🥁',
-      '🎺',
+      '😎',
+      '🎧',
+      '💔',
       ...purchased.map(item => item.avatar),
       '🔄'
     ];
