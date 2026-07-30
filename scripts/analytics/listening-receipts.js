@@ -58,6 +58,7 @@ class ListeningReceiptService {
     this.pendingFeatures = new Map();
     this.sleepTimer = null;
     this.heartbeatPending = null;
+    this.statusRefreshTimer = 0;
   }
   resetServerState(reason = 'auth_reset') {
     this.lastProgress = null;
@@ -216,15 +217,20 @@ class ListeningReceiptService {
     }
     return result;
   }
+  scheduleStatusRefresh(delayMs = 5000) {
+    clearTimeout(this.statusRefreshTimer);
+    this.statusRefreshTimer = setTimeout(() => {
+      this.statusRefreshTimer = 0;
+      if (!document.hidden) this.refreshStatus().catch(() => null);
+    }, Math.max(1000, Number(delayMs) || 5000));
+  }
   applyCompletionResult(result) {
     this.ingestServerResult(result);
     applyShardRewardResult(result);
     this.emit('completed', result);
-    // Completion содержит свежий progress, но не полный reward catalog.
-    // Обновляем overlay асинхронно, не блокируя playback или outbox.
-    queueMicrotask(() => {
-      this.refreshStatus().catch(() => null);
-    });
+    // Completion уже содержит свежий progress. Полный reward catalog
+    // обновляется один раз после серии быстрых переходов.
+    this.scheduleStatusRefresh();
     return result;
   }
   async flushCompletionOutbox() {
@@ -330,9 +336,7 @@ class ListeningReceiptService {
     this.pendingFeatures.delete(`${item.feature}:${item.trackUid}`);
     this.ingestServerResult(result);
     applyShardRewardResult(result);
-    queueMicrotask(() => {
-      this.refreshStatus().catch(() => null);
-    });
+    this.scheduleStatusRefresh();
     this.emit('feature', result);
     return result;
   }
@@ -372,9 +376,7 @@ class ListeningReceiptService {
       }
       this.ingestServerResult(result);
       applyShardRewardResult(result);
-      queueMicrotask(() => {
-        this.refreshStatus().catch(() => null);
-      });
+      this.scheduleStatusRefresh();
       this.emit('sleep_timer_completed', result);
       return result;
     });
