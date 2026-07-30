@@ -187,8 +187,12 @@ export const YandexAuth = {
       const initialization = await resolveAccountDeviceInitialization({ session: social });
 
       const { AccountDataContext } = await import('../analytics/account-data-boundary.js');
+      // Анонимные данные никогда не принимаются аккаунтом автоматически.
+      // Существующий vault этого же Яндекс ID восстановится независимо
+      // от adoptLocalData. Для новой установки неподтверждённый __local__
+      // профиль удаляется, чтобы не загрязнять статистику аккаунта.
       await AccountDataContext.switchToYandexAccount(yandexId, {
-        adoptLocalData: initialization.wasKnown === true,
+        adoptLocalData: false,
         discardLocalData: initialization.wasKnown !== true
       });
 
