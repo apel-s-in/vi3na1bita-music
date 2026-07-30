@@ -12,1044 +12,864 @@
 const https = require('https');
 const crypto = require('crypto');
 const { URL } = require('url');
-const ALLOWED_ORIGINS = ['https://vi3na1bita.website.yandexcloud.net', 'https://apel-s-in.github.io', 'http://localhost:4173', 'http://127.0.0.1:4173'];
+const CFG = {
+  authorityUrl: String(process.env.BACKUP_AUTHORITY_URL || 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av').trim(),
+  allowedOrigins: String(process.env.CORS_ORIGINS || 'https://vi3na1bita.website.yandexcloud.net,https://apel-s-in.github.io,http://localhost:4173,http://127.0.0.1:4173')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+};
 const API = 'https://cloud-api.yandex.net/v1/disk';
-const APP_ROOT = 'app:/Backup';
-const BACKUP_PATH = `${APP_ROOT}/vi3na1bita_backup.vi3bak`;
-const META_PATH = `${APP_ROOT}/vi3na1bita_backup_meta.json`;
-const VERSION_RE = /^app:\/Backup\/vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3bak$/;
-const META_ONLY_TIMEOUT_MS = 10000;
+const VERSION = '7.1';
+const LEGACY_V7_VERSION = '7.0';
+const ROOT = 'app:/Backup/v7';
+const DEVICES_DIR = `${ROOT}/devices`;
+const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+const RESPONSE_RESERVE_BYTES = 384 * 1024;
+const MAX_RANGE_BYTES = 2 * 1024 * 1024;
+const MAX_RANGE_EVENTS = 500;
+const MAX_PUSH_RANGES = 20;
+const MAX_PULL_RANGES = 50;
+const MAX_PULL_CHAINS = 200;
+const MAX_LEGACY_KNOWN_KEYS = 50000;
+const MAX_DEVICE_CATALOG = 100;
+const MAX_SETTINGS_KEYS = 500;
+const MAX_CACHE_POLICIES = 5000;
 const DEFAULT_TIMEOUT_MS = 20000;
-const DOWNLOAD_TIMEOUT_MS = 25000;
-const MAX_BACKUP_BODY_BYTES = 10 * 1024 * 1024;
-const MAX_BODY_BYTES = MAX_BACKUP_BODY_BYTES;
-const MAX_UPLOAD_BODY_BYTES = MAX_BACKUP_BODY_BYTES;
-const DEVICE_SETTINGS_DIR = `${APP_ROOT}/device-settings`;
-const DEVICE_SETTINGS_INDEX_PATH = `${DEVICE_SETTINGS_DIR}/index.json`;
-const EVENT_ARCHIVE_DIR = `${APP_ROOT}/events`;
-const EVENT_ARCHIVE_INDEX_PATH = `${EVENT_ARCHIVE_DIR}/index.json`;
-const EVENT_SEGMENT_RE = /^app:\/Backup\/events\/seg_[A-Za-z0-9._-]+_\d+_\d+_[A-Za-z0-9._-]+\.json$/;
-const DEVICE_SETTINGS_FILE_RE = /^app:\/Backup\/device-settings\/[A-Za-z0-9._-]+\.json$/;
-const ALLOWED_MODES = new Set([
-  'ping',
-  'meta',
-  'list',
-  'download',
-  'device_index',
-  'device_meta',
-  'device_download',
-  'event_index',
-  'event_download',
-  'archive_inspect',
-  'archive_list_files',
-  'archive_delete_segments',
-  'upload_meta',
-  'upload_backup',
-  'upload_device_settings',
-  'upload_event_segment',
-  'ledger_verify',
-  'lease_get',
-  'lease_acquire',
-  'lease_release'
+const DOWNLOAD_TIMEOUT_MS = 30000;
+const IMMUTABLE_UPLOAD_QUERY = 'overwrite=false';
+const ALLOWED_MODES = new Set(['ping', 'v7_sync', 'v7_authorize', 'v7_push_range', 'v7_pull_ranges', 'v7_put_settings', 'v7_get_settings']);
+const DEVICE_SETTING_KEYS = new Set([
+  'sourcePref',
+  'favoritesOnlyMode',
+  'qualityMode:v1',
+  'offline:mode:v1',
+  'offline:cacheQuality:v1',
+  'cloud:listenThreshold',
+  'cloud:ttlDays',
+  'playerVolume',
+  'sc3:activeId',
+  'sc3:ui_v2',
+  'lyricsViewMode',
+  'lyricsAnimationEnabled',
+  'lyricsShowAnimBtn',
+  'logoPulseEnabled',
+  'logoPulsePreset',
+  'logoPulseIntensity',
+  'logoPulseDebug',
+  'profileShowControls',
+  'dl_format_v1'
 ]);
-const safeString = v => String(v == null ? '' : v).trim();
-const safeNum = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
-const nowTs = () => Date.now();
-const makeRequestId = () => `ydp_${nowTs().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-const normalizeErrMessage = e => safeString(e?.message || 'unknown_error');
-const errorStatus = error => {
-  const explicit = safeNum(error?.status);
-  if (explicit >= 400 && explicit <= 599) return explicit;
-
-  const message = normalizeErrMessage(error);
-  if (/auth|oauth|token/i.test(message)) return 401;
-  if (/forbidden|scope|permission/i.test(message)) return 403;
-  if (/not_found/i.test(message)) return 404;
-  if (/too_large|limit/i.test(message)) return 413;
-  if (/timeout/i.test(message)) return 504;
-  return 500;
+const safe = value => String(value == null ? '' : value).trim();
+const num = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
-function extractTokenFromHeader(authHeaderRaw) {
-  const raw = safeString(authHeaderRaw);
-  if (!raw) return '';
-  return raw.replace(/^(Bearer|OAuth)\s+/i, '').trim();
-}
-function extractAnyToken(event) {
-  const hdrs = event?.headers || {};
-  let authHeader = '';
-  let xHeader = '';
-  for (const k of Object.keys(hdrs || {})) {
-    const kk = String(k || '').toLowerCase();
-    if (kk === 'authorization') authHeader = hdrs[k];
-    if (kk === 'x-yandex-auth') xHeader = hdrs[k];
-  }
-  return extractTokenFromHeader(xHeader) || extractTokenFromHeader(authHeader) || getQuery(event, 'token');
-}
-const corsHeaders = origin => {
-  const isAllowed = ALLOWED_ORIGINS.includes(origin);
-  return { 'Access-Control-Allow-Origin': isAllowed ? origin : ALLOWED_ORIGINS[0], 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, X-Yandex-Auth, Content-Type, Accept', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
-};
-const json = (statusCode, cors, body, extraHeaders = {}) => ({ statusCode, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...extraHeaders }, body: JSON.stringify(body) });
-const humanSize = bytes => {
-  const n = safeNum(bytes);
-  if (n <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
-  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-};
-function httpsPut(url, body = '', customHeaders = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
-  return new Promise((resolve, reject) => {
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(url);
-    } catch {
-      return reject(new Error('invalid_url'));
-    }
-    const payload = Buffer.from(String(body || ''), 'utf8');
-    const req = https.request({ hostname: parsedUrl.hostname, path: parsedUrl.pathname + parsedUrl.search, method: 'PUT', headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length, ...customHeaders } }, res => {
-      let data = '';
-      res.setEncoding('utf8');
-      res.on('data', x => (data += x));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error('timeout')));
-    req.on('error', e => reject(e));
-    req.write(payload);
-    req.end();
-  });
-}
-
-function httpsDelete(url, customHeaders = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
-  return new Promise((resolve, reject) => {
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(url);
-    } catch {
-      return reject(new Error('invalid_url'));
-    }
-    const req = https.request({ hostname: parsedUrl.hostname, path: parsedUrl.pathname + parsedUrl.search, method: 'DELETE', headers: { Accept: 'application/json, text/plain, */*', ...customHeaders } }, res => {
-      let data = '';
-      res.setEncoding('utf8');
-      res.on('data', x => (data += x));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error('timeout')));
-    req.on('error', e => reject(e));
-    req.end();
-  });
-}
-function httpsGet(url, customHeaders = {}, maxRedirects = 5, timeoutMs = DEFAULT_TIMEOUT_MS) {
-  return new Promise((resolve, reject) => {
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(url);
-    } catch {
-      return reject(new Error('invalid_url'));
-    }
-    const options = {
-      hostname: parsedUrl.hostname,
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: 'GET',
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' + 'AppleWebKit/537.36 (KHTML, like Gecko) ' + 'Chrome/120.0.0.0 Safari/537.36', 'Accept': 'application/json, text/plain, */*', ...customHeaders }
-    };
-    const req = https.request(options, res => {
-      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && maxRedirects > 0) {
-        res.resume();
-        let nextUrl;
-        try {
-          nextUrl = new URL(res.headers.location, url).toString();
-        } catch {
-          return reject(new Error('bad_redirect_url'));
-        }
-        const nextHeaders = { ...customHeaders };
-        delete nextHeaders.Authorization;
-        delete nextHeaders.authorization;
-        return httpsGet(nextUrl, nextHeaders, maxRedirects - 1, timeoutMs)
-          .then(resolve)
-          .catch(reject);
-      }
-      let data = '';
-      let byteCount = 0;
-      res.setEncoding('utf8');
-      res.on('data', chunk => {
-        byteCount += Buffer.byteLength(chunk, 'utf8');
-        if (byteCount > MAX_BODY_BYTES) {
-          req.destroy();
-          reject(new Error('response_too_large'));
-          return;
-        }
-        data += chunk;
-      });
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
-    });
-    req.setTimeout(timeoutMs, () => {
-      req.destroy(new Error('timeout'));
-    });
-    req.on('error', err => {
-      const msg = normalizeErrMessage(err);
-      if (msg === 'timeout') return reject(new Error('timeout'));
-      if (msg === 'response_too_large') return reject(new Error('response_too_large'));
-      reject(new Error(msg || 'network_error'));
-    });
-    req.end();
-  });
-}
-const safeParse = str => {
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
-};
-const sortObj = v =>
-  Array.isArray(v)
-    ? v.map(sortObj)
-    : !v || typeof v !== 'object'
-      ? v
-      : Object.keys(v)
-          .sort()
-          .reduce((a, k) => ((a[k] = sortObj(v[k])), a), {});
-const stableStringify = v => JSON.stringify(sortObj(v));
-const sha256Hex = v =>
+const integer = (value, fallback = 0) => Math.max(0, Math.floor(num(value, fallback)));
+const now = () => Date.now();
+const isObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
+const requestId = () => `v71_${now().toString(36)}_${crypto.randomBytes(5).toString('hex')}`;
+const hash = value =>
   crypto
     .createHash('sha256')
-    .update(String(v || ''), 'utf8')
+    .update(String(value || ''), 'utf8')
     .digest('hex');
-const verifyBackupPayloadHash = b => {
-  const expected = safeString(b?.integrity?.payloadHash || '');
-  if (!expected) return { ok: false, reason: 'payload_hash_missing' };
-  const actual = sha256Hex(stableStringify({ identity: b?.identity, devices: b?.devices || [], revision: b?.revision || {}, data: b?.data }));
-  return { ok: actual === expected, expected, actual, reason: actual === expected ? 'ok' : 'payload_hash_mismatch' };
+const safeId = (value, max = 160) =>
+  safe(value)
+    .replace(/[^A-Za-z0-9._-]/g, '')
+    .slice(0, max);
+const isHash = value => /^[a-f0-9]{64}$/.test(safe(value));
+const sortObject = value => {
+  if (Array.isArray(value)) return value.map(sortObject);
+  if (!isObject(value)) return value;
+  return Object.keys(value)
+    .sort()
+    .reduce((output, key) => {
+      output[key] = sortObject(value[key]);
+      return output;
+    }, {});
 };
-const verifyEventHashes = events => {
-  const rows = Array.isArray(events) ? events.filter(e => e?.eventId && e?.eventHash) : [];
-  let checked = 0,
-    broken = 0;
-  for (const ev of rows) {
-    const { eventHash, ...rest } = ev || {};
-    checked++;
-    if (sha256Hex(stableStringify(rest)) !== safeString(eventHash)) broken++;
-  }
-  return { checked, broken, ok: broken === 0 };
+const stableStringify = value => JSON.stringify(sortObject(value));
+const byteLength = value => Buffer.byteLength(typeof value === 'string' ? value : JSON.stringify(value), 'utf8');
+const makeError = (message, status = 500, details = null) => {
+  const error = new Error(message);
+  error.status = status;
+  if (details) error.details = details;
+  return error;
 };
-async function readYandexOwnerId(token) {
-  const response = await httpsGet('https://login.yandex.ru/info?format=json', { Authorization: `OAuth ${token}`, Accept: 'application/json' }, 0, META_ONLY_TIMEOUT_MS);
-  if (response.status === 401 || response.status === 403) {
-    return { ok: false, status: response.status, error: 'bad_yandex_oauth' };
-  }
-  if (response.status !== 200) {
-    return { ok: false, status: response.status, error: 'yandex_identity_unavailable' };
-  }
-  const profile = safeParse(response.body);
-  const yandexId = safeString(profile?.id);
-  return yandexId ? { ok: true, yandexId } : { ok: false, status: 502, error: 'bad_yandex_profile' };
-}
-async function validateBackupUpload(token, backup) {
-  if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
-    return { ok: false, status: 400, error: 'backup_object_required' };
-  }
-  const schemaVersion = safeString(backup.version);
-  if (!['6.0', '6.1'].includes(schemaVersion) || !backup.identity || !backup.data || !backup.integrity) {
-    return { ok: false, status: 400, error: 'backup_schema_invalid' };
-  }
-  const payloadCheck = verifyBackupPayloadHash(backup);
-  if (!payloadCheck.ok) {
-    return { ok: false, status: 409, error: payloadCheck.reason, payload: payloadCheck };
-  }
-  const identity = await readYandexOwnerId(token);
-  if (!identity.ok) return identity;
-  const ownerYandexId = safeString(backup.identity.ownerYandexId);
-  if (!ownerYandexId || ownerYandexId !== identity.yandexId) {
-    return { ok: false, status: 403, error: 'backup_owner_mismatch' };
-  }
-  const internalUserId = safeString(backup.identity.internalUserId);
-  const expectedOwnerBinding = sha256Hex([ownerYandexId || 'anon', internalUserId || 'local', payloadCheck.actual].join('::'));
-  if (safeString(backup.integrity.ownerBinding) !== expectedOwnerBinding) {
-    return { ok: false, status: 409, error: 'backup_owner_binding_mismatch' };
-  }
-  const events = Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm : [];
-  if (events.length > 10000) {
-    return { ok: false, status: 413, error: 'backup_event_limit_exceeded' };
-  }
-  const eventHashes = verifyEventHashes(events);
-  if (!eventHashes.ok) {
-    return { ok: false, status: 409, error: 'backup_event_hash_mismatch', eventHashes };
-  }
-  return { ok: true, ownerYandexId, payloadHash: payloadCheck.actual, eventHashes };
-}
-
-function validateEventSegmentUpload(segment) {
-  if (!segment || typeof segment !== 'object' || !Array.isArray(segment.events)) {
-    return { ok: false, status: 400, error: 'event_segment_invalid' };
-  }
-  if (segment.events.length < 1 || segment.events.length > 500) {
-    return { ok: false, status: 413, error: 'event_segment_size_invalid' };
-  }
-  const expected = safeString(segment.hash);
-  const actual = sha256Hex(stableStringify(segment.events));
-  if (!expected || expected !== actual) {
-    return { ok: false, status: 409, error: 'event_segment_hash_mismatch' };
-  }
-  const hashes = verifyEventHashes(segment.events);
-  if (!hashes.ok) {
-    return { ok: false, status: 409, error: 'event_hash_mismatch' };
-  }
-  return { ok: true, hashes };
-}
-async function readLatestBackupForVerify(token) {
-  const r = await downloadBackup(token, BACKUP_PATH);
-  if (r.type !== 'ok') return { ok: false, reason: r.type, raw: r };
-  return { ok: true, backup: r.data };
-}
-function buildLedgerVerifyResult(backup) {
-  const payload = verifyBackupPayloadHash(backup);
-  const events = normalizeVerifyEvents(Array.isArray(backup?.data?.eventLog?.warm) ? backup.data.eventLog.warm : []);
-  const eventHashes = verifyEventHashes(events);
-  const eventChain = verifyEventChain(events);
-  const cp = backup?.data?.ledger || {};
-  const archivableLedgerHead = safeString(backup?.integrity?.archivableLedgerHead || backup?.revision?.archivableLedgerHead || '');
-  const archivableLedgerSeq = safeNum(backup?.integrity?.archivableLedgerSeq || backup?.revision?.archivableLedgerSeq || 0);
-  const archivableReachable = !archivableLedgerHead || events.some(e => safeString(e?.eventHash) === archivableLedgerHead);
-  const res = {
-    ok: !!payload.ok && !!eventHashes.ok && !!eventChain.ok && !!archivableReachable,
-    payload,
-    eventHashes,
-    eventChain,
-    eventCountInSnapshot: events.length,
-    eventCountFull: safeNum(backup?.data?.eventArchive?.eventCountFull || events.length),
-    compacted: !!backup?.data?.eventArchive?.latestCompacted,
-    ledgerHead: safeString(backup?.integrity?.eventLedgerHead || backup?.revision?.eventLedgerHead || cp.headHash || ''),
-    ledgerSeq: safeNum(backup?.integrity?.eventLedgerSeq || backup?.revision?.eventLedgerSeq || cp.deviceSeq || 0),
-    archivableLedgerHead,
-    archivableLedgerSeq,
-    archivableLedgerDeviceStableId: safeString(backup?.integrity?.archivableLedgerDeviceStableId || backup?.revision?.archivableLedgerDeviceStableId || ''),
-    archivableLedgerChainId: safeString(backup?.integrity?.archivableLedgerChainId || backup?.revision?.archivableLedgerChainId || ''),
-    archivableEventCount: safeNum(backup?.integrity?.archivableEventCount || backup?.revision?.archivableEventCount || 0),
-    archivableReachable,
-    ownerYandexId: safeString(backup?.identity?.ownerYandexId || ''),
-    checksum: safeString(backup?.integrity?.payloadHash || '')
-  };
-  return { ...res, status: res.ok ? 'verified' : 'suspicious' };
-}
-const normalizeVerifyEvents = rows => {
-  const m = new Map();
-  (Array.isArray(rows) ? rows : []).forEach(e => e?.eventId && !m.has(e.eventId) && m.set(e.eventId, e));
-  return [...m.values()].sort((a, b) => safeNum(a.timestamp) - safeNum(b.timestamp) || safeNum(a.deviceSeq) - safeNum(b.deviceSeq));
+const headerValue = (event, name) => {
+  const headers = event?.headers || {};
+  const target = safe(name).toLowerCase();
+  const key = Object.keys(headers).find(item => safe(item).toLowerCase() === target);
+  return key ? safe(headers[key]) : '';
 };
-function verifyEventChain(events) {
-  const groups = new Map();
-  normalizeVerifyEvents(events)
-    .filter(e => safeString(e?.chainId) && safeNum(e?.deviceSeq) && safeString(e?.eventHash))
-    .forEach(e => {
-      const k = `${safeString(e.deviceStableId)}::${safeString(e.chainId)}`;
-      (groups.get(k) || groups.set(k, []).get(k)).push(e);
-    });
-  let chains = 0,
-    checkedLinks = 0,
-    brokenLinks = 0;
-  for (const list of groups.values()) {
-    chains++;
-    list.sort((a, b) => safeNum(a.deviceSeq) - safeNum(b.deviceSeq));
-    for (let i = 1; i < list.length; i++) {
-      if (safeNum(list[i].deviceSeq) !== safeNum(list[i - 1].deviceSeq) + 1) continue;
-      checkedLinks++;
-      if (safeString(list[i].prevHash) !== safeString(list[i - 1].eventHash)) brokenLinks++;
-    }
-  }
-  return { ok: brokenLinks === 0, chains, checkedLinks, brokenLinks };
-}
-async function readEventArchiveForVerify(token, { limitSegments = 300, limitEvents = 50000 } = {}) {
-  const idx = await downloadJsonResourceByPath(token, EVENT_ARCHIVE_INDEX_PATH, { link: 'verify_event_index_link', parse: 'verify_event_index_parse', file: 'verify_event_index_file', json: 'verify_event_index_json' }).catch(() => null);
-  const items = Array.isArray(idx?.data?.items) ? idx.data.items : [];
-  const picked = [...items].sort((a, b) => safeNum(a.createdAt) - safeNum(b.createdAt)).slice(-limitSegments);
-  const segs = await Promise.all(picked.map(x => downloadJsonResourceByPath(token, safeString(x.path), { link: 'verify_event_segment_link', parse: 'verify_event_segment_parse', file: 'verify_event_segment_file', json: 'verify_event_segment_json' }).catch(() => null)));
-  const events = normalizeVerifyEvents(segs.flatMap(x => (Array.isArray(x?.data?.events) ? x.data.events : []))).slice(-limitEvents);
-  return { available: items.length > 0, segmentsCount: items.length, downloadedSegments: segs.filter(x => x?.type === 'ok').length, eventCount: events.length, maxSeq: Math.max(0, ...events.map(e => safeNum(e.deviceSeq))), events };
-}
-async function readLatestBackupWithArchiveForVerify(token) {
-  const rb = await readLatestBackupForVerify(token);
-  if (!rb.ok) return rb;
-  const archive = await readEventArchiveForVerify(token).catch(() => ({ available: false, events: [] }));
-  const latestEvents = Array.isArray(rb.backup?.data?.eventLog?.warm) ? rb.backup.data.eventLog.warm : [];
-  const events = normalizeVerifyEvents([...latestEvents, ...(archive.events || [])]);
-  const backup = {
-    ...rb.backup,
-    data: {
-      ...(rb.backup.data || {}),
-      eventLog: { ...(rb.backup.data?.eventLog || {}), warm: events },
-      eventArchive: { ...(rb.backup.data?.eventArchive || {}), serverVerifyArchive: { available: !!archive.available, segmentsCount: archive.segmentsCount || 0, downloadedSegments: archive.downloadedSegments || 0, eventCount: archive.eventCount || 0, maxSeq: archive.maxSeq || 0 } }
-    }
-  };
-  return { ok: true, backup, archive };
-}
-async function listDiskFolderItems(token, path, { pageLimit = 200, maxItems = 2000 } = {}) {
-  const out = [];
-  for (let offset = 0; offset < maxItems; offset += pageLimit) {
-    const r = await getDiskJson(`${API}/resources?path=${encodeURIComponent(path)}&limit=${pageLimit}&offset=${offset}`, token, META_ONLY_TIMEOUT_MS).catch(() => null);
-    const items = Array.isArray(r?.json?._embedded?.items) ? r.json._embedded.items : [];
-    out.push(...items);
-    if (!items.length || items.length < pageLimit) break;
-  }
-  return out.slice(0, maxItems);
-}
-function parseArchiveSegmentFileItem(file, oldByPath = new Map()) {
-  const path = safeString(file?.path || '');
-  if (!EVENT_SEGMENT_RE.test(path)) return null;
-  const name = safeString(file?.name || path.split('/').pop() || '');
-  const m = name.match(/^seg_([A-Za-z0-9._-]+)_(\d+)_(\d+)_([A-Za-z0-9._-]+)\.json$/);
-  if (!m) return null;
-  const old = oldByPath.get(path) || {};
-  return {
-    path,
-    name,
-    deviceStableId: safeString(old.deviceStableId || ''),
-    branchId: safeString(old.branchId || m[1] || 'legacy'),
-    chainId: safeString(old.chainId || ''),
-    fromSeq: safeNum(old.fromSeq || m[2]),
-    toSeq: safeNum(old.toSeq || m[3]),
-    eventCount: safeNum(old.eventCount || 0),
-    hash: safeString(old.hash || m[4]),
-    createdAt: safeNum(old.createdAt || (file.created ? Date.parse(file.created) : 0) || (file.modified ? Date.parse(file.modified) : 0)),
-    modified: file.modified || null,
-    size: safeNum(file.size),
-    sizeHuman: humanSize(file.size)
-  };
-}
-async function listArchiveFilesForIndex(token) {
-  const idxRes = await downloadJsonResourceByPath(token, EVENT_ARCHIVE_INDEX_PATH, { link: 'archive_list_index_link', parse: 'archive_list_index_parse', file: 'archive_list_index_file', json: 'archive_list_index_json' }).catch(() => null);
-  const oldItems = Array.isArray(idxRes?.data?.items) ? idxRes.data.items : [];
-  const oldByPath = new Map(oldItems.map(x => [safeString(x.path), x]));
-  const diskItems = await listDiskFolderItems(token, EVENT_ARCHIVE_DIR, { pageLimit: 200, maxItems: 2000 }).catch(() => []);
-  const items = diskItems
-    .map(x => parseArchiveSegmentFileItem(x, oldByPath))
-    .filter(Boolean)
-    .sort((a, b) => safeString(a.branchId).localeCompare(safeString(b.branchId)) || safeNum(a.fromSeq) - safeNum(b.fromSeq));
-  const totalSize = items.reduce((a, x) => a + safeNum(x.size), 0);
-  return { exists: diskItems.length > 0, items, totals: { files: items.length, size: totalSize, sizeHuman: humanSize(totalSize), oldIndexItems: oldItems.length } };
-}
-function sanitizeArchiveDeletePaths(paths) {
-  return [...new Set((Array.isArray(paths) ? paths : []).map(safeString).filter(p => EVENT_SEGMENT_RE.test(p)))].slice(0, 50);
-}
-async function deleteArchiveSegments(token, paths = []) {
-  const good = sanitizeArchiveDeletePaths(paths),
-    results = [];
-  for (const path of good) {
-    const r = await httpsDelete(`${API}/resources?path=${encodeURIComponent(path)}&permanently=false`, { Authorization: `OAuth ${token}` }, META_ONLY_TIMEOUT_MS).catch(e => ({ status: 0, body: safeString(e?.message) }));
-    results.push({ path, ok: [200, 202, 204, 404].includes(Number(r.status)), status: Number(r.status), raw: safeString(r.body).slice(0, 200) });
-  }
-  return { requested: Array.isArray(paths) ? paths.length : 0, deleted: results.filter(x => x.ok).length, results };
-}
-async function inspectEventArchive(token) {
-  const idxRes = await downloadJsonResourceByPath(token, EVENT_ARCHIVE_INDEX_PATH, { link: 'archive_inspect_index_link', parse: 'archive_inspect_index_parse', file: 'archive_inspect_index_file', json: 'archive_inspect_index_json' }).catch(() => null);
-  const rawIndex = idxRes?.type === 'ok' && idxRes.data && typeof idxRes.data === 'object' ? idxRes.data : { version: '1.1', updatedAt: 0, items: [] };
-  const rawItems = Array.isArray(rawIndex.items) ? rawIndex.items : [];
-  const diskItems = await listDiskFolderItems(token, EVENT_ARCHIVE_DIR, { pageLimit: 200, maxItems: 2000 }).catch(() => []);
-  const sizeMap = new Map(diskItems.map(x => [safeString(x.path), { size: safeNum(x.size), sizeHuman: humanSize(x.size), modified: x.modified || null, name: safeString(x.name) }]));
-  const items = rawItems.map(x => ({ ...x, ...(sizeMap.get(safeString(x.path)) || {}) }));
-  const bm = new Map();
-  items.forEach(x => {
-    const k = safeString(x.branchId || x.deviceStableId || 'legacy') || 'legacy';
-    const b = bm.get(k) || { branchId: k, chainId: safeString(x.chainId || ''), deviceStableId: safeString(x.deviceStableId || ''), segments: 0, events: 0, size: 0, fromSeq: 0, toSeq: 0, legacySegments: 0 };
-    b.segments++;
-    b.events += safeNum(x.eventCount);
-    b.size += safeNum(x.size);
-    b.fromSeq = b.fromSeq ? Math.min(b.fromSeq, safeNum(x.fromSeq)) : safeNum(x.fromSeq);
-    b.toSeq = Math.max(b.toSeq, safeNum(x.toSeq));
-    if (!safeString(x.branchId) || !safeString(x.chainId)) b.legacySegments++;
-    bm.set(k, b);
-  });
-  const branches = [...bm.values()].map(b => ({ ...b, sizeHuman: humanSize(b.size) })).sort((a, b) => safeString(a.branchId).localeCompare(safeString(b.branchId)));
-  const totalSize = items.reduce((a, x) => a + safeNum(x.size), 0);
-  return { exists: idxRes?.type === 'ok', index: { ...rawIndex, items }, branches, totals: { branches: branches.length, segments: items.length, events: items.reduce((a, x) => a + safeNum(x.eventCount), 0), size: totalSize, sizeHuman: humanSize(totalSize), diskFiles: diskItems.length } };
-}
-const requestMethod = event =>
-  safeString(
-    event?.httpMethod ||
-    event?.requestContext?.http?.method ||
-    event?.requestContext?.httpMethod ||
-    event?.method ||
-    ''
-  ).toUpperCase();
-
+const requestMethod = event => safe(event?.httpMethod || event?.requestContext?.http?.method || event?.requestContext?.httpMethod || event?.method).toUpperCase();
 const getQuery = (event, key) => {
-  const query = event?.queryStringParameters || {};
-  if (query[key] != null) return safeString(query[key]);
-
+  const direct = event?.queryStringParameters?.[key];
+  if (direct != null) return safe(direct);
   try {
-    return safeString(
-      new URLSearchParams(
-        event?.rawQueryString || ''
-      ).get(key)
-    );
+    return safe(new URLSearchParams(event?.rawQueryString || '').get(key));
   } catch {
     return '';
   }
 };
-const normalizeBackupItem = (item, meta = null, opts = {}) => {
-  const path = safeString(item?.path);
-  const isLatest = path === BACKUP_PATH;
-  const fallbackName = isLatest ? 'vi3na1bita_backup.vi3bak' : safeString(path.split('/').pop() || '');
+const parseJson = text => {
+  try {
+    return JSON.parse(text || '{}');
+  } catch {
+    return null;
+  }
+};
+const parseBody = event => {
+  if (!event?.body) return {};
+  const text = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : String(event.body);
+  if (Buffer.byteLength(text, 'utf8') > MAX_REQUEST_BYTES) {
+    throw makeError('request_body_too_large', 413);
+  }
+  const value = parseJson(text);
+  if (!isObject(value)) throw makeError('invalid_json_body', 400);
+  return value;
+};
+const corsHeaders = event => {
+  const origin = headerValue(event, 'origin');
+  const wildcard = CFG.allowedOrigins.includes('*');
+  const allowed = wildcard ? '*' : CFG.allowedOrigins.includes(origin) ? origin : CFG.allowedOrigins[0] || '*';
+  return { 'Access-Control-Allow-Origin': allowed, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Accept, X-Yandex-Auth, X-Vi3-Session', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
+};
+const reply = (event, statusCode, body, id) => ({ statusCode, headers: { ...corsHeaders(event), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Request-Id': id }, body: JSON.stringify(body) });
+const statusOf = error => {
+  const explicit = integer(error?.status);
+  if (explicit >= 400 && explicit <= 599) return explicit;
+  const message = safe(error?.message);
+  if (/required|invalid|bad_|mismatch|not_contiguous|identity/.test(message)) return 400;
+  if (/oauth|social_session|authorization/.test(message)) return 401;
+  if (/forbidden|revoked|owner_/.test(message)) return 403;
+  if (/not_found/.test(message)) return 404;
+  if (/conflict|immutable|overlap|gap|reorder|head_/.test(message)) return 409;
+  if (/too_large|limit/.test(message)) return 413;
+  if (/timeout/.test(message)) return 504;
+  if (/unavailable|disk_/.test(message)) return 502;
+  return 500;
+};
+function request(method, url, { headers = {}, body = null, timeoutMs = DEFAULT_TIMEOUT_MS, maxBytes = MAX_RESPONSE_BYTES, redirects = 5 } = {}) {
+  return new Promise((resolve, reject) => {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      reject(makeError('invalid_url', 400));
+      return;
+    }
+    const payload = body == null ? null : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body), 'utf8');
+    const req = https.request({ hostname: parsed.hostname, path: `${parsed.pathname}${parsed.search}`, method, headers: { Accept: 'application/json, text/plain, */*', ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {}), ...headers } }, response => {
+      if ([301, 302, 303, 307, 308].includes(Number(response.statusCode)) && response.headers.location && redirects > 0) {
+        response.resume();
+        const nextHeaders = { ...headers };
+        delete nextHeaders.Authorization;
+        delete nextHeaders.authorization;
+        let nextUrl;
+        try {
+          nextUrl = new URL(response.headers.location, url).toString();
+        } catch {
+          reject(makeError('bad_redirect_url', 502));
+          return;
+        }
+        request(method === 'POST' && Number(response.statusCode) === 303 ? 'GET' : method, nextUrl, { headers: nextHeaders, body: method === 'POST' && Number(response.statusCode) === 303 ? null : body, timeoutMs, maxBytes, redirects: redirects - 1 }).then(resolve, reject);
+        return;
+      }
+      const chunks = [];
+      let bytes = 0;
+      let settled = false;
+      response.on('data', chunk => {
+        if (settled) return;
+        bytes += chunk.length;
+        if (bytes > maxBytes) {
+          settled = true;
+          req.destroy(makeError('response_too_large', 413));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      response.on('end', () => {
+        if (settled) return;
+        settled = true;
+        resolve({ status: Number(response.statusCode || 0), headers: response.headers, text: Buffer.concat(chunks).toString('utf8') });
+      });
+    });
+    req.setTimeout(timeoutMs, () => req.destroy(makeError('timeout', 504)));
+    req.on('error', reject);
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+const oauthHeaders = token => ({ Authorization: `OAuth ${token}` });
+async function readYandexIdentity(token) {
+  const response = await request('GET', 'https://login.yandex.ru/info?format=json', { headers: oauthHeaders(token), timeoutMs: 10000, maxBytes: 512 * 1024 });
+  if ([401, 403].includes(response.status)) throw makeError('bad_yandex_oauth', 401);
+  if (response.status !== 200) throw makeError('yandex_identity_unavailable', 502);
+  const profile = parseJson(response.text);
+  const yandexId = safe(profile?.id);
+  if (!yandexId) throw makeError('bad_yandex_profile', 502);
+  return { yandexId, ownerYandexIdHash: hash(`ya:${yandexId}`) };
+}
+async function authorizeRequest(event, body) {
+  const oauthToken = headerValue(event, 'x-yandex-auth')
+    .replace(/^(OAuth|Bearer)\s+/i, '')
+    .trim();
+  const socialSession = headerValue(event, 'x-vi3-session');
+  if (!oauthToken) throw makeError('yandex_oauth_required', 401);
+  if (!socialSession) throw makeError('social_session_required', 401);
+  if (!CFG.authorityUrl) throw makeError('backup_authority_not_configured', 503);
+  const requestedDeviceId = safeId(body?.deviceId, 120);
+  const [identity, authorityResponse] = await Promise.all([
+    readYandexIdentity(oauthToken),
+    request('POST', CFG.authorityUrl, { headers: { 'X-Vi3-Session': socialSession }, body: { action: 'backup_device_authorize', ...(requestedDeviceId ? { deviceId: requestedDeviceId } : {}) }, timeoutMs: 15000, maxBytes: 1024 * 1024 })
+  ]);
+  const authority = parseJson(authorityResponse.text);
+  if (authorityResponse.status < 200 || authorityResponse.status >= 300 || authority?.ok !== true || !authority?.authorization) {
+    throw makeError(safe(authority?.error || authority?.reason || 'backup_authorization_failed'), authorityResponse.status || 502);
+  }
+  const authorization = authority.authorization;
+  const authorityOwner = safe(authorization.ownerYandexIdHash);
+  if (!isHash(authorityOwner)) throw makeError('backup_owner_hash_invalid', 403);
+  if (authorityOwner !== identity.ownerYandexIdHash) {
+    throw makeError('backup_oauth_social_owner_mismatch', 403);
+  }
+  const deviceId = safeId(authorization.deviceId, 120);
+  if (!deviceId) throw makeError('backup_authorized_device_missing', 403);
+  return { oauthToken, playerId: safeId(authorization.playerId, 96), ownerYandexIdHash: identity.ownerYandexIdHash, deviceId, device: authorization.device || {}, sessionExpiresAt: integer(authorization.sessionExpiresAt) };
+}
+async function diskJson(method, url, token, body = null, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const response = await request(method, url, { headers: oauthHeaders(token), body, timeoutMs });
+  return { ...response, json: parseJson(response.text) };
+}
+async function ensureDir(token, path) {
+  const check = await diskJson('GET', `${API}/resources?path=${encodeURIComponent(path)}`, token, null, 10000);
+  if (check.status === 200 || check.status === 409) return true;
+  if (check.status !== 404) {
+    throw makeError(`disk_directory_check_failed:${check.status}`, [401, 403].includes(check.status) ? check.status : 502);
+  }
+  const created = await diskJson('PUT', `${API}/resources?path=${encodeURIComponent(path)}`, token, null, 10000);
+  if (![200, 201, 202, 409].includes(created.status)) {
+    throw makeError(`disk_directory_create_failed:${created.status}`, [401, 403].includes(created.status) ? created.status : 502);
+  }
+  return true;
+}
+async function ensureDirs(token, paths) {
+  for (const path of paths) await ensureDir(token, path);
+}
+async function downloadJson(token, path, { maxBytes = MAX_RESPONSE_BYTES } = {}) {
+  const link = await diskJson('GET', `${API}/resources/download?path=${encodeURIComponent(path)}`, token, null, 15000);
+  if (link.status === 404) return null;
+  if (link.status !== 200 || !link.json?.href) {
+    throw makeError(`disk_download_link_failed:${link.status}`, [401, 403].includes(link.status) ? link.status : 502);
+  }
+  const file = await request('GET', link.json.href, { timeoutMs: DOWNLOAD_TIMEOUT_MS, maxBytes });
+  if (file.status === 404) return null;
+  if (file.status !== 200) throw makeError(`disk_download_failed:${file.status}`, 502);
+  const value = parseJson(file.text);
+  if (!isObject(value)) throw makeError('disk_json_invalid', 502);
+  return value;
+}
+async function uploadJson(token, path, value, { overwrite = false } = {}) {
+  const payload = stableStringify(value);
+  if (Buffer.byteLength(payload, 'utf8') > MAX_REQUEST_BYTES) {
+    throw makeError('upload_payload_too_large', 413);
+  }
+  const overwriteQuery = overwrite ? 'overwrite=true' : IMMUTABLE_UPLOAD_QUERY;
+  const link = await diskJson('GET', `${API}/resources/upload?path=${encodeURIComponent(path)}&${overwriteQuery}`, token, null, 15000);
+  if (link.status === 409 && !overwrite) return { ok: false, conflict: true, stage: 'link' };
+  if (link.status !== 200 || !link.json?.href) {
+    throw makeError(`disk_upload_link_failed:${link.status}`, link.status === 401 ? 401 : link.status === 403 ? 403 : link.status === 409 ? 409 : 502);
+  }
+  const written = await request('PUT', link.json.href, { headers: { 'Content-Type': 'application/json' }, body: payload, timeoutMs: DOWNLOAD_TIMEOUT_MS, maxBytes: 1024 * 1024 });
+  if (written.status === 409 && !overwrite) {
+    return { ok: false, conflict: true, stage: 'put' };
+  }
+  if (written.status < 200 || written.status >= 300) {
+    throw makeError(`disk_upload_failed:${written.status}`, written.status === 409 ? 409 : 502);
+  }
+  return { ok: true, conflict: false };
+}
+async function listFolder(token, path, maxItems = 1000) {
+  const output = [];
+  const limit = 200;
+  for (let offset = 0; offset < maxItems; offset += limit) {
+    const response = await diskJson('GET', `${API}/resources?path=${encodeURIComponent(path)}&limit=${limit}&offset=${offset}`, token, null, 15000);
+    if (response.status === 404) return [];
+    if (response.status !== 200) {
+      throw makeError(`disk_list_failed:${response.status}`, [401, 403].includes(response.status) ? response.status : 502);
+    }
+    const items = Array.isArray(response.json?._embedded?.items) ? response.json._embedded.items : [];
+    output.push(...items);
+    if (items.length < limit) break;
+  }
+  return output.slice(0, maxItems);
+}
+const deviceDir = deviceId => `${DEVICES_DIR}/${safeId(deviceId, 120)}`;
+const chainDir = (deviceId, chainId) => `${deviceDir(deviceId)}/${safeId(chainId, 160)}`;
+const rangePath = range => `${chainDir(range.deviceId, range.chainId)}/range_${range.fromSeq}.json`;
+const headPath = (deviceId, chainId) => `${chainDir(deviceId, chainId)}/head.json`;
+const settingsPath = deviceId => `${deviceDir(deviceId)}/settings.json`;
+const eventHash = event => {
+  const { eventHash: ignored, ...payload } = event || {};
+  return hash(stableStringify(payload));
+};
+function normalizeEvents(rawEvents, auth, chainId, fromSeq, toSeq) {
+  const events = Array.isArray(rawEvents) ? rawEvents : [];
+  if (!events.length || events.length > MAX_RANGE_EVENTS) {
+    throw makeError('range_event_count_invalid', events.length > MAX_RANGE_EVENTS ? 413 : 400);
+  }
+  if (events.length !== toSeq - fromSeq + 1) {
+    throw makeError('range_sequence_not_contiguous', 409);
+  }
+  const eventIds = new Set();
+  events.forEach((event, index) => {
+    if (!isObject(event)) throw makeError('range_event_invalid', 400);
+    const expectedSeq = fromSeq + index;
+    const eventId = safe(event.eventId);
+    if (!eventId) throw makeError('range_event_id_required', 400);
+    if (eventIds.has(eventId)) throw makeError('range_event_id_duplicate', 409);
+    eventIds.add(eventId);
+    if (integer(event.deviceSeq) !== expectedSeq) {
+      throw makeError('range_event_sequence_mismatch', 409);
+    }
+    if (safeId(event.chainId, 160) !== chainId) {
+      throw makeError('range_event_chain_mismatch', 409);
+    }
+    if (safeId(event.deviceStableId, 120) !== auth.deviceId) {
+      throw makeError('range_event_device_mismatch', 403);
+    }
+    const suppliedHash = safe(event.eventHash);
+    if (!isHash(suppliedHash) || eventHash(event) !== suppliedHash) {
+      throw makeError('range_event_hash_mismatch', 409);
+    }
+    if (index > 0 && safe(event.prevHash) !== safe(events[index - 1].eventHash)) {
+      throw makeError('range_event_prev_hash_mismatch', 409);
+    }
+    const eventOwner = safe(event.ownerYandexIdHash);
+    if (eventOwner && eventOwner !== auth.ownerYandexIdHash) {
+      throw makeError('range_event_owner_mismatch', 403);
+    }
+  });
+  return events;
+}
+function normalizeRange(raw, auth) {
+  if (!isObject(raw)) throw makeError('range_object_required', 400);
+  const version = safe(raw.version || VERSION);
+  if (![VERSION, LEGACY_V7_VERSION].includes(version)) {
+    throw makeError('range_version_invalid', 400);
+  }
+  const deviceId = safeId(raw.deviceId || auth.deviceId, 120);
+  const chainId = safeId(raw.chainId, 160);
+  const fromSeq = integer(raw.fromSeq);
+  const toSeq = integer(raw.toSeq);
+  const createdAt = integer(raw.createdAt) || now();
+  if (deviceId !== auth.deviceId) throw makeError('range_device_mismatch', 403);
+  if (!chainId) throw makeError('range_chain_required', 400);
+  if (fromSeq < 1 || toSeq < fromSeq) throw makeError('range_sequence_invalid', 400);
+  const events = normalizeEvents(raw.events, auth, chainId, fromSeq, toSeq);
+  const previousRangeHash = safe(raw.previousRangeHash);
+  if (previousRangeHash && !isHash(previousRangeHash)) {
+    throw makeError('range_previous_hash_invalid', 400);
+  }
+  let core;
+  if (version === LEGACY_V7_VERSION) {
+    core = {
+      version: LEGACY_V7_VERSION,
+      ownerYandexIdHash: auth.ownerYandexIdHash,
+      deviceId,
+      chainId,
+      fromSeq,
+      toSeq,
+      events,
+      projection: isObject(raw.projection) ? raw.projection : {},
+      audit: Array.isArray(raw.audit) ? raw.audit.slice(0, MAX_RANGE_EVENTS) : [],
+      mutations: isObject(raw.mutations) ? raw.mutations : isObject(raw.sharedMutations) ? raw.sharedMutations : {},
+      createdAt
+    };
+  } else {
+    core = { version: VERSION, ownerYandexIdHash: auth.ownerYandexIdHash, deviceId, chainId, fromSeq, toSeq, previousRangeHash, events, createdAt };
+  }
+  const payloadHash = hash(stableStringify(core));
+  const suppliedHash = safe(raw.hash || raw.payloadHash);
+  if (suppliedHash && suppliedHash !== payloadHash) {
+    throw makeError('range_payload_hash_mismatch', 409);
+  }
+  const rangeKey = `${deviceId}:${chainId}:${fromSeq}:${toSeq}:${payloadHash}`;
+  const range = { ...core, hash: payloadHash, rangeKey };
+  if (byteLength(range) > MAX_RANGE_BYTES) {
+    throw makeError('range_payload_too_large', 413);
+  }
+  return range;
+}
+function verifyStoredRange(raw, expected = {}) {
+  if (!isObject(raw)) throw makeError('stored_range_invalid', 502);
+  const version = safe(raw.version);
+  const core =
+    version === LEGACY_V7_VERSION
+      ? {
+          version: LEGACY_V7_VERSION,
+          ownerYandexIdHash: safe(raw.ownerYandexIdHash),
+          deviceId: safeId(raw.deviceId, 120),
+          chainId: safeId(raw.chainId, 160),
+          fromSeq: integer(raw.fromSeq),
+          toSeq: integer(raw.toSeq),
+          events: Array.isArray(raw.events) ? raw.events : [],
+          projection: isObject(raw.projection) ? raw.projection : {},
+          audit: Array.isArray(raw.audit) ? raw.audit : [],
+          mutations: isObject(raw.mutations) ? raw.mutations : {},
+          createdAt: integer(raw.createdAt)
+        }
+      : {
+          version: VERSION,
+          ownerYandexIdHash: safe(raw.ownerYandexIdHash),
+          deviceId: safeId(raw.deviceId, 120),
+          chainId: safeId(raw.chainId, 160),
+          fromSeq: integer(raw.fromSeq),
+          toSeq: integer(raw.toSeq),
+          previousRangeHash: safe(raw.previousRangeHash),
+          events: Array.isArray(raw.events) ? raw.events : [],
+          createdAt: integer(raw.createdAt)
+        };
+  const actualHash = hash(stableStringify(core));
+  const actualKey = `${core.deviceId}:${core.chainId}:${core.fromSeq}:${core.toSeq}:${actualHash}`;
+  if (!isHash(raw.hash) || safe(raw.hash) !== actualHash) {
+    throw makeError('stored_range_hash_mismatch', 502);
+  }
+  if (safe(raw.rangeKey) !== actualKey) {
+    throw makeError('stored_range_key_mismatch', 502);
+  }
+  if (expected.deviceId && core.deviceId !== expected.deviceId) {
+    throw makeError('stored_range_device_mismatch', 502);
+  }
+  if (expected.chainId && core.chainId !== expected.chainId) {
+    throw makeError('stored_range_chain_mismatch', 502);
+  }
+  if (expected.fromSeq && core.fromSeq !== expected.fromSeq) {
+    throw makeError('stored_range_sequence_mismatch', 502);
+  }
+  return { ...raw, hash: actualHash, rangeKey: actualKey };
+}
+function buildHead(range) {
+  const events = Array.isArray(range.events) ? range.events : [];
+  const lastEvent = events[events.length - 1];
   return {
-    path,
-    name: safeString(item?.name || fallbackName),
-    timestamp: opts.enrichFromMeta && safeNum(meta?.timestamp) ? safeNum(meta.timestamp) : item?.modified ? Date.parse(item.modified) || 0 : safeNum(item?.timestamp),
-    modified: item?.modified || null,
-    size: safeNum(item?.size),
-    sizeHuman: humanSize(item?.size),
-    appVersion: safeString(meta?.appVersion || item?.appVersion || 'unknown'),
-    version: safeString(meta?.version || item?.version || 'unknown'),
-    schemaVersion: opts.enrichFromMeta ? safeString(meta?.schemaVersion || meta?.version || item?.schemaVersion || item?.version || '6.0') : safeString(item?.schemaVersion || item?.version || 'unknown'),
-    changedDomains: opts.enrichFromMeta && Array.isArray(meta?.changedDomains) ? meta.changedDomains.map(safeString).filter(Boolean) : [],
-    lastHistoryAt: opts.enrichFromMeta ? safeNum(meta?.lastHistoryAt || 0) : safeNum(item?.lastHistoryAt || 0),
-    checksum: opts.enrichFromMeta ? safeString(meta?.checksum || item?.checksum || '') : safeString(item?.checksum || ''),
-    eventLedgerHead: opts.enrichFromMeta ? safeString(meta?.eventLedgerHead || item?.eventLedgerHead || '') : safeString(item?.eventLedgerHead || ''),
-    eventLedgerSeq: opts.enrichFromMeta ? safeNum(meta?.eventLedgerSeq || item?.eventLedgerSeq || 0) : safeNum(item?.eventLedgerSeq || 0),
-    eventLedgerDeviceStableId: opts.enrichFromMeta ? safeString(meta?.eventLedgerDeviceStableId || item?.eventLedgerDeviceStableId || '') : safeString(item?.eventLedgerDeviceStableId || ''),
-    archivableLedgerHead: opts.enrichFromMeta ? safeString(meta?.archivableLedgerHead || item?.archivableLedgerHead || '') : safeString(item?.archivableLedgerHead || ''),
-    archivableLedgerSeq: opts.enrichFromMeta ? safeNum(meta?.archivableLedgerSeq || item?.archivableLedgerSeq || 0) : safeNum(item?.archivableLedgerSeq || 0),
-    archivableLedgerDeviceStableId: opts.enrichFromMeta ? safeString(meta?.archivableLedgerDeviceStableId || item?.archivableLedgerDeviceStableId || '') : safeString(item?.archivableLedgerDeviceStableId || ''),
-    archivableLedgerChainId: opts.enrichFromMeta ? safeString(meta?.archivableLedgerChainId || item?.archivableLedgerChainId || '') : safeString(item?.archivableLedgerChainId || ''),
-    archivableEventCount: opts.enrichFromMeta ? safeNum(meta?.archivableEventCount || item?.archivableEventCount || 0) : safeNum(item?.archivableEventCount || 0),
-    eventLogHash: opts.enrichFromMeta ? safeString(meta?.eventLogHash || item?.eventLogHash || '') : safeString(item?.eventLogHash || ''),
-    sharedStorageHash: opts.enrichFromMeta ? safeString(meta?.sharedStorageHash || item?.sharedStorageHash || '') : safeString(item?.sharedStorageHash || ''),
-    ownerYandexId: opts.enrichFromMeta ? safeString(meta?.ownerYandexId || item?.ownerYandexId || '') : safeString(item?.ownerYandexId || ''),
-    latestPath: opts.enrichFromMeta ? safeString(meta?.latestPath || BACKUP_PATH) : safeString(item?.latestPath || ''),
-    historyPath: opts.enrichFromMeta ? safeString(meta?.historyPath || '') : safeString(item?.historyPath || ''),
-    profileName: opts.enrichFromMeta ? safeString(meta?.profileName || item?.profileName || 'Слушатель') : safeString(item?.profileName || ''),
-    sourceDeviceStableId: opts.enrichFromMeta ? safeString(meta?.sourceDeviceStableId || item?.sourceDeviceStableId || '') : safeString(item?.sourceDeviceStableId || ''),
-    sourceDeviceLabel: opts.enrichFromMeta ? safeString(meta?.sourceDeviceLabel || item?.sourceDeviceLabel || '') : safeString(item?.sourceDeviceLabel || ''),
-    sourceDeviceClass: opts.enrichFromMeta ? safeString(meta?.sourceDeviceClass || item?.sourceDeviceClass || '') : safeString(item?.sourceDeviceClass || ''),
-    sourcePlatform: opts.enrichFromMeta ? safeString(meta?.sourcePlatform || item?.sourcePlatform || '') : safeString(item?.sourcePlatform || ''),
-    level: opts.enrichFromMeta ? safeNum(meta?.level || item?.level || 0) : safeNum(item?.level || 0),
-    xp: opts.enrichFromMeta ? safeNum(meta?.xp || item?.xp || 0) : safeNum(item?.xp || 0),
-    achievementsCount: opts.enrichFromMeta ? safeNum(meta?.achievementsCount || item?.achievementsCount || 0) : safeNum(item?.achievementsCount || 0),
-    favoritesCount: opts.enrichFromMeta ? safeNum(meta?.favoritesCount || item?.favoritesCount || 0) : safeNum(item?.favoritesCount || 0),
-    playlistsCount: opts.enrichFromMeta ? safeNum(meta?.playlistsCount || item?.playlistsCount || 0) : safeNum(item?.playlistsCount || 0),
-    statsCount: opts.enrichFromMeta ? safeNum(meta?.statsCount || item?.statsCount || 0) : safeNum(item?.statsCount || 0),
-    eventCount: opts.enrichFromMeta ? safeNum(meta?.eventCount || item?.eventCount || 0) : safeNum(item?.eventCount || 0),
-    devicesCount: opts.enrichFromMeta ? safeNum(meta?.devicesCount || item?.devicesCount || 0) : safeNum(item?.devicesCount || 0),
-    deviceStableCount: opts.enrichFromMeta ? safeNum(meta?.deviceStableCount || item?.deviceStableCount || 0) : safeNum(item?.deviceStableCount || 0),
-    syncLease: opts.enrichFromMeta && meta?.syncLease && typeof meta.syncLease === 'object' ? meta.syncLease : null,
-    isLatest
+    version: VERSION,
+    ownerYandexIdHash: range.ownerYandexIdHash,
+    deviceId: range.deviceId,
+    chainId: range.chainId,
+    lastFromSeq: range.fromSeq,
+    lastToSeq: range.toSeq,
+    lastRangeHash: range.hash,
+    lastEventHash: safe(lastEvent?.eventHash),
+    ranges: 1,
+    events: events.length,
+    createdAt: range.createdAt,
+    updatedAt: now()
   };
-};
-const makeSummary = (latest, items = [], diskUsageBytes = 0) => {
-  if (!latest) {
-    return { exists: false, latest: null, items: [], diskUsageBytes, diskUsageHuman: humanSize(diskUsageBytes) };
+}
+function nextHead(oldHead, range) {
+  const next = buildHead(range);
+  return { ...next, ranges: integer(oldHead?.ranges) + 1, events: integer(oldHead?.events) + range.events.length, createdAt: integer(oldHead?.createdAt) || range.createdAt, updatedAt: now() };
+}
+async function writeHead(auth, range, oldHead = null) {
+  const head = oldHead ? nextHead(oldHead, range) : buildHead(range);
+  await uploadJson(auth.oauthToken, headPath(auth.deviceId, range.chainId), head, { overwrite: true });
+  return head;
+}
+const sameStoredRange = (existing, range) => safe(existing?.rangeKey) === range.rangeKey && safe(existing?.hash) === range.hash && integer(existing?.fromSeq) === range.fromSeq && integer(existing?.toSeq) === range.toSeq;
+async function writeImmutableRange(auth, rawRange) {
+  const range = normalizeRange(rawRange, auth);
+  const dDir = deviceDir(auth.deviceId);
+  const cDir = chainDir(auth.deviceId, range.chainId);
+  const path = rangePath(range);
+  await ensureDirs(auth.oauthToken, ['app:/Backup', ROOT, DEVICES_DIR, dDir, cDir]);
+  let head = await downloadJson(auth.oauthToken, headPath(auth.deviceId, range.chainId), { maxBytes: 256 * 1024 });
+  if (head && (safeId(head.deviceId, 120) !== auth.deviceId || safeId(head.chainId, 160) !== range.chainId || safe(head.ownerYandexIdHash) !== auth.ownerYandexIdHash)) {
+    throw makeError('range_head_identity_mismatch', 409);
   }
-  return { exists: true, latest: { ...latest, diskUsageBytes, diskUsageHuman: humanSize(diskUsageBytes) }, items, diskUsageBytes, diskUsageHuman: humanSize(diskUsageBytes) };
-};
-async function getDiskJson(url, token, timeoutMs = DEFAULT_TIMEOUT_MS) {
-  const res = await httpsGet(url, { Authorization: `OAuth ${token}` }, 5, timeoutMs);
-  if (res.status === 401 || res.status === 403) {
-    console.log(`[DISK ${res.status}]`, url, '→', safeString(res.body).slice(0, 300));
-  }
-  return { ...res, json: safeParse(res.body), rawBody: res.body };
-}
-async function downloadJsonBySignedHref(href, timeoutMs = META_ONLY_TIMEOUT_MS) {
-  const res = await httpsGet(href, {}, 5, timeoutMs);
-  if (res.status !== 200) return null;
-  return safeParse(res.body);
-}
-async function uploadJsonResourceByPath(token, path, data) {
-  const linkRes = await getDiskJson(`${API}/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`, token, META_ONLY_TIMEOUT_MS);
-  if (linkRes.status !== 200 || !linkRes.json?.href) return { ok: false, status: linkRes.status, raw: safeString(linkRes.rawBody).slice(0, 300) };
-  const putRes = await httpsPut(linkRes.json.href, JSON.stringify(data), {}, META_ONLY_TIMEOUT_MS);
-  return { ok: putRes.status >= 200 && putRes.status < 300, status: putRes.status, raw: safeString(putRes.body).slice(0, 300) };
-}
-const normalizeLease = raw =>
-  raw && typeof raw === 'object' ? { revision: safeString(raw.revision || ''), deviceStableId: safeString(raw.deviceStableId || ''), deviceHash: safeString(raw.deviceHash || ''), startedAt: safeNum(raw.startedAt), expiresAt: safeNum(raw.expiresAt), reason: safeString(raw.reason || '') } : null;
-const sameLeaseOwner = (lease, deviceStableId, deviceHash) => !!lease && ((deviceStableId && lease.deviceStableId === deviceStableId) || (deviceHash && lease.deviceHash === deviceHash));
-const leaseActive = lease => !!lease && safeNum(lease.expiresAt) > nowTs() + 1000;
-async function ensureDiskDir(token, path) {
-  const p = safeString(path);
-  if (!p) return false;
-  const chk = await getDiskJson(`${API}/resources?path=${encodeURIComponent(p)}`, token, META_ONLY_TIMEOUT_MS).catch(() => null);
-  if (chk?.status === 200 || chk?.status === 409) return true;
-  if (chk && chk.status !== 404) return false;
-  const res = await httpsPut(`${API}/resources?path=${encodeURIComponent(p)}`, '', { Authorization: `OAuth ${token}` }, META_ONLY_TIMEOUT_MS).catch(() => null);
-  return !!res && (res.status === 201 || res.status === 200 || res.status === 409);
-}
-async function writeMetaJson(token, meta) {
-  await ensureDiskDir(token, APP_ROOT).catch(() => false);
-  return uploadJsonResourceByPath(token, META_PATH, meta || {});
-}
-async function getLeaseState(token) {
-  const metaRead = await readMetaJson(token).catch(() => ({ ok: false, data: null }));
-  const meta = metaRead?.data && typeof metaRead.data === 'object' ? metaRead.data : {};
-  return { meta, lease: normalizeLease(meta.syncLease) };
-}
-async function acquireLease(token, event) {
-  const deviceStableId = sanitizeDeviceStableId(getQuery(event, 'deviceStableId'));
-  const deviceHash = safeString(getQuery(event, 'deviceHash'));
-  const reason = safeString(getQuery(event, 'reason') || 'sync');
-  const ttlMs = Math.max(10000, Math.min(120000, safeNum(getQuery(event, 'ttlMs')) || 45000));
-  const { meta, lease } = await getLeaseState(token);
-  if (leaseActive(lease) && !sameLeaseOwner(lease, deviceStableId, deviceHash)) return { ok: false, status: 409, reason: 'lease_busy', lease };
-  const revision = `lease_${nowTs().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  const nextLease = { revision, deviceStableId, deviceHash, startedAt: nowTs(), expiresAt: nowTs() + ttlMs, reason };
-  const wr = await writeMetaJson(token, { ...meta, syncLease: nextLease });
-  if (!wr.ok) return { ok: false, status: 502, reason: 'lease_write_failed', raw: wr.raw };
-  return { ok: true, status: 200, lease: nextLease };
-}
-async function releaseLease(token, event) {
-  const deviceStableId = sanitizeDeviceStableId(getQuery(event, 'deviceStableId'));
-  const deviceHash = safeString(getQuery(event, 'deviceHash'));
-  const revision = safeString(getQuery(event, 'revision'));
-  const { meta, lease } = await getLeaseState(token);
-  if (!lease) return { ok: true, released: false, lease: null };
-  const ownerOk = sameLeaseOwner(lease, deviceStableId, deviceHash);
-  const revOk = !revision || lease.revision === revision;
-  if (!ownerOk || !revOk) return { ok: false, status: 409, reason: 'lease_owner_or_revision_mismatch', lease };
-  const wr = await writeMetaJson(token, { ...meta, syncLease: null });
-  if (!wr.ok) return { ok: false, status: 502, reason: 'lease_release_failed', raw: wr.raw };
-  return { ok: true, released: true, lease: null };
-}
-async function readMetaJson(token) {
-  try {
-    const metaFileRes = await getDiskJson(`${API}/resources/download?path=${encodeURIComponent(META_PATH)}`, token, META_ONLY_TIMEOUT_MS);
-    if (metaFileRes.status === 404) return { ok: true, exists: false, data: null };
-    if (metaFileRes.status !== 200 || !metaFileRes.json?.href) {
-      return { ok: false, exists: false, error: 'meta_download_link_error', status: metaFileRes.status, raw: safeString(metaFileRes.rawBody).slice(0, 300) };
+  if (head && range.fromSeq <= integer(head.lastToSeq)) {
+    const existing = await downloadJson(auth.oauthToken, path, { maxBytes: MAX_RANGE_BYTES });
+    if (existing && sameStoredRange(existing, range)) {
+      verifyStoredRange(existing, { deviceId: auth.deviceId, chainId: range.chainId, fromSeq: range.fromSeq });
+      return { duplicate: true, repairedHead: false, range, head, path };
     }
-    const data = await downloadJsonBySignedHref(metaFileRes.json.href, META_ONLY_TIMEOUT_MS);
-    return { ok: !!data, exists: !!data, data: data || null, error: data ? null : 'meta_signed_download_invalid' };
-  } catch (e) {
-    return { ok: false, exists: false, data: null, error: normalizeErrMessage(e) || 'meta_read_failed' };
+    throw makeError('immutable_range_conflict', 409);
   }
-}
-async function getLatestBackupMeta(token, { withMeta = false } = {}) {
-  const latestRes = await getDiskJson(`${API}/resources?path=${encodeURIComponent(BACKUP_PATH)}`, token, META_ONLY_TIMEOUT_MS);
-  if (latestRes.status === 401 || latestRes.status === 403) {
-    return { error: latestRes.status === 401 ? 'disk_auth_error' : 'disk_forbidden', status: latestRes.status, raw: safeString(latestRes.rawBody).slice(0, 500), stage: 'meta_resource_request', path: BACKUP_PATH };
+  const expectedFromSeq = head ? integer(head.lastToSeq) + 1 : 1;
+  if (range.fromSeq !== expectedFromSeq) {
+    throw makeError(head ? 'range_chain_gap_or_reorder' : 'range_chain_must_start_at_one', 409);
   }
-  if (latestRes.status === 404) return { exists: false, latest: null };
-  if (latestRes.status !== 200) {
-    return { error: 'disk_meta_error', status: latestRes.status, raw: safeString(latestRes.rawBody).slice(0, 500), stage: 'meta_resource_request', path: BACKUP_PATH };
-  }
-  let metaData = null,
-    degradedMeta = false;
-  if (withMeta) {
-    const metaRead = await readMetaJson(token).catch(() => ({ ok: false, data: null }));
-    metaData = metaRead?.data || null;
-    degradedMeta = !!(metaRead && metaRead.ok === false);
-  }
-  const latest = normalizeBackupItem({ path: latestRes.json?.path || BACKUP_PATH, name: 'vi3na1bita_backup.vi3bak', modified: latestRes.json?.modified || null, size: safeNum(latestRes.json?.size) }, metaData, { enrichFromMeta: true });
-  return { exists: true, latest, degradedMeta };
-}
-async function listBackups(token) {
-  const [latestMetaResult, folderRes] = await Promise.all([getLatestBackupMeta(token, { withMeta: true }).catch(() => ({ exists: false, latest: null, degradedMeta: true })), getDiskJson(`${API}/resources?path=${encodeURIComponent(APP_ROOT)}&limit=100`, token)]);
-  if (latestMetaResult?.error) {
-    // Если meta вернула 403, но folder вернул 404 — значит app:/Backup ещё не создана, а не "нет прав"
-    if (latestMetaResult.error === 'disk_forbidden' && folderRes.status === 404) {
-      return { items: [], summary: makeSummary(null, [], 0), degradedMeta: true };
+  const firstEvent = range.events[0];
+  if (!head) {
+    if (safe(firstEvent?.prevHash)) {
+      throw makeError('range_chain_first_prev_hash_invalid', 409);
     }
-    // Если folder доступен, но latest meta деградировала по timeout/5xx — не валим весь list
-    if (folderRes.status !== 200) return latestMetaResult;
+    if (range.version === VERSION && range.previousRangeHash) {
+      throw makeError('range_chain_first_previous_range_invalid', 409);
+    }
+  } else {
+    if (safe(firstEvent?.prevHash) !== safe(head.lastEventHash)) {
+      throw makeError('range_chain_prev_hash_mismatch', 409);
+    }
+    if (range.version === VERSION && safe(range.previousRangeHash) !== safe(head.lastRangeHash)) {
+      throw makeError('range_previous_range_hash_mismatch', 409);
+    }
   }
-  if (folderRes.status === 401 || folderRes.status === 403) {
-    return { error: folderRes.status === 401 ? 'disk_auth_error' : 'disk_forbidden', status: folderRes.status, raw: safeString(folderRes.rawBody).slice(0, 500), stage: 'list_folder_request', path: APP_ROOT };
+  const uploaded = await uploadJson(auth.oauthToken, path, range, { overwrite: false });
+  if (!uploaded.ok) {
+    const existing = await downloadJson(auth.oauthToken, path, { maxBytes: MAX_RANGE_BYTES });
+    if (!existing || !sameStoredRange(existing, range)) {
+      throw makeError('immutable_range_conflict', 409);
+    }
+    verifyStoredRange(existing, { deviceId: auth.deviceId, chainId: range.chainId, fromSeq: range.fromSeq });
+    const repairedHead = await writeHead(auth, range, head);
+    return { duplicate: true, repairedHead: true, range, head: repairedHead, path };
   }
-  if (folderRes.status === 404) {
-    return { items: [], summary: makeSummary(null, [], 0), degradedMeta: !!latestMetaResult?.degradedMeta };
+  head = await writeHead(auth, range, head);
+  return { duplicate: false, repairedHead: false, range, head, path };
+}
+function normalizeWatermarks(raw) {
+  const rows = Array.isArray(raw) ? raw : isObject(raw) ? Object.values(raw) : [];
+  const output = new Map();
+  rows.slice(0, MAX_PULL_CHAINS).forEach(item => {
+    const deviceId = safeId(item?.deviceId, 120);
+    const chainId = safeId(item?.chainId, 160);
+    if (!deviceId || !chainId) return;
+    output.set(`${deviceId}:${chainId}`, { deviceId, chainId, toSeq: integer(item?.toSeq || item?.lastSeq), lastRangeHash: safe(item?.lastRangeHash || item?.hash) });
+  });
+  return output;
+}
+async function listChainHeads(auth) {
+  const output = [];
+  const devices = await listFolder(auth.oauthToken, DEVICES_DIR, MAX_DEVICE_CATALOG);
+  for (const device of devices.filter(item => item?.type === 'dir')) {
+    const deviceId = safeId(device.name, 120);
+    if (!deviceId) continue;
+    const chains = await listFolder(auth.oauthToken, deviceDir(deviceId), MAX_PULL_CHAINS);
+    for (const chain of chains.filter(item => item?.type === 'dir')) {
+      const chainId = safeId(chain.name, 160);
+      if (!chainId) continue;
+      const head = await downloadJson(auth.oauthToken, headPath(deviceId, chainId), { maxBytes: 256 * 1024 }).catch(() => null);
+      if (!head || safe(head.ownerYandexIdHash) !== auth.ownerYandexIdHash || safeId(head.deviceId, 120) !== deviceId || safeId(head.chainId, 160) !== chainId) {
+        continue;
+      }
+      output.push({ deviceId, chainId, lastFromSeq: integer(head.lastFromSeq), lastToSeq: integer(head.lastToSeq), lastRangeHash: safe(head.lastRangeHash), lastEventHash: safe(head.lastEventHash), ranges: integer(head.ranges), events: integer(head.events), updatedAt: integer(head.updatedAt) });
+      if (output.length >= MAX_PULL_CHAINS) return output;
+    }
   }
-  if (folderRes.status !== 200) {
-    return { error: 'disk_list_error', status: folderRes.status, raw: safeString(folderRes.rawBody).slice(0, 500), stage: 'list_folder_request', path: APP_ROOT };
+  return output.sort((left, right) => left.deviceId.localeCompare(right.deviceId) || left.chainId.localeCompare(right.chainId));
+}
+async function pullAfterWatermarks(auth, rawWatermarks, { maxRanges = MAX_PULL_RANGES, maxBytes = MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES } = {}) {
+  const watermarks = normalizeWatermarks(rawWatermarks);
+  const heads = await listChainHeads(auth);
+  const ranges = [];
+  const nextWatermarks = [];
+  let bytes = 0;
+  let remaining = 0;
+  for (const head of heads) {
+    const key = `${head.deviceId}:${head.chainId}`;
+    const known = watermarks.get(key) || { deviceId: head.deviceId, chainId: head.chainId, toSeq: 0, lastRangeHash: '' };
+    let cursor = integer(known.toSeq);
+    let lastRangeHash = safe(known.lastRangeHash);
+    if (cursor >= head.lastToSeq) {
+      nextWatermarks.push({ deviceId: head.deviceId, chainId: head.chainId, toSeq: cursor, lastRangeHash: lastRangeHash || head.lastRangeHash });
+      continue;
+    }
+    while (cursor < head.lastToSeq) {
+      if (ranges.length >= maxRanges) {
+        remaining++;
+        break;
+      }
+      const nextFromSeq = cursor + 1;
+      const path = `${chainDir(head.deviceId, head.chainId)}/range_${nextFromSeq}.json`;
+      const range = await downloadJson(auth.oauthToken, path, { maxBytes: MAX_RANGE_BYTES });
+      if (!range) {
+        throw makeError('range_chain_file_missing', 502, { deviceId: head.deviceId, chainId: head.chainId, fromSeq: nextFromSeq });
+      }
+      const verified = verifyStoredRange(range, { deviceId: head.deviceId, chainId: head.chainId, fromSeq: nextFromSeq });
+      if (verified.version === VERSION && safe(verified.previousRangeHash) !== lastRangeHash) {
+        throw makeError('range_pull_previous_hash_mismatch', 502);
+      }
+      const encodedBytes = byteLength(verified);
+      if (bytes + encodedBytes > maxBytes && ranges.length) {
+        remaining++;
+        break;
+      }
+      if (encodedBytes > maxBytes) {
+        throw makeError('range_response_item_too_large', 413);
+      }
+      ranges.push(verified);
+      bytes += encodedBytes;
+      cursor = integer(verified.toSeq);
+      lastRangeHash = safe(verified.hash);
+    }
+    if (cursor < head.lastToSeq) remaining++;
+    nextWatermarks.push({ deviceId: head.deviceId, chainId: head.chainId, toSeq: cursor, lastRangeHash });
   }
-  const embedded = folderRes.json?._embedded?.items;
-  const allItems = Array.isArray(embedded) ? embedded : [];
-  const diskUsageBytes = allItems.reduce((sum, x) => sum + safeNum(x?.size), 0);
-  const versioned = allItems
-    .filter(x => VERSION_RE.test(safeString(x.path)) && safeString(x.path) !== BACKUP_PATH)
-    .map(x => normalizeBackupItem(x, null, { enrichFromMeta: false }))
-    .sort((a, b) => safeNum(b.timestamp) - safeNum(a.timestamp))
-    .slice(0, 5);
-  const latest = latestMetaResult.exists && latestMetaResult.latest ? { ...latestMetaResult.latest, diskUsageBytes, diskUsageHuman: humanSize(diskUsageBytes) } : null;
-  const items = [...(latest ? [latest] : []), ...versioned];
-  return { items, summary: makeSummary(latest, items, diskUsageBytes), degradedMeta: !!latestMetaResult?.degradedMeta };
+  return { ranges, heads, watermarks: nextWatermarks, returned: ranges.length, remaining, bytes };
 }
-function sanitizeSelectedPath(selectedPath) {
-  const path = safeString(selectedPath);
-  if (!path || path === BACKUP_PATH) return BACKUP_PATH;
-  if (path === META_PATH) return BACKUP_PATH;
-  return VERSION_RE.test(path) ? path : BACKUP_PATH;
-}
-function sanitizeDeviceStableId(deviceStableId) {
-  return safeString(deviceStableId).replace(/[^A-Za-z0-9._-]/g, '');
-}
-function buildDeviceSettingsCloudPath(deviceStableId) {
-  const sid = sanitizeDeviceStableId(deviceStableId);
-  return sid ? `${DEVICE_SETTINGS_DIR}/${sid}.json` : '';
-}
-function sanitizeEventSegmentPath(path) {
-  const p = safeString(path);
-  return EVENT_SEGMENT_RE.test(p) ? p : '';
-}
-function parentDiskDir(path) {
-  const p = safeString(path);
-  const i = p.lastIndexOf('/');
-  return i > 0 ? p.slice(0, i) : '';
-}
-function sanitizeUploadPath(mode, path) {
-  const p = safeString(path);
-  if (mode === 'upload_meta') return META_PATH;
-  if (mode === 'upload_backup') return VERSION_RE.test(p) ? p : BACKUP_PATH;
-  if (mode === 'upload_device_settings') return p === DEVICE_SETTINGS_INDEX_PATH || DEVICE_SETTINGS_FILE_RE.test(p) ? p : '';
-  if (mode === 'upload_event_segment') return p === EVENT_ARCHIVE_INDEX_PATH || EVENT_SEGMENT_RE.test(p) ? p : '';
-  return '';
-}
-function parseEventJsonBody(event) {
-  const raw = event?.body || '';
-  if (!raw) return { ok: false, status: 400, error: 'empty_body' };
-  const text = event?.isBase64Encoded ? Buffer.from(raw, 'base64').toString('utf8') : String(raw);
-  if (Buffer.byteLength(text, 'utf8') > MAX_UPLOAD_BODY_BYTES) return { ok: false, status: 413, error: 'upload_body_too_large' };
-  const data = safeParse(text);
-  if (!data || typeof data !== 'object') return { ok: false, status: 400, error: 'invalid_json_body' };
-  return { ok: true, data };
-}
-function resolveUploadPayload(mode, body) {
-  if (!body || typeof body !== 'object') return null;
-  if (mode === 'upload_meta') return body.meta || body.data || body;
-  return body.data || body.backup || body.device || body.segment || body.index || null;
-}
-async function getDeviceSettingsMeta(token, deviceStableId) {
-  const path = buildDeviceSettingsCloudPath(deviceStableId);
-  if (!path) return { exists: false, device: null };
-  const res = await getDiskJson(`${API}/resources?path=${encodeURIComponent(path)}`, token, META_ONLY_TIMEOUT_MS);
-  if (res.status === 401 || res.status === 403) {
-    return { error: res.status === 401 ? 'disk_auth_error' : 'disk_forbidden', status: res.status, raw: safeString(res.rawBody).slice(0, 500), stage: 'device_meta_resource_request', path };
+async function pullUnknownLegacyRanges(auth, knownRangeKeys) {
+  const known = new Set((Array.isArray(knownRangeKeys) ? knownRangeKeys : []).map(safe).filter(Boolean));
+  if (known.size > MAX_LEGACY_KNOWN_KEYS) {
+    throw makeError('known_range_keys_limit', 413);
   }
-  if (res.status === 404) return { exists: false, device: null };
-  if (res.status !== 200) {
-    return { error: 'device_meta_error', status: res.status, raw: safeString(res.rawBody).slice(0, 500), stage: 'device_meta_resource_request', path };
+  const heads = await listChainHeads(auth);
+  const ranges = [];
+  let bytes = 0;
+  let totalRanges = 0;
+  let unknownTotal = 0;
+  for (const head of heads) {
+    const files = await listFolder(auth.oauthToken, chainDir(head.deviceId, head.chainId), Math.max(1000, head.ranges + 10));
+    const rangeFiles = files
+      .filter(file => /^range_\d+\.json$/.test(safe(file?.name)))
+      .sort((left, right) => {
+        const a = integer(safe(left.name).match(/^range_(\d+)\.json$/)?.[1]);
+        const b = integer(safe(right.name).match(/^range_(\d+)\.json$/)?.[1]);
+        return a - b;
+      });
+    totalRanges += rangeFiles.length;
+    for (const file of rangeFiles) {
+      const fromSeq = integer(safe(file.name).match(/^range_(\d+)\.json$/)?.[1]);
+      const path = `${chainDir(head.deviceId, head.chainId)}/${file.name}`;
+      const range = await downloadJson(auth.oauthToken, path, { maxBytes: MAX_RANGE_BYTES });
+      if (!range) continue;
+      const verified = verifyStoredRange(range, { deviceId: head.deviceId, chainId: head.chainId, fromSeq });
+      if (known.has(verified.rangeKey)) continue;
+      unknownTotal++;
+      if (ranges.length >= MAX_PULL_RANGES) continue;
+      const encodedBytes = byteLength(verified);
+      if (bytes + encodedBytes > MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES && ranges.length) continue;
+      bytes += encodedBytes;
+      ranges.push(verified);
+    }
   }
-  return { exists: true, device: { path, timestamp: res.json?.modified ? Date.parse(res.json.modified) || 0 : 0, modified: res.json?.modified || null, size: safeNum(res.json?.size), deviceStableId: sanitizeDeviceStableId(deviceStableId) } };
+  return { ranges, returned: ranges.length, totalRanges, remaining: Math.max(0, unknownTotal - ranges.length), bytes };
 }
-async function downloadJsonResourceByPath(token, path, stages = {}) {
-  if (!path) return { type: 'not_found', path: '' };
-  const linkRes = await httpsGet(`${API}/resources/download?path=${encodeURIComponent(path)}`, { Authorization: `OAuth ${token}` }, 5, DEFAULT_TIMEOUT_MS);
-  if (linkRes.status === 404) return { type: 'not_found', path };
-  if (linkRes.status === 401) return { type: 'auth', status: 401, path, raw: safeString(linkRes.body).slice(0, 500) };
-  if (linkRes.status === 403) return { type: 'forbidden', status: 403, path, raw: safeString(linkRes.body).slice(0, 500), stage: stages.link || 'download_link_request' };
-  if (linkRes.status !== 200) return { type: 'api_error', status: linkRes.status, path, raw: safeString(linkRes.body).slice(0, 500), stage: stages.link || 'download_link_request' };
-  const linkData = safeParse(linkRes.body);
-  const downloadUrl = linkData?.href;
-  if (!downloadUrl) return { type: 'bad_link', path, raw: safeString(linkRes.body).slice(0, 200), stage: stages.parse || 'download_link_parse' };
-  let fileRes;
-  try {
-    fileRes = await httpsGet(downloadUrl, {}, 5, DOWNLOAD_TIMEOUT_MS);
-  } catch (e) {
-    if (safeString(e?.message) === 'response_too_large') return { type: 'too_large', status: 413, path, raw: 'backup_file_too_large', stage: stages.file || 'download_file' };
-    return { type: 'download_failed', status: 0, path, raw: safeString(e.message || 'unknown_error'), stage: stages.file || 'download_file' };
+function normalizeCachePolicies(raw) {
+  if (!isObject(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .slice(0, MAX_CACHE_POLICIES)
+      .map(([uid, value]) => {
+        const cleanUid = safeId(uid, 160);
+        if (!cleanUid || !isObject(value)) return null;
+        const type = ['pinned', 'cloud'].includes(safe(value.type)) ? safe(value.type) : '';
+        return [
+          cleanUid,
+          {
+            ...(type ? { type } : {}),
+            cloud: value.cloud === true,
+            cloudOrigin: safe(value.cloudOrigin).slice(0, 40),
+            cloudFullListenCount: integer(value.cloudFullListenCount),
+            lastFullListenAt: integer(value.lastFullListenAt),
+            cloudAddedAt: integer(value.cloudAddedAt),
+            cloudExpiresAt: integer(value.cloudExpiresAt),
+            pinnedAt: integer(value.pinnedAt)
+          }
+        ];
+      })
+      .filter(Boolean)
+  );
+}
+function normalizeSettings(raw, auth) {
+  const source = isObject(raw) ? raw : {};
+  const sourcePreferences = isObject(source.preferences) ? source.preferences : isObject(source.localStorage) ? source.localStorage : {};
+  const preferences = Object.fromEntries(
+    Object.entries(sourcePreferences)
+      .filter(([key, value]) => DEVICE_SETTING_KEYS.has(key) && value != null)
+      .slice(0, MAX_SETTINGS_KEYS)
+      .map(([key, value]) => [key, String(value)])
+  );
+  const metadataSource = isObject(source.device) ? source.device : {};
+  const metadata = {
+    label: safe(metadataSource.label || auth.device?.label).slice(0, 80),
+    deviceClass: safe(metadataSource.deviceClass || auth.device?.deviceClass).slice(0, 40),
+    platform: safeId(metadataSource.platform || auth.device?.platform, 30),
+    pwa: metadataSource.pwa === true || auth.device?.pwa === true,
+    timezone: safe(metadataSource.timezone || auth.device?.timezone).slice(0, 80)
+  };
+  const cachePolicies = normalizeCachePolicies(source.cachePolicies || source.offlinePolicies);
+  const content = { version: VERSION, ownerYandexIdHash: auth.ownerYandexIdHash, deviceId: auth.deviceId, device: metadata, preferences, cachePolicies };
+  return { ...content, hash: hash(stableStringify(content)), updatedAt: now() };
+}
+function verifySettings(raw, { ownerYandexIdHash = '', deviceId = '' } = {}) {
+  if (!isObject(raw)) throw makeError('settings_invalid', 502);
+  const content = {
+    version: safe(raw.version || VERSION),
+    ownerYandexIdHash: safe(raw.ownerYandexIdHash),
+    deviceId: safeId(raw.deviceId, 120),
+    device: isObject(raw.device) ? raw.device : {},
+    preferences: isObject(raw.preferences) ? raw.preferences : isObject(raw.localStorage) ? raw.localStorage : {},
+    cachePolicies: isObject(raw.cachePolicies) ? raw.cachePolicies : {}
+  };
+  const expected = hash(stableStringify(content));
+  if (!isHash(raw.hash) || safe(raw.hash) !== expected) {
+    throw makeError('settings_hash_mismatch', 502);
   }
-  if (fileRes.status !== 200) return { type: 'download_failed', status: fileRes.status, path, raw: safeString(fileRes.body).slice(0, 200), stage: stages.file || 'download_file' };
-  const parsed = safeParse(fileRes.body);
-  if (!parsed) return { type: 'invalid_json', path, stage: stages.json || 'download_file_parse' };
-  return { type: 'ok', path, data: parsed };
+  if (ownerYandexIdHash && content.ownerYandexIdHash !== ownerYandexIdHash) {
+    throw makeError('settings_owner_mismatch', 403);
+  }
+  if (deviceId && content.deviceId !== deviceId) {
+    throw makeError('settings_device_mismatch', 403);
+  }
+  return { ...raw, ...content, hash: expected };
 }
-async function downloadDeviceSettings(token, deviceStableId) {
-  const path = buildDeviceSettingsCloudPath(deviceStableId);
-  if (!path) return { type: 'not_found', path: '' };
-  return downloadJsonResourceByPath(token, path, { link: 'device_download_link_request', parse: 'device_download_link_parse', file: 'device_download_file', json: 'device_download_file_parse' });
+async function putSettings(auth, rawSettings) {
+  const settings = normalizeSettings(rawSettings, auth);
+  const dDir = deviceDir(auth.deviceId);
+  await ensureDirs(auth.oauthToken, ['app:/Backup', ROOT, DEVICES_DIR, dDir]);
+  const path = settingsPath(auth.deviceId);
+  const existing = await downloadJson(auth.oauthToken, path, { maxBytes: 2 * 1024 * 1024 }).catch(() => null);
+  if (existing && safe(existing.hash) === settings.hash) {
+    return { changed: false, settings: verifySettings(existing, { ownerYandexIdHash: auth.ownerYandexIdHash, deviceId: auth.deviceId }), path };
+  }
+  await uploadJson(auth.oauthToken, path, settings, { overwrite: true });
+  return { changed: true, settings, path };
 }
-async function downloadBackup(token, selectedPath) {
-  const path = sanitizeSelectedPath(selectedPath);
-  return downloadJsonResourceByPath(token, path, { link: 'download_link_request', parse: 'download_link_parse', file: 'download_file', json: 'download_file_parse' });
+async function getSettings(auth, deviceId = auth.deviceId) {
+  const cleanDeviceId = safeId(deviceId, 120);
+  if (!cleanDeviceId) return null;
+  const settings = await downloadJson(auth.oauthToken, settingsPath(cleanDeviceId), { maxBytes: 2 * 1024 * 1024 });
+  if (!settings) return null;
+  return verifySettings(settings, { ownerYandexIdHash: auth.ownerYandexIdHash, deviceId: cleanDeviceId });
+}
+async function listDeviceSettingsCatalog(auth) {
+  const devices = await listFolder(auth.oauthToken, DEVICES_DIR, MAX_DEVICE_CATALOG);
+  const output = [];
+  for (const item of devices.filter(row => row?.type === 'dir')) {
+    const deviceId = safeId(item.name, 120);
+    if (!deviceId) continue;
+    const settings = await getSettings(auth, deviceId).catch(() => null);
+    if (!settings) continue;
+    output.push({ deviceId, hash: settings.hash, updatedAt: integer(settings.updatedAt), device: settings.device || {}, keysCount: Object.keys(settings.preferences || {}).length, cachePoliciesCount: Object.keys(settings.cachePolicies || {}).length, current: deviceId === auth.deviceId });
+  }
+  return output.sort((left, right) => right.updatedAt - left.updatedAt);
+}
+function publicAuthorization(auth) {
+  return { version: 2, playerId: auth.playerId, ownerYandexIdHash: auth.ownerYandexIdHash, deviceId: auth.deviceId, sessionExpiresAt: auth.sessionExpiresAt, device: auth.device };
+}
+async function runBatchSync(auth, body) {
+  const pushRanges = Array.isArray(body.pushRanges) ? body.pushRanges : Array.isArray(body.ranges) ? body.ranges : body.range ? [body.range] : [];
+  if (pushRanges.length > MAX_PUSH_RANGES) {
+    throw makeError('push_ranges_limit', 413);
+  }
+  const push = [];
+  const sortedPushRanges = [...pushRanges].sort((left, right) => safe(left?.chainId).localeCompare(safe(right?.chainId)) || integer(left?.fromSeq) - integer(right?.fromSeq));
+  for (const rawRange of sortedPushRanges) {
+    const result = await writeImmutableRange(auth, rawRange);
+    push.push({ duplicate: result.duplicate, repairedHead: result.repairedHead, rangeKey: result.range.rangeKey, hash: result.range.hash, deviceId: result.range.deviceId, chainId: result.range.chainId, fromSeq: result.range.fromSeq, toSeq: result.range.toSeq, path: result.path });
+  }
+  let settingsPush = null;
+  if (isObject(body.settings)) {
+    settingsPush = await putSettings(auth, body.settings);
+  }
+  const pull = await pullAfterWatermarks(auth, body.watermarks || body.knownWatermarks || [], {
+    maxRanges: Math.max(1, Math.min(MAX_PULL_RANGES, integer(body.maxPullRanges, MAX_PULL_RANGES))),
+    maxBytes: Math.max(256 * 1024, Math.min(MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES, integer(body.maxPullBytes, MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES)))
+  });
+  const knownSettingsHash = safe(body.knownSettingsHash);
+  const currentSettings = await getSettings(auth).catch(() => null);
+  const settings = currentSettings && currentSettings.hash !== knownSettingsHash ? currentSettings : null;
+  let templateSettings = null;
+  const templateDeviceId = safeId(body.settingsTemplateDeviceId, 120);
+  if (templateDeviceId && templateDeviceId !== auth.deviceId) {
+    templateSettings = await getSettings(auth, templateDeviceId).catch(() => null);
+  }
+  const deviceCatalog = body.includeDeviceCatalog === true ? await listDeviceSettingsCatalog(auth) : null;
+  return {
+    ok: true,
+    version: VERSION,
+    authorization: publicAuthorization(auth),
+    push: { accepted: push.filter(item => !item.duplicate).length, duplicates: push.filter(item => item.duplicate).length, ranges: push },
+    pull,
+    settings: { changed: !!settings, current: settings, pushed: settingsPush ? { changed: settingsPush.changed, hash: settingsPush.settings.hash, updatedAt: settingsPush.settings.updatedAt } : null, template: templateSettings, catalog: deviceCatalog },
+    serverTime: now()
+  };
 }
 module.exports.handler = async event => {
-  const requestId = makeRequestId();
+  const id = requestId();
   const method = requestMethod(event);
-  const hdrs = event?.headers || {};
-  const origin = hdrs.origin || hdrs.Origin || '';
-  const cors = corsHeaders(origin);
-  const reply = (statusCode, body, extraHeaders = {}) => json(statusCode, cors, body, { 'X-Request-Id': requestId, ...extraHeaders });
-  const enrichBody = (mode, body = {}) => ({ ...body, _proxyMeta: { requestId, mode, ts: nowTs() } });
-  const replyDiskError = (modeName, result, { defaultStage = 'resource_request', defaultPath = '' } = {}) => {
-    if (result?.error === 'disk_auth_error') {
-      return reply(401, enrichBody(modeName, { error: result.error, hint: 'Yandex OAuth token expired or rejected. User needs to re-login.', status: result.status, raw: result.raw, stage: result.stage || defaultStage, path: result.path || defaultPath, authValidationDegraded: !!valid.degraded }));
-    }
-    if (result?.error === 'disk_forbidden') {
-      return reply(403, enrichBody(modeName, { error: result.error, hint: 'Token lacks disk scope. Re-authorize and confirm disk access.', status: result.status, raw: result.raw, stage: result.stage || defaultStage, path: result.path || defaultPath, authValidationDegraded: !!valid.degraded }));
-    }
-    if (result?.error) {
-      return reply(502, enrichBody(modeName, { error: result.error, status: result.status, raw: result.raw, stage: result.stage || defaultStage, path: result.path || defaultPath, authValidationDegraded: !!valid.degraded }));
-    }
-    return null;
-  };
   if (method === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers: {
-        ...cors,
-        'X-Request-Id': requestId
-      },
-      body: ''
-    };
+    return { statusCode: 204, headers: { ...corsHeaders(event), 'X-Request-Id': id }, body: '' };
   }
-  const requestedMode = getQuery(event, 'mode');
-  const mode = requestedMode || 'ping';
-
-  console.log('[backup-proxy:request]', {
-    requestId,
-    method: method || 'unknown',
-    mode,
-    origin: safeString(origin),
-    hasToken: !!extractAnyToken(event),
-    bodyBytes: event?.body
-      ? Buffer.byteLength(String(event.body), 'utf8')
-      : 0
-  });
-  if (!ALLOWED_MODES.has(mode)) {
-    return reply(400, enrichBody(mode, { error: 'bad_mode', allowedModes: [...ALLOWED_MODES] }));
-  }
-  if (mode === 'ping') {
-    return reply(200, enrichBody('ping', {
-      ok: true,
-      mode: 'ping',
-      service: 'vi3na1bita-backup-proxy',
-      method: method || 'unknown',
-      uploadLimitBytes: MAX_UPLOAD_BODY_BYTES,
-      downloadLimitBytes: MAX_BODY_BYTES,
-      time: nowTs()
-    }));
-  }
-  const token = extractAnyToken(event);
-  if (!token) return reply(401, enrichBody(mode, { error: 'no_token' }));
-  const valid = { ok: true, degraded: false };
-  if (mode === 'meta') {
-    try {
-      const result = await getLatestBackupMeta(token, { withMeta: true });
-      const errResp = replyDiskError('meta', result, { defaultStage: 'meta_resource_request', defaultPath: BACKUP_PATH });
-      if (errResp) return errResp;
-      return reply(200, enrichBody('meta', { ...result, degraded: !!result?.degradedMeta, authValidationDegraded: !!valid.degraded }));
-    } catch (e) {
-      return reply(500, enrichBody('meta', { error: 'meta_proxy_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
+  let body = {};
+  try {
+    body = parseBody(event);
+    const mode = safe(body.mode || body.action || getQuery(event, 'mode') || 'ping');
+    if (!ALLOWED_MODES.has(mode)) {
+      return reply(event, 400, { ok: false, error: 'bad_mode', allowedModes: [...ALLOWED_MODES] }, id);
     }
-  }
-  if (mode === 'lease_get') {
-    try {
-      const st = await getLeaseState(token);
-      return reply(200, enrichBody('lease_get', { ok: true, lease: st.lease }));
-    } catch (e) {
-      return reply(500, enrichBody('lease_get', { error: 'lease_get_error', message: safeString(e?.message) }));
-    }
-  }
-  if (mode === 'lease_acquire') {
-    try {
-      const r = await acquireLease(token, event);
-      return reply(r.status || (r.ok ? 200 : 409), enrichBody('lease_acquire', r));
-    } catch (e) {
-      return reply(500, enrichBody('lease_acquire', { error: 'lease_acquire_error', message: safeString(e?.message) }));
-    }
-  }
-  if (mode === 'lease_release') {
-    try {
-      const r = await releaseLease(token, event);
-      return reply(r.status || (r.ok ? 200 : 409), enrichBody('lease_release', r));
-    } catch (e) {
-      return reply(500, enrichBody('lease_release', { error: 'lease_release_error', message: safeString(e?.message) }));
-    }
-  }
-  if (mode === 'ledger_verify') {
-    try {
-      const rb = await readLatestBackupWithArchiveForVerify(token);
-      if (!rb.ok) return reply(200, enrichBody('ledger_verify', { ok: false, status: 'unavailable', reason: rb.reason }));
-      return reply(200, enrichBody('ledger_verify', { ...buildLedgerVerifyResult(rb.backup), archive: rb.archive || null }));
-    } catch (e) {
-      return reply(500, enrichBody('ledger_verify', { ok: false, status: 'error', error: 'ledger_verify_error', message: safeString(e?.message) }));
-    }
-  }
-  if (mode.startsWith('upload_')) {
-    try {
-      if (method !== 'POST') {
-        return reply(
-          405,
-          enrichBody(mode, {
-            error: 'method_not_allowed',
-            actual: method || 'unknown',
-            expected: 'POST'
-          }),
-          { Allow: 'POST, OPTIONS' }
-        );
-      }
-      const parsed = parseEventJsonBody(event);
-      if (!parsed.ok) return reply(parsed.status || 400, enrichBody(mode, { error: parsed.error }));
-      const body = parsed.data || {};
-      const path = sanitizeUploadPath(mode, getQuery(event, 'path') || body.path || '');
-      if (!path) return reply(400, enrichBody(mode, { error: 'bad_upload_path' }));
-      const payload = resolveUploadPayload(mode, body);
-      if (!payload || typeof payload !== 'object') return reply(400, enrichBody(mode, { error: 'bad_upload_payload', path }));
-      let backupValidation = null;
-      if (mode === 'upload_backup') {
-        backupValidation = await validateBackupUpload(token, payload);
-        if (!backupValidation.ok) {
-          return reply(backupValidation.status || 409, enrichBody(mode, { ok: false, error: backupValidation.error, validation: backupValidation }));
-        }
-      }
-      if (mode === 'upload_event_segment' && path !== EVENT_ARCHIVE_INDEX_PATH) {
-        const validation = validateEventSegmentUpload(payload);
-        if (!validation.ok) {
-          return reply(validation.status || 409, enrichBody(mode, { ok: false, error: validation.error, validation }));
-        }
-      }
-      await ensureDiskDir(token, APP_ROOT).catch(() => false);
-      const pd = parentDiskDir(path);
-      if (pd && pd !== APP_ROOT) await ensureDiskDir(token, pd).catch(() => false);
-      const wr = await uploadJsonResourceByPath(token, path, payload);
-      if (!wr.ok) return reply(502, enrichBody(mode, { error: 'upload_proxy_write_failed', path, status: wr.status, raw: wr.raw }));
-      return reply(200, enrichBody(mode, { ok: true, path, status: wr.status }));
-    } catch (e) {
+    if (mode === 'ping') {
       return reply(
-        errorStatus(e),
-        enrichBody(mode, {
-          error: 'upload_proxy_error',
-          message: normalizeErrMessage(e),
-          authValidationDegraded: !!valid.degraded
-        })
+        event,
+        200,
+        {
+          ok: true,
+          service: 'vi3na1bita-backup-proxy',
+          version: VERSION,
+          authority: 'server_account_device',
+          auth: 'yandex_oauth_plus_signed_social_session',
+          legacyEnabled: false,
+          immutableRanges: true,
+          canonicalRangeSlot: 'range_<fromSeq>.json',
+          chainHeads: true,
+          watermarks: true,
+          batchSync: true,
+          rawEventsPermanent: true,
+          rollups: { supported: false, planned: 'client_rebuildable_verified_rollups' },
+          maxRangeEvents: MAX_RANGE_EVENTS,
+          maxRangeBytes: MAX_RANGE_BYTES,
+          maxPushRanges: MAX_PUSH_RANGES,
+          maxPullRanges: MAX_PULL_RANGES,
+          maxRequestBytes: MAX_REQUEST_BYTES,
+          maxResponseBytes: MAX_RESPONSE_BYTES,
+          modes: [...ALLOWED_MODES],
+          ts: now()
+        },
+        id
       );
     }
-  }
-  if (mode === 'archive_inspect') {
-    try {
-      return reply(200, enrichBody('archive_inspect', { ok: true, archive: await inspectEventArchive(token) }));
-    } catch (e) {
-      return reply(500, enrichBody('archive_inspect', { ok: false, error: 'archive_inspect_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
+    if (method !== 'POST') {
+      return reply(event, 405, { ok: false, error: 'method_not_allowed' }, id);
     }
-  }
-  if (mode === 'archive_list_files') {
-    try {
-      return reply(200, enrichBody('archive_list_files', { ok: true, archive: await listArchiveFilesForIndex(token) }));
-    } catch (e) {
-      return reply(500, enrichBody('archive_list_files', { ok: false, error: 'archive_list_files_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
+    const auth = await authorizeRequest(event, body);
+    if (mode === 'v7_sync') {
+      return reply(event, 200, await runBatchSync(auth, body), id);
     }
-  }
-  if (mode === 'archive_delete_segments') {
-    try {
-      if (method !== 'POST') {
-        return reply(
-          405,
-          enrichBody('archive_delete_segments', {
-            ok: false,
-            error: 'method_not_allowed',
-            actual: method || 'unknown',
-            expected: 'POST'
-          }),
-          { Allow: 'POST, OPTIONS' }
-        );
+    if (mode === 'v7_authorize') {
+      return reply(event, 200, { ok: true, authorization: publicAuthorization(auth) }, id);
+    }
+    if (mode === 'v7_push_range') {
+      const written = await writeImmutableRange(auth, body.range || body.data);
+      return reply(
+        event,
+        200,
+        { ok: true, duplicate: written.duplicate, repairedHead: written.repairedHead, rangeKey: written.range.rangeKey, hash: written.range.hash, path: written.path, deviceId: written.range.deviceId, chainId: written.range.chainId, fromSeq: written.range.fromSeq, toSeq: written.range.toSeq, head: written.head },
+        id
+      );
+    }
+    if (mode === 'v7_pull_ranges') {
+      if (Array.isArray(body.knownRangeKeys)) {
+        return reply(event, 200, { ok: true, version: VERSION, ...(await pullUnknownLegacyRanges(auth, body.knownRangeKeys)) }, id);
       }
-      const parsed = parseEventJsonBody(event);
-      if (!parsed.ok) return reply(parsed.status || 400, enrichBody('archive_delete_segments', { ok: false, error: parsed.error }));
-      const paths = sanitizeArchiveDeletePaths(parsed.data?.paths || []);
-      if (!paths.length) return reply(400, enrichBody('archive_delete_segments', { ok: false, error: 'no_valid_segment_paths' }));
-      return reply(200, enrichBody('archive_delete_segments', { ok: true, ...(await deleteArchiveSegments(token, paths)) }));
-    } catch (e) {
-      return reply(500, enrichBody('archive_delete_segments', { ok: false, error: 'archive_delete_segments_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
+      return reply(event, 200, { ok: true, version: VERSION, ...(await pullAfterWatermarks(auth, body.watermarks || body.knownWatermarks || [])) }, id);
     }
-  }
-  if (mode === 'event_index') {
-    try {
-      const result = await downloadJsonResourceByPath(token, EVENT_ARCHIVE_INDEX_PATH, { link: 'event_index_link_request', parse: 'event_index_link_parse', file: 'event_index_file', json: 'event_index_file_parse' });
-      if (result.type === 'not_found') return reply(200, enrichBody('event_index', { exists: false, index: { version: '1.0', updatedAt: 0, items: [] } }));
-      if (result.type === 'auth') return reply(401, enrichBody('event_index', { error: 'disk_auth_error', raw: result.raw }));
-      if (result.type === 'forbidden') return reply(403, enrichBody('event_index', { error: 'disk_forbidden', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type !== 'ok') return reply(200, enrichBody('event_index', { exists: false, reason: result.type, index: { version: '1.0', updatedAt: 0, items: [] } }));
-      return reply(200, enrichBody('event_index', { exists: true, index: result.data }));
-    } catch (e) {
-      return reply(500, enrichBody('event_index', { error: 'event_index_proxy_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
+    if (mode === 'v7_put_settings') {
+      const result = await putSettings(auth, body.settings || body.data);
+      return reply(event, 200, { ok: true, changed: result.changed, path: result.path, hash: result.settings.hash, updatedAt: result.settings.updatedAt, deviceId: auth.deviceId }, id);
     }
-  }
-  if (mode === 'event_download') {
-    try {
-      const path = sanitizeEventSegmentPath(getQuery(event, 'path'));
-      if (!path) return reply(400, enrichBody('event_download', { error: 'bad_event_segment_path' }));
-      const result = await downloadJsonResourceByPath(token, path, { link: 'event_download_link_request', parse: 'event_download_link_parse', file: 'event_download_file', json: 'event_download_file_parse' });
-      if (result.type === 'not_found') return reply(200, enrichBody('event_download', { exists: false, segment: null, reason: 'event_segment_not_found', path }));
-      if (result.type === 'auth') return reply(401, enrichBody('event_download', { error: 'disk_auth_error', path, raw: result.raw }));
-      if (result.type === 'forbidden') return reply(403, enrichBody('event_download', { error: 'disk_forbidden', path, raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type !== 'ok') return reply(502, enrichBody('event_download', { error: result.type, status: result.status, path, raw: result.raw, stage: result.stage || 'unknown' }));
-      return reply(200, enrichBody('event_download', { exists: true, segment: result.data, path }));
-    } catch (e) {
-      return reply(500, enrichBody('event_download', { error: 'event_download_proxy_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
+    if (mode === 'v7_get_settings') {
+      const settings = await getSettings(auth);
+      return reply(event, 200, { ok: true, exists: !!settings, settings, deviceId: auth.deviceId }, id);
     }
-  }
-  if (mode === 'device_index') {
-    try {
-      const result = await downloadJsonResourceByPath(token, DEVICE_SETTINGS_INDEX_PATH, { link: 'device_index_link_request', parse: 'device_index_link_parse', file: 'device_index_file', json: 'device_index_file_parse' });
-      if (result.type === 'not_found') return reply(200, enrichBody('device_index', { exists: false, index: { version: '1.0', updatedAt: 0, items: [] } }));
-      if (result.type === 'auth') return reply(401, enrichBody('device_index', { error: 'disk_auth_error', raw: result.raw }));
-      if (result.type === 'forbidden') return reply(403, enrichBody('device_index', { error: 'disk_forbidden', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type !== 'ok') return reply(200, enrichBody('device_index', { exists: false, reason: result.type, index: { version: '1.0', updatedAt: 0, items: [] } }));
-      return reply(200, enrichBody('device_index', { exists: true, index: result.data }));
-    } catch (e) {
-      return reply(500, enrichBody('device_index', { error: 'device_index_proxy_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
-    }
-  }
-  if (mode === 'device_meta') {
-    try {
-      const deviceStableId = getQuery(event, 'deviceStableId');
-      const result = await getDeviceSettingsMeta(token, deviceStableId);
-      const errResp = replyDiskError('device_meta', result, { defaultStage: 'device_meta_resource_request', defaultPath: '' });
-      if (errResp) return errResp;
-      return reply(200, enrichBody('device_meta', { ...result, authValidationDegraded: !!valid.degraded }));
-    } catch (e) {
-      return reply(500, enrichBody('device_meta', { error: 'device_meta_proxy_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
-    }
-  }
-  if (mode === 'list') {
-    try {
-      const result = await listBackups(token);
-      const errResp = replyDiskError('list', result, { defaultStage: 'list_folder_request', defaultPath: APP_ROOT });
-      if (errResp) return errResp;
-      return reply(200, enrichBody('list', { ...result, degraded: !!result?.degradedMeta, authValidationDegraded: !!valid.degraded }));
-    } catch (e) {
-      return reply(500, enrichBody('list', { error: 'list_proxy_error', message: safeString(e?.message), authValidationDegraded: !!valid.degraded }));
-    }
-  }
-  try {
-    if (mode === 'device_download') {
-      const deviceStableId = getQuery(event, 'deviceStableId');
-      const result = await downloadDeviceSettings(token, deviceStableId);
-      if (result.type === 'not_found') return reply(200, enrichBody('device_download', { exists: false, device: null, reason: 'device_settings_not_found', path: result.path || '' }));
-      if (result.type === 'auth') return reply(401, enrichBody('device_download', { error: 'disk_auth_error', path: result.path || '', raw: result.raw }));
-      if (result.type === 'forbidden') return reply(403, enrichBody('device_download', { error: 'disk_forbidden', path: result.path || '', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type === 'api_error' && Number(result.status) === 409) return reply(200, enrichBody('device_download', { exists: false, device: null, reason: 'device_settings_temporarily_unavailable', status: result.status, path: result.path || '', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type === 'api_error') return reply(502, enrichBody('device_download', { error: 'disk_api_error', status: result.status, path: result.path || '', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type === 'bad_link') return reply(502, enrichBody('device_download', { error: 'no_href', path: result.path || '', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type === 'download_failed' && Number(result.status) === 409) return reply(200, enrichBody('device_download', { exists: false, device: null, reason: 'device_settings_temporarily_unavailable', status: result.status, path: result.path || '', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type === 'download_failed') return reply(502, enrichBody('device_download', { error: 'download_failed', status: result.status, path: result.path || '', raw: result.raw, stage: result.stage || 'unknown' }));
-      if (result.type === 'too_large') return reply(200, enrichBody('device_download', { exists: false, device: null, reason: 'device_settings_too_large', status: result.status, path: result.path || '', stage: result.stage || 'unknown' }));
-      if (result.type === 'invalid_json') return reply(200, enrichBody('device_download', { exists: false, device: null, reason: 'invalid_json_in_device_settings', path: result.path || '', stage: result.stage || 'unknown' }));
-      return reply(200, enrichBody('device_download', { ...result.data, _downloadMeta: { selectedPath: result.path || '', authValidationDegraded: !!valid.degraded } }));
-    }
-    const selectedPath = getQuery(event, 'path') || BACKUP_PATH;
-    const result = await downloadBackup(token, selectedPath);
-    if (result.type === 'not_found') {
-      return reply(404, enrichBody('download', { error: 'not_found', reason: 'backup_not_found', path: result.path || BACKUP_PATH }));
-    }
-    if (result.type === 'auth') {
-      return reply(401, enrichBody('download', { error: 'disk_auth_error', path: result.path || BACKUP_PATH, raw: result.raw }));
-    }
-    if (result.type === 'forbidden') {
-      return reply(403, enrichBody('download', { error: 'disk_forbidden', path: result.path || BACKUP_PATH, raw: result.raw, stage: result.stage || 'unknown' }));
-    }
-    if (result.type === 'api_error') {
-      return reply(502, enrichBody('download', { error: 'disk_api_error', status: result.status, path: result.path || BACKUP_PATH, raw: result.raw, stage: result.stage || 'unknown' }));
-    }
-    if (result.type === 'bad_link') {
-      return reply(502, enrichBody('download', { error: 'no_href', path: result.path || BACKUP_PATH, raw: result.raw, stage: result.stage || 'unknown' }));
-    }
-    if (result.type === 'too_large') {
-      return reply(413, enrichBody('download', { error: 'backup_file_too_large', status: result.status, path: result.path || BACKUP_PATH, raw: result.raw, stage: result.stage || 'unknown' }));
-    }
-    if (result.type === 'download_failed') {
-      return reply(502, enrichBody('download', { error: 'download_failed', status: result.status, path: result.path || BACKUP_PATH, raw: result.raw, stage: result.stage || 'unknown' }));
-    }
-    if (result.type === 'invalid_json') {
-      return reply(502, enrichBody('download', { error: 'invalid_json_in_backup', path: result.path || BACKUP_PATH, stage: result.stage || 'unknown' }));
-    }
-    return reply(200, enrichBody('download', { ...result.data, _downloadMeta: { selectedPath: result.path || BACKUP_PATH, authValidationDegraded: !!valid.degraded } }));
-  } catch (e) {
-    return reply(500, enrichBody('download', { error: 'proxy_error', message: safeString(e?.message) }));
+    return reply(event, 400, { ok: false, error: 'bad_mode' }, id);
+  } catch (error) {
+    const status = statusOf(error);
+    console.error('[backup-proxy-v7.1]', { requestId: id, method, mode: safe(body?.mode || body?.action || getQuery(event, 'mode')), status, error: safe(error?.message) });
+    return reply(event, status, { ok: false, error: safe(error?.message || 'server_error'), ...(error?.details ? { details: error.details } : {}) }, id);
   }
 };
 
