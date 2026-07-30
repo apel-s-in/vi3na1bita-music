@@ -6,11 +6,11 @@ const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 export const readLocalEventLog = async (db = defaultMetaDB, { forceFlush = true } = {}) => {
   if (forceFlush) try { window.dispatchEvent(new CustomEvent('analytics:forceFlush')); await window.eventLogger?.flush?.(); await window.statsAggregator?.waitForIdle?.(); } catch {}
   const [hot, warm] = await Promise.all([db.getEvents('events_hot').catch(() => []), db.getEvents('events_warm').catch(() => [])]);
-  return normalizeEventList([...(Array.isArray(warm) ? warm : []), ...(Array.isArray(hot) ? hot : [])], { limit: 10000 });
+  return normalizeEventList([...(Array.isArray(warm) ? warm : []), ...(Array.isArray(hot) ? hot : [])], { limit: 0, dropNoise: false, dedupeAchievementUnlocks: false });
 };
-export const mergeEventLogs = (...lists) => normalizeEventList(lists.flatMap(x => Array.isArray(x) ? x : []), { limit: 10000 });
+export const mergeEventLogs = (...lists) => normalizeEventList(lists.flatMap(x => Array.isArray(x) ? x : []), { limit: 0, dropNoise: false, dedupeAchievementUnlocks: false });
 export const rebuildStatsFromEvents = async (db = defaultMetaDB, events = [], { reason = 'stats_rebuild' } = {}) => {
-  const warm = normalizeEventList(events, { limit: 10000 });
+  const warm = normalizeEventList(events, { limit: 0, dropNoise: true, dedupeAchievementUnlocks: false });
   const [{ StatsAggregator }] = await Promise.all([import('./stats-aggregator.js')]);
   const agg = new StatsAggregator({ bindEvents: false });
   await db.clearEvents('events_warm').catch(() => {});
