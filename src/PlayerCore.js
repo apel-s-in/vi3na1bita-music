@@ -176,8 +176,13 @@ import { getDeviceId } from '../scripts/core/device-context.js';
           timeoutMs: document.hidden ? 800 : Math.max(1200, Number(opts.ownershipTimeoutMs || 3500))
         });
       } catch (error) {
-        W.NotificationSystem?.warning?.(`Воспроизведение уже используется другим устройством: ${error?.message || 'конфликт'}`);
-        return { allowed: false, reason: String(error?.message || 'playback_ownership_failed') };
+        const message = String(error?.message || 'playback_ownership_failed');
+        if (/owner_changed|another_device|transfer|takeover/i.test(message)) {
+          W.NotificationSystem?.warning?.('Воспроизведение уже используется другим устройством');
+        } else {
+          W.NotificationSystem?.warning?.(`Серверный контроль временно недоступен: ${message}`);
+        }
+        return { allowed: false, reason: message };
       }
     }
 
