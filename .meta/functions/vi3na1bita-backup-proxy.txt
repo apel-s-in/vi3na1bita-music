@@ -24,6 +24,10 @@ const VERSION = '7.1';
 const LEGACY_V7_VERSION = '7.0';
 const ROOT = 'app:/Backup/v7';
 const DEVICES_DIR = `${ROOT}/devices`;
+const SHARED_PATH = `${ROOT}/shared.json`;
+const MAX_SHARED_PLAYLISTS = 500;
+const MAX_SHARED_PLAYLIST_TRACKS = 2000;
+const MAX_SHARED_PLAYLIST_OPS = 300;
 const MAX_REQUEST_BYTES = 3 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 3 * 1024 * 1024;
 const RESPONSE_RESERVE_BYTES = 256 * 1024;
@@ -703,6 +707,112 @@ async function pullUnknownLegacyRanges(auth, knownRangeKeys) {
   }
   return { ranges, returned: ranges.length, totalRanges, remaining: Math.max(0, unknownTotal - ranges.length), bytes };
 }
+const uniqueIds = (rows, limit) => [...new Set((Array.isArray(rows) ? rows : []).map(value => safeId(value, 160)).filter(Boolean))].slice(0, limit);
+const sharedPlaylistClock = playlist => Math.max(integer(playlist?.updatedAt), integer(playlist?.deletedAt), integer(playlist?.createdAt));
+function normalizeSharedProfile(raw = {}) {
+  return {
+    name: safe(raw.name || 'Слушатель').slice(0, 80) || 'Слушатель',
+    avatar: safe(raw.avatar || '😎').slice(0, 80) || '😎',
+    createdAt: integer(raw.createdAt),
+    updatedAt: integer(raw.updatedAt)
+  };
+}
+function normalizeSharedPlaylist(raw = {}) {
+  const id = safeId(raw.id, 160);
+  if (!id) return null;
+  return {
+    id,
+    name: safe(raw.name || 'Плейлист').slice(0, 120) || 'Плейлист',
+    color: safe(raw.color).slice(0, 40),
+    order: uniqueIds(raw.order, MAX_SHARED_PLAYLIST_TRACKS),
+    hidden: uniqueIds(raw.hidden, MAX_SHARED_PLAYLIST_TRACKS),
+    ops: (Array.isArray(raw.ops) ? raw.ops : [])
+      .map(operation => {
+        const type = ['add', 'del'].includes(safe(operation?.t)) ? safe(operation.t) : '';
+        const uid = safeId(operation?.u, 160);
+        return type && uid ? { t: type, u: uid, ts: integer(operation?.ts) } : null;
+      })
+      .filter(Boolean)
+      .slice(-MAX_SHARED_PLAYLIST_OPS),
+    createdAt: integer(raw.createdAt),
+    updatedAt: integer(raw.updatedAt),
+    deletedAt: integer(raw.deletedAt)
+  };
+}
+function normalizeSharedPlaylists(raw) {
+  const rows = (Array.isArray(raw) ? raw : []).map(normalizeSharedPlaylist).filter(Boolean);
+  return [...new Map(rows.map(row => [row.id, row])).values()]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .slice(0, MAX_SHARED_PLAYLISTS);
+}
+function sharedDocumentCore(raw = {}, ownerYandexIdHash = '') {
+  return {
+    version: VERSION,
+    ownerYandexIdHash: safe(ownerYandexIdHash || raw.ownerYandexIdHash),
+    revision: integer(raw.revision),
+    profile: normalizeSharedProfile(raw.profile),
+    playlists: normalizeSharedPlaylists(raw.playlists),
+    updatedAt: integer(raw.updatedAt)
+  };
+}
+function normalizeSharedDocument(raw, auth, { stored = false } = {}) {
+  if (!isObject(raw)) throw makeError(stored ? 'shared_document_invalid' : 'shared_payload_invalid', stored ? 502 : 400);
+  const core = sharedDocumentCore(raw, stored ? raw.ownerYandexIdHash : auth.ownerYandexIdHash);
+  if (core.ownerYandexIdHash !== auth.ownerYandexIdHash) {
+    throw makeError('shared_owner_mismatch', 403);
+  }
+  const expectedHash = hash(stableStringify(core));
+  if (stored && (!isHash(raw.hash) || safe(raw.hash) !== expectedHash)) {
+    throw makeError('shared_hash_mismatch', 502);
+  }
+  return { ...core, hash: expectedHash };
+}
+function pickSharedRow(left, right, clock) {
+  if (!left) return right;
+  if (!right) return left;
+  const leftClock = clock(left);
+  const rightClock = clock(right);
+  if (rightClock > leftClock) return right;
+  if (leftClock > rightClock) return left;
+  return hash(stableStringify(right)) > hash(stableStringify(left)) ? right : left;
+}
+function mergeSharedDocuments(currentRaw, incomingRaw, auth) {
+  const current = currentRaw ? normalizeSharedDocument(currentRaw, auth, { stored: true }) : null;
+  const incoming = normalizeSharedDocument(incomingRaw, auth);
+  const currentProfile = current?.profile || null;
+  const incomingProfile = incoming.profile;
+  const profile = pickSharedRow(currentProfile, incomingProfile, value => integer(value?.updatedAt) || integer(value?.createdAt));
+  const playlists = new Map((current?.playlists || []).map(playlist => [playlist.id, playlist]));
+  incoming.playlists.forEach(playlist => {
+    playlists.set(playlist.id, pickSharedRow(playlists.get(playlist.id), playlist, sharedPlaylistClock));
+  });
+  const mergedBase = {
+    version: VERSION,
+    ownerYandexIdHash: auth.ownerYandexIdHash,
+    revision: integer(current?.revision),
+    profile,
+    playlists: [...playlists.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    updatedAt: Math.max(integer(current?.updatedAt), integer(incoming.updatedAt), now())
+  };
+  const oldSemantic = current ? stableStringify({ profile: current.profile, playlists: current.playlists }) : '';
+  const nextSemantic = stableStringify({ profile: mergedBase.profile, playlists: mergedBase.playlists });
+  const changed = oldSemantic !== nextSemantic;
+  const core = { ...mergedBase, revision: integer(current?.revision) + (changed ? 1 : 0) };
+  return { changed, document: { ...core, hash: hash(stableStringify(core)) } };
+}
+async function exchangeSharedDocument(auth, rawShared, knownHash = '') {
+  await ensureDirs(auth.oauthToken, ['app:/Backup', ROOT]);
+  const storedRaw = await downloadJson(auth.oauthToken, SHARED_PATH, { maxBytes: 2 * 1024 * 1024 });
+  const current = storedRaw ? normalizeSharedDocument(storedRaw, auth, { stored: true }) : null;
+  if (!isObject(rawShared)) {
+    return { changed: false, pushed: false, current: current && current.hash !== safe(knownHash) ? current : null, hash: current?.hash || '' };
+  }
+  const merged = mergeSharedDocuments(current, rawShared, auth);
+  if (merged.changed || !current) {
+    await uploadJson(auth.oauthToken, SHARED_PATH, merged.document, { overwrite: true });
+  }
+  return { changed: merged.changed || !current, pushed: true, current: merged.document, hash: merged.document.hash };
+}
 function normalizeCachePolicies(raw) {
   if (!isObject(raw)) return {};
   return Object.fromEntries(
@@ -835,6 +945,7 @@ async function runBatchSync(auth, body) {
   if (isObject(body.settings)) {
     settingsPush = await putSettings(auth, body.settings);
   }
+  const shared = await exchangeSharedDocument(auth, body.shared, body.knownSharedHash);
   const pull = await pullAfterWatermarks(auth, body.watermarks || body.knownWatermarks || [], {
     maxRanges: Math.max(1, Math.min(MAX_PULL_RANGES, integer(body.maxPullRanges, MAX_PULL_RANGES))),
     maxBytes: Math.max(256 * 1024, Math.min(MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES, integer(body.maxPullBytes, MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES)))
@@ -861,6 +972,7 @@ async function runBatchSync(auth, body) {
     authorization: publicAuthorization(auth),
     push: { accepted: push.filter(item => !item.duplicate).length, duplicates: push.filter(item => item.duplicate).length, ranges: push },
     pull,
+    shared,
     settings: { changed: !!settings, current: settings, pushed: settingsPush ? { changed: settingsPush.changed, hash: settingsPush.settings.hash, updatedAt: settingsPush.settings.updatedAt } : null, template: templateSettings, catalog: deviceCatalog },
     serverTime: now()
   };
@@ -894,6 +1006,7 @@ module.exports.handler = async event => {
           chainHeads: true,
           watermarks: true,
           batchSync: true,
+          sharedDocument: { enabled: true, path: SHARED_PATH, domains: ['profile', 'playlists'] },
           rawEventsPermanent: true,
           rollups: { supported: false, planned: 'client_rebuildable_verified_rollups' },
           maxRangeEvents: MAX_RANGE_EVENTS,
