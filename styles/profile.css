@@ -103,6 +103,22 @@
 .account-device-setting input{width:20px;height:20px;flex:0 0 auto;accent-color:#4daaff}
 .account-device-setting.is-disabled{opacity:.45}
 .account-device-id{color:#566a89;font-size:9.5px;word-break:break-all}
+.account-device-init{display:flex;flex-direction:column;gap:10px}
+.account-device-init>p{color:#9db7dd;font-size:12px;line-height:1.45;text-align:center}
+.account-device-init__current{display:flex;align-items:center;gap:12px;padding:13px;border-radius:14px;background:rgba(77,170,255,.09);border:1px solid rgba(77,170,255,.24)}
+.account-device-init__current>span{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:rgba(77,170,255,.13);font-size:24px}
+.account-device-init__current>div,.account-device-init-choice__text{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}
+.account-device-init__current b,.account-device-init-choice b,.account-device-init-new b{color:#fff;font-size:13px}
+.account-device-init__current small,.account-device-init-choice small,.account-device-init-new small{color:#8299bc;font-size:10.5px;line-height:1.35}
+.account-device-init-new,.account-device-init-choice{width:100%;display:flex;align-items:center;gap:11px;padding:12px;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#eaf2ff;text-align:left;cursor:pointer}
+.account-device-init-new{border-color:rgba(77,170,255,.3);background:rgba(77,170,255,.1)}
+.account-device-init-new>span:first-child,.account-device-init-choice__icon{width:32px;flex:0 0 32px;text-align:center;font-size:22px}
+.account-device-init-new>span:last-child{display:flex;min-width:0;flex-direction:column;gap:3px}
+.account-device-init-choice__arrow{color:#6f8db8;font-size:24px}
+.account-device-init-new:active,.account-device-init-choice:active{transform:scale(.985)}
+.account-device-init__caption{margin-top:5px;color:#8ab8fd;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.65px}
+.account-device-init__list{display:flex;max-height:230px;flex-direction:column;gap:7px;overflow-y:auto}
+.account-device-init__note{padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.025);color:#7185a5;font-size:10.5px;line-height:1.4}
 .yandex-auth-mainbtn{width:100%;min-height:48px;padding:14px 16px;font-size:16px;font-weight:900;border-radius:12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;background:linear-gradient(135deg,#d50000,#8f0000);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;transition:opacity .2s,transform .15s;box-shadow:0 8px 22px rgba(213,0,0,.25)}
 .yandex-auth-mainbtn:active{transform:scale(.98)}
 .yandex-auth-mainbtn:hover{filter:brightness(1.06)}
