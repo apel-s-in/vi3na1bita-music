@@ -159,8 +159,8 @@ const validateDataBoundaries = () => {
   excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*__favorites_v2__/, 'Избранное осталось в shared backup');
   excludes('scripts/analytics/storage-merge.js', /mergeFavoritesStorageSafe|__favorites_v2__/, 'Backup restore продолжает объединять Избранное');
   contains('scripts/analytics/snapshot-contract.js', 'sc3:playlists');
-  contains('scripts/analytics/snapshot-contract.js', 'sc3:default');
-  contains('scripts/analytics/snapshot-contract.js', 'sc3:albumColors');
+  excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*sc3:default/, 'Оформление default Showcase осталось в shared backup');
+  excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*sc3:albumColors/, 'Цвета альбомов остались в shared backup');
   excludes(account, /\.(play|pause|stop|seek|setVolume|setMuted)\s*\(/, 'Account vault управляет playback');
   assertNoMatch([favorite, mirror], /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(/g, 'Favorite contract или mirror управляет playback');
 };
@@ -354,6 +354,11 @@ const main = async () => {
   excludes('cloud-functions/vi3-signaling/index.js', /backup_achievement_receipt|actionBackupAchievementReceipt|backupReceiptIds|backupSaves|CFG\.backupRewardsShadow|CFG\.backupReceiptSecret/, 'Legacy backup achievement contour остался в signaling');
   validatePwaAndLegacy();
   validateDataBoundaries();
+  contains('scripts/app/profile/account-bindings.js', "'😎'");
+  contains('scripts/app/profile/account-bindings.js', "'🎧'");
+  contains('scripts/app/profile/account-bindings.js', "'💔'");
+  assertNoMatch(['scripts/app/profile/account-bindings.js'], /'🎸'|'🦄'|'🦇'|'👽'|'🤖'|'🐱'|'🦊'|'🐼'|'🔥'|'💎'|'🎵'|'🌟'|'🦁'|'🐯'|'🎮'|'🎤'|'🎹'|'🥁'|'🎺'/g, 'Удалённые бесплатные аватары отсутствуют в picker');
+  contains('scripts/app/profile/account-bindings.js', 'purchased.map(item => item.avatar)');
   validateRecommendationsAndStats();
   validatePlaybackOwnershipFoundation();
   validatePlaybackBoundaries();
@@ -373,7 +378,9 @@ const main = async () => {
   contains('scripts/analytics/backup-v7-range.js', 'sharedServerHash');
   contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'SHARED_PATH');
   contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'exchangeSharedDocument');
-  contains('cloud-functions/vi3na1bita-backup-proxy/index.js', "domains: ['profile', 'playlists']");
+  contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'SHARED_SCHEMA_VERSION = 2');
+  contains('cloud-functions/vi3na1bita-backup-proxy/index.js', "domains: ['playlists']");
+  excludes('scripts/analytics/backup-v7-sync.js', /metaDB\.setGlobal\(['"]user_profile['"]/, 'Backup v7 продолжает применять облачный профиль');
   excludes('scripts/core/yandex-backup-v7.js', /v7_authorize|v7_push_range|v7_pull_ranges|v7_put_settings|v7_get_settings/, 'Клиент продолжает использовать раздельные v7 вызовы');
   excludes('scripts/analytics/backup-v7-sync.js', /knownRangeKeys|normalizeStatsProjection|projection\.tracks/, 'Sync продолжает применять projection или knownRangeKeys');
   excludes('scripts/analytics/snapshot-contract.js', /sleepTimerState:v2|app:first-install-ts|backup:conflict_policy:v1/, 'Runtime/legacy settings остались в device backup');
