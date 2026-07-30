@@ -4834,7 +4834,15 @@ export default {
 
 //=================================================
 // FILE: /scripts/analytics/device-registry.js
-import { safeJsonParse, safeString, safeNum } from './backup-summary.js';
+const safeJsonParse = (raw, fallback = null) => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+};
+const safeString = value => String(value == null ? '' : value).trim();
+const safeNum = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 const LS_REGISTRY = 'backup:device_registry:v1';
 const normAuthHistory = a => (Array.isArray(a) ? a : []).map(x => ({ ts: safeNum(x?.ts || x?.at), browser: safeString(x?.browser || ''), os: safeString(x?.os || ''), lang: safeString(x?.lang || ''), timezone: safeString(x?.timezone || ''), pwa: !!x?.pwa })).filter(x => x.ts > 0).sort((a,b)=>b.ts-a.ts).slice(0, 20);
