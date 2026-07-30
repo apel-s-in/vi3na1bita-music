@@ -13431,6 +13431,10 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/ci/generate-listen-catalog.mjs', 'trackVersion');
   contains('scripts/ci/generate-listen-catalog.mjs', "createHash('sha256')");
   contains('scripts/ci/generate-listen-catalog.mjs', "trackLines.join('\\n')");
+  contains('scripts/ci/generate-listen-catalog.mjs', 'listen-track-catalog.function-env.json');
+  contains(server, 'LISTEN_TRACK_CATALOG_ALBUM_');
+  excludes(server, /requestedVersion\s*&&\s*requestedVersion\s*!==\s*track\.trackVersion/, 'Playback claim снова блокируется устаревшей клиентской версией каталога');
+  excludes(ownership, /const version = safe\(trackVersion\) \|\| await getTrackVersion\(uid\)/, 'Ownership claim снова зависит от клиентского trackVersion');
   contains('service-worker.js', './scripts/analytics/playback-fence.js');
   excludes(server, /expectedRevision:\s*state\.revision/, 'Неиспользуемый expectedRevision остался в transfer record');
   excludes(server, /const fencingToken = base64url\(crypto\.randomBytes\(32\)\);\s*const suppliedFencingToken[\s\S]{0,300}const fencingToken =/, 'Повторное объявление fencingToken');
@@ -13438,7 +13442,8 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/analytics/playback-ownership.js', 'buildPlaybackFencePayload');
   contains('scripts/analytics/playback-ownership.js', 'releasePlaybackOwnership');
   contains('scripts/analytics/playback-ownership.js', 'getLogicalListenDiagnostics');
-  ['account_device_list', 'account_device_update', 'takeoverEnabled', 'remotePauseEnabled', 'alwaysConfirm', 'initializationPending', 'inheritedFromDeviceId'].forEach(marker => contains('scripts/app/profile/account-devices-view.js', marker));
+  ['account_device_list', 'account_device_update', 'takeoverEnabled', 'remotePauseEnabled', 'alwaysConfirm', 'initializationPending', 'inheritedFromDeviceId', 'retryAt'].forEach(marker => contains('scripts/app/profile/account-devices-view.js', marker));
+  excludes('scripts/app/profile/account-devices-view.js', /\.catch\(\(\)\s*=>\s*rerender\?\.\(\)\)/, 'Ошибка account_device_list снова создаёт бесконечный rerender/request loop');
   ['resolveAccountDeviceInitialization', 'account_device_initialize', 'account_device_list', 'accountDevicesAreCompatible', "mode: 'new'", "mode: 'inherit'"].forEach(marker => contains('scripts/app/profile/account-device-initialization.js', marker));
   excludes('scripts/core/yandex-auth.js', /auth-onboarding-orchestrator|startPreload|runOnboardingFlow|NEW_DEVICE_CONFIRMED_KEY/, 'Yandex Auth продолжает запускать legacy restore onboarding');
   excludes('scripts/core/yandex-auth.js', /yandexId\s*:\s*yandexId|yandexId\s*:\s*yId/, 'Raw Yandex ID записывается в AUTH_EVENT');
