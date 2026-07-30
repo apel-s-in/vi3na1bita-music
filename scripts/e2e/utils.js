@@ -36,8 +36,9 @@ export const waitForAppReady=async(page,{timeout=20000}={})=>{
 
 export const loginByPromo=async(page,promocode='VITRINA2025')=>{
   await installAudioMock(page);
-  await page.addInitScript(value=>localStorage.setItem('promocode',value),promocode);
-  await page.goto(`${BASE}/index.html`,{waitUntil:'load'});
+  await page.goto(`${BASE}/index.html`,{waitUntil:'domcontentloaded'});
+  await page.evaluate(value=>localStorage.setItem('promocode',value),promocode);
+  await page.reload({waitUntil:'load'});
   const main=page.locator('#main-block');
   if(!(await main.isVisible())){
     await page.fill('#promo-inp',promocode);
