@@ -15694,6 +15694,8 @@ const main = async () => {
   contains('scripts/app/profile/account-bindings.js', "'💔'");
   assertNoMatch(['scripts/app/profile/account-bindings.js'], /'🎸'|'🦄'|'🦇'|'👽'|'🤖'|'🐱'|'🦊'|'🐼'|'🔥'|'💎'|'🎵'|'🌟'|'🦁'|'🐯'|'🎮'|'🎤'|'🎹'|'🥁'|'🎺'/g, 'Удалённые бесплатные аватары отсутствуют в picker');
   contains('scripts/app/profile/account-bindings.js', 'purchased.map(item => item.avatar)');
+  contains('scripts/app/profile/account-bindings.js', "import('../shards/wallet-service.js')");
+  contains('scripts/app/profile/account-bindings.js', 'shardWallet.refresh()');
   validateRecommendationsAndStats();
   validatePlaybackOwnershipFoundation();
   validatePlaybackBoundaries();
