@@ -15569,7 +15569,10 @@ const main = async () => {
   contains('scripts/analytics/backup-v7-sync.js', 'backup_event_ranges');
   contains('scripts/analytics/backup-v7-sync.js', 'backup_chain_watermarks');
   contains('scripts/analytics/backup-v7-sync.js', 'rebuildBackupV7LocalAnalytics');
-  contains('scripts/analytics/backup-sync-engine.js', '24 * 60 * 60 * 1000');
+  contains('scripts/analytics/backup-sync-engine.js', 'SLOT_MS = 12 * 60 * 60 * 1000');
+  contains('scripts/analytics/backup-sync-engine.js', "phase === 'push' ? 'pull' : 'push'");
+  contains('scripts/analytics/backup-v7-sync.js', 'pushEnabled');
+  contains('scripts/analytics/backup-v7-sync.js', 'maxPullRanges');
   excludes('scripts/core/yandex-backup-v7.js', /v7_authorize|v7_push_range|v7_pull_ranges|v7_put_settings|v7_get_settings/, 'Клиент продолжает использовать раздельные v7 вызовы');
   excludes('scripts/analytics/backup-v7-sync.js', /knownRangeKeys|normalizeStatsProjection|projection\.tracks/, 'Sync продолжает применять projection или knownRangeKeys');
   excludes('scripts/analytics/snapshot-contract.js', /sleepTimerState:v2|app:first-install-ts|backup:conflict_policy:v1/, 'Runtime/legacy settings остались в device backup');
