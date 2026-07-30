@@ -12357,6 +12357,7 @@ export const renderAccountBottomActions = () => {
   const rows = [
     ['backup-info', 'Что синхронизируется?'],
     ['sync-log', 'Журнал синхронизации'],
+    ['legacy-cloud-cleanup', 'Освободить место от Backup v6'],
     ['reconnect-rights', 'Переподключить права'],
     ['logout', 'Выйти из Яндекса', 'om-btn--outline']
   ];
