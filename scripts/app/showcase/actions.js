@@ -6,8 +6,12 @@ export const createShowcaseActions = ({ W, D, Store, SHOW, isDef, trk, bldTrk, a
       const id = ctxId(), key = kOver || (isDef(id) ? SHOW : `${SHOW}:${id}`), list0 = lOver || getActiveListTracks(); if (!list0.length) return;
       const list = shuf ? shuffle(list0) : list0, idx = uid && !shuf ? Math.max(0, list.findIndex(t => t.uid === uid)) : 0;
       W.AlbumsManager?.setPlayingAlbum?.(key);
-      if (!W.playerCore?.playExactFromPlaylist?.(list, list[idx]?.uid, { dir: 1 })) return;
-      W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true }); hi?.(list[idx]?.uid); if (list[idx]?.uid) markLast?.(list[idx].uid, id);
+      const playback = W.playerCore?.playExactFromPlaylist?.(list, list[idx]?.uid, { dir: 1 });
+      if (playback === false) return false;
+      W.PlayerUI?.ensurePlayerBlock?.(idx, { userInitiated: true });
+      hi?.(list[idx]?.uid);
+      if (list[idx]?.uid) markLast?.(list[idx].uid, id);
+      return playback;
     },
     openMenu: (api, uid, fromSearch = false) => {
       api.cleanupUi?.(); const t = trk(uid), id = api.ctxId(), inPl = !isDef(id) && (Store.get(id)?.order || []).includes(uid); if (!t) return;
