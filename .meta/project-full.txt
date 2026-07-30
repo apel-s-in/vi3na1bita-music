@@ -13635,7 +13635,6 @@ const bindReactiveEvents = (rt, r) => {
   const d = () => rt.isConnected && updateSyncDot(rt);
   rt._yaReactiveHandlers = {
     onAuthChanged:s, onBackupMetaUpdated:s, onSyncReady:()=>{s();d();}, onSyncSettingsChanged:d,
-    onCloudNewer:e=>{ if (!rt.isConnected) return; s(); const m = e.detail?.meta || null; if (!m || e.detail?.isFreshLogin) return; try { const l = safeNum(localStorage.getItem('yandex:last_backup_local_ts')), c = safeNum(m?.timestamp); if (localStorage.getItem('backup:restore_or_skip_done') === '1' && c > 0 && l > 0 && Math.abs(c - l) < 5000) return; } catch {} },
     onSyncRevision:()=>{ const l = rt.querySelector('#ya-last-sync-label'); if (l) l.textContent = getSyncStatusLine(); },
     onSyncState:e=>{ const d = rt.querySelector('#ya-sync-dot'); if (!d) return; const st = e.detail?.state, m = { syncing:{title:'Синхронизируется...',color:'#ff9800',anim:true}, ok:{title:'Синхронизировано ✓',color:'#4caf50',anim:false}, idle:{title:'Авто-сохранение активно',color:'#4caf50',anim:false} }, c = m[st] || m.idle; Object.assign(d.style, { background:c.color, animation:c.anim ? 'syncPulse 1s infinite' : '' }); d.title = c.title; if (st === 'ok') { const l = rt.querySelector('#ya-last-sync-label'); if (l) l.textContent = getSyncStatusLine(); } }
   };
@@ -13643,7 +13642,6 @@ const bindReactiveEvents = (rt, r) => {
   window.addEventListener('yandex:backup:meta-updated', rt._yaReactiveHandlers.onBackupMetaUpdated);
   window.addEventListener('backup:sync:ready', rt._yaReactiveHandlers.onSyncReady);
   window.addEventListener('backup:sync:settings:changed', rt._yaReactiveHandlers.onSyncSettingsChanged);
-  window.addEventListener('yandex:cloud:newer', rt._yaReactiveHandlers.onCloudNewer);
   window.addEventListener('backup:sync:state', rt._yaReactiveHandlers.onSyncState);
   window.addEventListener('backup:sync:revision', rt._yaReactiveHandlers.onSyncRevision);
 };
