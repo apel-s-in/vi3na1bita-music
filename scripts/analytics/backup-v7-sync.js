@@ -43,35 +43,25 @@ const parseRows = raw => {
   }
 };
 
-export const buildBackupV7SharedDocument = async () => {
-  const profile = (await metaDB.getGlobal('user_profile').catch(() => null))?.value || {};
-  return {
-    version: '7.1',
-    profile: {
-      name: safe(profile.name || 'Слушатель') || 'Слушатель',
-      avatar: safe(profile.avatar || '😎') || '😎',
-      createdAt: num(profile.createdAt),
-      updatedAt: num(profile.updatedAt)
-    },
-    playlists: parseRows(localStorage.getItem('sc3:playlists')),
-    updatedAt: Date.now()
-  };
-};
+export const buildBackupV7SharedDocument = async () => ({
+  version: '7.1',
+  schemaVersion: 2,
+  playlists: parseRows(localStorage.getItem('sc3:playlists')),
+  updatedAt: Date.now()
+});
 
 export const applyBackupV7SharedDocument = async document => {
   if (!document || typeof document !== 'object' || Array.isArray(document)) return { applied: false };
-  const profile = document.profile && typeof document.profile === 'object' ? document.profile : null;
   const playlists = Array.isArray(document.playlists) ? document.playlists : null;
+  if (!playlists) return { applied: false, playlists: 0 };
   window.__backupV7SharedApplying = true;
   try {
-    if (profile) await metaDB.setGlobal('user_profile', { ...profile });
-    if (playlists) localStorage.setItem('sc3:playlists', JSON.stringify(playlists));
+    localStorage.setItem('sc3:playlists', JSON.stringify(playlists));
   } finally {
     window.__backupV7SharedApplying = false;
   }
-  if (profile) window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason: 'backup_v71_shared' } }));
-  if (playlists) window.dispatchEvent(new CustomEvent('playlists:updated', { detail: { reason: 'backup_v71_shared' } }));
-  return { applied: !!profile || !!playlists, profile: !!profile, playlists: playlists?.length || 0 };
+  window.dispatchEvent(new CustomEvent('playlists:updated', { detail: { reason: 'backup_v71_shared' } }));
+  return { applied: true, playlists: playlists.length };
 };
 
 const readWatermarks = async () => (await getAllRows('backup_chain_watermarks')).map(row => ({
