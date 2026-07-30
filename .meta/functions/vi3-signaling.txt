@@ -1346,6 +1346,7 @@ async function actionSocialSessionIssue(event, body) {
   return {
     ok: true,
     friendId: identity.friendId,
+    ownerYandexIdHash: yandexIdHash,
     socialSession: session,
     expiresAt,
     registrationGrant: { ok: registrationGrant.ok === true, amount: num(registrationGrant.amount), duplicate: registrationGrant.duplicate === true, operationId: safe(registrationGrant.operationId), error: safe(registrationGrant.error) },
