@@ -28,6 +28,10 @@ const normalizeDevice = raw => ({
   takeoverEnabled: raw?.takeoverEnabled !== false,
   remotePauseEnabled: raw?.remotePauseEnabled !== false,
   alwaysConfirm: raw?.alwaysConfirm !== false,
+  initializationPending: raw?.initializationPending === true,
+  initializationMode: safe(raw?.initializationMode),
+  initializedAt: Math.max(0, Number(raw?.initializedAt || 0)),
+  inheritedFromDeviceId: safe(raw?.inheritedFromDeviceId),
   revokedAt: Math.max(0, Number(raw?.revokedAt || 0)),
   firstSeenAt: Math.max(0, Number(raw?.firstSeenAt || 0)),
   lastSeenAt: Math.max(0, Number(raw?.lastSeenAt || 0)),
@@ -68,7 +72,7 @@ const renderServerRow = device => {
   const current = device.deviceId === getDeviceId();
   const ownerDevice = state.playback?.active === true && state.playback?.ownerDeviceId === device.deviceId;
   const revoked = device.revokedAt > 0;
-  const suffix = [current ? 'это устройство' : '', ownerDevice ? 'сейчас играет' : '', revoked ? 'отозвано' : ''].filter(Boolean).join(' · ');
+  const suffix = [current ? 'это устройство' : '', ownerDevice ? 'сейчас играет' : '', device.initializationPending ? 'настройка не завершена' : '', revoked ? 'отозвано' : ''].filter(Boolean).join(' · ');
   return renderSmallListRow({
     icon: icon(device),
     title: `${device.label}${suffix ? ` · ${suffix}` : ''}`,
