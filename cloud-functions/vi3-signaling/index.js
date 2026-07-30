@@ -1032,6 +1032,11 @@ async function requirePlaybackDevice(event, body) {
   const device = normalizeAccountDevice(payload(row), auth.playerId);
   if (!row || !device.deviceId) throw new Error('account_device_not_found');
   if (device.revokedAt > 0) throw new Error('account_device_revoked');
+  if (device.initializationPending) {
+    const error = new Error('account_device_initialization_required');
+    error.httpStatus = 409;
+    throw error;
+  }
   return { ...auth, deviceId, device };
 }
 function playbackFenceFields(body = {}) {
