@@ -1,30 +1,16 @@
 // Playback ownership protocol.
 // Управляет только разрешением старта и узкой pause-only реакцией на подтверждённую потерю ownership.
-import { requestSocialAction } from '../core/social-session.js';
+import { isPlaybackCoordinationRequired, markPlaybackCoordinationRequired, requestSocialAction } from '../core/social-session.js';
 import { getDeviceId } from '../core/device-context.js';
 import { buildPlaybackFencePayload } from './playback-fence.js';
 
-const CATALOG_URL = './data/listen-track-catalog.env.json';
 const GRANT_PREFIX = 'playback:ownership-grant:v1:';
 const safe = value => String(value == null ? '' : value).trim();
 const currentOwner = () => safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
 const currentDeviceId = () => getDeviceId();
 const grantKey = owner => `${GRANT_PREFIX}${safe(owner)}`;
-let catalogPromise = null;
-
-const readCatalog = () => {
-  if (catalogPromise) return catalogPromise;
-  catalogPromise = (async () => {
-    const data = await window.Utils?.fetchCache?.getJson?.({ key: 'listen:track-catalog:env:v1', url: CATALOG_URL, ttlMs: 12 * 60 * 60 * 1000, store: 'session', fetchInit: { cache: 'force-cache' } });
-    return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
-  })().catch(() => ({}));
-  return catalogPromise;
-};
-
-export const getTrackVersion = async uid => {
-  const row = (await readCatalog())[safe(uid)];
-  return Array.isArray(row) ? safe(row[2]) : safe(row?.trackVersion);
-};
+let passiveClaim = null;
+let passiveClaimUid = '';
 
 export const readOwnershipGrant = (owner = currentOwner()) => {
   try {
@@ -91,7 +77,8 @@ export const getPlaybackOwnershipState = async () => {
   return result?.playback || null;
 };
 
-export const reconcilePlaybackOwnership = async ({ reason = 'foreground' } = {}) => {
+export const reconcilePlaybackOwnership = async ({ reason = 'foreground', force = false } = {}) => {
+  if (!force && !isPlaybackCoordinationRequired()) return null;
   if (window.YandexAuth?.getSessionStatus?.() !== 'active' || !window.YandexAuth?.isTokenAlive?.()) return null;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null;
   const playback = await getPlaybackOwnershipState();
@@ -146,6 +133,33 @@ const isTransportFailure = error => {
   return !status || status >= 400 || /network|fetch|timeout|backoff|offline|unavailable/i.test(message);
 };
 
+const claimPlaybackOwnershipInBackground = ({ trackUid, position = 0 } = {}) => {
+  const uid = safe(trackUid);
+  if (!uid) return null;
+  if (passiveClaim && passiveClaimUid === uid) return passiveClaim;
+
+  passiveClaimUid = uid;
+  passiveClaim = claimPlaybackOwnership({ trackUid: uid, position, confirm: false })
+    .then(result => {
+      if (result?.ok) return result;
+      const playback = result?.playback || null;
+      if (playback?.active && playback.ownerDeviceId && playback.ownerDeviceId !== currentDeviceId()) {
+        markPlaybackCoordinationRequired('remote_owner_discovered');
+        window.dispatchEvent(new CustomEvent('playback:ownership-lost', {
+          detail: { reason: 'remote_owner_discovered', playback, previousGrant: null }
+        }));
+      }
+      return result;
+    })
+    .catch(() => null)
+    .finally(() => {
+      passiveClaim = null;
+      passiveClaimUid = '';
+    });
+
+  return passiveClaim;
+};
+
 const withTimeout = (promise, timeoutMs) => Promise.race([
   promise,
   new Promise((_, reject) => setTimeout(() => {
@@ -163,6 +177,10 @@ export const authorizePlaybackStart = async ({ trackUid, position = 0, timeoutMs
   }
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
     return { allowed: true, localOnly: true, reason: 'offline' };
+  }
+  if (!isPlaybackCoordinationRequired()) {
+    queueMicrotask(() => claimPlaybackOwnershipInBackground({ trackUid: uid, position }));
+    return { allowed: true, localOnly: true, optimistic: true, reason: 'single_device_fast_path' };
   }
   try {
     const result = await withTimeout(claimPlaybackOwnership({ trackUid: uid, position, confirm }), timeoutMs);
@@ -229,7 +247,8 @@ export const initPlaybackOwnership = () => {
   });
   const onServiceWorkerMessage = event => {
     if (event.data?.type !== 'PLAYBACK_OWNERSHIP_TRANSFERRED') return;
-    reconcilePlaybackOwnership({ reason: 'webpush' }).catch(() => null);
+    markPlaybackCoordinationRequired('webpush_transfer');
+    reconcilePlaybackOwnership({ reason: 'webpush', force: true }).catch(() => null);
   };
   navigator.serviceWorker?.addEventListener?.('message', onServiceWorkerMessage);
   window.addEventListener('message', onServiceWorkerMessage);
@@ -244,7 +263,7 @@ export const playbackOwnershipService = {
   release: releasePlaybackOwnership,
   getLogicalDiagnostics: getLogicalListenDiagnostics,
   updateLease: updateOwnershipLease,
-  getTrackVersion,
+  isCoordinationRequired: isPlaybackCoordinationRequired,
   getGrant: readOwnershipGrant,
   clearGrant: clearOwnershipGrant
 };
