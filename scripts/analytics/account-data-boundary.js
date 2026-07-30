@@ -253,7 +253,10 @@ export const AccountDataContext = {
       throw new Error('local_data_owner_auth_required');
     }
     if (this.getCurrentOwner() !== yandexId) {
-      await this.switchToYandexAccount(yandexId);
+      await this.switchToYandexAccount(yandexId, {
+        adoptLocalData: false,
+        discardLocalData: false
+      });
     }
     if (this.getCurrentOwner() !== yandexId) {
       throw new Error('local_data_owner_mismatch');
@@ -277,14 +280,20 @@ export const initAccountDataBoundary = async () => {
   window.addEventListener('yandex:auth:changed', event => {
     const owner = safe(event.detail?.profile?.yandexId) || currentYandexId();
     if (event.detail?.status === 'active' && owner) {
-      AccountDataContext.switchToYandexAccount(owner).catch(error => window.NotificationSystem?.error?.(`Не удалось переключить профиль: ${error?.message || 'ошибка'}`));
+      AccountDataContext.switchToYandexAccount(owner, {
+        adoptLocalData: false,
+        discardLocalData: false
+      }).catch(error => window.NotificationSystem?.error?.(`Не удалось переключить профиль: ${error?.message || 'ошибка'}`));
     } else if (event.detail?.status === 'logged_out') {
       AccountDataContext.switchToLocal().catch(() => null);
     }
   });
   const owner = currentYandexId();
   if (window.YandexAuth?.getSessionStatus?.() === 'active' && owner) {
-    return AccountDataContext.switchToYandexAccount(owner);
+    return AccountDataContext.switchToYandexAccount(owner, {
+      adoptLocalData: false,
+      discardLocalData: false
+    });
   }
   return AccountDataContext.switchToLocal();
 };
