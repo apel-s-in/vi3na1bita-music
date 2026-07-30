@@ -13385,7 +13385,7 @@ const validatePlaybackOwnershipFoundation = () => {
   contains(server, 'did: sessionDeviceId');
   const ownership = 'scripts/analytics/playback-ownership.js';
   const fence = 'scripts/analytics/playback-fence.js';
-  ['claimPlaybackOwnership', 'playback_transfer_prepare', 'playback_transfer_commit', 'getTrackVersion', 'readOwnershipGrant'].forEach(marker => contains(ownership, marker));
+  ['claimPlaybackOwnership', 'claimPlaybackOwnershipInBackground', 'playback_transfer_prepare', 'playback_transfer_commit', 'single_device_fast_path', 'readOwnershipGrant'].forEach(marker => contains(ownership, marker));
   ['normalizePlaybackFenceGrant', 'buildPlaybackFencePayload', 'hasPlaybackFence'].forEach(marker => contains(fence, marker));
   excludes(fence, /window\.|localStorage|sessionStorage|fetch\(|requestSocialAction|playerCore/, 'Playback fence helper перестал быть pure');
   excludes(ownership, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist|applyFavoritesOnlyFilter)\s*\(/, 'Ownership service обходит узкий PlayerCore API');
@@ -13409,7 +13409,14 @@ const validatePlaybackOwnershipFoundation = () => {
   contains(server, 'playbackTrackFromCatalog');
   contains(server, 'catalogSourceStats');
   contains(server, 'catalogReady');
-  contains(ownership, 'listen_track_not_catalogued');
+  contains(server, 'rateLimitBucket');
+  contains(server, 'getPlaybackCoordinationState');
+  contains(server, 'PLAYBACK_DEVICE_ACTIVE_MS');
+  excludes(server, /const prefix = `rate:\$\{cleanScope\}:\$\{actorHash\}:\$\{bucket\}:`/, 'Rate limiter снова использует row-per-hit prefix');
+  contains(ownership, 'isPlaybackCoordinationRequired');
+  contains('scripts/core/social-session.js', 'playbackCoordination');
+  contains('scripts/core/social-session.js', 'markPlaybackCoordinationRequired');
+  excludes(ownership, /listen-track-catalog\.env\.json|getTrackVersion|catalogPromise/, 'Ownership снова содержит клиентский trackVersion catalog');
   excludes(server, /requestedVersion\s*&&\s*requestedVersion\s*!==\s*track\.trackVersion/, 'Playback claim снова блокируется устаревшей клиентской версией каталога');
   excludes(ownership, /const version = safe\(trackVersion\) \|\| await getTrackVersion\(uid\)/, 'Ownership claim снова зависит от клиентского trackVersion');
   contains('service-worker.js', './scripts/analytics/playback-fence.js');
@@ -13442,6 +13449,8 @@ const validatePlaybackBoundaries = () => {
   assertNoMatch(protectedFiles, /playerCore(?:\?\.|\.)\s*(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist|applyFavoritesOnlyFilter)\s*\(/g, 'Games, Friends или Intel мутируют PlayerCore');
   assertNoMatch([...protectedFiles, ...listFiles('scripts/analytics')], /new\s+Howl\s*\(/g, 'Найден вторичный владелец Howl');
   ['player:transportReloaded', 'previousUid', '_loadReq'].forEach(marker => contains('src/PlayerCore.js', marker));
+  contains('scripts/analytics/playback-ownership.js', 'single_device_fast_path');
+  contains('scripts/analytics/playback-ownership.js', 'claimPlaybackOwnershipInBackground');
 };
 const validateLoyaltyReleaseD = () => {
   const server = 'cloud-functions/vi3-signaling/index.js';
