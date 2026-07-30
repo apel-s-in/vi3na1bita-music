@@ -15468,11 +15468,11 @@ const validateBackupProxy = () => {
     'X-Vi3-Session',
     'x-yandex-auth',
     'backup_device_authorize',
-    'v7_authorize',
-    'v7_push_range',
-    'v7_pull_ranges',
-    'v7_put_settings',
-    'v7_get_settings',
+    'v7_sync',
+    'watermarks',
+    'pushRanges',
+    'settingsTemplateDeviceId',
+    'backup_device_initialization_required',
     'overwrite=false',
     'immutable_range_conflict',
     'range_sequence_not_contiguous',
@@ -15521,8 +15521,15 @@ const main = async () => {
   validatePlaybackBoundaries();
   validateLoyaltyReleaseD();
   validateBackupProxy();
-  contains('scripts/analytics/backup-delta-contract.js', "BACKUP_DELTA_VERSION = '7.0'");
-  contains('scripts/analytics/stats-shard-contract.js', 'buildStatsProjectionShard');
+  contains('scripts/analytics/backup-v7-range.js', "BACKUP_V7_VERSION = '7.1'");
+  contains('scripts/core/yandex-backup-v7.js', "request('v7_sync'");
+  contains('scripts/analytics/backup-v7-sync.js', 'backup_event_ranges');
+  contains('scripts/analytics/backup-v7-sync.js', 'backup_chain_watermarks');
+  contains('scripts/analytics/backup-v7-sync.js', 'rebuildBackupV7LocalAnalytics');
+  contains('scripts/analytics/backup-sync-engine.js', '24 * 60 * 60 * 1000');
+  excludes('scripts/core/yandex-backup-v7.js', /v7_authorize|v7_push_range|v7_pull_ranges|v7_put_settings|v7_get_settings/, 'Клиент продолжает использовать раздельные v7 вызовы');
+  excludes('scripts/analytics/backup-v7-sync.js', /knownRangeKeys|normalizeStatsProjection|projection\.tracks/, 'Sync продолжает применять projection или knownRangeKeys');
+  excludes('scripts/analytics/snapshot-contract.js', /sleepTimerState:v2|app:first-install-ts|backup:conflict_policy:v1/, 'Runtime/legacy settings остались в device backup');
   excludes('scripts/app/profile/cloud-action-render-kit.js', /backup-export-manual|backup-import-manual|archive-maintenance|recovery-snapshot|trust-check|ledger-health/, 'Пользовательские ручные служебные backup-действия остались');
   validateCloudFunctionFiles();
   validateWorkflows();
