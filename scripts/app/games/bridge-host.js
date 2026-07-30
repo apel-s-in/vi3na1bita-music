@@ -5,7 +5,7 @@
 import { requestSocialAction } from '../../core/social-session.js';
 import { getConfirmedListeningStats } from '../../analytics/confirmed-listening-stats.js';
 import { getLoyaltyState } from '../../analytics/loyalty-state.js';
-import { getEmbeddedFriendsRpcMethod } from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.2.4';
+import { getEmbeddedFriendsRpcMethod } from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.2.5';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
