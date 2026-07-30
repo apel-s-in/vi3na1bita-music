@@ -178,6 +178,11 @@ const validatePlaybackOwnershipFoundation = () => {
     'timezone_policy_set',
     'account_device_list',
     'account_device_update',
+    'account_device_initialize',
+    'accountDeviceWasKnown',
+    'accountDeviceInitializationRequired',
+    'initializationPending',
+    'inheritedFromDeviceId',
     'playback_state_get',
     'playback_claim',
     'playback_transfer_prepare',
@@ -290,7 +295,7 @@ const validateBackupProxy = () => {
   const proxy = 'cloud-functions/vi3na1bita-backup-proxy/index.js';
   const signaling = 'cloud-functions/vi3-signaling/index.js';
 
-  ['backup_device_authorize', 'actionBackupDeviceAuthorize', 'backup_device_session_required', 'backup_device_identity_mismatch', 'backup_device_not_registered', 'backup_device_revoked', 'backup_owner_identity_mismatch', 'ownerYandexIdHash', 'server_account_device'].forEach(marker => contains(signaling, marker));
+  ['backup_device_authorize', 'actionBackupDeviceAuthorize', 'account_device_initialize', 'actionAccountDeviceInitialize', 'account_device_initialization_class_mismatch', 'accountDeviceWasKnown', 'accountDevicePreviousLastSeenAt', 'initializationPending', 'inheritedFromDeviceId', 'backup_device_session_required', 'backup_device_identity_mismatch', 'backup_device_not_registered', 'backup_device_revoked', 'backup_owner_identity_mismatch', 'ownerYandexIdHash', 'server_account_device'].forEach(marker => contains(signaling, marker));
 
   [
     'BACKUP_AUTHORITY_URL',
