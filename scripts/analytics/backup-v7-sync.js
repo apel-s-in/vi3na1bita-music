@@ -41,9 +41,19 @@ const readWatermarks = async () => (await getAllRows('backup_chain_watermarks'))
   lastRangeHash: safe(row.lastRangeHash)
 })).filter(row => row.deviceId && row.chainId);
 
-const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceId = '' } = {}) => {
+const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceId = '', ownerYandexIdHash = '' } = {}) => {
+  const unique = new Map();
+
+  for (const range of Array.isArray(ranges) ? ranges : []) {
+    const key = safe(range?.rangeKey);
+    if (key && !unique.has(key)) unique.set(key, range);
+  }
+
   const verified = [];
-  for (const range of ranges) verified.push(await verifyBackupV7Range(range));
+  for (const range of unique.values()) {
+    verified.push(await verifyBackupV7Range(range, { ownerYandexIdHash }));
+  }
+
   await metaDB.init();
 
   return new Promise((resolve, reject) => {
@@ -213,13 +223,15 @@ const runSync = async ({ reason = 'autosync', includeSettings = true } = {}) => 
     throw new Error('backup_v71_authorization_invalid');
   }
   if (safe(authorization.deviceId) !== deviceId) throw new Error('backup_v71_device_identity_mismatch');
+  if (safe(authorization.ownerYandexIdHash) !== ownerYandexIdHash) throw new Error('backup_v71_owner_identity_mismatch');
   if (authorization.initializationRequired) throw new Error('backup_device_initialization_required');
 
   const pulledRanges = Array.isArray(result?.pull?.ranges) ? result.pull.ranges : [];
   const stored = await saveVerifiedRanges({
     ranges: [...(batch?.ranges || []), ...pulledRanges],
     watermarks: result?.pull?.watermarks || [],
-    currentDeviceId: deviceId
+    currentDeviceId: deviceId,
+    ownerYandexIdHash
   });
 
   if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
