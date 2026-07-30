@@ -12882,7 +12882,7 @@ export default { loadProfileModel };
 // UID.096_(Helper-first anti-duplication policy)_(единый renderer-kit для profile/cloud UI)_(row/warn/score helpers без копипасты)
 // UID.112_(Profile command center)_(backup/sync/recovery/ledger/trust UI в одном визуальном стиле)_(карточки, meta rows, actions, sync log)
 
-import { safeNum } from '../../analytics/backup-summary.js';
+const safeNum = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 export const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
 export const fmtDateTime = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleString('ru-RU') : '—';
