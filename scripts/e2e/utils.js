@@ -36,9 +36,13 @@ export const waitForAppReady=async(page,{timeout=20000}={})=>{
 
 export const loginByPromo=async(page,promocode='VITRINA2025')=>{
   await installAudioMock(page);
+  await page.addInitScript(value=>localStorage.setItem('promocode',value),promocode);
   await page.goto(`${BASE}/index.html`,{waitUntil:'load'});
-  await page.fill('#promo-inp',promocode);
-  await page.click('#promo-btn');
+  const main=page.locator('#main-block');
+  if(!(await main.isVisible())){
+    await page.fill('#promo-inp',promocode);
+    await page.click('#promo-btn');
+  }
   await page.waitForSelector('#main-block:not(.hidden)',{timeout:10000});
   await waitForAppReady(page);
   await page.waitForSelector('#album-icons-albums .album-icon',{timeout:10000});
