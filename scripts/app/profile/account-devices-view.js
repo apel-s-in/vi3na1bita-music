@@ -7,7 +7,7 @@ const safe = value => String(value == null ? '' : value).trim();
 const authorized = () => window.YandexAuth?.getSessionStatus?.() === 'active' && window.YandexAuth?.isTokenAlive?.();
 const owner = () => safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
 const icon = device => device?.platform === 'ios' ? '📱' : device?.platform === 'android' ? '🤖' : '💻';
-const state = { owner: '', items: [], playback: null, loaded: false, loading: false, error: '' };
+const state = { owner: '', items: [], playback: null, loaded: false, loading: false, error: '', retryAt: 0 };
 
 const resetState = () => {
   state.owner = owner();
@@ -16,6 +16,7 @@ const resetState = () => {
   state.loaded = false;
   state.loading = false;
   state.error = '';
+  state.retryAt = 0;
 };
 
 const normalizeDevice = raw => ({
@@ -47,6 +48,7 @@ export const refreshAccountDevices = async ({ force = false } = {}) => {
   if (state.owner !== currentOwner) resetState();
   if (state.loading) return state.items;
   if (state.loaded && !force) return state.items;
+  if (!force && state.retryAt > Date.now()) return state.items;
   state.loading = true;
   state.error = '';
   try {
@@ -58,10 +60,12 @@ export const refreshAccountDevices = async ({ force = false } = {}) => {
     state.items = (Array.isArray(devices?.items) ? devices.items : []).map(normalizeDevice).filter(item => item.deviceId).sort((left, right) => right.lastSeenAt - left.lastSeenAt);
     state.playback = playback?.playback || null;
     state.loaded = true;
+    state.retryAt = 0;
     window.dispatchEvent(new CustomEvent('account:devices-updated', { detail: { count: state.items.length } }));
     return state.items;
   } catch (error) {
     state.error = safe(error?.message || 'account_device_list_failed');
+    state.retryAt = Date.now() + (/429|backoff|rate_limit/i.test(state.error) ? 60000 : 15000);
     throw error;
   } finally {
     state.loading = false;
@@ -195,8 +199,13 @@ export const bindAccountDevicesBlock = (root, rerender) => {
   if (!block || block._bound) return;
   block._bound = true;
 
-  if (!state.loaded && !state.loading) {
-    refreshAccountDevices().then(() => rerender?.()).catch(() => rerender?.());
+  if (!state.loaded && !state.loading && state.retryAt <= Date.now()) {
+    refreshAccountDevices().then(() => rerender?.()).catch(() => {
+      if (block.isConnected) {
+        const list = block.querySelector('.account-device-list');
+        if (list) list.innerHTML = renderLoading();
+      }
+    });
   }
 
   block.addEventListener('click', async event => {
