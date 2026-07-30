@@ -4776,9 +4776,6 @@ class ListeningReceiptService {
     const result = await requestSocialAction('achievement_reward_status', {});
     this.ingestServerResult(result);
     applyShardRewardResult(result);
-    if (result?.wallet || (Array.isArray(result?.grants) && result.grants.length)) {
-      window.ShardWallet?.refresh?.({ force: true }).catch(() => null);
-    }
     this.emit('status', result);
     return result;
   }
