@@ -3622,27 +3622,14 @@ export const resolveListeningStatsViewModel = (
 
   if (!server.available) {
     const local = buildStatsViewModel(localRows);
-
     return {
       ...local,
-      source: 'server_confirmed',
-      available: false,
+      source: 'local_rebuildable',
+      available: true,
       pending: true,
       exact: false,
-      legacyUnclassifiedSec: 0,
-      summary: {
-        ...local.summary,
-        totalFull: 0,
-        totalValid: 0,
-        totalSec: 0,
-        uniqueTracks: 0
-      },
-      byHour: Array(24).fill(0),
-      byWeekday: Array(7).fill(0),
-      dayparts: daypartsFromHours(Array(24).fill(0)),
-      topFull: [],
-      topValid: [],
-      topTime: []
+      serverPending: true,
+      legacyUnclassifiedSec: 0
     };
   }
 
