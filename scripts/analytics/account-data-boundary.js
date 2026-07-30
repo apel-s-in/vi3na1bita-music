@@ -113,6 +113,17 @@ const vaultPut = async (owner, snapshot) => {
     tx.onerror = () => reject(tx.error);
   });
 };
+
+const vaultDelete = async owner => {
+  const db = await openVault();
+  const key = await ownerStorageKey(owner);
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VAULT_STORE, 'readwrite');
+    tx.objectStore(VAULT_STORE).delete(key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+};
 const emptySnapshot = () => ({ version: 1, metaDB: {}, localStorage: {}, cachePolicies: {} });
 const captureCurrentSnapshot = async () => ({ version: 1, savedAt: Date.now(), metaDB: await metaDB.exportSnapshot(), localStorage: collectAccountStorage(), cachePolicies: await exportAccountCachePolicies().catch(() => ({})) });
 const applySnapshot = async snapshot => {
@@ -175,7 +186,7 @@ const flushAnalytics = async ({ from, to }) => {
   await window.eventLogger?.flush?.().catch(() => null);
   await window.statsAggregator?.waitForIdle?.().catch(() => null);
 };
-const performSwitch = async (targetOwner, { adoptLocalData = null } = {}) => {
+const performSwitch = async (targetOwner, { adoptLocalData = null, discardLocalData = false } = {}) => {
   const target = safe(targetOwner) || LOCAL_OWNER;
   const current = activeOwner || getStoredOwner() || LOCAL_OWNER;
   if (current === target) {
@@ -189,7 +200,8 @@ const performSwitch = async (targetOwner, { adoptLocalData = null } = {}) => {
     await flushAnalytics({ from: current, to: target });
     window._isRestoring = true;
     const currentSnapshot = await captureCurrentSnapshot();
-    await vaultPut(current, currentSnapshot);
+    if (discardLocalData && current === LOCAL_OWNER) await vaultDelete(LOCAL_OWNER);
+    else await vaultPut(current, currentSnapshot);
     const targetRow = await vaultGet(target);
     let targetSnapshot = targetRow?.snapshot || null;
     if (!targetSnapshot && current === LOCAL_OWNER && target !== LOCAL_OWNER && (await hasMeaningfulCurrentData())) {
