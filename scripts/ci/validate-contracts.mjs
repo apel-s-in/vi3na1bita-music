@@ -320,7 +320,13 @@ const validateBackupProxy = () => {
     'legacyEnabled: false'
   ].forEach(marker => contains(proxy, marker));
 
-  assertNoMatch([proxy], /upload_backup|upload_meta|upload_event_segment|archive_delete_segments|archive_inspect|ledger_verify|lease_acquire|lease_release|vi3na1bita_backup\.vi3bak/g, 'Backup proxy не содержит v6, archive, ledger или lease modes');
+  assertNoMatch([proxy], /upload_backup|upload_meta|upload_event_segment|archive_delete_segments|archive_inspect|ledger_verify|lease_acquire|lease_release/g, 'Backup proxy не содержит v6, archive, ledger или lease modes');
+  assertNoMatch([proxy], /['"]v7_authorize['"]|['"]v7_push_range['"]|['"]v7_pull_ranges['"]|['"]v7_put_settings['"]|['"]v7_get_settings['"]/g, 'Раздельные v7 proxy modes удалены');
+  contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
+  contains(proxy, 'cleanupLegacyBackupResources');
+  contains(proxy, 'legacy_cleanup_path_forbidden');
+  contains(proxy, 'permanently=true');
+  contains(proxy, "safe(request.confirm) !== 'DELETE_LEGACY_V6'");
   assertNoMatch([proxy], /searchParams\.set\(\s*['"]token['"]/g, 'OAuth token не помещается в query string');
   assertNoMatch([proxy], /overwrite=true[^'"]*range_|range_[^'"]*overwrite=true/g, 'Immutable range не загружается с overwrite=true');
   assertNoMatch([proxy], /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/g, 'Backup proxy управляет playback');
@@ -375,6 +381,9 @@ const main = async () => {
   contains('scripts/analytics/backup-v7-sync.js', 'maxPullRanges');
   contains('scripts/analytics/backup-v7-sync.js', 'buildBackupV7SharedDocument');
   contains('scripts/analytics/backup-v7-sync.js', 'applyBackupV7SharedDocument');
+  contains('scripts/analytics/backup-v7-sync.js', 'cleanupLegacyBackupV6');
+  contains('scripts/app/profile/cloud-action-render-kit.js', 'legacy-cloud-cleanup');
+  contains('scripts/app/profile/yandex-actions.js', 'openLegacyCloudCleanupModal');
   contains('scripts/analytics/backup-v7-range.js', 'sharedServerHash');
   contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'SHARED_PATH');
   contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'exchangeSharedDocument');
