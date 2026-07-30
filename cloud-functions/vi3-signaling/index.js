@@ -4370,10 +4370,6 @@ async function actionListenSessionComplete(event, body) {
     if (!['active', 'replaced'].includes(current.status)) {
       throw new Error('listen_session_not_completable');
     }
-    const fenced = await requirePlaybackFence(event, body);
-    if (current.ownerEpoch !== fenced.state.ownerEpoch || current.fencingTokenHash !== fenced.state.fencingTokenHash || current.deviceId !== fenced.auth.deviceId) {
-      throw new Error('playback_owner_changed');
-    }
     const at = now();
     const observation = applyListenObservation(current, body, { completed: true, at });
     const receiptId = `lr_${hash([playerId, sessionId, at].join(':')).slice(0, 28)}`;
