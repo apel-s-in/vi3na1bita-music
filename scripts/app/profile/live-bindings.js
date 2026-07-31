@@ -68,10 +68,6 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
     'listening-receipts:updated',
     () => setTimeout(renderStats, 40)
   );
-  window.addEventListener('backup:restore:applied', () => {
-    setTimeout(renderAchievements, 120);
-    setTimeout(renderStats, 140);
-  });
   window.addEventListener('profile:data:refreshed', () => {
     setTimeout(renderAchievements, 120);
     setTimeout(renderStats, 140);
