@@ -1,6 +1,7 @@
 // Backup v7.1 batch transport.
 // Один вызов выполняет authorization, push, pull и settings exchange.
 import { getSocialSession } from './social-session.js';
+import { meteredJsonFetch } from './cloud-usage-meter.js';
 
 export const YANDEX_BACKUP_V7_PROXY = 'https://functions.yandexcloud.net/d4ecdu6kgamevcauajid';
 const safe = value => String(value == null ? '' : value).trim();
@@ -23,19 +24,21 @@ const request = async (mode, data = {}, { retries = 1 } = {}) => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const session = await getSocialSession({ force: attempt > 0 && Number(lastError?.status) === 401 });
-      const response = await fetch(YANDEX_BACKUP_V7_PROXY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-Yandex-Auth': token,
-          'X-Vi3-Session': session.socialSession
-        },
-        credentials: 'omit',
-        mode: 'cors',
-        body: JSON.stringify({ mode, ...data })
+      const { response, result } = await meteredJsonFetch(YANDEX_BACKUP_V7_PROXY, {
+        action: `backup:${mode}`,
+        init: {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Yandex-Auth': token,
+            'X-Vi3-Session': session.socialSession
+          },
+          credentials: 'omit',
+          mode: 'cors',
+          body: JSON.stringify({ mode, ...data })
+        }
       });
-      const result = await readJson(response);
 
       if (!response.ok || result.ok === false) {
         const error = new Error(safe(result.error || `backup_v7_http_${response.status}`));
