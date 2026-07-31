@@ -11,6 +11,7 @@
   const iM = async () => {
     const C = W.APP_CONFIG || {};
     try {
+      await import('./core/app-activity.js').then(m => m.initAppActivity?.());
       await import('./offline/net-policy.js').then(m => m.initNetPolicy?.());
       await import('./app/offline-ui-bootstrap.js').then(m => m.initOfflineUI?.());
       const om = await import('./offline/offline-manager.js');
