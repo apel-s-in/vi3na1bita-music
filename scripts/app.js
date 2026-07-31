@@ -18,7 +18,9 @@
       await om.default.initialize();
       await import('./offline/track-resolver.js').then(m => m.initTrackResolver(om.default));
       await import('./app/playback-cache-bootstrap.js').then(m => m.initPlaybackCache?.());
-      await import('./offline/update-checker.js').then(m => m.initUpdateChecker?.());
+      if (C.OFFLINE_UPDATE_CHECKER_ENABLED === true) {
+        await import('./offline/update-checker.js').then(m => m.initUpdateChecker?.());
+      }
     } catch (e) {
       console.error(e);
     }
