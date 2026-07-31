@@ -14763,17 +14763,31 @@ export const waitForAppReady=async(page,{timeout=20000}={})=>{
 
 export const loginByPromo=async(page,promocode='VITRINA2025')=>{
   await installAudioMock(page);
-  await page.goto(`${BASE}/index.html`,{waitUntil:'load'});
-  await page.evaluate(value=>{
-    localStorage.setItem('promocode',value);
-    window.PromocodeGate?.refresh?.();
-  },promocode);
+  await page.goto(`${BASE}/index.html`,{waitUntil:'domcontentloaded'});
+  await page.evaluate(value=>localStorage.setItem('promocode',value),promocode);
+  await page.reload({waitUntil:'load'});
+  await page.waitForFunction(()=>typeof window.PromocodeGate?.refresh==='function',{timeout:10000});
+  await page.evaluate(()=>window.PromocodeGate.refresh());
   const main=page.locator('#main-block');
   if(!(await main.isVisible())){
     await page.fill('#promo-inp',promocode);
     await page.click('#promo-btn');
   }
-  await page.waitForSelector('#main-block:not(.hidden)',{timeout:10000});
+  try{
+    await page.waitForSelector('#main-block:not(.hidden)',{timeout:10000});
+  }catch(error){
+    const state=await page.evaluate(()=>({
+      readyState:document.readyState,
+      promoStored:localStorage.getItem('promocode'),
+      configuredPromo:window.APP_CONFIG?.PROMOCODE||'',
+      gateAvailable:typeof window.PromocodeGate?.refresh==='function',
+      gateUnlocked:window.PromocodeGate?.isUnlocked?.()===true,
+      promoClass:document.getElementById('promocode-block')?.className||'',
+      mainClass:document.getElementById('main-block')?.className||'',
+      promoError:document.getElementById('promo-error')?.textContent||''
+    }));
+    throw new Error(`Promo bootstrap failed: ${JSON.stringify(state)}; ${error?.message||error}`);
+  }
   await waitForAppReady(page);
   await page.waitForSelector('#album-icons-albums .album-icon',{timeout:10000});
   await page.waitForSelector('#album-icons-nav .album-icon',{timeout:10000});
