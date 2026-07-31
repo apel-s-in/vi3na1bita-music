@@ -247,6 +247,9 @@ const validatePlaybackOwnershipFoundation = () => {
   contains(ownership, 'isPlaybackCoordinationRequired');
   contains('scripts/core/social-session.js', 'playbackCoordination');
   contains('scripts/core/social-session.js', 'markPlaybackCoordinationRequired');
+  contains('scripts/core/social-session.js', 'playbackClaimQueue');
+  contains('scripts/analytics/playback-ownership.js', 'passiveClaimGeneration');
+  contains('scripts/analytics/playback-ownership.js', '}, 450)');
   excludes(ownership, /listen-track-catalog\.env\.json|getTrackVersion|catalogPromise/, 'Ownership снова содержит клиентский trackVersion catalog');
   excludes(server, /requestedVersion\s*&&\s*requestedVersion\s*!==\s*track\.trackVersion/, 'Playback claim снова блокируется устаревшей клиентской версией каталога');
   excludes(ownership, /const version = safe\(trackVersion\) \|\| await getTrackVersion\(uid\)/, 'Ownership claim снова зависит от клиентского trackVersion');
@@ -424,6 +427,17 @@ const main = async () => {
   excludes('scripts/analytics/backup-v7-sync.js', /knownRangeKeys|normalizeStatsProjection|projection\.tracks/, 'Sync продолжает применять projection или knownRangeKeys');
   excludes('scripts/analytics/snapshot-contract.js', /sleepTimerState:v2|app:first-install-ts|backup:conflict_policy:v1/, 'Runtime/legacy settings остались в device backup');
   excludes('scripts/app/profile/cloud-action-render-kit.js', /backup-export-manual|backup-import-manual|archive-maintenance|recovery-snapshot|trust-check|ledger-health/, 'Пользовательские ручные служебные backup-действия остались');
+  contains('scripts/core/app-activity.js', 'IDLE_AFTER_MS = 5 * 60 * 1000');
+  contains('scripts/core/app-activity.js', 'canRunPaidBackgroundRequest');
+  contains('scripts/core/cloud-usage-meter.js', 'projected1000Rub');
+  contains('scripts/core/cloud-usage-meter.js', 'meteredJsonFetch');
+  contains('scripts/app/profile/settings-console-section.js', 'cloud-usage-console');
+  contains('scripts/app/profile/settings-view.js', 'data-set-tab="console"');
+  contains('scripts/analytics/favorite-mirror.js', 'isAppQuiet');
+  contains('scripts/offline/update-checker.js', 'isAppQuiet');
+  contains('scripts/analytics/backup-sync-engine.js', 'isAppQuiet');
+  excludes('scripts/core/app-activity.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Activity controller управляет playback');
+  excludes('scripts/core/cloud-usage-meter.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Cloud usage meter управляет playback');
   validateCloudFunctionFiles();
   validateWorkflows();
   if (failures.length) {
