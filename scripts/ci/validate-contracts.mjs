@@ -433,9 +433,15 @@ const main = async () => {
   contains('scripts/core/cloud-usage-meter.js', 'meteredJsonFetch');
   contains('scripts/app/profile/settings-console-section.js', 'cloud-usage-console');
   contains('scripts/app/profile/settings-view.js', 'data-set-tab="console"');
-  contains('scripts/analytics/favorite-mirror.js', 'isAppQuiet');
+  contains('scripts/analytics/favorite-mirror.js', 'scheduleFlush');
+  contains('scripts/analytics/favorite-mirror.js', 'DIRTY_FLUSH_MS');
+  excludes('scripts/analytics/favorite-mirror.js', /setInterval\([\s\S]{0,160}(?:favorite|sync)/, 'Favorite Mirror снова содержит постоянный poll');
   contains('scripts/offline/update-checker.js', 'isAppQuiet');
   contains('scripts/analytics/backup-sync-engine.js', 'isAppQuiet');
+  contains('scripts/core/config.js', 'OFFLINE_UPDATE_CHECKER_ENABLED: false');
+  contains('scripts/core/config.js', 'OFFLINE_RECACHE_ENABLED: false');
+  contains('scripts/app/friends/friends-block.js', 'recoverPendingPushes');
+  contains('service-worker.js', 'PUSH_NOTIFICATION_RECEIVED');
   excludes('scripts/core/app-activity.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Activity controller управляет playback');
   excludes('scripts/core/cloud-usage-meter.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Cloud usage meter управляет playback');
   validateCloudFunctionFiles();
