@@ -70,6 +70,6 @@
     bind();
   };
 
-  if(D.readyState==='complete')queueMicrotask(start);
-  else W.addEventListener('load',start,{once:true});
+  if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',start,{once:true});
+  else queueMicrotask(start);
 })(window,document);
