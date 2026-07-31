@@ -137,7 +137,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
 [/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
-[/scripts/core/] bootstrap.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
+[/scripts/core/] app-activity.js, bootstrap.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
@@ -13611,6 +13611,99 @@ const j = JSON.parse(fs.readFileSync(f, 'utf8')), errs = [];
 ['name','short_name','start_url','icons','display','theme_color','background_color'].forEach(k => { if (!(k in j)) errs.push(`Missing ${k}`); });
 if (j.icons && (!Array.isArray(j.icons) || !j.icons.length)) errs.push('icons array err');
 if (errs.length) { console.error('Failed:\n', errs.join('\n')); process.exit(2); }
+
+//=================================================
+// FILE: /scripts/core/app-activity.js
+// Локальный контроллер активности приложения.
+// Не управляет playback: только сообщает фоновым сетевым контурам,
+// можно ли выполнять необязательные платные чтения.
+const IDLE_AFTER_MS = 5 * 60 * 1000;
+const ACTIVE_EVENTS = Object.freeze(['pointerdown', 'touchstart', 'keydown', 'wheel']);
+let initialized = false;
+let lastActivityAt = Date.now();
+let mode = 'active';
+let timer = 0;
+
+const playing = () => window.playerCore?.isPlaying?.() === true;
+
+const computeMode = () => {
+  if (playing()) return 'playback';
+  if (document.hidden) return 'quiet';
+  return Date.now() - lastActivityAt >= IDLE_AFTER_MS ? 'quiet' : 'active';
+};
+
+const publish = reason => {
+  const next = computeMode();
+  if (next === mode) return mode;
+  mode = next;
+  window.dispatchEvent(new CustomEvent('app:activity-mode', {
+    detail: {
+      mode,
+      reason,
+      lastActivityAt,
+      idleForMs: Math.max(0, Date.now() - lastActivityAt),
+      playing: playing(),
+      hidden: document.hidden
+    }
+  }));
+  return mode;
+};
+
+export const markAppActivity = (reason = 'user') => {
+  lastActivityAt = Date.now();
+  publish(reason);
+  return getAppActivityState();
+};
+
+export const getAppActivityState = () => ({
+  mode: computeMode(),
+  lastActivityAt,
+  idleForMs: Math.max(0, Date.now() - lastActivityAt),
+  idleAfterMs: IDLE_AFTER_MS,
+  playing: playing(),
+  hidden: document.hidden,
+  quiet: computeMode() === 'quiet'
+});
+
+export const isAppQuiet = () => computeMode() === 'quiet';
+export const canRunPaidBackgroundRequest = () => !isAppQuiet();
+
+export const initAppActivity = () => {
+  if (initialized) return;
+  initialized = true;
+
+  ACTIVE_EVENTS.forEach(name => {
+    document.addEventListener(name, () => markAppActivity(name), {
+      capture: true,
+      passive: true
+    });
+  });
+
+  ['player:play', 'player:pause', 'player:stop', 'player:ended'].forEach(name => {
+    window.addEventListener(name, () => publish(name));
+  });
+
+  document.addEventListener('visibilitychange', () => publish('visibilitychange'));
+  window.addEventListener('focus', () => markAppActivity('focus'));
+
+  timer = setInterval(() => publish('idle_check'), 30000);
+  window.addEventListener('pagehide', () => {
+    clearInterval(timer);
+    timer = 0;
+  }, { once: true });
+
+  publish('init');
+};
+
+window.AppActivity = {
+  init: initAppActivity,
+  mark: markAppActivity,
+  getState: getAppActivityState,
+  isQuiet: isAppQuiet,
+  canRunPaidBackgroundRequest
+};
+
+export default window.AppActivity;
 
 //=================================================
 // FILE: /scripts/core/bootstrap.js
