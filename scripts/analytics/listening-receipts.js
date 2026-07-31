@@ -66,11 +66,16 @@ class ListeningReceiptService {
     this.sleepTimer = null;
     this.heartbeatPending = null;
     this.statusRefreshTimer = 0;
+    this.statusPending = null;
+    this.lastStatusResult = null;
+    this.lastStatusAt = 0;
   }
   resetServerState(reason = 'auth_reset') {
     this.lastProgress = null;
     this.lastLoyalty = null;
     this.rewardCatalog = [];
+    this.lastStatusResult = null;
+    this.lastStatusAt = 0;
     this.pendingFeatures.clear();
     this.sleepTimer = null;
     this.emit(reason, null);
@@ -394,13 +399,25 @@ class ListeningReceiptService {
   getSleepTimerReceiptState() {
     return this.sleepTimer ? { ...this.sleepTimer } : null;
   }
-  async refreshStatus() {
+  async refreshStatus({ force = false, maxAgeMs = 60000 } = {}) {
     if (!this.isAuthorized() || !networkAllowed()) return null;
-    const result = await requestSocialAction('achievement_reward_status', {});
-    this.ingestServerResult(result);
-    applyShardRewardResult(result);
-    this.emit('status', result);
-    return result;
+    if (!force && this.lastStatusResult && Date.now() - this.lastStatusAt < Math.max(10000, Number(maxAgeMs) || 60000)) {
+      return this.lastStatusResult;
+    }
+    if (this.statusPending) return this.statusPending;
+    this.statusPending = requestSocialAction('achievement_reward_status', {})
+      .then(result => {
+        this.ingestServerResult(result);
+        applyShardRewardResult(result);
+        this.lastStatusResult = result;
+        this.lastStatusAt = Date.now();
+        this.emit('status', result);
+        return result;
+      })
+      .finally(() => {
+        this.statusPending = null;
+      });
+    return this.statusPending;
   }
   getCompletionOutboxSnapshot() {
     const ownerYandexId = currentYandexId();
