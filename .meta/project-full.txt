@@ -8156,19 +8156,12 @@ const handlePushes = async items => {
 };
 const startPresenceHeartbeat = () => {
   clearInterval(_heartbeatTimer);
-  const beat = async () => {
-    if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.() || _heartbeatBusy) return;
-    _heartbeatBusy = true;
-    try {
-      await _core.heartbeat({ gameId: '', roomId: '' });
-    } catch {
-      // Presence heartbeat является best-effort.
-    } finally {
-      _heartbeatBusy = false;
-    }
-  };
-  beat();
-  _heartbeatTimer = setInterval(beat, 90000);
+  _heartbeatTimer = 0;
+  if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.() || _heartbeatBusy) return;
+  _heartbeatBusy = true;
+  _core.heartbeat({ gameId: '', roomId: '' }).catch(() => null).finally(() => {
+    _heartbeatBusy = false;
+  });
 };
 const syncWebPushIfAllowed = async () => {
   if (!_core?.isReady?.()) return;
@@ -8184,35 +8177,41 @@ const syncWebPushIfAllowed = async () => {
     const res = await mod.syncWebPushSubscription({ core: _core, ask: false, force });
     _webPushReady = !!res?.ok;
     if (res?.ok) localStorage.setItem(key, String(Date.now()));
-    if (prev !== _webPushReady) _ui?.refresh?.({ force: true });
+    if (prev !== _webPushReady) {
+      _ui?.refresh?.({ force: true });
+      if (isFriendsRuntimeActive()) startPushPolling();
+    }
   } catch {}
+};
+const recoverPendingPushes = async () => {
+  if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.() || _pushBusy) return false;
+  _pushBusy = true;
+  try {
+    const items = await _core.getPushes();
+    _pushFails = 0;
+    if (items.length) {
+      await handlePushes(items);
+      await _core.ackPushes(items.map(item => item.pushId).filter(Boolean));
+    }
+    return true;
+  } catch {
+    _pushFails++;
+    return false;
+  } finally {
+    _pushBusy = false;
+  }
 };
 const startPushPolling = () => {
   clearTimeout(_pushTimer);
-  const poll = async () => {
-    if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.() || _pushBusy) return;
-    _pushBusy = true;
-    try {
-      const items = await _core.getPushes();
-      _pushFails = 0;
-      if (items.length) {
-        await handlePushes(items);
-        await _core.ackPushes(items.map(x => x.pushId).filter(Boolean));
-      }
-    } catch {
-      _pushFails++;
-    } finally {
-      _pushBusy = false;
-    }
-  };
   const loop = async () => {
     if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.()) {
       stopFriendsBackgroundTasks();
       return;
     }
-    await poll();
+    await recoverPendingPushes();
     clearTimeout(_pushTimer);
-    _pushTimer = setTimeout(loop, Math.min(90000, 30000 + _pushFails * 15000));
+    const delay = _webPushReady ? 10 * 60 * 1000 : Math.min(90000, 60000 + _pushFails * 15000);
+    _pushTimer = setTimeout(loop, delay);
   };
   loop();
 };
