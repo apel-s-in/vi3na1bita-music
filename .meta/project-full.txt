@@ -16124,6 +16124,7 @@ export const estimateUsage = async () => { try { if (navigator.storage?.estimate
 
 //=================================================
 // FILE: /scripts/offline/net-policy.js
+import { recordYandexStorageResponse } from '../core/cloud-usage-meter.js';
 const K = { W: 'netPolicy:wifi:v1', C: 'netPolicy:cellular:v1', T: 'netPolicy:cellularToast:v1', K: 'netPolicy:killSwitch:v1', S: 'trafficStats:v1' };
 let _platform = null, _installed = false, _lastBlocked = null;
 const ls = (k, d) => localStorage.getItem(k) ?? d, set = (k, v) => { localStorage.setItem(k, v); emitChange(); return v === 'off'; };
@@ -16144,8 +16145,22 @@ const mk = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.g
 export const getCurrentMonthName = () => { try { return new Intl.DateTimeFormat('ru', { month: 'long' }).format(new Date()); } catch { return ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][new Date().getMonth()]; } };
 const readStats = () => { const m = mk(), def = () => ({ total: 0, monthly: 0, monthKey: m }), o = { wifi: def(), cellular: def(), general: def() }; try { const r = JSON.parse(localStorage.getItem(K.S) || '{}'); for (const k in o) if (r[k]) { o[k].total = Number(r[k].total) || 0; o[k].monthly = r[k].monthKey === m ? (Number(r[k].monthly) || 0) : 0; } } catch {} return o; };
 const writeStats = (b, t) => { if ((b = Number(b)) > 0) { const s = readStats(); s[t].total += b; s[t].monthly += b; localStorage.setItem(K.S, JSON.stringify(s)); } };
-export const trackTrafficFromResponse = (res, forcedType = null) => { const len = res?.headers?.get?.('content-length'); if (!len) return res; writeStats(len, getPlatform().supportsNetControl ? (forcedType || detectNetworkType()) : 'general'); return res; };
-export const fetchWithTraffic = async (req, init, forcedType = null) => trackTrafficFromResponse(await fetch(req, init), forcedType);
+export const trackTrafficFromResponse = (res, forcedType = null, request = null, startedAt = 0) => {
+  const len = Number(res?.headers?.get?.('content-length') || 0);
+  if (len > 0) writeStats(len, getPlatform().supportsNetControl ? (forcedType || detectNetworkType()) : 'general');
+  recordYandexStorageResponse({
+    url: typeof request === 'string' ? request : request?.url || '',
+    method: request?.method || 'GET',
+    response: res,
+    responseBytes: len,
+    durationMs: startedAt ? performance.now() - startedAt : 0
+  });
+  return res;
+};
+export const fetchWithTraffic = async (req, init, forcedType = null) => {
+  const startedAt = performance.now();
+  return trackTrafficFromResponse(await fetch(req, init), forcedType, req, startedAt);
+};
 export const guardedFetch = async (req, init, forcedType = null) => { if (!isNetworkAllowed()) throw new TypeError('Network blocked by NetPolicy'); return fetchWithTraffic(req, init, forcedType); };
 export const getTrafficStats = () => { const s = readStats(), n = getCurrentMonthName(); return getPlatform().supportsNetControl ? { type: 'split', monthName: n, wifi: s.wifi, cellular: s.cellular } : { type: 'general', monthName: n, general: s.general }; };
 export const clearTrafficStats = () => { localStorage.removeItem(K.S); emitChange(); };
