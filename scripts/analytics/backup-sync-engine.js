@@ -1,6 +1,7 @@
 // Экономный Backup v7.1 scheduler.
 // Push и pull чередуются в 12-часовых foreground-слотах; каждая фаза выполняется не чаще раза в 24 часа.
 import { syncBackupV7, getBackupV7Status, rebuildBackupV7LocalAnalytics } from './backup-v7-sync.js';
+import { isAppQuiet } from '../core/app-activity.js';
 
 const LS_SYNC = 'backup:autosync:enabled';
 const LS_DUE = 'backup:v71:next-sync-at';
@@ -59,7 +60,7 @@ const scheduleAt = timestamp => {
 };
 
 const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
-  if (!isSyncReady() || document.hidden) return false;
+  if (!isSyncReady() || document.hidden || (!force && isAppQuiet())) return false;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return false;
 
   const dueAt = nextDueAt();
