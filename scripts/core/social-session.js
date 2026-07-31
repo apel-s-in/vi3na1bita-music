@@ -1,6 +1,7 @@
 // Общая signed social session для Friends и Game Center.
 import { getDeviceContextForServer } from './device-context.js';
 import { isAppQuiet } from './app-activity.js';
+import { meteredJsonFetch } from './cloud-usage-meter.js';
 
 const SIGNALING_URL = 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
 let cachedSession = null;
@@ -47,14 +48,6 @@ const readProfile = () => {
   const profile = active ? auth?.getProfile?.() || null : null;
   return { active: !!active, yandexId: safe(profile?.yandexId || profile?.id || ''), displayName: safe(profile?.displayName || profile?.realName || profile?.login || 'Слушатель'), avatar: safe(profile?.avatar || '') };
 };
-const readJson = async response => {
-  const text = await response.text();
-  try {
-    return JSON.parse(text || '{}') || {};
-  } catch {
-    return {};
-  }
-};
 const registerServerBackoff = response => {
   if (response.status !== 429 && ![502, 503, 504].includes(response.status)) {
     return 0;
@@ -97,14 +90,16 @@ export const getSocialSession = async ({ force = false } = {}) => {
   }
   pendingYandexId = yandexId;
   pendingSession = (async () => {
-    const response = await fetch(SIGNALING_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Yandex-OAuth': token },
-      credentials: 'omit',
-      mode: 'cors',
-      body: JSON.stringify({ action: 'social_session_issue', displayName: profile.displayName, avatarUrl: profile.avatar, ...getDeviceContextForServer(), timezonePolicyRevision: readTimezonePolicyRevision(yandexId) })
+    const { response, result } = await meteredJsonFetch(SIGNALING_URL, {
+      action: 'social_session_issue',
+      init: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Yandex-OAuth': token },
+        credentials: 'omit',
+        mode: 'cors',
+        body: JSON.stringify({ action: 'social_session_issue', displayName: profile.displayName, avatarUrl: profile.avatar, ...getDeviceContextForServer(), timezonePolicyRevision: readTimezonePolicyRevision(yandexId) })
+      }
     });
-    const result = await readJson(response);
     registerServerBackoff(response);
     if (!response.ok || result.ok === false || !result.socialSession) {
       const error = new Error(result.error || result.reason || 'social_session_issue_failed');
@@ -162,8 +157,16 @@ export const requestSocialAction = (action, data = {}, { retryAuth = true } = {}
     }
     const session = await getSocialSession();
     const request = async currentSession => {
-      const response = await fetch(SIGNALING_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Vi3-Session': currentSession.socialSession }, credentials: 'omit', mode: 'cors', body: JSON.stringify({ action: cleanAction, ...data }) });
-      const result = await readJson(response);
+      const { response, result } = await meteredJsonFetch(SIGNALING_URL, {
+        action: cleanAction,
+        init: {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Vi3-Session': currentSession.socialSession },
+          credentials: 'omit',
+          mode: 'cors',
+          body: JSON.stringify({ action: cleanAction, ...data })
+        }
+      });
       if (response.status === 429 || [502, 503, 504].includes(response.status)) {
         registerServerBackoff(response);
       } else if (response.ok && result.ok !== false && Date.now() >= serverBackoffUntil) {
