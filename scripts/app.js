@@ -256,17 +256,6 @@
       return false;
     }
   };
-  const rU = async ({ reason = 'runtime' } = {}) => {
-    try {
-      if (W.playerCore?.getCurrentTrackUid?.()) {
-        W.PlayerUI?.switchAlbumInstantly?.();
-        W.PlayerUI?.updateMiniHeader?.();
-        W.PlayerUI?.updatePlaylistFiltering?.();
-        return true;
-      }
-    } catch {}
-    return false;
-  };
   let _i = false;
   W.app = {
     checkShowcaseShare: () => {
@@ -303,7 +292,6 @@
           } catch {}
         }
         await rP().catch(() => {});
-        W.addEventListener('backup:restore:applied', () => setTimeout(() => rU({ reason: 'backup_restore_applied' }).catch(() => {}), 180));
         W.__appReady = true;
         W.dispatchEvent(new CustomEvent('app:ready'));
       } catch (e) {
