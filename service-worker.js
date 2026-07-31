@@ -155,31 +155,44 @@ self.addEventListener('push', e => {
       ]
       : []);
 
-  e.waitUntil(self.registration.showNotification(title, {
-    body,
-    icon: './icons/icon-192.png',
-    badge: './icons/favicon-32.png',
-    tag: String(data.tag || `vi3-${Date.now()}`),
-    data: {
-      url,
+  e.waitUntil((async () => {
+    const message = {
+      type: 'PUSH_NOTIFICATION_RECEIVED',
       kind,
       fromFriendId: String(data.fromFriendId || ''),
       gameId: String(data.gameId || ''),
       msgId: String(data.msgId || ''),
-      callId: String(data.callId || '')
-    },
-    actions,
-    renotify: true,
-    silent: false,
-    vibrate: [200, 100, 200],
-    timestamp: Date.now(),
-    requireInteraction:
-      data.requireInteraction === true ||
-      kind === 'CHAT_MESSAGE' ||
-      kind === 'GAME_INVITE' ||
-      kind === 'VOICE_CALL' ||
-      kind === 'LOYALTY_VACATION_ENDED'
-  }));
+      callId: String(data.callId || ''),
+      createdAt: Number(data.createdAt || Date.now())
+    };
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    clientsList.forEach(client => client.postMessage(message));
+    await self.registration.showNotification(title, {
+      body,
+      icon: './icons/icon-192.png',
+      badge: './icons/favicon-32.png',
+      tag: String(data.tag || `vi3-${Date.now()}`),
+      data: {
+        url,
+        kind,
+        fromFriendId: message.fromFriendId,
+        gameId: message.gameId,
+        msgId: message.msgId,
+        callId: message.callId
+      },
+      actions,
+      renotify: true,
+      silent: false,
+      vibrate: [200, 100, 200],
+      timestamp: Date.now(),
+      requireInteraction:
+        data.requireInteraction === true ||
+        kind === 'CHAT_MESSAGE' ||
+        kind === 'GAME_INVITE' ||
+        kind === 'VOICE_CALL' ||
+        kind === 'LOYALTY_VACATION_ENDED'
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', e => {
