@@ -11,6 +11,8 @@ const currentDeviceId = () => getDeviceId();
 const grantKey = owner => `${GRANT_PREFIX}${safe(owner)}`;
 let passiveClaim = null;
 let passiveClaimUid = '';
+let passiveClaimTimer = 0;
+let passiveClaimGeneration = 0;
 
 export const readOwnershipGrant = (owner = currentOwner()) => {
   try {
@@ -136,26 +138,40 @@ const isTransportFailure = error => {
 const claimPlaybackOwnershipInBackground = ({ trackUid, position = 0 } = {}) => {
   const uid = safe(trackUid);
   if (!uid) return null;
-  if (passiveClaim && passiveClaimUid === uid) return passiveClaim;
 
   passiveClaimUid = uid;
-  passiveClaim = claimPlaybackOwnership({ trackUid: uid, position, confirm: false })
-    .then(result => {
-      if (result?.ok) return result;
-      const playback = result?.playback || null;
-      if (playback?.active && playback.ownerDeviceId && playback.ownerDeviceId !== currentDeviceId()) {
-        markPlaybackCoordinationRequired('remote_owner_discovered');
-        window.dispatchEvent(new CustomEvent('playback:ownership-lost', {
-          detail: { reason: 'remote_owner_discovered', playback, previousGrant: null }
-        }));
-      }
-      return result;
-    })
-    .catch(() => null)
-    .finally(() => {
-      passiveClaim = null;
-      passiveClaimUid = '';
-    });
+  const generation = ++passiveClaimGeneration;
+  clearTimeout(passiveClaimTimer);
+
+  passiveClaimTimer = setTimeout(() => {
+    passiveClaimTimer = 0;
+    if (
+      generation !== passiveClaimGeneration ||
+      safe(window.playerCore?.getCurrentTrackUid?.()) !== uid ||
+      !window.playerCore?.isPlaying?.()
+    ) return;
+
+    passiveClaim = claimPlaybackOwnership({ trackUid: uid, position, confirm: false })
+      .then(result => {
+        if (generation !== passiveClaimGeneration) return result;
+        if (result?.ok) return result;
+        const playback = result?.playback || null;
+        if (playback?.active && playback.ownerDeviceId && playback.ownerDeviceId !== currentDeviceId()) {
+          markPlaybackCoordinationRequired('remote_owner_discovered');
+          window.dispatchEvent(new CustomEvent('playback:ownership-lost', {
+            detail: { reason: 'remote_owner_discovered', playback, previousGrant: null }
+          }));
+        }
+        return result;
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (generation === passiveClaimGeneration) {
+          passiveClaim = null;
+          passiveClaimUid = '';
+        }
+      });
+  }, 450);
 
   return passiveClaim;
 };
