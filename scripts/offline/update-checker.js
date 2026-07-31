@@ -1,4 +1,5 @@
 import { getAllTrackMetas, updateTrackMeta } from './cache-db.js';
+import { isAppQuiet } from '../core/app-activity.js';
 let _timer = null, _running = false;
 
 export const initUpdateChecker = () => {
@@ -7,7 +8,7 @@ export const initUpdateChecker = () => {
 };
 
 export const checkForUpdates = async () => {
-  if (_running) return; _running = true;
+  if (_running || isAppQuiet()) return; _running = true;
   try {
     const np = window.NetPolicy;
     if ((np && !np.isNetworkAllowed()) || !navigator.onLine || np?.detectNetworkType?.() === 'cellular') return;
