@@ -4,12 +4,11 @@ import {
   getSocialServerBackoffState,
   requestSocialAction
 } from '../core/social-session.js';
-import { isAppQuiet } from '../core/app-activity.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 import { favoriteSignature, localToRemote, remoteToLocal } from './favorite-state-contract.js';
 const OUTBOX_KEY = 'favoriteMirror:outbox:v1';
 const REVISION_KEY = 'favoriteMirror:revision:v1';
-const POLL_MS = 60000;
+const DIRTY_FLUSH_MS = 15000;
 const safe = value => String(value == null ? '' : value).trim();
 const parse = (raw, fallback) => {
   try {
@@ -63,10 +62,9 @@ class FavoriteMirrorService {
     this.initialized = true;
     this.captureBaseline();
     window.addEventListener('backup:domain-dirty', event => {
-      if (event.detail?.domain !== 'favorites') return;
-      if (window.__favoriteMirrorApplying) return;
+      if (event.detail?.domain !== 'favorites' || window.__favoriteMirrorApplying) return;
       this.captureLocalChanges();
-      this.flush().catch(() => null);
+      this.scheduleFlush();
     });
     window.addEventListener('account:data-switching', () => {
       this.stopPolling();
@@ -87,30 +85,32 @@ class FavoriteMirrorService {
         this.sync({ bootstrap: true }).catch(() => null);
       }, 250);
     });
-    window.addEventListener('online', () => this.flush().catch(() => null));
+    window.addEventListener('online', () => {
+      if (!document.hidden) this.sync().catch(() => null);
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         this.stopPolling();
         return;
       }
-      if (this.isAuthorized()) {
-        this.sync().catch(() => null);
-        this.startPolling();
-      }
+      if (this.isAuthorized()) this.sync().catch(() => null);
     });
-    window.addEventListener('app:activity-mode', event => {
-      if (event.detail?.mode === 'quiet') {
-        this.stopPolling();
-        return;
-      }
-      if (this.isAuthorized() && !document.hidden) {
-        this.sync().catch(() => null);
-        this.startPolling();
-      }
+    window.addEventListener('listening-receipts:updated', () => {
+      if (readOutbox().length) this.scheduleFlush(1000);
     });
-    if (this.isAuthorized() && !isAppQuiet()) {
+    if (this.isAuthorized()) {
       this.sync({ bootstrap: true }).catch(() => null);
     }
+  }
+  scheduleFlush(delayMs = DIRTY_FLUSH_MS) {
+    if (!readOutbox().length) return false;
+    clearTimeout(this.timer);
+    if (document.hidden) return false;
+    this.timer = setTimeout(() => {
+      this.timer = 0;
+      this.flush().catch(() => null);
+    }, Math.max(1000, Number(delayMs) || DIRTY_FLUSH_MS));
+    return true;
   }
   captureBaseline() {
     this.lastLocal = new Map(localSnapshot().map(item => [item.uid, favoriteSignature(item)]));
@@ -188,16 +188,16 @@ class FavoriteMirrorService {
     if (this.syncing) return this.syncing;
     this.syncing = (async () => {
       let outbox = readOutbox();
+      let latestState = null;
       while (outbox.length) {
         const item = outbox[0];
         const result = await requestSocialAction('favorite_state_mutate', { uid: item.uid, status: item.status, mutationId: item.mutationId, deviceId: localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web' });
         applyShardRewardResult(result);
+        latestState = result?.state || latestState;
         outbox = readOutbox().filter(row => row.mutationId !== item.mutationId);
         writeOutbox(outbox);
       }
-      const remote = await this.getRemote();
-      this.applyRemote(remote?.state, 'favorite_outbox_flushed');
-      this.startPolling();
+      if (latestState) this.applyRemote(latestState, 'favorite_outbox_flushed');
       return true;
     })().finally(() => {
       this.syncing = null;
@@ -252,12 +252,7 @@ class FavoriteMirrorService {
     return this.syncing;
   }
   startPolling() {
-    this.stopPolling();
-    if (document.hidden || !this.isAuthorized() || isAppQuiet()) return;
-    this.timer = setInterval(() => {
-      if (document.hidden || !this.isAuthorized() || !networkAllowed() || isAppQuiet()) return;
-      this.sync().catch(() => null);
-    }, POLL_MS);
+    return false;
   }
   stopPolling() {
     clearInterval(this.timer);
