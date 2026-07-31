@@ -14004,6 +14004,7 @@ window.FavoritesManager = Favorites;
 // FILE: /scripts/core/social-session.js
 // Общая signed social session для Friends и Game Center.
 import { getDeviceContextForServer } from './device-context.js';
+import { isAppQuiet } from './app-activity.js';
 
 const SIGNALING_URL = 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
 let cachedSession = null;
@@ -14014,7 +14015,9 @@ let serverBackoffUntil = 0;
 let serverBackoffMs = 5000;
 let playbackCoordination = { known: false, required: false, reason: 'not_checked', activePeerCount: 0, remoteOwnerActive: false, checkedAt: 0, activeWindowMs: 0 };
 const coalescedActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get']);
+const quietBackgroundActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get', 'presence_heartbeat', 'presence_batch', 'push_poll', 'friend_list', 'friend_status_check', 'leaderboard_v2_get', 'ranked_stats_get']);
 const actionRequests = new Map();
+let playbackClaimQueue = Promise.resolve();
 const safe = value => String(value == null ? '' : value).trim();
 const readTimezonePolicyRevision = yandexId => {
   try {
@@ -14147,6 +14150,13 @@ export const requestSocialAction = (action, data = {}, { retryAuth = true } = {}
     return actionRequests.get(requestKey);
   }
   const run = async () => {
+    if (quietBackgroundActions.has(cleanAction) && isAppQuiet()) {
+      const error = new Error('app_quiet_mode');
+      error.status = 0;
+      error.action = cleanAction;
+      error.quiet = true;
+      throw error;
+    }
     if (Date.now() < serverBackoffUntil && !isRealtimeAction(cleanAction)) {
       const error = new Error('social_server_backoff_active');
       error.status = 429;
@@ -14182,11 +14192,17 @@ export const requestSocialAction = (action, data = {}, { retryAuth = true } = {}
       throw error;
     }
   };
-  const pending = run().finally(() => {
+  const execute = cleanAction === 'playback_claim'
+    ? playbackClaimQueue.catch(() => null).then(run)
+    : run();
+  const pending = execute.finally(() => {
     if (requestKey && actionRequests.get(requestKey) === pending) {
       actionRequests.delete(requestKey);
     }
   });
+  if (cleanAction === 'playback_claim') {
+    playbackClaimQueue = pending.catch(() => null);
+  }
   if (requestKey) actionRequests.set(requestKey, pending);
   return pending;
 };
