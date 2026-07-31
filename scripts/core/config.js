@@ -29,6 +29,8 @@ export const APP_CONFIG = {
   SUPPORT_URL: 'https://vk.com/apelsinov',
   SUPPORT_EMAIL: 'apel-s-in@ya.ru',
   GITHUB_URL: 'https://github.com/apel-s-in/vi3na1bita-music',
+  OFFLINE_UPDATE_CHECKER_ENABLED: false,
+  OFFLINE_RECACHE_ENABLED: false,
   INTEL_LAYER_ENABLED: true,
   INTEL_LAYER_BOOT_MODE: 'soft',
   INTEL_LAYER_PROFILE_INDEX_URL: './data/track-profiles-index.json',
