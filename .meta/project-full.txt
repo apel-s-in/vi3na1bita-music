@@ -4032,6 +4032,7 @@ import {
   getSocialServerBackoffState,
   requestSocialAction
 } from '../core/social-session.js';
+import { isAppQuiet } from '../core/app-activity.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 import { favoriteSignature, localToRemote, remoteToLocal } from './favorite-state-contract.js';
 const OUTBOX_KEY = 'favoriteMirror:outbox:v1';
@@ -4125,7 +4126,17 @@ class FavoriteMirrorService {
         this.startPolling();
       }
     });
-    if (this.isAuthorized()) {
+    window.addEventListener('app:activity-mode', event => {
+      if (event.detail?.mode === 'quiet') {
+        this.stopPolling();
+        return;
+      }
+      if (this.isAuthorized() && !document.hidden) {
+        this.sync().catch(() => null);
+        this.startPolling();
+      }
+    });
+    if (this.isAuthorized() && !isAppQuiet()) {
       this.sync({ bootstrap: true }).catch(() => null);
     }
   }
@@ -4270,9 +4281,9 @@ class FavoriteMirrorService {
   }
   startPolling() {
     this.stopPolling();
-    if (document.hidden || !this.isAuthorized()) return;
+    if (document.hidden || !this.isAuthorized() || isAppQuiet()) return;
     this.timer = setInterval(() => {
-      if (document.hidden || !this.isAuthorized() || !networkAllowed()) return;
+      if (document.hidden || !this.isAuthorized() || !networkAllowed() || isAppQuiet()) return;
       this.sync().catch(() => null);
     }, POLL_MS);
   }
