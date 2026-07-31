@@ -3239,6 +3239,10 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     });
     const onSwPushClick = async event => {
       const data = event.data || {};
+      if (data.type === 'PUSH_NOTIFICATION_RECEIVED') {
+        if (isFriendsRuntimeActive()) recoverPendingPushes().catch(() => null);
+        return;
+      }
       if (data.type !== 'PUSH_NOTIFICATION_CLICK') return;
       try {
         const url = new URL(data.url || W.location.href, W.location.href);
