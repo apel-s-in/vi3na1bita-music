@@ -1,6 +1,7 @@
 // Экономный Backup v7.1 scheduler.
 // Push и pull чередуются в 12-часовых foreground-слотах; каждая фаза выполняется не чаще раза в 24 часа.
 import { syncBackupV7, getBackupV7Status, rebuildBackupV7LocalAnalytics } from './backup-v7-sync.js';
+import { clearBackupV7Checkpoint, getBackupV7Checkpoint, restoreBackupV7Checkpoint } from './backup-v7-recovery.js';
 import { isAppQuiet } from '../core/app-activity.js';
 
 const LS_SYNC = 'backup:autosync:enabled';
@@ -131,6 +132,13 @@ export const initBackupSyncEngine = () => {
 
     ready = true;
     window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'backup_v71_ready' } }));
+
+    const checkpoint = await getBackupV7Checkpoint().catch(() => null);
+    if (checkpoint?.checkpointId) {
+      await restoreBackupV7Checkpoint(checkpoint);
+      await clearBackupV7Checkpoint();
+      window.NotificationSystem?.info?.('Локальные данные восстановлены после прерванной синхронизации');
+    }
 
     await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_startup_repair' }).catch(() => null);
     const status = await getBackupV7Status().catch(() => null);
