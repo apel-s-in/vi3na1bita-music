@@ -4076,6 +4076,7 @@ export const describeEventForUi = ev => {
   if (t === EVENT_TYPES.AUTH_EVENT) return { icon: '🔐', title: 'Авторизация', desc: [sS(d.action || 'auth'), sS(d.login), sS(d.displayName), sS(d.device), sS(d.status)].filter(Boolean).join(' · ') };
   if (t === EVENT_TYPES.BACKUP_CREATED) return { icon: '☁️', title: 'Backup сохранён', desc: `${sS(d.reason || 'save')}${d.uploadedDevice ? ' · device settings' : ''}` };
   if (t === EVENT_TYPES.RESTORE_APPLIED) return { icon: '📥', title: 'Backup восстановлен', desc: `${sS(d.mode || 'all')}${d.deviceApplied ? ' · device settings' : ''}` };
+  if (t === EVENT_TYPES.SYNC_STATE_CHANGED) return { icon: d.ok === false ? '⚠️' : '☁️', title: d.ok === false ? 'Ошибка синхронизации' : 'Синхронизация выполнена', desc: [sS(d.reason || 'sync'), d.uploadedEventArchive ? 'события' : '', d.uploadedShared ? 'плейлисты' : '', d.uploadedDevice ? 'настройки' : '', sS(d.error)].filter(Boolean).join(' · ') };
   if (t === EVENT_TYPES.FEATURE_USED) return { icon: '🛠️', title: 'Функция использована', desc: sS(d.feature) };
   return { icon: '•', title: t || 'Событие', desc: sS(ev?.uid) };
 };
