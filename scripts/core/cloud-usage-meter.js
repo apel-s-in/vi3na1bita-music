@@ -8,42 +8,35 @@ const WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_EVENTS = 5000;
 const encoder = new TextEncoder();
 const safe = value => String(value == null ? '' : value).trim();
-const number = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+const number = value => (Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0);
 const bytes = value => encoder.encode(typeof value === 'string' ? value : JSON.stringify(value ?? null)).byteLength;
 const correlationKey = () => `cu_${crypto.randomUUID().replace(/-/g, '')}`;
 const resourceKey = async value => {
   const url = new URL(String(value || ''), location.href);
   url.hash = '';
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(url.href));
-  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  return [...new Uint8Array(digest)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 32);
 };
 const empty = () => ({ version: VERSION, windowMs: WINDOW_MS, startedAt: Date.now(), updatedAt: 0, events: [], droppedEvents: 0, persistenceErrors: 0 });
 let state = readState();
 let inFlight = 0;
 let maxInFlight = 0;
-
 function readState() {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (value?.version !== VERSION || !Array.isArray(value.events)) return empty();
-    return {
-      ...empty(),
-      ...value,
-      events: value.events.filter(Boolean),
-      droppedEvents: number(value.droppedEvents),
-      persistenceErrors: number(value.persistenceErrors)
-    };
+    return { ...empty(), ...value, events: value.events.filter(Boolean), droppedEvents: number(value.droppedEvents), persistenceErrors: number(value.persistenceErrors) };
   } catch {
     return empty();
   }
 }
-
 function pruneState(at = Date.now()) {
   const cutoff = at - WINDOW_MS;
   const before = state.events.length;
-  const active = state.events
-    .filter(item => number(item?.at) >= cutoff)
-    .sort((left, right) => number(right.at) - number(left.at));
+  const active = state.events.filter(item => number(item?.at) >= cutoff).sort((left, right) => number(right.at) - number(left.at));
   if (active.length > MAX_EVENTS) {
     state.droppedEvents += active.length - MAX_EVENTS;
     active.length = MAX_EVENTS;
@@ -54,7 +47,6 @@ function pruneState(at = Date.now()) {
   else state.startedAt = at;
   return changed;
 }
-
 function saveState() {
   state.updatedAt = Date.now();
   try {
@@ -66,7 +58,6 @@ function saveState() {
     return false;
   }
 }
-
 const normalizeServerUsage = raw => ({
   queryCount: Math.floor(number(raw?.queryCount)),
   casAttempts: Math.floor(number(raw?.casAttempts)),
@@ -74,13 +65,7 @@ const normalizeServerUsage = raw => ({
   internalWebPushCalls: Math.floor(number(raw?.internalWebPushCalls)),
   authorityCalls: Math.floor(number(raw?.authorityCalls)),
   diskApiCalls: Math.floor(number(raw?.diskApiCalls)),
-  diskOperations: {
-    list: Math.floor(number(raw?.diskOperations?.list)),
-    download: Math.floor(number(raw?.diskOperations?.download)),
-    upload: Math.floor(number(raw?.diskOperations?.upload)),
-    delete: Math.floor(number(raw?.diskOperations?.delete)),
-    mkdir: Math.floor(number(raw?.diskOperations?.mkdir))
-  },
+  diskOperations: { list: Math.floor(number(raw?.diskOperations?.list)), download: Math.floor(number(raw?.diskOperations?.download)), upload: Math.floor(number(raw?.diskOperations?.upload)), delete: Math.floor(number(raw?.diskOperations?.delete)), mkdir: Math.floor(number(raw?.diskOperations?.mkdir)) },
   networkCalls: Math.floor(number(raw?.networkCalls)),
   networkRequestBytes: Math.floor(number(raw?.requestBytes)),
   networkResponseBytes: Math.floor(number(raw?.responseBytes)),
@@ -88,7 +73,6 @@ const normalizeServerUsage = raw => ({
   durationMs: number(raw?.durationMs),
   responseBytes: Math.floor(number(raw?.responseBytesFinal ?? raw?.responseBytes))
 });
-
 const runtimeContext = () => {
   const activity = window.AppActivity?.getState?.() || {};
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -102,26 +86,17 @@ const runtimeContext = () => {
     appAgeMs: Math.max(0, Math.floor(performance.now()))
   };
 };
-
 const captureInitiator = stack => {
-  const lines = safe(stack || new Error().stack).split('\n').map(line => line.trim());
-  const line = lines.find(item =>
-    /(?:scripts|src|Friends)\//.test(item) &&
-    !/cloud-usage-meter\.js/.test(item)
-  ) || '';
+  const lines = safe(stack || new Error().stack)
+    .split('\n')
+    .map(line => line.trim());
+  const line = lines.find(item => /(?:scripts|src|Friends)\//.test(item) && !/cloud-usage-meter\.js/.test(item)) || '';
   return line
     .replace(/https?:\/\/[^/\s)]+/g, '')
     .replace(/[?#][^\s)]*/g, '')
     .slice(0, 220);
 };
-
-const keyOf = row => [
-  safe(row.service),
-  safe(row.operation),
-  safe(row.action || row.host),
-  row.suppressed ? safe(row.suppressionReason) : ''
-].join(':');
-
+const keyOf = row => [safe(row.service), safe(row.operation), safe(row.action || row.host), row.suppressed ? safe(row.suppressionReason) : ''].join(':');
 const aggregateEvents = events => {
   const map = new Map();
   events.forEach(item => {
@@ -197,14 +172,12 @@ const aggregateEvents = events => {
   });
   return [...map.values()].sort((left, right) => right.calls - left.calls || right.lastAt - left.lastAt);
 };
-
 const median = values => {
   const rows = values.filter(Number.isFinite).sort((left, right) => left - right);
   if (!rows.length) return 0;
   const middle = Math.floor(rows.length / 2);
   return rows.length % 2 ? rows[middle] : (rows[middle - 1] + rows[middle]) / 2;
 };
-
 const burstCount = (timestamps, windowMs) => {
   const rows = [...timestamps].sort((left, right) => left - right);
   let best = 0;
@@ -215,7 +188,6 @@ const burstCount = (timestamps, windowMs) => {
   }
   return best;
 };
-
 const buildDiagnostics = events => {
   const paid = events.filter(item => !item.suppressed);
   const byAction = new Map();
@@ -224,33 +196,36 @@ const buildDiagnostics = events => {
     if (!byAction.has(key)) byAction.set(key, []);
     byAction.get(key).push(item);
   });
-
-  const actionPatterns = [...byAction.entries()].map(([key, items]) => {
-    const ordered = [...items].sort((left, right) => left.at - right.at);
-    const intervals = ordered.slice(1).map((item, index) => item.at - ordered[index].at);
-    const medianIntervalMs = median(intervals);
-    const deviations = intervals.map(value => Math.abs(value - medianIntervalMs));
-    const periodicityRatio = medianIntervalMs > 0 ? median(deviations) / medianIntervalMs : 0;
-    const queryCounts = ordered.map(item => number(item.serverUsage?.queryCount));
-    return {
-      key,
-      calls: ordered.length,
-      firstAt: ordered[0]?.at || 0,
-      lastAt: ordered[ordered.length - 1]?.at || 0,
-      minIntervalMs: intervals.length ? Math.min(...intervals) : 0,
-      medianIntervalMs,
-      maxIntervalMs: intervals.length ? Math.max(...intervals) : 0,
-      periodic: intervals.length >= 3 && medianIntervalMs >= 1000 && periodicityRatio <= 0.25,
-      periodicityRatio: Math.round(periodicityRatio * 1000) / 1000,
-      maxBurst10s: burstCount(ordered.map(item => item.at), 10000),
-      averageQueryCount: queryCounts.length ? Math.round(queryCounts.reduce((sum, value) => sum + value, 0) / queryCounts.length * 100) / 100 : 0,
-      maxQueryCount: queryCounts.length ? Math.max(...queryCounts) : 0,
-      errors: ordered.filter(item => item.status >= 400 || item.status === 0).length,
-      hiddenCalls: ordered.filter(item => item.context?.visibility === 'hidden').length,
-      quietCalls: ordered.filter(item => item.context?.quiet).length
-    };
-  }).sort((left, right) => right.calls - left.calls);
-
+  const actionPatterns = [...byAction.entries()]
+    .map(([key, items]) => {
+      const ordered = [...items].sort((left, right) => left.at - right.at);
+      const intervals = ordered.slice(1).map((item, index) => item.at - ordered[index].at);
+      const medianIntervalMs = median(intervals);
+      const deviations = intervals.map(value => Math.abs(value - medianIntervalMs));
+      const periodicityRatio = medianIntervalMs > 0 ? median(deviations) / medianIntervalMs : 0;
+      const queryCounts = ordered.map(item => number(item.serverUsage?.queryCount));
+      return {
+        key,
+        calls: ordered.length,
+        firstAt: ordered[0]?.at || 0,
+        lastAt: ordered[ordered.length - 1]?.at || 0,
+        minIntervalMs: intervals.length ? Math.min(...intervals) : 0,
+        medianIntervalMs,
+        maxIntervalMs: intervals.length ? Math.max(...intervals) : 0,
+        periodic: intervals.length >= 3 && medianIntervalMs >= 1000 && periodicityRatio <= 0.25,
+        periodicityRatio: Math.round(periodicityRatio * 1000) / 1000,
+        maxBurst10s: burstCount(
+          ordered.map(item => item.at),
+          10000
+        ),
+        averageQueryCount: queryCounts.length ? Math.round((queryCounts.reduce((sum, value) => sum + value, 0) / queryCounts.length) * 100) / 100 : 0,
+        maxQueryCount: queryCounts.length ? Math.max(...queryCounts) : 0,
+        errors: ordered.filter(item => item.status >= 400 || item.status === 0).length,
+        hiddenCalls: ordered.filter(item => item.context?.visibility === 'hidden').length,
+        quietCalls: ordered.filter(item => item.context?.quiet).length
+      };
+    })
+    .sort((left, right) => right.calls - left.calls);
   const findings = [];
   actionPatterns.forEach(item => {
     if (item.periodic && item.calls >= 4) findings.push({ severity: 'info', code: 'periodic_request', action: item.key, message: `Периодический запрос: медианный интервал ${Math.round(item.medianIntervalMs / 1000)} сек`, value: item.calls });
@@ -260,14 +235,16 @@ const buildDiagnostics = events => {
     if (item.quietCalls > 0) findings.push({ severity: 'medium', code: 'paid_request_in_quiet_mode', action: item.key, message: `Платных запросов в quiet mode: ${item.quietCalls}`, value: item.quietCalls });
     if (item.hiddenCalls > 0 && !/listen_session_heartbeat/.test(item.key)) findings.push({ severity: 'medium', code: 'background_request', action: item.key, message: `Запросов при скрытом документе: ${item.hiddenCalls}`, value: item.hiddenCalls });
   });
-
   const metadataCalls = paid.filter(item => item.serverUsagePresent).length;
   return {
     actionPatterns,
     findings: findings.slice(0, 100),
-    peakBurst10s: burstCount(paid.map(item => item.at), 10000),
+    peakBurst10s: burstCount(
+      paid.map(item => item.at),
+      10000
+    ),
     metadataCalls,
-    metadataCoveragePct: paid.length ? Math.round(metadataCalls / paid.length * 10000) / 100 : 0,
+    metadataCoveragePct: paid.length ? Math.round((metadataCalls / paid.length) * 10000) / 100 : 0,
     maxInFlight,
     suppressedAttempts: events.filter(item => item.suppressed).length,
     droppedEvents: state.droppedEvents,
@@ -275,7 +252,6 @@ const buildDiagnostics = events => {
     truncated: state.droppedEvents > 0
   };
 };
-
 export const recordCloudUsage = row => {
   pruneState();
   const rawServerUsage = row?.serverUsage;
@@ -308,9 +284,7 @@ export const recordCloudUsage = row => {
     context: row?.context && typeof row.context === 'object' ? { ...runtimeContext(), ...row.context } : runtimeContext(),
     at: Math.floor(number(row?.at) || Date.now())
   };
-  const duplicateIndex = item.correlationKey
-    ? state.events.findIndex(existing => existing.correlationKey === item.correlationKey && existing.service === item.service)
-    : -1;
+  const duplicateIndex = item.correlationKey ? state.events.findIndex(existing => existing.correlationKey === item.correlationKey && existing.service === item.service) : -1;
   if (duplicateIndex >= 0) {
     const existing = state.events[duplicateIndex];
     state.events[duplicateIndex] = {
@@ -335,19 +309,8 @@ export const recordCloudUsage = row => {
   window.dispatchEvent(new CustomEvent('cloud-usage:updated'));
   return item;
 };
-
 export const recordSuppressedCloudAttempt = ({ action = '', reason = 'client_guard', service = 'cloud_functions', initiator = '' } = {}) =>
-  recordCloudUsage({
-    service: 'client_guard',
-    operation: 'suppressed',
-    action: safe(action),
-    host: service,
-    suppressed: true,
-    suppressionReason: safe(reason),
-    initiator: initiator || captureInitiator(),
-    exact: true
-  });
-
+  recordCloudUsage({ service: 'client_guard', operation: 'suppressed', action: safe(action), host: service, suppressed: true, suppressionReason: safe(reason), initiator: initiator || captureInitiator(), exact: true });
 export const meteredJsonFetch = async (url, { action = '', service = 'cloud_functions', operation = 'invoke', init = {} } = {}) => {
   const startedAt = performance.now();
   const initiator = captureInitiator();
@@ -386,60 +349,34 @@ export const meteredJsonFetch = async (url, { action = '', service = 'cloud_func
     });
     return { response, result, responseText };
   } catch (error) {
-    recordCloudUsage({
-      service,
-      operation,
-      action,
-      host: new URL(url, location.href).host,
-      correlationKey: requestCorrelationKey,
-      status,
-      requestBytes: bytes(requestBody),
-      responseBytes: bytes(responseText),
-      durationMs: performance.now() - startedAt,
-      initiator,
-      concurrentAtStart,
-      context,
-      exact: true
-    });
+    recordCloudUsage({ service, operation, action, host: new URL(url, location.href).host, correlationKey: requestCorrelationKey, status, requestBytes: bytes(requestBody), responseBytes: bytes(responseText), durationMs: performance.now() - startedAt, initiator, concurrentAtStart, context, exact: true });
     throw error;
   } finally {
     inFlight = Math.max(0, inFlight - 1);
   }
 };
-
 export const recordYandexStorageResponse = ({ url, method = 'GET', response, responseBytes = 0, durationMs = 0, cached = false } = {}) => {
   let host = '';
   try {
     host = new URL(url, location.href).host;
   } catch {}
   if (!host.endsWith('storage.yandexcloud.net')) return null;
-  return recordCloudUsage({
-    service: 'object_storage',
-    operation: safe(method || 'GET').toUpperCase(),
-    host,
-    status: Number(response?.status || 0),
-    responseBytes: Math.floor(number(responseBytes || response?.headers?.get?.('content-length'))),
-    durationMs,
-    cached,
-    estimated: true
-  });
+  return recordCloudUsage({ service: 'object_storage', operation: safe(method || 'GET').toUpperCase(), host, status: Number(response?.status || 0), responseBytes: Math.floor(number(responseBytes || response?.headers?.get?.('content-length'))), durationMs, cached, estimated: true });
 };
-
 const operationCost = row => {
   if (row.suppressed) return 0;
-  if (row.service === 'cloud_functions' && row.operation === 'invoke') return row.calls * 18.97 / 1000000;
-  if (row.service === 'object_storage' && ['GET', 'HEAD', 'OPTIONS'].includes(row.operation)) return row.calls * 0.46 / 10000;
-  if (row.service === 'object_storage' && ['PUT', 'POST', 'PATCH', 'LIST'].includes(row.operation)) return row.calls * 0.5692 / 1000;
+  if (row.service === 'cloud_functions' && row.operation === 'invoke') return (row.calls * 18.97) / 1000000;
+  if (row.service === 'object_storage' && ['GET', 'HEAD', 'OPTIONS'].includes(row.operation)) return (row.calls * 0.46) / 10000;
+  if (row.service === 'object_storage' && ['PUT', 'POST', 'PATCH', 'LIST'].includes(row.operation)) return (row.calls * 0.5692) / 1000;
   return 0;
 };
-
-const egressCost = rows => rows.reduce((sum, row) => {
-  const gigabytes = number(row.responseBytes) / (1024 ** 3);
-  if (row.service === 'object_storage') return sum + gigabytes * 1.67994;
-  if (row.service === 'cloud_functions') return sum + gigabytes * 1.42;
-  return sum;
-}, 0);
-
+const egressCost = rows =>
+  rows.reduce((sum, row) => {
+    const gigabytes = number(row.responseBytes) / 1024 ** 3;
+    if (row.service === 'object_storage') return sum + gigabytes * 1.67994;
+    if (row.service === 'cloud_functions') return sum + gigabytes * 1.42;
+    return sum;
+  }, 0);
 export const getCloudUsageSnapshot = () => {
   const changed = pruneState();
   if (changed) saveState();
@@ -448,7 +385,7 @@ export const getCloudUsageSnapshot = () => {
   const rows = allRows.filter(row => !row.suppressed);
   const suppressedRows = allRows.filter(row => row.suppressed);
   const directCost = rows.reduce((sum, row) => sum + operationCost(row), 0);
-  const internalInvocationCost = rows.reduce((sum, row) => sum + number(row.internalWebPushCalls), 0) * 18.97 / 1000000;
+  const internalInvocationCost = (rows.reduce((sum, row) => sum + number(row.internalWebPushCalls), 0) * 18.97) / 1000000;
   const observedCost = directCost + internalInvocationCost + egressCost(rows);
   const observedFromAt = events.length ? Math.max(Date.now() - WINDOW_MS, events[events.length - 1].at) : Date.now();
   return {
@@ -484,29 +421,21 @@ export const getCloudUsageSnapshot = () => {
       projected1000Rub: observedCost * 1000
     },
     diagnostics: buildDiagnostics(events),
-    unknown: [
-      'YDB Request Units: queryCount не является RU',
-      'durationMs — wall time функции, а не официальный execution billing',
-      'cold starts и округление Cloud Functions',
-      'Cloud Logging bytes',
-      'операции Яндекс Диска без metadata Backup Proxy',
-      'частичный Howler GET/Range traffic без доступного Resource Timing'
-    ]
+    unknown: ['YDB Request Units: queryCount не является RU', 'durationMs — wall time функции, а не официальный execution billing', 'cold starts и округление Cloud Functions', 'Cloud Logging bytes', 'операции Яндекс Диска без metadata Backup Proxy', 'частичный Howler GET/Range traffic без доступного Resource Timing']
   };
 };
-
-const getServiceWorkerVersion = () => new Promise(resolve => {
-  const controller = navigator.serviceWorker?.controller;
-  if (!controller) return resolve('');
-  const channel = new MessageChannel();
-  const timer = setTimeout(() => resolve('timeout'), 800);
-  channel.port1.onmessage = event => {
-    clearTimeout(timer);
-    resolve(safe(event.data?.version));
-  };
-  controller.postMessage({ type: 'GET_SW_VERSION' }, [channel.port2]);
-});
-
+const getServiceWorkerVersion = () =>
+  new Promise(resolve => {
+    const controller = navigator.serviceWorker?.controller;
+    if (!controller) return resolve('');
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => resolve('timeout'), 800);
+    channel.port1.onmessage = event => {
+      clearTimeout(timer);
+      resolve(safe(event.data?.version));
+    };
+    controller.postMessage({ type: 'GET_SW_VERSION' }, [channel.port2]);
+  });
 const jsonArrayLength = key => {
   try {
     const value = JSON.parse(localStorage.getItem(key) || '[]');
@@ -515,7 +444,6 @@ const jsonArrayLength = key => {
     return -1;
   }
 };
-
 export const buildCloudUsageReport = async () => {
   const snapshot = getCloudUsageSnapshot();
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -524,22 +452,10 @@ export const buildCloudUsageReport = async () => {
   const activity = window.AppActivity?.getState?.() || {};
   return {
     schema: 'vi3-cloud-usage-report-v2',
-    privacy: {
-      requestBodiesIncluded: false,
-      responseBodiesIncluded: false,
-      headersIncluded: false,
-      oauthTokensIncluded: false,
-      socialSessionsIncluded: false,
-      userIdentifiersIncluded: false,
-      trackIdentifiersIncluded: false
-    },
+    privacy: { requestBodiesIncluded: false, responseBodiesIncluded: false, headersIncluded: false, oauthTokensIncluded: false, socialSessionsIncluded: false, userIdentifiersIncluded: false, trackIdentifiersIncluded: false },
     generatedAt: Date.now(),
     generatedAtIso: new Date().toISOString(),
-    app: {
-      version: safe(window.APP_CONFIG?.APP_VERSION || window.VERSION),
-      buildDate: safe(window.APP_CONFIG?.BUILD_DATE || window.BUILD_DATE),
-      serviceWorkerVersion: await getServiceWorkerVersion()
-    },
+    app: { version: safe(window.APP_CONFIG?.APP_VERSION || window.VERSION), buildDate: safe(window.APP_CONFIG?.BUILD_DATE || window.BUILD_DATE), serviceWorkerVersion: await getServiceWorkerVersion() },
     environment: {
       userAgent: safe(navigator.userAgent).slice(0, 400),
       language: safe(navigator.language),
@@ -549,22 +465,12 @@ export const buildCloudUsageReport = async () => {
       hardwareConcurrency: number(navigator.hardwareConcurrency),
       deviceMemoryGb: number(navigator.deviceMemory),
       online: navigator.onLine !== false,
-      connection: {
-        type: safe(connection?.type),
-        effectiveType: safe(connection?.effectiveType),
-        downlinkMbps: number(connection?.downlink),
-        rttMs: number(connection?.rtt),
-        saveData: connection?.saveData === true
-      }
+      connection: { type: safe(connection?.type), effectiveType: safe(connection?.effectiveType), downlinkMbps: number(connection?.downlink), rttMs: number(connection?.rtt), saveData: connection?.saveData === true }
     },
     runtime: {
       visibility: document.visibilityState,
       activity,
-      playback: {
-        playing: window.playerCore?.isPlaying?.() === true,
-        provider: safe(window.playerCore?.currentProvider),
-        quality: safe(window.playerCore?.qMode)
-      },
+      playback: { playing: window.playerCore?.isPlaying?.() === true, provider: safe(window.playerCore?.currentProvider), quality: safe(window.playerCore?.qMode) },
       socialServerBackoff: backoff,
       pageAgeMs: Math.floor(performance.now()),
       storage: storage ? { usageBytes: number(storage.usage), quotaBytes: number(storage.quota) } : null
@@ -579,9 +485,7 @@ export const buildCloudUsageReport = async () => {
     cloudUsage: snapshot
   };
 };
-
 const reportFilename = () => `vi3-cloud-usage-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`;
-
 export const downloadCloudUsageReport = async () => {
   const report = await buildCloudUsageReport();
   const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json;charset=utf-8' });
@@ -598,13 +502,11 @@ export const downloadCloudUsageReport = async () => {
   }, 5000);
   return report;
 };
-
 export const copyCloudUsageReport = async () => {
   const report = await buildCloudUsageReport();
   await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
   return report;
 };
-
 export const resetCloudUsage = () => {
   state = empty();
   maxInFlight = inFlight;
@@ -612,15 +514,5 @@ export const resetCloudUsage = () => {
   window.dispatchEvent(new CustomEvent('cloud-usage:updated'));
   return getCloudUsageSnapshot();
 };
-
-window.CloudUsageMeter = {
-  getSnapshot: getCloudUsageSnapshot,
-  buildReport: buildCloudUsageReport,
-  downloadReport: downloadCloudUsageReport,
-  copyReport: copyCloudUsageReport,
-  reset: resetCloudUsage,
-  record: recordCloudUsage,
-  recordSuppressed: recordSuppressedCloudAttempt
-};
-
+window.CloudUsageMeter = { getSnapshot: getCloudUsageSnapshot, buildReport: buildCloudUsageReport, downloadReport: downloadCloudUsageReport, copyReport: copyCloudUsageReport, reset: resetCloudUsage, record: recordCloudUsage, recordSuppressed: recordSuppressedCloudAttempt };
 export default window.CloudUsageMeter;
