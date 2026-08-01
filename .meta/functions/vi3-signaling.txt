@@ -679,6 +679,8 @@ function isRoomViewer(room, playerId) {
 const TIMEZONE_POLICY_VERSION = 1;
 const ACCOUNT_DEVICE_VERSION = 1;
 const PLAYBACK_STATE_VERSION = 1;
+const ACCOUNT_DEVICE_ARCHIVE_MS = 90 * 24 * 60 * 60 * 1000;
+const WEB_PUSH_LEASE_MS = 30 * 24 * 60 * 60 * 1000;
 function timezonePolicyKey(playerId) {
   return `timezonePolicy:${sanitizeId(playerId, 96)}`;
 }
@@ -772,6 +774,7 @@ function publicAccountDevice(raw = {}) {
     initializedAt: device.initializedAt,
     inheritedFromDeviceId: device.inheritedFromDeviceId,
     revokedAt: device.revokedAt,
+    archived: device.lastSeenAt > 0 && device.lastSeenAt < now() - ACCOUNT_DEVICE_ARCHIVE_MS,
     firstSeenAt: device.firstSeenAt,
     lastSeenAt: device.lastSeenAt,
     updatedAt: device.updatedAt
@@ -890,15 +893,21 @@ async function actionTimezonePolicySet(event, body) {
   return { ok: true, timezonePolicy: publicTimezonePolicy(next) };
 }
 async function actionAccountDeviceList(event, body) {
-  const { playerId } = await requirePlayer(event, body);
-  const rows = await kvPrefix(`accountDevice:${playerId}:`, 100);
-  const items = rows
+  const auth = await requirePlayer(event, body);
+  const rows = await kvPrefix(`accountDevice:${auth.playerId}:`, 100);
+  const all = rows
     .map(payload)
-    .map(item => normalizeAccountDevice(item, playerId))
+    .map(item => normalizeAccountDevice(item, auth.playerId))
     .filter(item => item.deviceId)
-    .sort((left, right) => right.lastSeenAt - left.lastSeenAt)
-    .map(publicAccountDevice);
-  return { ok: true, items };
+    .sort((left, right) => right.lastSeenAt - left.lastSeenAt);
+  const archived = all.filter(item => item.deviceId !== auth.deviceId && item.lastSeenAt > 0 && item.lastSeenAt < now() - ACCOUNT_DEVICE_ARCHIVE_MS);
+  const visible = body.includeArchived === true ? all : all.filter(item => !archived.includes(item));
+  return {
+    ok: true,
+    items: visible.map(publicAccountDevice),
+    archivedCount: archived.length,
+    archiveAfterMs: ACCOUNT_DEVICE_ARCHIVE_MS
+  };
 }
 function accountDeviceCompatibilityKey(raw = {}) {
   const device = normalizeAccountDevice(raw, raw?.playerId);
@@ -940,7 +949,15 @@ async function actionAccountDeviceUpdate(event, body) {
     playerId
   );
   await kvPut({ pk: key, type: 'accountDevice', owner: playerId, data: next });
-  return { ok: true, device: publicAccountDevice(next) };
+  const revokedResources = body.revoked === true
+    ? {
+        webPushSubscriptions: await removeDeviceWebPushSubscriptions(playerId, deviceId),
+        presence: await kvDelete(`presence:${playerId}:${deviceId}`).then(() => 1).catch(() => 0),
+        listenActive: await kvDelete(`listenActive:${playerId}:${deviceId}`).then(() => 1).catch(() => 0),
+        sleepTimerActive: await kvDelete(`sleepTimerActive:${playerId}:${deviceId}`).then(() => 1).catch(() => 0)
+      }
+    : null;
+  return { ok: true, device: publicAccountDevice(next), revokedResources };
 }
 
 async function actionAccountDeviceInitialize(event, body) {
@@ -6463,30 +6480,116 @@ async function actionRtcConfig(event, body) {
   const hasTurn = !!(temporaryTurn || staticTurn);
   return { ok: true, iceServers, hasTurn, temporaryCredentials: !!temporaryTurn, expiresInSec: temporaryTurn ? CFG.turnCredentialTtlSec : 0, turnDisabled: CFG.turnDisabled };
 }
+function webPushEndpointKey(endpointHash) {
+  return `webPushEndpoint:${sanitizeId(endpointHash, 64)}`;
+}
+
+async function deleteWebPushSubscriptionRow(row) {
+  if (!row?.pk) return false;
+  const data = payload(row);
+  const endpointHash = sanitizeId(data.endpointHash, 64);
+  await kvDelete(row.pk).catch(() => null);
+  if (!endpointHash) return true;
+  const indexKey = webPushEndpointKey(endpointHash);
+  const indexRow = await kvGet(indexKey);
+  const index = payload(indexRow);
+  if (indexRow && safe(index.subscriptionKey) === safe(row.pk)) {
+    await kvDelete(indexKey).catch(() => null);
+  }
+  return true;
+}
+
+async function removeDeviceWebPushSubscriptions(playerId, deviceId, exceptEndpointHash = '') {
+  const cleanPlayerId = sanitizeId(playerId, 96);
+  const cleanDeviceId = sanitizeId(deviceId, 120);
+  const except = sanitizeId(exceptEndpointHash, 64);
+  if (!cleanPlayerId || !cleanDeviceId) return 0;
+  const rows = await kvPrefix(`webPushSub:${cleanPlayerId}:`, 100);
+  const targets = rows.filter(row => {
+    const data = payload(row);
+    return sanitizeId(data.deviceId, 120) === cleanDeviceId && sanitizeId(data.endpointHash, 64) !== except;
+  });
+  for (const row of targets) await deleteWebPushSubscriptionRow(row);
+  return targets.length;
+}
+
 async function actionWebPushConfig(event, body) {
   return { ok: true, vapidPublicKey: CFG.vapidPublicKey, enabled: !!CFG.vapidPublicKey };
 }
 async function actionWebPushSubscribe(event, body) {
-  const auth = await requirePlayer(event, body);
+  const auth = await requirePlaybackDevice(event, body);
   const sub = body.subscription || {};
   const endpoint = safe(sub.endpoint || '');
   if (!endpoint) throw new Error('push_endpoint_required');
-  const requestedDeviceId = sanitizeId(body.deviceId, 120);
-  const deviceId = auth.deviceId || requestedDeviceId;
-  if (!deviceId) throw new Error('push_device_required');
-  if (requestedDeviceId && requestedDeviceId !== deviceId) throw new Error('push_device_identity_mismatch');
+
   const endpointHash = hash(endpoint).slice(0, 32);
-  const key = `webPushSub:${auth.playerId}:${endpointHash}`;
-  const old = payload(await kvGet(key));
+  const subscriptionKey = `webPushSub:${auth.playerId}:${endpointHash}`;
+  const endpointKey = webPushEndpointKey(endpointHash);
+  const [oldRow, endpointRow] = await Promise.all([kvGet(subscriptionKey), kvGet(endpointKey)]);
+  const old = payload(oldRow);
+  const endpointOwner = payload(endpointRow);
   const at = now();
-  await kvPut({ pk: key, type: 'webPushSub', owner: auth.playerId, expiresAt: 0, data: { ...old, playerId: auth.playerId, deviceId, endpointHash, subscription: sub, userAgent: safe(body.userAgent || '').slice(0, 220), createdAt: old.createdAt || at, updatedAt: at } });
-  return { ok: true, endpointHash, deviceId };
+  const leaseExpiresAt = at + WEB_PUSH_LEASE_MS;
+
+  const data = {
+    ...old,
+    playerId: auth.playerId,
+    deviceId: auth.deviceId,
+    endpointHash,
+    subscription: sub,
+    userAgent: safe(body.userAgent || '').slice(0, 220),
+    createdAt: old.createdAt || at,
+    updatedAt: at,
+    leaseExpiresAt
+  };
+
+  await kvPut({
+    pk: subscriptionKey,
+    type: 'webPushSub',
+    owner: auth.playerId,
+    expiresAt: leaseExpiresAt,
+    data
+  });
+
+  await kvPut({
+    pk: endpointKey,
+    type: 'webPushEndpoint',
+    owner: auth.playerId,
+    expiresAt: leaseExpiresAt,
+    data: {
+      endpointHash,
+      playerId: auth.playerId,
+      deviceId: auth.deviceId,
+      subscriptionKey,
+      updatedAt: at,
+      leaseExpiresAt
+    }
+  });
+
+  const previousSubscriptionKey = safe(endpointOwner.subscriptionKey);
+  if (previousSubscriptionKey && previousSubscriptionKey !== subscriptionKey) {
+    await kvDelete(previousSubscriptionKey).catch(() => null);
+  }
+
+  const replacedForDevice = await removeDeviceWebPushSubscriptions(auth.playerId, auth.deviceId, endpointHash);
+
+  return {
+    ok: true,
+    endpointHash,
+    deviceId: auth.deviceId,
+    leaseExpiresAt,
+    replacedForDevice,
+    transferredEndpoint: !!previousSubscriptionKey && previousSubscriptionKey !== subscriptionKey
+  };
 }
 async function actionWebPushUnsubscribe(event, body) {
-  const { playerId } = await requirePlayer(event, body);
+  const auth = await requirePlayer(event, body);
   const endpoint = safe(body.endpoint || body.subscription?.endpoint || '');
   if (!endpoint) return { ok: true, removed: false };
-  await kvDelete(`webPushSub:${playerId}:${hash(endpoint).slice(0, 32)}`).catch(() => null);
+  const endpointHash = hash(endpoint).slice(0, 32);
+  const row = await kvGet(`webPushSub:${auth.playerId}:${endpointHash}`);
+  if (!row) return { ok: true, removed: false };
+  await deleteWebPushSubscriptionRow(row);
   return { ok: true, removed: true };
 }
 function nearbyCode() {
