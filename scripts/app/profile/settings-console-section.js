@@ -46,7 +46,9 @@ export const bindConsoleSettingsSection = root => {
     consoleRoot.innerHTML = `
       <div class="cloud-console-hero">
         <div><small>Сетевой режим</small><b>${activity.quiet ? 'ТИХИЙ' : activity.playing ? 'PLAYBACK' : 'АКТИВНЫЙ'}</b></div>
-        <div><small>Запросов за 24 часа</small><b>${snapshot.totals.calls}</b></div>
+        <div><small>Сетевых запросов</small><b>${snapshot.totals.networkCalls}</b></div>
+        <div><small>Локальных cache hits</small><b>${snapshot.totals.cacheHits}</b></div>
+        <div><small>Media с неизвестным размером</small><b>${snapshot.totals.unknownMediaOperations}</b></div>
         <div><small>Предотвращено</small><b>${snapshot.totals.suppressedAttempts}</b></div>
         <div><small>Ошибки</small><b>${snapshot.totals.errors}</b></div>
         <div><small>Ответы из облака</small><b>${bytes(snapshot.totals.responseBytes)}</b></div>
