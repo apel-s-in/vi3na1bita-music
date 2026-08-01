@@ -1562,9 +1562,22 @@ async function actionFriendInviteAccept(event, body) {
   await kvPut({ pk: `friendInvite:${inviteId}`, type: 'friendInvite', owner: inv.fromPlayerId, expiresAt: inv.expiresAt, data: { ...inv, status: 'accepted', acceptedByPlayerId: playerId, acceptedAt: at } });
   // сохраняем публичный профиль обоих, чтобы friend_list всегда показывал имя/аватар
   await kvPut({ pk: `profile:${playerId}`, type: 'profile', owner: playerId, data: myProfile }).catch(() => null);
-  if (inv.fromProfile)
+  if (inv.fromProfile) {
     await kvPut({ pk: `profile:${inv.fromPlayerId}`, type: 'profile', owner: inv.fromPlayerId, data: { friendId: inv.fromPlayerId, displayName: safe(inv.fromProfile.displayName || 'Друг').slice(0, 80), avatarUrl: safe(inv.fromProfile.avatarUrl || '').slice(0, 400), updatedAt: at } }).catch(() => null);
-  return { ok: true, friendPlayerId: inv.fromPlayerId };
+  }
+
+  const webPush = await sendSystemWebPush({
+    toPlayerId: inv.fromPlayerId,
+    title: '👥 Новый друг',
+    body: `${myProfile.displayName || 'Пользователь'} принял приглашение`,
+    url: './?openFriends=1',
+    tag: `friends-${playerId}`,
+    requireInteraction: false,
+    kind: 'FRIENDS_CHANGED',
+    fromFriendId: playerId
+  }).catch(error => ({ ok: false, error: safe(error?.message) }));
+
+  return { ok: true, friendPlayerId: inv.fromPlayerId, webPush };
 }
 function roomJoinTokenKey(token) {
   const value = safe(token);
@@ -1872,44 +1885,108 @@ async function actionProfileGet(event, body) {
   const data = payload(row);
   return { ok: true, profile: data && data.friendId ? data : null };
 }
-async function actionFriendList(event, body) {
-  const { playerId } = await requirePlayer(event, body);
-  const rows = await kvPrefix(`friend:${playerId}:`, 300);
+async function readFriendItems(playerId) {
+  const rows = await kvPrefix(`friend:${sanitizeId(playerId)}:`, 300);
   const items = [];
+
   for (const row of rows) {
     const data = payload(row);
-    if (!data) continue;
-    if (data.status && data.status !== 'active') continue;
+    if (!data || (data.status && data.status !== 'active')) continue;
+
     const friendId = sanitizeId(data.friendPlayerId || data.friendId);
     if (!friendId) continue;
+
     let profile = data.profile || null;
-    if (!profile || !profile.displayName) {
-      const pr = payload(await kvGet(`profile:${friendId}`));
-      if (pr && pr.friendId) profile = pr;
+    if (!profile?.displayName) {
+      const stored = payload(await kvGet(`profile:${friendId}`));
+      if (stored?.friendId) profile = stored;
     }
-    items.push({ friendId, profile: profile || { friendId, displayName: 'Друг', avatarUrl: '' }, createdAt: num(data.createdAt) });
+
+    items.push({
+      friendId,
+      profile: profile || { friendId, displayName: 'Друг', avatarUrl: '' },
+      createdAt: num(data.createdAt)
+    });
   }
-  items.sort((a, b) => num(b.createdAt) - num(a.createdAt));
-  return { ok: true, items };
+
+  return items.sort((left, right) => num(right.createdAt) - num(left.createdAt));
+}
+
+async function actionFriendList(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  return { ok: true, items: await readFriendItems(playerId) };
 }
 async function actionFriendRemove(event, body) {
   const { playerId, friendId: targetId } = await requireFriendContext(event, body, { friendFields: ['targetId', 'friendId'] });
-  await Promise.all([kvDelete(`friend:${playerId}:${targetId}`).catch(() => null), kvDelete(`friend:${targetId}:${playerId}`).catch(() => null)]);
-  return { ok: true, removed: true };
+  await Promise.all([
+    kvDelete(`friend:${playerId}:${targetId}`).catch(() => null),
+    kvDelete(`friend:${targetId}:${playerId}`).catch(() => null)
+  ]);
+
+  const webPush = await sendSystemWebPush({
+    toPlayerId: targetId,
+    title: '👥 Список друзей изменён',
+    body: 'Обновите раздел «Друзья»',
+    url: './?openFriends=1',
+    tag: `friends-${playerId}`,
+    requireInteraction: false,
+    kind: 'FRIENDS_CHANGED',
+    fromFriendId: playerId
+  }).catch(error => ({ ok: false, error: safe(error?.message) }));
+
+  return { ok: true, removed: true, webPush };
 }
+async function readPresenceForFriendIds(friendIds = []) {
+  const ids = [...new Set((Array.isArray(friendIds) ? friendIds : []).map(id => sanitizeId(id)).filter(Boolean))].slice(0, 50);
+  const presence = {};
+  const at = now();
+
+  for (const id of ids) {
+    const rows = await kvPrefix(`presence:${id}:`, 10);
+    const best = rows.map(payload).sort((left, right) => num(right.onlineUntil) - num(left.onlineUntil))[0] || null;
+    presence[id] = {
+      online: !!best && num(best.onlineUntil) > at,
+      lastSeenAt: Math.max(0, num(best?.updatedAt)),
+      currentGameId: sanitizeId(best?.currentGameId, 80),
+      currentRoomId: sanitizeId(best?.currentRoomId, 96)
+    };
+  }
+
+  return presence;
+}
+
 async function actionPresenceBatch(event, body) {
   const { playerId } = await requirePlayer(event, body);
   const requested = [...new Set((Array.isArray(body.friendIds) ? body.friendIds : []).map(id => sanitizeId(id)).filter(id => id && id !== playerId))].slice(0, 50);
   const allowed = await getActiveFriendIdSet(playerId);
   const ids = requested.filter(id => allowed.has(id));
-  const presence = {};
-  const t = now();
-  for (const id of ids) {
-    const rows = await kvPrefix(`presence:${id}:`, 10);
-    const best = rows.map(payload).sort((a, b) => num(b.onlineUntil) - num(a.onlineUntil))[0] || null;
-    presence[id] = { online: !!best && num(best.onlineUntil) > t };
-  }
-  return { ok: true, presence };
+  return { ok: true, presence: await readPresenceForFriendIds(ids) };
+}
+
+async function actionFriendsSnapshot(event, body) {
+  const { playerId } = await requirePlayer(event, body);
+  const items = await readFriendItems(playerId);
+  const presence = await readPresenceForFriendIds(items.map(item => item.friendId));
+  const generatedAt = now();
+  const revision = hash(stableStringify({
+    items: items.map(item => ({
+      friendId: item.friendId,
+      profile: item.profile,
+      createdAt: item.createdAt
+    })),
+    presence
+  })).slice(0, 32);
+
+  return {
+    ok: true,
+    snapshot: {
+      version: 1,
+      revision,
+      items,
+      presence,
+      generatedAt
+    }
+  };
 }
 async function sendSystemWebPush({ toPlayerId, targetDeviceId = '', title, body, url = './', tag = 'vi3-notification', requireInteraction = false, kind = '', fromFriendId = '', gameId = '', msgId = '', callId = '', logicalSessionId = '', ownerDeviceId = '', ownerLabel = '', ownerEpoch = 0 } = {}) {
   if (!CFG.webPushFunctionUrl || !CFG.webPushSecret || !toPlayerId) return { ok: false, skipped: true };
@@ -6855,6 +6932,7 @@ const ACTIONS = {
   // ===== FRIENDS / E2EE V2 =====
   profile_set: actionProfileSet,
   profile_get: actionProfileGet,
+  friends_snapshot: actionFriendsSnapshot,
   friend_list: actionFriendList,
   friend_remove: actionFriendRemove,
   presence_batch: actionPresenceBatch,
