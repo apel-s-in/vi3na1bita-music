@@ -1,7 +1,10 @@
 'use strict';
 const https = require('https');
 const crypto = require('crypto');
+const { AsyncLocalStorage } = require('async_hooks');
 const { URL } = require('url');
+const usageStorage = new AsyncLocalStorage();
+const currentUsage = () => usageStorage.getStore() || null;
 const CFG = {
   authorityUrl: String(process.env.BACKUP_AUTHORITY_URL || 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av').trim(),
   allowedOrigins: String(process.env.CORS_ORIGINS || 'https://vi3na1bita.website.yandexcloud.net,https://apel-s-in.github.io,http://localhost:4173,http://127.0.0.1:4173')
@@ -87,6 +90,17 @@ const sortObject = value => {
 };
 const stableStringify = value => JSON.stringify(sortObject(value));
 const byteLength = value => Buffer.byteLength(typeof value === 'string' ? value : JSON.stringify(value), 'utf8');
+const bumpUsage = (field, amount = 1) => {
+  const usage = currentUsage();
+  if (!usage) return;
+  usage[field] = integer(usage[field]) + Math.max(0, num(amount));
+};
+const bumpDiskOperation = (operation, amount = 1) => {
+  const usage = currentUsage();
+  const key = safe(operation);
+  if (!usage || !key) return;
+  usage.diskOperations[key] = integer(usage.diskOperations[key]) + Math.max(0, integer(amount));
+};
 const makeError = (message, status = 500, details = null) => {
   const error = new Error(message);
   error.status = status;
@@ -132,7 +146,29 @@ const corsHeaders = event => {
   const allowed = wildcard ? '*' : CFG.allowedOrigins.includes(origin) ? origin : CFG.allowedOrigins[0] || '*';
   return { 'Access-Control-Allow-Origin': allowed, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Accept, X-Yandex-Auth, X-Vi3-Session', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
 };
-const reply = (event, statusCode, body, id) => ({ statusCode, headers: { ...corsHeaders(event), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Request-Id': id }, body: JSON.stringify(body) });
+const attachUsage = body => {
+  const context = currentUsage();
+  if (!context || !isObject(body)) return body;
+  const usage = {
+    authorityCalls: integer(context.authorityCalls),
+    diskApiCalls: integer(context.diskApiCalls),
+    diskOperations: { ...context.diskOperations },
+    networkCalls: integer(context.networkCalls),
+    requestBytes: integer(context.requestBytes),
+    responseBytes: integer(context.responseBytes),
+    redirects: integer(context.redirects),
+    durationMs: Math.max(0, now() - context.startedAt),
+    responseBytesFinal: 0
+  };
+  const output = { ...body, usage };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const measured = byteLength(output);
+    if (usage.responseBytesFinal === measured) break;
+    usage.responseBytesFinal = measured;
+  }
+  return output;
+};
+const reply = (event, statusCode, body, id) => ({ statusCode, headers: { ...corsHeaders(event), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Request-Id': id }, body: JSON.stringify(attachUsage(body)) });
 const statusOf = error => {
   const explicit = integer(error?.status);
   if (explicit >= 400 && explicit <= 599) return explicit;
@@ -147,7 +183,7 @@ const statusOf = error => {
   if (/unavailable|disk_/.test(message)) return 502;
   return 500;
 };
-function request(method, url, { headers = {}, body = null, timeoutMs = DEFAULT_TIMEOUT_MS, maxBytes = MAX_RESPONSE_BYTES, redirects = 5 } = {}) {
+function request(method, url, { headers = {}, body = null, timeoutMs = DEFAULT_TIMEOUT_MS, maxBytes = MAX_RESPONSE_BYTES, redirects = 5, usageKind = '' } = {}) {
   return new Promise((resolve, reject) => {
     let parsed;
     try {
@@ -157,6 +193,9 @@ function request(method, url, { headers = {}, body = null, timeoutMs = DEFAULT_T
       return;
     }
     const payload = body == null ? null : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body), 'utf8');
+    bumpUsage('networkCalls');
+    bumpUsage('requestBytes', payload?.length || 0);
+    if (parsed.hostname === 'cloud-api.yandex.net') bumpUsage('diskApiCalls');
     const req = https.request({ hostname: parsed.hostname, path: `${parsed.pathname}${parsed.search}`, method, headers: { Accept: 'application/json, text/plain, */*', ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {}), ...headers } }, response => {
       if ([301, 302, 303, 307, 308].includes(Number(response.statusCode)) && response.headers.location && redirects > 0) {
         response.resume();
@@ -170,7 +209,8 @@ function request(method, url, { headers = {}, body = null, timeoutMs = DEFAULT_T
           reject(makeError('bad_redirect_url', 502));
           return;
         }
-        request(method === 'POST' && Number(response.statusCode) === 303 ? 'GET' : method, nextUrl, { headers: nextHeaders, body: method === 'POST' && Number(response.statusCode) === 303 ? null : body, timeoutMs, maxBytes, redirects: redirects - 1 }).then(resolve, reject);
+        bumpUsage('redirects');
+        request(method === 'POST' && Number(response.statusCode) === 303 ? 'GET' : method, nextUrl, { headers: nextHeaders, body: method === 'POST' && Number(response.statusCode) === 303 ? null : body, timeoutMs, maxBytes, redirects: redirects - 1, usageKind }).then(resolve, reject);
         return;
       }
       const chunks = [];
@@ -185,6 +225,7 @@ function request(method, url, { headers = {}, body = null, timeoutMs = DEFAULT_T
           return;
         }
         chunks.push(chunk);
+        bumpUsage('responseBytes', chunk.length);
       });
       response.on('end', () => {
         if (settled) return;
@@ -217,9 +258,10 @@ async function authorizeRequest(event, body) {
   if (!socialSession) throw makeError('social_session_required', 401);
   if (!CFG.authorityUrl) throw makeError('backup_authority_not_configured', 503);
   const requestedDeviceId = safeId(body?.deviceId, 120);
+  bumpUsage('authorityCalls');
   const [identity, authorityResponse] = await Promise.all([
     readYandexIdentity(oauthToken),
-    request('POST', CFG.authorityUrl, { headers: { 'X-Vi3-Session': socialSession }, body: { action: 'backup_device_authorize', ...(requestedDeviceId ? { deviceId: requestedDeviceId } : {}) }, timeoutMs: 15000, maxBytes: 1024 * 1024 })
+    request('POST', CFG.authorityUrl, { headers: { 'X-Vi3-Session': socialSession }, body: { action: 'backup_device_authorize', ...(requestedDeviceId ? { deviceId: requestedDeviceId } : {}) }, timeoutMs: 15000, maxBytes: 1024 * 1024, usageKind: 'authority' })
   ]);
   const authority = parseJson(authorityResponse.text);
   if (authorityResponse.status < 200 || authorityResponse.status >= 300 || authority?.ok !== true || !authority?.authorization) {
@@ -250,6 +292,7 @@ async function diskJson(method, url, token, body = null, timeoutMs = DEFAULT_TIM
   return { ...response, json: parseJson(response.text) };
 }
 async function ensureDir(token, path) {
+  bumpDiskOperation('mkdir');
   const check = await diskJson('GET', `${API}/resources?path=${encodeURIComponent(path)}`, token, null, 10000);
   if (check.status === 200 || check.status === 409) return true;
   if (check.status !== 404) {
@@ -265,6 +308,7 @@ async function ensureDirs(token, paths) {
   for (const path of paths) await ensureDir(token, path);
 }
 async function downloadJson(token, path, { maxBytes = MAX_RESPONSE_BYTES } = {}) {
+  bumpDiskOperation('download');
   const link = await diskJson('GET', `${API}/resources/download?path=${encodeURIComponent(path)}`, token, null, 15000);
   if (link.status === 404) return null;
   if (link.status !== 200 || !link.json?.href) {
@@ -278,6 +322,7 @@ async function downloadJson(token, path, { maxBytes = MAX_RESPONSE_BYTES } = {})
   return value;
 }
 async function uploadJson(token, path, value, { overwrite = false } = {}) {
+  bumpDiskOperation('upload');
   const payload = stableStringify(value);
   if (Buffer.byteLength(payload, 'utf8') > MAX_REQUEST_BYTES) {
     throw makeError('upload_payload_too_large', 413);
@@ -298,6 +343,7 @@ async function uploadJson(token, path, value, { overwrite = false } = {}) {
   return { ok: true, conflict: false };
 }
 async function listFolder(token, path, maxItems = 1000) {
+  bumpDiskOperation('list');
   const output = [];
   const limit = 200;
   for (let offset = 0; offset < maxItems; offset += limit) {
@@ -313,6 +359,7 @@ async function listFolder(token, path, maxItems = 1000) {
   return output.slice(0, maxItems);
 }
 async function deleteResource(token, path) {
+  bumpDiskOperation('delete');
   const cleanPath = safe(path);
   if (!cleanPath || cleanPath === BACKUP_ROOT || cleanPath === ROOT || cleanPath.startsWith(`${ROOT}/`)) {
     throw makeError('legacy_cleanup_path_forbidden', 403);
@@ -1035,7 +1082,7 @@ async function runBatchSync(auth, body) {
     serverTime: now()
   };
 }
-module.exports.handler = async event => {
+const handleRequest = async event => {
   const id = requestId();
   const method = requestMethod(event);
   if (method === 'OPTIONS') {
@@ -1095,3 +1142,14 @@ module.exports.handler = async event => {
     return reply(event, status, { ok: false, error: safe(error?.message || 'server_error'), ...(error?.details ? { details: error.details } : {}) }, id);
   }
 };
+
+module.exports.handler = event => usageStorage.run({
+  startedAt: now(),
+  authorityCalls: 0,
+  diskApiCalls: 0,
+  diskOperations: { list: 0, download: 0, upload: 0, delete: 0, mkdir: 0 },
+  networkCalls: 0,
+  requestBytes: 0,
+  responseBytes: 0,
+  redirects: 0
+}, () => handleRequest(event));
