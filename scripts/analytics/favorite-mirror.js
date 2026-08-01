@@ -233,8 +233,7 @@ class FavoriteMirrorService {
         Number(remote?.state?.revision || 0) === 0 &&
         !(remote?.state?.items || []).length
       ) {
-        await this.bootstrap();
-        remote = await this.getRemote();
+        remote = await this.bootstrap();
       }
 
       this.applyRemote(
