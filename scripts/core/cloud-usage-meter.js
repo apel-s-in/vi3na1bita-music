@@ -139,6 +139,7 @@ const aggregateEvents = events => {
       durationMs: 0,
       errors: 0,
       cacheHits: 0,
+      cached: item.cached === true,
       exactCalls: 0,
       estimatedCalls: 0,
       queryCount: 0,
@@ -167,8 +168,10 @@ const aggregateEvents = events => {
     row.requestBytes += number(item.requestBytes);
     row.responseBytes += number(item.responseBytes);
     row.durationMs += number(item.durationMs);
-    row.errors += !item.suppressed && (number(item.status) >= 400 || number(item.status) === 0) ? 1 : 0;
+    const unknownResourceStatus = item.source === 'resource_timing' && item.unknownBytes === true && number(item.status) === 0;
+    row.errors += !item.suppressed && !unknownResourceStatus && (number(item.status) >= 400 || number(item.status) === 0) ? 1 : 0;
     row.cacheHits += item.cached ? 1 : 0;
+    row.cached = row.cached || item.cached === true;
     row.exactCalls += item.exact ? 1 : 0;
     row.estimatedCalls += item.estimated ? 1 : 0;
     row.queryCount += number(item.serverUsage?.queryCount);
@@ -245,7 +248,7 @@ const buildDiagnostics = events => {
       maxBurst10s: burstCount(ordered.map(item => item.at), 10000),
       averageQueryCount: queryCounts.length ? Math.round(queryCounts.reduce((sum, value) => sum + value, 0) / queryCounts.length * 100) / 100 : 0,
       maxQueryCount: queryCounts.length ? Math.max(...queryCounts) : 0,
-      errors: ordered.filter(item => item.status >= 400 || item.status === 0).length,
+      errors: ordered.filter(item => !(item.source === 'resource_timing' && item.unknownBytes === true && item.status === 0) && (item.status >= 400 || item.status === 0)).length,
       hiddenCalls: ordered.filter(item => item.context?.visibility === 'hidden').length,
       quietCalls: ordered.filter(item => item.context?.quiet).length
     };
@@ -434,6 +437,7 @@ const operationCost = row => {
 };
 
 const egressCost = rows => rows.reduce((sum, row) => {
+  if (row.cached || row.operation === 'CACHE_HIT' || row.action === 'YANDEX_CACHE_HIT') return sum;
   const gigabytes = number(row.responseBytes) / (1024 ** 3);
   if (row.service === 'object_storage') return sum + gigabytes * 1.67994;
   if (row.service === 'cloud_functions') return sum + gigabytes * 1.42;
@@ -462,6 +466,9 @@ export const getCloudUsageSnapshot = () => {
     recent: events,
     totals: {
       calls: rows.reduce((sum, row) => sum + row.calls, 0),
+      networkCalls: rows.reduce((sum, row) => sum + (row.cached ? 0 : row.calls), 0),
+      cacheHits: rows.reduce((sum, row) => sum + row.cacheHits, 0),
+      unknownMediaOperations: events.filter(item => item.service === 'object_storage_media' && item.unknownBytes === true).length,
       suppressedAttempts: suppressedRows.reduce((sum, row) => sum + row.calls, 0),
       errors: rows.reduce((sum, row) => sum + row.errors, 0),
       requestBytes: rows.reduce((sum, row) => sum + row.requestBytes, 0),
