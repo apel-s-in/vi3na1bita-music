@@ -49,7 +49,7 @@ const request = async (mode, data = {}, { retries = 1 } = {}) => {
       return result;
     } catch (error) {
       lastError = error;
-      if (attempt >= retries || ![0, 401, 429, 502, 503, 504].includes(Number(error?.status || 0))) break;
+      if (attempt >= retries || ![401, 429, 502, 503, 504].includes(Number(error?.status || 0))) break;
       await sleep(700 * (attempt + 1));
     }
   }
