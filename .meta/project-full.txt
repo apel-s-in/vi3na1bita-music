@@ -14799,7 +14799,7 @@ window.FavoritesManager = Favorites;
 // Общая signed social session для Friends и Game Center.
 import { getDeviceContextForServer } from './device-context.js';
 import { isAppQuiet } from './app-activity.js';
-import { meteredJsonFetch } from './cloud-usage-meter.js';
+import { meteredJsonFetch, recordSuppressedCloudAttempt } from './cloud-usage-meter.js';
 
 const SIGNALING_URL = 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av';
 let cachedSession = null;
@@ -14936,10 +14936,12 @@ export const requestSocialAction = (action, data = {}, { retryAuth = true } = {}
       ? `${cleanAction}:${safe(data.trackUid)}:${safe(data.deviceId)}`
       : '';
   if (requestKey && actionRequests.has(requestKey)) {
+    recordSuppressedCloudAttempt({ action: cleanAction, reason: 'single_flight_join' });
     return actionRequests.get(requestKey);
   }
   const run = async () => {
     if (quietBackgroundActions.has(cleanAction) && isAppQuiet()) {
+      recordSuppressedCloudAttempt({ action: cleanAction, reason: 'quiet_mode' });
       const error = new Error('app_quiet_mode');
       error.status = 0;
       error.action = cleanAction;
@@ -14947,6 +14949,7 @@ export const requestSocialAction = (action, data = {}, { retryAuth = true } = {}
       throw error;
     }
     if (Date.now() < serverBackoffUntil && !isRealtimeAction(cleanAction)) {
+      recordSuppressedCloudAttempt({ action: cleanAction, reason: 'server_backoff' });
       const error = new Error('social_server_backoff_active');
       error.status = 429;
       error.action = cleanAction;
@@ -15010,6 +15013,11 @@ window.addEventListener('yandex:auth:changed', event => {
     invalidateSocialSession({ resetBackoff: true });
   }
 });
+window.SocialSessionDiagnostics = {
+  getBackoffState: getSocialServerBackoffState,
+  getPlaybackCoordinationState
+};
+
 export default { getSocialSession, invalidateSocialSession, requestSocialAction };
 
 //=================================================
