@@ -4663,6 +4663,7 @@ import { getDeviceContext, getDeviceId } from '../core/device-context.js';
 import { buildPlaybackFencePayload } from './playback-fence.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 const HEARTBEAT_MS = 20000;
+const STATUS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
 const COMPLETION_OUTBOX_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -4868,8 +4869,9 @@ class ListeningReceiptService {
       window.PlaybackOwnership?.updateLease?.(result.playback);
     }
     if (result?.progress) {
-      this.lastProgress = result.progress;
-      this.applyServerProgressToCatalog(result.progress);
+      const confirmedListeningStats = result.progress.confirmedListeningStats || this.lastProgress?.confirmedListeningStats || null;
+      this.lastProgress = { ...(this.lastProgress || {}), ...result.progress, ...(confirmedListeningStats ? { confirmedListeningStats } : {}) };
+      this.applyServerProgressToCatalog(this.lastProgress);
     }
     if (result?.loyalty) {
       this.lastLoyalty = { ...result.loyalty };
@@ -4885,9 +4887,17 @@ class ListeningReceiptService {
       });
       this.rewardCatalog = [...merged.values()];
     }
+    const grants = Array.isArray(result?.rewards) ? result.rewards : [];
+    if (grants.length) {
+      const awarded = new Map(grants.map(item => [safe(item.achievementId), item]));
+      this.rewardCatalog = this.rewardCatalog.map(item => {
+        const grant = awarded.get(safe(item?.id));
+        return grant ? { ...item, eligible: true, awarded: true, awardedAt: Date.now(), amount: Number(grant.amount || item.amount || 0) } : item;
+      });
+    }
     return result;
   }
-  scheduleStatusRefresh(delayMs = 60000) {
+  scheduleStatusRefresh(delayMs = STATUS_MAX_AGE_MS) {
     clearTimeout(this.statusRefreshTimer);
     this.statusRefreshTimer = setTimeout(() => {
       this.statusRefreshTimer = 0;
@@ -5057,7 +5067,7 @@ class ListeningReceiptService {
   getSleepTimerReceiptState() {
     return this.sleepTimer ? { ...this.sleepTimer } : null;
   }
-  async refreshStatus({ force = false, maxAgeMs = 60000 } = {}) {
+  async refreshStatus({ force = false, maxAgeMs = STATUS_MAX_AGE_MS } = {}) {
     if (!this.isAuthorized() || !networkAllowed()) return null;
     if (!force && this.lastStatusResult && Date.now() - this.lastStatusAt < Math.max(10000, Number(maxAgeMs) || 60000)) {
       return this.lastStatusResult;
