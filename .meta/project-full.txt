@@ -11846,7 +11846,15 @@ const syncNow = async ({ ya, notify, rerender }) => {
 
   try {
     const result = await syncBackupV7({ reason: 'manual_save', includeSettings: true });
-    notify?.success?.(`Синхронизация завершена ✅ Загружено ranges: ${result.push.uploaded}, получено: ${result.pull.applied}`);
+    const quarantined = Array.isArray(result.quarantine) ? result.quarantine.length : 0;
+    const remaining = Number(result.pull?.remaining || 0);
+    const pages = Number(result.pull?.pages || 1);
+    const suffix = quarantined
+      ? ` · изолировано цепочек: ${quarantined}`
+      : remaining > 0
+        ? ` · осталось ranges: ${remaining}`
+        : '';
+    notify?.success?.(`Синхронизация завершена ✅ Загружено: ${result.push.uploaded}, получено: ${result.pull.applied}, страниц: ${pages}${suffix}`);
     rerender?.();
   } catch (error) {
     const message = String(error?.message || '');
