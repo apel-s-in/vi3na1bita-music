@@ -122,6 +122,9 @@
       await import('./analytics/favorite-mirror.js').then(m => m.favoriteMirrorService?.initialize?.());
     } catch {}
     try {
+      await import('./app/push/web-push.js').then(m => m.initWebPushLeaseRefresh?.());
+    } catch {}
+    try {
       await import('./analytics/backup-sync-engine.js').then(m => m.initBackupSyncEngine());
     } catch {}
     const rn = n => W[n]?.initialize?.();
