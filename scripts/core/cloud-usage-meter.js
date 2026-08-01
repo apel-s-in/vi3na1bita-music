@@ -11,6 +11,7 @@ const safe = value => String(value == null ? '' : value).trim();
 const number = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const bytes = value => encoder.encode(typeof value === 'string' ? value : JSON.stringify(value ?? null)).byteLength;
 const correlationKey = () => `cu_${crypto.randomUUID().replace(/-/g, '')}`;
+export const createCloudCorrelationKey = () => correlationKey();
 const resourceKey = async value => {
   const url = new URL(String(value || ''), location.href);
   url.hash = '';
@@ -410,7 +411,7 @@ export const meteredJsonFetch = async (url, { action = '', service = 'cloud_func
   }
 };
 
-export const recordYandexStorageResponse = ({ url, method = 'GET', response, responseBytes = 0, durationMs = 0, cached = false } = {}) => {
+export const recordYandexStorageResponse = ({ url, method = 'GET', response, responseBytes = 0, durationMs = 0, cached = false, correlationKey = '' } = {}) => {
   let host = '';
   try {
     host = new URL(url, location.href).host;
@@ -420,6 +421,7 @@ export const recordYandexStorageResponse = ({ url, method = 'GET', response, res
     service: 'object_storage',
     operation: safe(method || 'GET').toUpperCase(),
     host,
+    correlationKey: safe(correlationKey),
     status: Number(response?.status || 0),
     responseBytes: Math.floor(number(responseBytes || response?.headers?.get?.('content-length'))),
     durationMs,
