@@ -302,16 +302,16 @@ async function diskJson(method, url, token, body = null, timeoutMs = DEFAULT_TIM
   return { ...response, json: parseJson(response.text) };
 }
 async function ensureDir(token, path) {
+  const cleanPath = safe(path);
+  const usage = currentUsage();
+  if (!cleanPath) return false;
+  if (usage?.ensuredDirs?.has(cleanPath)) return true;
   bumpDiskOperation('mkdir');
-  const check = await diskJson('GET', `${API}/resources?path=${encodeURIComponent(path)}`, token, null, 10000);
-  if (check.status === 200 || check.status === 409) return true;
-  if (check.status !== 404) {
-    throw makeError(`disk_directory_check_failed:${check.status}`, [401, 403].includes(check.status) ? check.status : 502);
-  }
-  const created = await diskJson('PUT', `${API}/resources?path=${encodeURIComponent(path)}`, token, null, 10000);
+  const created = await diskJson('PUT', `${API}/resources?path=${encodeURIComponent(cleanPath)}`, token, null, 10000);
   if (![200, 201, 202, 409].includes(created.status)) {
     throw makeError(`disk_directory_create_failed:${created.status}`, [401, 403].includes(created.status) ? created.status : 502);
   }
+  usage?.ensuredDirs?.add(cleanPath);
   return true;
 }
 async function ensureDirs(token, paths) {
@@ -1161,7 +1161,8 @@ module.exports.handler = event => usageStorage.run({
   networkCalls: 0,
   requestBytes: 0,
   responseBytes: 0,
-  redirects: 0
+  redirects: 0,
+  ensuredDirs: new Set()
 }, () => handleRequest(event));
 
 //=================================================
