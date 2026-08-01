@@ -2667,6 +2667,10 @@ const readPhase = () => localStorage.getItem(LS_PHASE) === 'pull' ? 'pull' : 'pu
 const setPhase = phase => localStorage.setItem(LS_PHASE, phase === 'pull' ? 'pull' : 'push');
 const markDirty = () => localStorage.setItem(LS_DIRTY, '1');
 const clearDirty = () => localStorage.removeItem(LS_DIRTY);
+export const clearBackupV7Dirty = () => {
+  clearDirty();
+  return true;
+};
 
 export const setSyncEnabled = value => {
   localStorage.setItem(LS_SYNC, value ? '1' : '0');
@@ -2793,7 +2797,11 @@ export const initBackupSyncEngine = () => {
     if (window.__backupV7SharedApplying || event.detail?.domain === 'favorites') return;
     markDirty();
   });
-  window.addEventListener('analytics:logUpdated', markDirty);
+  window.addEventListener('analytics:logUpdated', event => {
+    const reason = String(event.detail?.reason || '');
+    if (reason.startsWith('backup_v71_')) return;
+    markDirty();
+  });
   window.addEventListener('online', () => {
     if (!document.hidden) runDueSync({ reason: 'online_due' }).catch(() => null);
   });
@@ -2824,6 +2832,7 @@ export default {
   isRestoreOrSkipDone,
   suspendSyncForAccountSwitch,
   scheduleBackupV7Sync,
+  clearBackupV7Dirty,
   syncBackupV7,
   getBackupV7Status,
   getSyncIntervalSec
