@@ -492,7 +492,40 @@ export const cleanupLegacyBackupV6 = async ({ confirmed = false } = {}) => {
   if (!result?.legacyCleanup) throw new Error('legacy_cleanup_result_missing');
   return result.legacyCleanup;
 };
+export const readBackupV7JournalEvents = async ({ sinceAt = Date.now() - 30 * 24 * 60 * 60 * 1000, limit = 2000 } = {}) => {
+  await metaDB.init();
+  const events = new Map();
+  const add = event => {
+    const eventId = safe(event?.eventId);
+    const timestamp = Number(event?.timestamp || 0);
+    if (!eventId || timestamp < sinceAt) return;
+    events.set(eventId, event);
+  };
 
+  await new Promise((resolve, reject) => {
+    const request = metaDB.db.transaction('backup_event_ranges', 'readonly').objectStore('backup_event_ranges').openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) {
+        resolve();
+        return;
+      }
+      (Array.isArray(cursor.value?.events) ? cursor.value.events : []).forEach(add);
+      cursor.continue();
+    };
+    request.onerror = () => reject(request.error);
+  });
+
+  const [warm, hot] = await Promise.all([
+    metaDB.getEvents('events_warm').catch(() => []),
+    metaDB.getEvents('events_hot').catch(() => [])
+  ]);
+  [...warm, ...hot].forEach(add);
+
+  return [...events.values()]
+    .sort((left, right) => Number(right.timestamp || 0) - Number(left.timestamp || 0))
+    .slice(0, Math.max(100, Number(limit) || 2000));
+};
 export const getBackupV7Status = async () => {
   const state = await readBackupV7State();
   const [ranges, watermarks] = await Promise.all([
@@ -512,5 +545,6 @@ export default {
   syncBackupV7,
   cleanupLegacyBackupV6,
   getBackupV7Status,
-  rebuildBackupV7LocalAnalytics
+  rebuildBackupV7LocalAnalytics,
+  readBackupV7JournalEvents
 };
