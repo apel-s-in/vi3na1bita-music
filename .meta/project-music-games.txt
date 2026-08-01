@@ -3270,8 +3270,13 @@ export default { mountFriendsBlock };
 
 //=================================================
 // FILE: /scripts/app/push/web-push.js
+import { requestSocialAction } from '../../core/social-session.js';
+import { getDeviceId } from '../../core/device-context.js';
+
 const W = window;
 const N = navigator;
+const LEASE_REFRESH_PREFIX = 'webpush:lease-refresh:v1:';
+const LEASE_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
 const timeout = (promise, ms, reason) => Promise.race([
   promise,
@@ -3366,6 +3371,49 @@ export const syncWebPushSubscription = async ({ core, ask = false, force = false
   };
 };
 
+const currentOwner = () => String(W.YandexAuth?.getProfile?.()?.yandexId || W.YandexAuth?.getProfile?.()?.id || '').trim();
+
+export const refreshExistingWebPushLease = async ({ force = false } = {}) => {
+  const owner = currentOwner();
+  if (!owner || W.YandexAuth?.getSessionStatus?.() !== 'active' || !W.YandexAuth?.isTokenAlive?.()) return { ok: false, skipped: true, reason: 'auth_required' };
+  if (!('Notification' in W) || Notification.permission !== 'granted' || !('serviceWorker' in N)) return { ok: false, skipped: true, reason: 'push_not_enabled' };
+
+  const key = `${LEASE_REFRESH_PREFIX}${owner}`;
+  const last = Number(localStorage.getItem(key) || 0);
+  if (!force && Date.now() - last < LEASE_REFRESH_MS) return { ok: true, skipped: true, reason: 'lease_fresh' };
+
+  const registration = await N.serviceWorker.getRegistration('./').catch(() => null);
+  const subscription = await registration?.pushManager?.getSubscription?.().catch(() => null);
+  if (!subscription) return { ok: false, skipped: true, reason: 'subscription_missing' };
+
+  const result = await requestSocialAction('webpush_subscribe', {
+    subscription: subscription.toJSON(),
+    deviceId: getDeviceId(),
+    userAgent: navigator.userAgent
+  });
+
+  localStorage.setItem(key, String(Date.now()));
+  return result;
+};
+
+let leaseRefreshInitialized = false;
+export const initWebPushLeaseRefresh = () => {
+  if (leaseRefreshInitialized) return;
+  leaseRefreshInitialized = true;
+
+  const refresh = () => {
+    if (!document.hidden) refreshExistingWebPushLease().catch(() => null);
+  };
+
+  W.addEventListener('yandex:auth:changed', event => {
+    if (event.detail?.status === 'active') setTimeout(refresh, 1200);
+  });
+  W.addEventListener('account:data-switched', refresh);
+  document.addEventListener('visibilitychange', refresh);
+
+  setTimeout(refresh, 1800);
+};
+
 const isIosStandalone = () => {
   const ua = String(N.userAgent || '');
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (N.platform === 'MacIntel' && N.maxTouchPoints > 1);
@@ -3377,7 +3425,7 @@ export const enableWebPush = async core => {
   return syncWebPushSubscription({ core, ask: true, force: isIosStandalone() });
 };
 
-export default { syncWebPushSubscription, enableWebPush };
+export default { syncWebPushSubscription, enableWebPush, refreshExistingWebPushLease, initWebPushLeaseRefresh };
 
 //=================================================
 // FILE: /scripts/core/config.js
