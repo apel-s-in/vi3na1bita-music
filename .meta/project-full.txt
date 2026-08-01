@@ -13449,6 +13449,12 @@ const validateListening = () => {
   contains(receipts, 'getSocialServerBackoffState');
   contains(receipts, 'deviceId: this.session.deviceId');
   contains(server, 'const LISTEN_PROGRESS_RECEIPT_LIMIT = 500');
+  contains(server, 'LISTEN_ACTIVE_RETENTION_MS');
+  contains(server, "receiptKind: 'device_segment'");
+  contains(server, 'persisted: false');
+  contains(server, 'logical_listen_session_required');
+  excludes(server, /receiptKind:\s*data\.logicalSessionId\s*\?\s*['"]device_segment['"]\s*:\s*['"]legacy_session['"]/, 'Legacy listening receipt contour снова добавлен');
+  excludes(server, /type:\s*['"]listenReceipt['"][\s\S]{0,180}receiptKind:\s*['"]device_segment['"]/, 'Device segment снова сохраняется как отдельный постоянный receipt');
   contains(server, 'const LISTEN_TIME_SESSION_LIMIT = 64');
   contains(server, 'const LISTEN_CREDIT_SEGMENT_LIMIT = 64');
   contains(server, 'listenByHourMs');
@@ -13583,6 +13589,14 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/intel/roadmap.js', 'No PIN transfer policy');
   contains('service-worker.js', 'PLAYBACK_OWNERSHIP_TRANSFERRED');
   contains('cloud-functions/vi3-webpush/index.js', 'targetDeviceId');
+  contains(server, 'WEB_PUSH_LEASE_MS');
+  contains(server, 'webPushEndpointKey');
+  contains(server, 'removeDeviceWebPushSubscriptions');
+  contains(server, 'transferredEndpoint');
+  contains('cloud-functions/vi3-webpush/index.js', 'subscriptionLeaseExpiresAt');
+  contains('cloud-functions/vi3-webpush/index.js', 'expiredSubscriptionsDeleted');
+  contains('scripts/app/push/web-push.js', 'refreshExistingWebPushLease');
+  contains('scripts/app/push/web-push.js', 'LEASE_REFRESH_MS');
   contains('cloud-functions/vi3-signaling/index.js', "kind: 'PLAYBACK_TRANSFERRED'");
   contains('scripts/ci/generate-listen-catalog.mjs', 'trackVersion');
   contains('scripts/ci/generate-listen-catalog.mjs', "createHash('sha256')");
