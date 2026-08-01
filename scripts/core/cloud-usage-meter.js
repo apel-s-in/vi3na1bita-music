@@ -26,6 +26,14 @@ function saveState() {
 }
 
 const keyOf = row => [safe(row.service), safe(row.operation), safe(row.action || row.host)].join(':');
+const normalizeServerUsage = raw => ({
+  queryCount: Math.max(0, Math.floor(Number(raw?.queryCount || 0))),
+  casAttempts: Math.max(0, Math.floor(Number(raw?.casAttempts || 0))),
+  casConflicts: Math.max(0, Math.floor(Number(raw?.casConflicts || 0))),
+  internalWebPushCalls: Math.max(0, Math.floor(Number(raw?.internalWebPushCalls || 0))),
+  durationMs: Math.max(0, Number(raw?.durationMs || 0)),
+  responseBytes: Math.max(0, Number(raw?.responseBytes || 0))
+});
 
 export const recordCloudUsage = row => {
   const item = {
@@ -40,6 +48,7 @@ export const recordCloudUsage = row => {
     exact: row?.exact === true,
     estimated: row?.estimated === true,
     cached: row?.cached === true,
+    serverUsage: normalizeServerUsage(row?.serverUsage),
     at: Date.now()
   };
   const key = keyOf(item);
@@ -56,6 +65,12 @@ export const recordCloudUsage = row => {
     cacheHits: 0,
     exactCalls: 0,
     estimatedCalls: 0,
+    queryCount: 0,
+    casAttempts: 0,
+    casConflicts: 0,
+    internalWebPushCalls: 0,
+    serverDurationMs: 0,
+    serverUsageCalls: 0,
     lastAt: 0
   };
   total.calls++;
@@ -66,6 +81,12 @@ export const recordCloudUsage = row => {
   total.cacheHits += item.cached ? 1 : 0;
   total.exactCalls += item.exact ? 1 : 0;
   total.estimatedCalls += item.estimated ? 1 : 0;
+  total.queryCount = Number(total.queryCount || 0) + item.serverUsage.queryCount;
+  total.casAttempts = Number(total.casAttempts || 0) + item.serverUsage.casAttempts;
+  total.casConflicts = Number(total.casConflicts || 0) + item.serverUsage.casConflicts;
+  total.internalWebPushCalls = Number(total.internalWebPushCalls || 0) + item.serverUsage.internalWebPushCalls;
+  total.serverDurationMs = Number(total.serverDurationMs || 0) + item.serverUsage.durationMs;
+  total.serverUsageCalls = Number(total.serverUsageCalls || 0) + (row?.serverUsage ? 1 : 0);
   total.lastAt = item.at;
   state.totals[key] = total;
   state.recent = [item, ...state.recent].slice(0, MAX_RECENT);
@@ -96,6 +117,7 @@ export const meteredJsonFetch = async (url, { action = '', service = 'cloud_func
       requestBytes: bytes(requestBody),
       responseBytes: bytes(responseText),
       durationMs: performance.now() - startedAt,
+      serverUsage: result?.usage,
       exact: true
     });
     return { response, result, responseText };
@@ -161,12 +183,18 @@ export const getCloudUsageSnapshot = () => {
       errors: rows.reduce((sum, row) => sum + Number(row.errors || 0), 0),
       requestBytes: rows.reduce((sum, row) => sum + Number(row.requestBytes || 0), 0),
       responseBytes,
+      queryCount: rows.reduce((sum, row) => sum + Number(row.queryCount || 0), 0),
+      casAttempts: rows.reduce((sum, row) => sum + Number(row.casAttempts || 0), 0),
+      casConflicts: rows.reduce((sum, row) => sum + Number(row.casConflicts || 0), 0),
+      internalWebPushCalls: rows.reduce((sum, row) => sum + Number(row.internalWebPushCalls || 0), 0),
+      serverDurationMs: rows.reduce((sum, row) => sum + Number(row.serverDurationMs || 0), 0),
+      serverUsageCalls: rows.reduce((sum, row) => sum + Number(row.serverUsageCalls || 0), 0),
       observedCostRub: observedCost,
       projected1000Rub: observedCost * 1000
     },
     unknown: [
-      'YDB Request Units внутри функций',
-      'тарифицированное время и память Cloud Functions',
+      'YDB Request Units: queryCount не является RU',
+      'тарифицированное время и память Cloud Functions: durationMs — wall time функции, а не официальный биллинг',
       'cold starts',
       'Cloud Logging',
       'внутренние вызовы vi3-signaling → vi3-webpush',
