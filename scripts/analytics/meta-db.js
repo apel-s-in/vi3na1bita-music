@@ -15,7 +15,10 @@ export const META_DB_STORES = Object.freeze([
   'backup_mutations',
   'backup_sync_state',
   'backup_event_ranges',
-  'backup_chain_watermarks'
+  'backup_chain_watermarks',
+  'backup_recovery_checkpoints',
+  'backup_chain_quarantine',
+  'backup_stats_rollups'
 ]);
 
 export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
@@ -26,13 +29,14 @@ export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
   'backup_known_ranges',
   'backup_pending_ranges',
   'backup_mutations',
-  'backup_sync_state',
   'backup_event_ranges',
-  'backup_chain_watermarks'
+  'backup_chain_watermarks',
+  'backup_chain_quarantine',
+  'backup_stats_rollups'
 ]);
 
 export class MetaDB {
-  constructor() { this.dbName = 'MetaDB_v4'; this.version = 4; this.db = null; }
+  constructor() { this.dbName = 'MetaDB_v4'; this.version = 5; this.db = null; }
   async init() {
     if (this.db) return this.db;
     return window.Utils.func.memoAsyncOnce('analytics:meta-db:init', () => new Promise((res, rej) => {
@@ -43,10 +47,12 @@ export class MetaDB {
         ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
-        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime', 'backup_pending_ranges', 'backup_mutations', 'backup_sync_state'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
+        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime', 'backup_pending_ranges', 'backup_mutations', 'backup_sync_state', 'backup_recovery_checkpoints'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
         if (!db.objectStoreNames.contains('backup_known_ranges')) db.createObjectStore('backup_known_ranges', { keyPath: 'rangeKey' });
         if (!db.objectStoreNames.contains('backup_event_ranges')) db.createObjectStore('backup_event_ranges', { keyPath: 'rangeKey' });
         if (!db.objectStoreNames.contains('backup_chain_watermarks')) db.createObjectStore('backup_chain_watermarks', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('backup_chain_quarantine')) db.createObjectStore('backup_chain_quarantine', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('backup_stats_rollups')) db.createObjectStore('backup_stats_rollups', { keyPath: 'rangeKey' });
       };
       req.onsuccess = () => res(this.db = req.result);
       req.onerror = () => rej(req.error);
