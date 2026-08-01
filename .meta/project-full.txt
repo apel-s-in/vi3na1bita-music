@@ -15282,7 +15282,8 @@ let playbackCoordination = { known: false, required: false, reason: 'not_checked
 const coalescedActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get']);
 const quietBackgroundActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get', 'presence_heartbeat', 'friends_snapshot', 'presence_batch', 'push_poll', 'friend_list', 'friend_status_check', 'leaderboard_v2_get', 'ranked_stats_get']);
 const actionRequests = new Map();
-let playbackClaimQueue = Promise.resolve();
+const serializedPlaybackActions = new Set(['playback_claim', 'playback_release', 'playback_transfer_prepare', 'playback_transfer_commit', 'listen_session_start', 'listen_session_heartbeat', 'listen_session_complete', 'music_feature_use']);
+let playbackWriteQueue = Promise.resolve();
 const safe = value => String(value == null ? '' : value).trim();
 const readTimezonePolicyRevision = yandexId => {
   try {
@@ -15462,16 +15463,16 @@ export const requestSocialAction = (action, data = {}, { retryAuth = true } = {}
       throw error;
     }
   };
-  const execute = cleanAction === 'playback_claim'
-    ? playbackClaimQueue.catch(() => null).then(run)
+  const execute = serializedPlaybackActions.has(cleanAction)
+    ? playbackWriteQueue.catch(() => null).then(run)
     : run();
   const pending = execute.finally(() => {
     if (requestKey && actionRequests.get(requestKey) === pending) {
       actionRequests.delete(requestKey);
     }
   });
-  if (cleanAction === 'playback_claim') {
-    playbackClaimQueue = pending.catch(() => null);
+  if (serializedPlaybackActions.has(cleanAction)) {
+    playbackWriteQueue = pending.catch(() => null);
   }
   if (requestKey) actionRequests.set(requestKey, pending);
   return pending;
