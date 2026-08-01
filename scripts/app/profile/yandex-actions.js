@@ -1,4 +1,4 @@
-import { syncBackupV7 } from '../../analytics/backup-v7-sync.js';
+import { clearBackupV7Dirty, syncBackupV7 } from '../../analytics/backup-sync-engine.js';
 import { openBackupInfoModal } from './backup-info-modal.js';
 import { renderSyncLogRow, esc } from './profile-render-kit.js';
 
@@ -80,6 +80,7 @@ const syncNow = async ({ ya, notify, rerender }) => {
 
   try {
     const result = await syncBackupV7({ reason: 'manual_save', includeSettings: true });
+    clearBackupV7Dirty();
     const quarantined = Array.isArray(result.quarantine) ? result.quarantine.length : 0;
     const remaining = Number(result.pull?.remaining || 0);
     const pages = Number(result.pull?.pages || 1);
