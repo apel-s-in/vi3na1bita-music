@@ -3274,6 +3274,8 @@ async function actionLoyaltyVacationSet(event, body) {
 }
 const LISTEN_RECEIPT_VERSION = 1;
 const LISTEN_VALID_MIN_SEC = 25;
+const LISTEN_SHORT_COMPLETION_MS = LISTEN_VALID_MIN_SEC * 1000;
+const LOGICAL_START_TOLERANCE_MS = 6000;
 const LISTEN_SESSION_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const LISTEN_ACTIVE_RETENTION_MS = CFG.listenSessionMaxMs + CFG.listenBackgroundMaxGapMs + 60 * 60 * 1000;
 const LISTEN_PROGRESS_RECEIPT_LIMIT = 500;
@@ -3652,7 +3654,7 @@ async function finalizeLogicalListen(logicalRaw) {
   }
   const requiredCoverageMs = Math.floor(logical.durationMs * LOGICAL_COVERAGE_REQUIRED_RATIO);
   const valid = logical.acceptedCreditMs >= LISTEN_VALID_MIN_SEC * 1000;
-  const full = logical.reachedEndNaturally && !logical.invalidated && logical.initialStartedPositionMs <= 2000 && logical.finalPositionMs >= Math.max(0, logical.durationMs - 3000) && logical.coveredMs >= requiredCoverageMs && logical.acceptedCreditMs >= requiredCoverageMs && logical.maxGapMs <= LOGICAL_COVERAGE_MAX_GAP_MS;
+  const full = logical.reachedEndNaturally && !logical.invalidated && logical.initialStartedPositionMs <= LOGICAL_START_TOLERANCE_MS && logical.finalPositionMs >= Math.max(0, logical.durationMs - 3000) && logical.coveredMs >= requiredCoverageMs && logical.acceptedCreditMs >= requiredCoverageMs && logical.maxGapMs <= LOGICAL_COVERAGE_MAX_GAP_MS;
   const receipt = {
     version: LISTEN_RECEIPT_VERSION,
     receiptId,
@@ -4054,6 +4056,11 @@ function publicAchievementProgress(progress) {
     updatedAt: data.updatedAt
   };
 }
+function publicAchievementProgressCompact(progress) {
+  const result = publicAchievementProgress(progress);
+  delete result.confirmedListeningStats;
+  return result;
+}
 async function persistListenSession(session) {
   const data = normalizeListenSession(session);
   await kvPut({ pk: listenSessionKey(data.playerId, data.sessionId), type: 'listenSession', owner: data.playerId, expiresAt: now() + LISTEN_SESSION_RETENTION_MS, data });
@@ -4381,6 +4388,7 @@ async function finalizeListenSession(session) {
   const logical = await syncLogicalListenSession(data);
   const appliedTime = await applyVerifiedListenTimeProgress(data);
   const observedSec = Math.max(0, Math.floor(data.observedMs / 1000));
+  const valid = data.observedMs >= LISTEN_SHORT_COMPLETION_MS;
   const segmentReceipt = {
     version: LISTEN_RECEIPT_VERSION,
     receiptKind: 'device_segment',
@@ -4397,6 +4405,8 @@ async function finalizeListenSession(session) {
     startedPosition: data.startedPosition,
     finalPosition: data.lastPosition,
     observedSec,
+    valid,
+    full: false,
     acceptedHeartbeats: data.acceptedHeartbeats,
     rejectedHeartbeats: data.rejectedHeartbeats,
     completionReason: data.completionReason,
@@ -4404,11 +4414,14 @@ async function finalizeListenSession(session) {
     completedAt: data.completedAt
   };
 
-  const logicalFinalized = logical?.status === 'completed'
-    ? await finalizeLogicalListen(logical)
-    : null;
+  const shouldFinalizeLogical = logical?.status === 'completed' && (data.completionReason === 'ended' || valid);
+  const logicalFinalized = shouldFinalizeLogical ? await finalizeLogicalListen(logical) : null;
   const progress = logicalFinalized?.progress || appliedTime.progress;
-  const rewards = logicalFinalized?.rewards || await reconcileAchievementRewards(data.playerId, progress);
+  const previousTotalSec = Math.floor(appliedTime.previousTotalListenMs / 1000);
+  const crossedTimeReward = buildTimeRewards(progress.totalSec).some(reward => reward.target > previousTotalSec && reward.target <= progress.totalSec);
+  const rewards = logicalFinalized?.rewards || (crossedTimeReward
+    ? await reconcileAchievementRewards(data.playerId, progress, { metrics: ['totalSec'] })
+    : { enabled: true, grants: [], wallet: null });
 
   return {
     receipt: logicalFinalized?.receipt || segmentReceipt,
@@ -4533,9 +4546,7 @@ async function actionListenSessionHeartbeat(event, body) {
     if (!(await kvCompareAndPut({ row, type: 'listenActive', owner: playerId, expiresAt: now() + LISTEN_ACTIVE_RETENTION_MS, data: observation.session }))) {
       continue;
     }
-    await requirePlaybackFence(event, body);
     const playback = await renewPlaybackFence(fenced.auth, body, observation.session.lastPosition);
-    const logical = await syncLogicalListenSession(observation.session);
     const appliedTime = await applyVerifiedListenTimeProgress(observation.session);
     const previousTotalSec = Math.floor(appliedTime.previousTotalListenMs / 1000);
     const currentTotalSec = appliedTime.progress.totalSec;
@@ -4553,9 +4564,9 @@ async function actionListenSessionHeartbeat(event, body) {
       loyaltyRewards: loyalty?.loyaltyRewards || [],
       loyalty: loyalty?.loyalty || null,
       wallet: loyalty?.wallet ? publicShardWallet(loyalty.wallet) : rewards.wallet ? publicShardWallet(rewards.wallet) : null,
-      progress: publicAchievementProgress(appliedTime.progress),
+      progress: publicAchievementProgressCompact(appliedTime.progress),
       playback: publicPlaybackState(playback, fenced.auth.deviceId),
-      logical: publicLogicalListen(logical),
+      logical: null,
       session: publicListenSession(observation.session)
     };
   }
@@ -4583,7 +4594,7 @@ async function actionListenSessionComplete(event, body) {
     }
     if (current.status === 'completed') {
       const finalized = await finalizeListenSession(current);
-      const loyalty = finalized.receipt.observedSec > 0 ? await applyLoyaltyActivity(playerId, { activityId: `loyalty:listen:${sessionId}`, kind: 'listening', deviceId: current.deviceId }) : null;
+      const loyalty = finalized.receipt.valid === true ? await applyLoyaltyActivity(playerId, { activityId: `loyalty:listen:${sessionId}`, kind: 'listening', deviceId: current.deviceId }) : null;
       return {
         ok: true,
         duplicate: true,
@@ -4620,7 +4631,7 @@ async function actionListenSessionComplete(event, body) {
     }
     const finalized = await finalizeListenSession(completed);
     if (useActive) await kvDelete(listenActiveKey(playerId, completed.deviceId)).catch(() => null);
-    const loyalty = finalized.receipt.observedSec > 0 ? await applyLoyaltyActivity(playerId, { activityId: `loyalty:listen:${sessionId}`, kind: 'listening', deviceId: completed.deviceId }) : null;
+    const loyalty = finalized.receipt.valid === true ? await applyLoyaltyActivity(playerId, { activityId: `loyalty:listen:${sessionId}`, kind: 'listening', deviceId: completed.deviceId }) : null;
     return {
       ok: true,
       duplicate: false,
