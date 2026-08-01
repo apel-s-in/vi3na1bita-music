@@ -10,7 +10,7 @@ const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const GAME_SIGNALING_SCOPES = Object.freeze({
-  tower: new Set(['player_register', 'presence_heartbeat', 'friend_status_check', 'presence_batch', 'friend_list', 'profile_get', 'rtc_config', 'leaderboard_v2_get']),
+  tower: new Set(['player_register', 'presence_heartbeat', 'friends_snapshot', 'friend_status_check', 'presence_batch', 'friend_list', 'profile_get', 'rtc_config', 'leaderboard_v2_get']),
   war_hearts: new Set([
     'player_register',
     'presence_heartbeat',
