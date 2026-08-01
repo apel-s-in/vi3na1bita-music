@@ -125,7 +125,7 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, backup-delta-contract.js, backup-event-cleanup.js, backup-sync-engine.js, backup-v7-range.js, backup-v7-sync.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, backup-delta-contract.js, backup-event-cleanup.js, backup-sync-engine.js, backup-v7-range.js, backup-v7-recovery.js, backup-v7-sync.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, storage-merge-utils.js, storage-merge.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
@@ -3078,6 +3078,85 @@ export default {
 };
 
 //=================================================
+// FILE: /scripts/analytics/backup-v7-recovery.js
+// Backup v7 materialization checkpoint.
+// Не управляет playback и не содержит физических audio blobs.
+import { metaDB } from './meta-db.js';
+import { exportAccountCachePolicies, applyAccountCachePolicies } from '../offline/cache-db.js';
+
+const CHECKPOINT_KEY = 'latest';
+const safe = value => String(value == null ? '' : value).trim();
+
+const readRows = async store => metaDB.getStoreAll(store).catch(() => []);
+
+const replaceRows = async (store, rows = []) => {
+  await metaDB.init();
+  return new Promise((resolve, reject) => {
+    const tx = metaDB.db.transaction(store, 'readwrite');
+    const objectStore = tx.objectStore(store);
+    objectStore.clear();
+    (Array.isArray(rows) ? rows : []).forEach(row => objectStore.put(row));
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error(`checkpoint_restore_failed:${store}`));
+  });
+};
+
+export const createBackupV7Checkpoint = async ({ reason = 'backup_v71_materialization' } = {}) => {
+  const [stats, global, eventsHot, eventsWarm, watermarks, cachePolicies] = await Promise.all([
+    readRows('stats'),
+    readRows('global'),
+    readRows('events_hot'),
+    readRows('events_warm'),
+    readRows('backup_chain_watermarks'),
+    exportAccountCachePolicies().catch(() => ({}))
+  ]);
+  const checkpoint = {
+    version: 1,
+    checkpointId: `checkpoint_${crypto.randomUUID()}`,
+    reason: safe(reason),
+    createdAt: Date.now(),
+    localStorage: {
+      playlists: localStorage.getItem('sc3:playlists'),
+      settingsTemplateDevice: localStorage.getItem('backup:v7:settings-template-device')
+    },
+    stats,
+    global,
+    eventsHot,
+    eventsWarm,
+    watermarks,
+    cachePolicies
+  };
+  await metaDB.setStoreValue('backup_recovery_checkpoints', CHECKPOINT_KEY, checkpoint);
+  return checkpoint;
+};
+
+export const restoreBackupV7Checkpoint = async checkpointRaw => {
+  const checkpoint = checkpointRaw || (await metaDB.getStoreValue('backup_recovery_checkpoints', CHECKPOINT_KEY).catch(() => null))?.value;
+  if (!checkpoint?.checkpointId) throw new Error('backup_v71_checkpoint_missing');
+  await Promise.all([
+    replaceRows('stats', checkpoint.stats),
+    replaceRows('global', checkpoint.global),
+    replaceRows('events_hot', checkpoint.eventsHot),
+    replaceRows('events_warm', checkpoint.eventsWarm),
+    replaceRows('backup_chain_watermarks', checkpoint.watermarks)
+  ]);
+  if (checkpoint.localStorage?.playlists == null) localStorage.removeItem('sc3:playlists');
+  else localStorage.setItem('sc3:playlists', checkpoint.localStorage.playlists);
+  if (checkpoint.localStorage?.settingsTemplateDevice == null) localStorage.removeItem('backup:v7:settings-template-device');
+  else localStorage.setItem('backup:v7:settings-template-device', checkpoint.localStorage.settingsTemplateDevice);
+  await applyAccountCachePolicies(checkpoint.cachePolicies || {}).catch(() => null);
+  window.dispatchEvent(new CustomEvent('backup:v7:checkpoint-restored', { detail: { checkpointId: checkpoint.checkpointId, reason: checkpoint.reason } }));
+  return checkpoint;
+};
+
+export const clearBackupV7Checkpoint = () => metaDB.tx('backup_recovery_checkpoints', 'readwrite', store => store.delete(CHECKPOINT_KEY));
+
+export const getBackupV7Checkpoint = async () => (await metaDB.getStoreValue('backup_recovery_checkpoints', CHECKPOINT_KEY).catch(() => null))?.value || null;
+
+export default { createBackupV7Checkpoint, restoreBackupV7Checkpoint, clearBackupV7Checkpoint, getBackupV7Checkpoint };
+
+//=================================================
 // FILE: /scripts/analytics/backup-v7-sync.js
 // Backup v7.1 sync engine.
 // Не управляет playback. Raw ranges являются источником общей локальной аналитики.
@@ -5120,7 +5199,10 @@ export const META_DB_STORES = Object.freeze([
   'backup_mutations',
   'backup_sync_state',
   'backup_event_ranges',
-  'backup_chain_watermarks'
+  'backup_chain_watermarks',
+  'backup_recovery_checkpoints',
+  'backup_chain_quarantine',
+  'backup_stats_rollups'
 ]);
 
 export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
@@ -5131,13 +5213,14 @@ export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
   'backup_known_ranges',
   'backup_pending_ranges',
   'backup_mutations',
-  'backup_sync_state',
   'backup_event_ranges',
-  'backup_chain_watermarks'
+  'backup_chain_watermarks',
+  'backup_chain_quarantine',
+  'backup_stats_rollups'
 ]);
 
 export class MetaDB {
-  constructor() { this.dbName = 'MetaDB_v4'; this.version = 4; this.db = null; }
+  constructor() { this.dbName = 'MetaDB_v4'; this.version = 5; this.db = null; }
   async init() {
     if (this.db) return this.db;
     return window.Utils.func.memoAsyncOnce('analytics:meta-db:init', () => new Promise((res, rej) => {
@@ -5148,10 +5231,12 @@ export class MetaDB {
         ['events_hot', 'events_warm'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'eventId' }));
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
-        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime', 'backup_pending_ranges', 'backup_mutations', 'backup_sync_state'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
+        ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime', 'backup_pending_ranges', 'backup_mutations', 'backup_sync_state', 'backup_recovery_checkpoints'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
         if (!db.objectStoreNames.contains('backup_known_ranges')) db.createObjectStore('backup_known_ranges', { keyPath: 'rangeKey' });
         if (!db.objectStoreNames.contains('backup_event_ranges')) db.createObjectStore('backup_event_ranges', { keyPath: 'rangeKey' });
         if (!db.objectStoreNames.contains('backup_chain_watermarks')) db.createObjectStore('backup_chain_watermarks', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('backup_chain_quarantine')) db.createObjectStore('backup_chain_quarantine', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('backup_stats_rollups')) db.createObjectStore('backup_stats_rollups', { keyPath: 'rangeKey' });
       };
       req.onsuccess = () => res(this.db = req.result);
       req.onerror = () => rej(req.error);
