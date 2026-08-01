@@ -3258,6 +3258,9 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
     if (key && !unique.has(key)) unique.set(key, range);
   }
 
+  const existingWatermarks = new Map(
+    (await getAllRows('backup_chain_watermarks')).map(row => [safe(row.key || `${row.deviceId}:${row.chainId}`), row])
+  );
   const groups = new Map();
   for (const range of unique.values()) {
     const key = chainKey(range);
@@ -3272,9 +3275,27 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
     const ordered = chainRanges.sort((left, right) => num(left.fromSeq) - num(right.fromSeq));
     try {
       const chainVerified = [];
+      const base = existingWatermarks.get(key) || null;
       for (const range of ordered) {
         const checked = await verifyBackupV7Range(range, { ownerYandexIdHash });
         const previous = chainVerified[chainVerified.length - 1];
+
+        if (!previous && base) {
+          if (Number(checked.toSeq) <= Number(base.toSeq || 0)) {
+            if (Number(checked.toSeq) === Number(base.toSeq || 0) && safe(checked.hash) !== safe(base.lastRangeHash)) {
+              throw new Error('backup_v71_existing_watermark_hash_mismatch');
+            }
+            continue;
+          }
+          if (Number(checked.fromSeq) !== Number(base.toSeq || 0) + 1) throw new Error('backup_v71_chain_gap');
+          if (safe(checked.previousRangeHash) !== safe(base.lastRangeHash)) throw new Error('backup_v71_previous_range_hash_mismatch');
+        }
+
+        if (!previous && !base) {
+          if (Number(checked.fromSeq) !== 1) throw new Error('backup_v71_chain_must_start_at_one');
+          if (safe(checked.previousRangeHash)) throw new Error('backup_v71_genesis_previous_hash_invalid');
+        }
+
         if (previous && Number(checked.fromSeq) !== Number(previous.toSeq) + 1) throw new Error('backup_v71_chain_gap');
         if (previous && safe(checked.previousRangeHash) !== safe(previous.hash)) throw new Error('backup_v71_previous_range_hash_mismatch');
         chainVerified.push(checked);
@@ -3319,12 +3340,14 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
       };
     });
 
+    const quarantinedKeys = new Set(quarantined.map(item => safe(item.key)));
     (Array.isArray(watermarks) ? watermarks : []).forEach(item => {
       const deviceId = safe(item?.deviceId);
       const chainId = safe(item?.chainId);
-      if (!deviceId || !chainId) return;
+      const key = `${deviceId}:${chainId}`;
+      if (!deviceId || !chainId || quarantinedKeys.has(key)) return;
       watermarkStore.put({
-        key: `${deviceId}:${chainId}`,
+        key,
         deviceId,
         chainId,
         toSeq: num(item.toSeq),
@@ -3419,6 +3442,67 @@ const applySettingsDocument = async settings => {
   return { applied, deferred: false };
 };
 
+const validateBackupAuthorization = ({ result, deviceId, ownerYandexIdHash }) => {
+  const authorization = result?.authorization;
+  if (!authorization?.deviceId || !authorization?.ownerYandexIdHash) throw new Error('backup_v71_authorization_invalid');
+  if (safe(authorization.deviceId) !== safe(deviceId)) throw new Error('backup_v71_device_identity_mismatch');
+  if (safe(authorization.ownerYandexIdHash) !== safe(ownerYandexIdHash)) throw new Error('backup_v71_owner_identity_mismatch');
+  if (authorization.initializationRequired) throw new Error('backup_device_initialization_required');
+  return authorization;
+};
+
+const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdHash, maxPages = MAX_PULL_PAGES_PER_SLOT } = {}) => {
+  const pages = [];
+  let request = { ...firstRequest };
+  let storedTotal = 0;
+  let quarantined = [];
+  let previousWatermarkSignature = stableStringify(await readWatermarks());
+
+  for (let page = 0; page < Math.max(1, Math.floor(Number(maxPages) || 1)); page++) {
+    const result = await YandexBackupV7.sync(request);
+    validateBackupAuthorization({ result, deviceId: currentDeviceId, ownerYandexIdHash });
+
+    const ranges = Array.isArray(result?.pull?.ranges) ? result.pull.ranges : [];
+    const stored = await saveVerifiedRanges({
+      ranges: page === 0 ? [...(request.pushRanges || []), ...ranges] : ranges,
+      watermarks: result?.pull?.watermarks || [],
+      currentDeviceId,
+      ownerYandexIdHash
+    });
+
+    storedTotal += Number(stored.inserted || 0);
+    quarantined = [...quarantined, ...(stored.quarantined || [])];
+    pages.push({ result, stored });
+
+    if (Number(result?.pull?.remaining || 0) <= 0) {
+      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, exhausted: false };
+    }
+
+    const watermarks = await readWatermarks();
+    const nextSignature = stableStringify(watermarks);
+    if (nextSignature === previousWatermarkSignature) {
+      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, exhausted: true, stoppedReason: 'no_watermark_progress' };
+    }
+    previousWatermarkSignature = nextSignature;
+
+    request = {
+      pushRanges: [],
+      watermarks,
+      knownSettingsHash: safe(result?.settings?.pushed?.hash || result?.settings?.current?.hash || request.knownSettingsHash),
+      knownSharedHash: safe(result?.shared?.hash || request.knownSharedHash),
+      shared: null,
+      settings: null,
+      settingsTemplateDeviceId: '',
+      includeDeviceCatalog: false,
+      legacyCleanup: null,
+      maxPullRanges: request.maxPullRanges
+    };
+  }
+
+  const result = pages[pages.length - 1]?.result || null;
+  return { pages, firstResult: pages[0]?.result || null, result, storedTotal, quarantined, exhausted: Number(result?.pull?.remaining || 0) > 0, stoppedReason: 'page_limit' };
+};
+
 const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false, legacyCleanup = null } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
@@ -3435,102 +3519,104 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
 
   const state = await readBackupV7State();
   const batch = pushEnabled ? await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash }) : null;
-  const watermarks = await readWatermarks();
-
   const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
   const localSettingsHash = settingsPayload ? await settingsSemanticHash(settingsPayload) : '';
   const sharedPayload = pushEnabled ? await buildBackupV7SharedDocument() : null;
   const settingsTemplateDeviceId = safe(localStorage.getItem(TEMPLATE_KEY));
   const sendSettings = !!settingsPayload && !settingsTemplateDeviceId && localSettingsHash !== state.settingsLocalHash;
 
-  const result = await YandexBackupV7.sync({
-    pushRanges: batch?.ranges || [],
-    watermarks,
-    knownSettingsHash: state.settingsServerHash,
-    knownSharedHash: state.sharedServerHash,
-    shared: sharedPayload,
-    settings: sendSettings ? settingsPayload : null,
-    settingsTemplateDeviceId,
-    includeDeviceCatalog: includeDeviceCatalog === true,
-    legacyCleanup: legacyCleanup && typeof legacyCleanup === 'object' && !Array.isArray(legacyCleanup) ? legacyCleanup : null,
-    maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
-  });
-
-  const authorization = result?.authorization;
-  if (!authorization?.deviceId || !authorization?.ownerYandexIdHash) {
-    throw new Error('backup_v71_authorization_invalid');
-  }
-  if (safe(authorization.deviceId) !== deviceId) throw new Error('backup_v71_device_identity_mismatch');
-  if (safe(authorization.ownerYandexIdHash) !== ownerYandexIdHash) throw new Error('backup_v71_owner_identity_mismatch');
-  if (authorization.initializationRequired) throw new Error('backup_device_initialization_required');
-
-  const pulledRanges = Array.isArray(result?.pull?.ranges) ? result.pull.ranges : [];
-  const stored = await saveVerifiedRanges({
-    ranges: [...(batch?.ranges || []), ...pulledRanges],
-    watermarks: result?.pull?.watermarks || [],
+  const exchange = await pullBackupV7Pages({
+    firstRequest: {
+      pushRanges: batch?.ranges || [],
+      watermarks: await readWatermarks(),
+      knownSettingsHash: state.settingsServerHash,
+      knownSharedHash: state.sharedServerHash,
+      shared: sharedPayload,
+      settings: sendSettings ? settingsPayload : null,
+      settingsTemplateDeviceId,
+      includeDeviceCatalog: includeDeviceCatalog === true,
+      legacyCleanup: legacyCleanup && typeof legacyCleanup === 'object' && !Array.isArray(legacyCleanup) ? legacyCleanup : null,
+      maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
+    },
     currentDeviceId: deviceId,
-    ownerYandexIdHash
+    ownerYandexIdHash,
+    maxPages: MAX_PULL_PAGES_PER_SLOT
   });
 
+  const result = exchange.firstResult;
+  const finalResult = exchange.result || result;
+  const authorization = validateBackupAuthorization({ result, deviceId, ownerYandexIdHash });
   if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
 
   const checkpoint = await createBackupV7Checkpoint({ reason: `backup_v71_sync:${reason}` });
-  let sharedApplied = { applied: false };
-  let templateApplied = false;
-
   try {
     const sharedDocument = result?.shared?.current || null;
-    sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
-  if (settingsTemplateDeviceId && result?.settings?.template) {
-    const applied = await applySettingsDocument(result.settings.template);
-    if (!applied.deferred) {
-      templateApplied = true;
-      localStorage.removeItem(TEMPLATE_KEY);
+    const sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
+    let templateApplied = false;
+
+    if (settingsTemplateDeviceId && result?.settings?.template) {
+      const applied = await applySettingsDocument(result.settings.template);
+      if (!applied.deferred) {
+        templateApplied = true;
+        localStorage.removeItem(TEMPLATE_KEY);
+      }
     }
-  }
 
-  const serverSettingsHash = safe(
-    result?.settings?.pushed?.hash ||
-    result?.settings?.current?.hash ||
-    state.settingsServerHash
-  );
-  const at = Date.now();
+    const serverSettingsHash = safe(result?.settings?.pushed?.hash || result?.settings?.current?.hash || state.settingsServerHash);
+    const at = Date.now();
 
-  await writeBackupV7State({
-    lastSyncAt: at,
-    settingsLocalHash: sendSettings ? localSettingsHash : state.settingsLocalHash,
-    settingsServerHash: serverSettingsHash,
-    sharedServerHash: safe(result?.shared?.hash || state.sharedServerHash),
-    settingsTemplateApplied: state.settingsTemplateApplied || templateApplied,
-    lastError: ''
-  });
+    await writeBackupV7State({
+      lastSyncAt: at,
+      settingsLocalHash: sendSettings ? localSettingsHash : state.settingsLocalHash,
+      settingsServerHash: serverSettingsHash,
+      sharedServerHash: safe(result?.shared?.hash || state.sharedServerHash),
+      settingsTemplateApplied: state.settingsTemplateApplied || templateApplied,
+      lastError: ''
+    });
 
     const rebuild = await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_sync' });
     await clearBackupV7Checkpoint();
     localStorage.setItem('yandex:last_backup_local_ts', String(at));
 
-  const push = {
-    uploaded: Number(result?.push?.accepted || 0),
-    duplicate: Number(result?.push?.duplicates || 0)
-  };
-  const pull = {
-    applied: stored.inserted,
-    returned: Number(result?.pull?.returned || 0),
-    remaining: Number(result?.pull?.remaining || 0)
-  };
+    const push = {
+      uploaded: Number(result?.push?.accepted || 0),
+      duplicate: Number(result?.push?.duplicates || 0)
+    };
+    const pull = {
+      applied: exchange.storedTotal,
+      returned: exchange.pages.reduce((sum, page) => sum + Number(page.result?.pull?.returned || 0), 0),
+      remaining: Number(finalResult?.pull?.remaining || 0),
+      pages: exchange.pages.length,
+      pageLimitReached: exchange.exhausted === true,
+      stoppedReason: safe(exchange.stoppedReason)
+    };
 
-  recordSyncRevision({
-    timestamp: at,
-    domains: ['v7.1'],
-    uploadedShared: push.uploaded > 0 || push.duplicate > 0,
-    uploadedDevice: result?.settings?.pushed?.changed === true,
-    uploadedEventArchive: push.uploaded > 0,
-    reason,
-    ok: true
-  });
+    recordSyncRevision({
+      timestamp: at,
+      domains: ['v7.1'],
+      uploadedShared: push.uploaded > 0 || push.duplicate > 0,
+      uploadedDevice: result?.settings?.pushed?.changed === true,
+      uploadedEventArchive: push.uploaded > 0,
+      reason,
+      ok: true
+    });
 
-  window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok' } }));
-    return { ok: true, authorization, push, pull, rebuild, quarantine: stored.quarantined || [], shared: { applied: sharedApplied.applied === true, changed: result?.shared?.changed === true, hash: safe(result?.shared?.hash) }, legacyCleanup: result?.legacyCleanup || null, settings: result.settings || null };
+    window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok' } }));
+    return {
+      ok: true,
+      authorization,
+      push,
+      pull,
+      rebuild,
+      quarantine: exchange.quarantined,
+      shared: {
+        applied: sharedApplied.applied === true,
+        changed: result?.shared?.changed === true,
+        hash: safe(result?.shared?.hash)
+      },
+      legacyCleanup: result?.legacyCleanup || null,
+      settings: result?.settings || null
+    };
   } catch (error) {
     await restoreBackupV7Checkpoint(checkpoint).catch(() => null);
     throw error;
@@ -3541,46 +3627,6 @@ export const syncBackupV7 = options => {
   if (syncPromise) return syncPromise;
 
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'syncing' } }));
-const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdHash, maxPages = MAX_PULL_PAGES_PER_SLOT } = {}) => {
-  const pages = [];
-  let request = { ...firstRequest };
-  let storedTotal = 0;
-  let quarantined = [];
-
-  for (let page = 0; page < Math.max(1, maxPages); page++) {
-    const result = await YandexBackupV7.sync(request);
-    const ranges = Array.isArray(result?.pull?.ranges) ? result.pull.ranges : [];
-    const stored = await saveVerifiedRanges({
-      ranges: page === 0 ? [...(request.pushRanges || []), ...ranges] : ranges,
-      watermarks: result?.pull?.watermarks || [],
-      currentDeviceId,
-      ownerYandexIdHash
-    });
-    storedTotal += Number(stored.inserted || 0);
-    quarantined = [...quarantined, ...(stored.quarantined || [])];
-    pages.push({ result, stored });
-
-    if (Number(result?.pull?.remaining || 0) <= 0) {
-      return { pages, result, storedTotal, quarantined, exhausted: false };
-    }
-
-    request = {
-      pushRanges: [],
-      watermarks: await readWatermarks(),
-      knownSettingsHash: safe(result?.settings?.pushed?.hash || result?.settings?.current?.hash || request.knownSettingsHash),
-      knownSharedHash: safe(result?.shared?.hash || request.knownSharedHash),
-      shared: null,
-      settings: null,
-      settingsTemplateDeviceId: '',
-      includeDeviceCatalog: false,
-      legacyCleanup: null,
-      maxPullRanges: request.maxPullRanges
-    };
-  }
-
-  const result = pages[pages.length - 1]?.result || null;
-  return { pages, result, storedTotal, quarantined, exhausted: Number(result?.pull?.remaining || 0) > 0 };
-};
   syncPromise = runSync(options).catch(async error => {
     await writeBackupV7State({ lastError: safe(error?.message || 'backup_v71_sync_failed') }).catch(() => null);
     recordSyncRevision({ reason: options?.reason || 'autosync', ok: false, error: safe(error?.message || 'backup_v71_sync_failed') });
