@@ -21183,6 +21183,30 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
   .cloud-console-head,.cloud-console-row{grid-template-columns:minmax(0,1fr) 30px 46px 46px 28px;gap:4px}
   .cloud-console-row{padding:8px 5px}
 }
+/* Modern 30-day activity journal */
+.activity-controls{position:sticky;top:0;z-index:8;display:flex;flex-direction:column;gap:9px;padding:11px;border-radius:14px;background:rgba(15,18,24,.96);border:1px solid rgba(77,170,255,.18);box-shadow:0 8px 22px rgba(0,0,0,.28);backdrop-filter:blur(10px)}
+.activity-controls__top{display:flex;align-items:center;gap:8px}
+.activity-controls__top b{color:#eaf2ff;font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+.activity-controls__top span{flex:1;color:#6f86a8;font-size:10px;text-align:center}
+.activity-controls__top select{max-width:130px;padding:6px 7px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#161c27;color:#cfe3ff;font-size:10px}
+.activity-filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.activity-filter-row::-webkit-scrollbar{display:none}
+.activity-filter{flex:0 0 auto;cursor:pointer}
+.activity-filter input{position:absolute;opacity:0;pointer-events:none}
+.activity-filter span{display:block;padding:6px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#7185a5;font-size:10px;font-weight:800;white-space:nowrap}
+.activity-filter input:checked+span{border-color:rgba(77,170,255,.35);background:rgba(77,170,255,.14);color:#dcecff}
+.activity-search{width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:rgba(0,0,0,.2);color:#eaf2ff;font-size:12px;outline:none}
+.activity-search:focus{border-color:rgba(77,170,255,.45)}
+.activity-list{display:flex;flex-direction:column;gap:7px}
+.activity-day{position:sticky;top:142px;z-index:4;margin:5px 0 0;padding:6px 9px;border-radius:9px;background:rgba(20,27,39,.94);color:#8ab8fd;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.45px}
+#prof-logs-list{display:flex;flex-direction:column;gap:10px}
+#prof-logs-list .profile-log-row{margin:0}
+@media(max-width:360px){
+  .activity-controls__top{flex-wrap:wrap}
+  .activity-controls__top span{text-align:right}
+  .activity-controls__top select{width:100%;max-width:none}
+  .activity-day{top:174px}
+}
 
 //=================================================
 // FILE: /styles/shards.css
