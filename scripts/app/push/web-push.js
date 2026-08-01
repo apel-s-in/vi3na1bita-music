@@ -106,13 +106,13 @@ export const refreshExistingWebPushLease = async ({ force = false } = {}) => {
   if (!owner || W.YandexAuth?.getSessionStatus?.() !== 'active' || !W.YandexAuth?.isTokenAlive?.()) return { ok: false, skipped: true, reason: 'auth_required' };
   if (!('Notification' in W) || Notification.permission !== 'granted' || !('serviceWorker' in N)) return { ok: false, skipped: true, reason: 'push_not_enabled' };
 
-  const key = `${LEASE_REFRESH_PREFIX}${owner}`;
-  const last = Number(localStorage.getItem(key) || 0);
-  if (!force && Date.now() - last < LEASE_REFRESH_MS) return { ok: true, skipped: true, reason: 'lease_fresh' };
-
   const registration = await N.serviceWorker.getRegistration('./').catch(() => null);
   const subscription = await registration?.pushManager?.getSubscription?.().catch(() => null);
   if (!subscription) return { ok: false, skipped: true, reason: 'subscription_missing' };
+
+  const key = `${LEASE_REFRESH_PREFIX}${owner}`;
+  const last = Number(localStorage.getItem(key) || 0);
+  if (!force && Date.now() - last < LEASE_REFRESH_MS) return { ok: true, skipped: true, reason: 'lease_fresh' };
 
   const result = await requestSocialAction('webpush_subscribe', {
     subscription: subscription.toJSON(),
