@@ -14470,7 +14470,7 @@ let serverBackoffUntil = 0;
 let serverBackoffMs = 5000;
 let playbackCoordination = { known: false, required: false, reason: 'not_checked', activePeerCount: 0, remoteOwnerActive: false, checkedAt: 0, activeWindowMs: 0 };
 const coalescedActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get']);
-const quietBackgroundActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get', 'presence_heartbeat', 'presence_batch', 'push_poll', 'friend_list', 'friend_status_check', 'leaderboard_v2_get', 'ranked_stats_get']);
+const quietBackgroundActions = new Set(['achievement_reward_status', 'favorite_state_get', 'wallet_get', 'timezone_policy_get', 'account_device_list', 'playback_state_get', 'presence_heartbeat', 'friends_snapshot', 'presence_batch', 'push_poll', 'friend_list', 'friend_status_check', 'leaderboard_v2_get', 'ranked_stats_get']);
 const actionRequests = new Map();
 let playbackClaimQueue = Promise.resolve();
 const safe = value => String(value == null ? '' : value).trim();
