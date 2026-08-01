@@ -27,6 +27,7 @@ const CFG = {
     .filter(Boolean)
 };
 const TABLE = `${CFG.prefix}kv`;
+const WEB_PUSH_LEASE_MS = 30 * 24 * 60 * 60 * 1000;
 const safe = v => String(v == null ? '' : v).trim();
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const timingSafeEqualText = (left, right) => {
@@ -136,15 +137,21 @@ async function kvDelete(pk) {
     { '$pk': tvUtf8(pk) }
   );
 }
-function notificationTtl(kind) {
-  if (kind === 'PLAYBACK_TRANSFERRED') return 120;
-  if (kind === 'CHAT_MESSAGE') return 86400;
-  if (kind === 'LOYALTY_REMINDER') return 10800;
-  if (kind === 'LOYALTY_VACATION_ENDING' || kind === 'LOYALTY_VACATION_ENDED') return 86400;
-  if (kind === 'VOICE_CALL' || kind === 'GAME_INVITE') return 120;
-  return 3600;
+async function deleteSubscriptionRow(row) {
+  if (!row?.pk) return false;
+  const data = payload(row);
+  await kvDelete(row.pk).catch(() => null);
+  const endpointHash = safe(data.endpointHash).replace(/[^A-Za-z0-9._:-]/g, '').slice(0, 64);
+  if (endpointHash) await kvDelete(`webPushEndpoint:${endpointHash}`).catch(() => null);
+  return true;
 }
-function notificationUrgency(kind) {
+
+function subscriptionLeaseExpiresAt(row) {
+  const data = payload(row);
+  return Math.max(0, num(data.leaseExpiresAt) || num(data.updatedAt) + WEB_PUSH_LEASE_MS);
+}
+
+function notificationTtl(kind) {
   return ['CHAT_MESSAGE', 'GAME_INVITE', 'VOICE_CALL', 'PLAYBACK_TRANSFERRED', 'LOYALTY_VACATION_ENDED'].includes(kind) ? 'high' : 'normal';
 }
 async function sendToSubscription(row, notification) {
@@ -160,7 +167,7 @@ async function sendToSubscription(row, notification) {
   } catch (err) {
     const status = Number(err.statusCode || err.status || 0);
     if (status === 404 || status === 410) {
-      await kvDelete(row.pk).catch(() => null);
+      await deleteSubscriptionRow(row);
       return { ok: false, reason: 'subscription_gone', deleted: true };
     }
     return { ok: false, reason: err.message || 'webpush_error', status };
@@ -201,13 +208,30 @@ async function actionSendToPlayer(event, body) {
     ownerLabel: safe(body.ownerLabel || '').slice(0, 80),
     ownerEpoch: Math.max(0, Math.floor(num(body.ownerEpoch)))
   };
-  const allRows = await kvPrefix(`webPushSub:${playerId}:`, 20);
-  const rows = targetDeviceId ? allRows.filter(row => safe(payload(row).deviceId) === targetDeviceId) : allRows;
+  const allRows = await kvPrefix(`webPushSub:${playerId}:`, 100);
+  const at = Date.now();
+  const expired = allRows.filter(row => subscriptionLeaseExpiresAt(row) <= at);
+  for (const row of expired) await deleteSubscriptionRow(row);
+
+  const activeRows = allRows.filter(row => subscriptionLeaseExpiresAt(row) > at);
+  const rows = targetDeviceId
+    ? activeRows.filter(row => safe(payload(row).deviceId) === targetDeviceId)
+    : activeRows;
+
   const results = [];
-  for (const row of rows) {
-    results.push(await sendToSubscription(row, notification));
-  }
-  return { ok: true, playerId, targetDeviceId, subscriptions: rows.length, totalSubscriptions: allRows.length, sent: results.filter(x => x.ok).length, results };
+  for (const row of rows) results.push(await sendToSubscription(row, notification));
+
+  return {
+    ok: true,
+    playerId,
+    targetDeviceId,
+    subscriptions: rows.length,
+    totalSubscriptions: allRows.length,
+    activeSubscriptions: activeRows.length,
+    expiredSubscriptionsDeleted: expired.length,
+    sent: results.filter(item => item.ok).length,
+    results
+  };
 }
 exports.handler = async event => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: corsHeaders(event), body: '' };
