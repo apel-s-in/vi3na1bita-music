@@ -249,9 +249,6 @@
       W.playerCore.flags.shuf = !!st.shuffle;
       W.playerCore.setPlaylist(l, idx, null, { preserveOriginalPlaylist: false, preserveShuffleMode: true, deferLoad: true });
       await W.playerCore.load(idx, { autoPlay: false, resumePosition: Math.max(0, Number(st.position) || 0), dir: 1 });
-      if (st.wasPlaying) {
-        await import('./app/player/restore-gesture.js').then(module => module.armRestorePlaybackGesture({ uid })).catch(() => {});
-      }
       setTimeout(() => {
         try {
           W.PlayerUI?.updateMiniHeader?.();
