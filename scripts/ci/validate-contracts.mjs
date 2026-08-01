@@ -367,7 +367,7 @@ const validateBackupProxy = () => {
     'ownerYandexIdHash',
     'legacyEnabled: false'
   ].forEach(marker => contains(proxy, marker));
-
+  ['usageStorage', 'authorityCalls', 'diskApiCalls', 'diskOperations', 'networkCalls', 'requestBytes', 'responseBytes', 'redirects', 'responseBytesFinal'].forEach(marker => contains(proxy, marker));
   assertNoMatch([proxy], /upload_backup|upload_meta|upload_event_segment|archive_delete_segments|archive_inspect|ledger_verify|lease_acquire|lease_release/g, 'Backup proxy не содержит v6, archive, ledger или lease modes');
   assertNoMatch([proxy], /['"]v7_authorize['"]|['"]v7_push_range['"]|['"]v7_pull_ranges['"]|['"]v7_put_settings['"]|['"]v7_get_settings['"]/g, 'Раздельные v7 proxy modes удалены');
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
@@ -455,6 +455,16 @@ const main = async () => {
   contains('scripts/core/cloud-usage-meter.js', 'actionPatterns');
   contains('scripts/core/cloud-usage-meter.js', 'peakBurst10s');
   contains('scripts/core/cloud-usage-meter.js', 'metadataCoveragePct');
+  contains('scripts/core/cloud-usage-meter.js', 'correlationKey');
+  contains('scripts/core/cloud-usage-meter.js', 'initCloudNetworkObserver');
+  contains('scripts/core/cloud-usage-meter.js', 'initHowlerMediaObserver');
+  contains('scripts/core/cloud-usage-meter.js', 'unknownBytes');
+  contains('service-worker.js', 'YANDEX_CACHE_HIT');
+  contains('service-worker.js', 'YANDEX_NETWORK_FETCH');
+  contains('service-worker.js', 'X-Vi3-Correlation');
+  contains('scripts/analytics/backup-v7-recovery.js', 'createBackupV7Checkpoint');
+  contains('scripts/analytics/backup-v7-recovery.js', 'restoreBackupV7Checkpoint');
+  contains('scripts/analytics/backup-v7-sync.js', 'backup_chain_quarantine');
   contains('scripts/app/profile/settings-console-section.js', 'data-cloud-console-export');
   contains('scripts/app/profile/settings-console-section.js', 'data-cloud-console-copy');
   contains('scripts/core/social-session.js', 'single_flight_join');
