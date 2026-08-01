@@ -144,7 +144,7 @@ const corsHeaders = event => {
   const origin = headerValue(event, 'origin');
   const wildcard = CFG.allowedOrigins.includes('*');
   const allowed = wildcard ? '*' : CFG.allowedOrigins.includes(origin) ? origin : CFG.allowedOrigins[0] || '*';
-  return { 'Access-Control-Allow-Origin': allowed, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Accept, X-Yandex-Auth, X-Vi3-Session', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
+  return { 'Access-Control-Allow-Origin': allowed, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Accept, X-Yandex-Auth, X-Vi3-Session, X-Vi3-Correlation', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
 };
 const attachUsage = body => {
   const context = currentUsage();
