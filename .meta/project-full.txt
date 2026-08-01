@@ -14111,8 +14111,21 @@ const normalizeServerUsage = raw => ({
   casAttempts: Math.floor(number(raw?.casAttempts)),
   casConflicts: Math.floor(number(raw?.casConflicts)),
   internalWebPushCalls: Math.floor(number(raw?.internalWebPushCalls)),
+  authorityCalls: Math.floor(number(raw?.authorityCalls)),
+  diskApiCalls: Math.floor(number(raw?.diskApiCalls)),
+  diskOperations: {
+    list: Math.floor(number(raw?.diskOperations?.list)),
+    download: Math.floor(number(raw?.diskOperations?.download)),
+    upload: Math.floor(number(raw?.diskOperations?.upload)),
+    delete: Math.floor(number(raw?.diskOperations?.delete)),
+    mkdir: Math.floor(number(raw?.diskOperations?.mkdir))
+  },
+  networkCalls: Math.floor(number(raw?.networkCalls)),
+  networkRequestBytes: Math.floor(number(raw?.requestBytes)),
+  networkResponseBytes: Math.floor(number(raw?.responseBytes)),
+  redirects: Math.floor(number(raw?.redirects)),
   durationMs: number(raw?.durationMs),
-  responseBytes: Math.floor(number(raw?.responseBytes))
+  responseBytes: Math.floor(number(raw?.responseBytesFinal ?? raw?.responseBytes))
 });
 
 const runtimeContext = () => {
@@ -14171,6 +14184,14 @@ const aggregateEvents = events => {
       casAttempts: 0,
       casConflicts: 0,
       internalWebPushCalls: 0,
+      authorityCalls: 0,
+      diskApiCalls: 0,
+      diskListCalls: 0,
+      diskDownloadCalls: 0,
+      diskUploadCalls: 0,
+      diskDeleteCalls: 0,
+      diskMkdirCalls: 0,
+      redirects: 0,
       serverDurationMs: 0,
       serverUsageCalls: 0,
       hiddenCalls: 0,
@@ -14193,6 +14214,14 @@ const aggregateEvents = events => {
     row.casAttempts += number(item.serverUsage?.casAttempts);
     row.casConflicts += number(item.serverUsage?.casConflicts);
     row.internalWebPushCalls += number(item.serverUsage?.internalWebPushCalls);
+    row.authorityCalls += number(item.serverUsage?.authorityCalls);
+    row.diskApiCalls += number(item.serverUsage?.diskApiCalls);
+    row.diskListCalls += number(item.serverUsage?.diskOperations?.list);
+    row.diskDownloadCalls += number(item.serverUsage?.diskOperations?.download);
+    row.diskUploadCalls += number(item.serverUsage?.diskOperations?.upload);
+    row.diskDeleteCalls += number(item.serverUsage?.diskOperations?.delete);
+    row.diskMkdirCalls += number(item.serverUsage?.diskOperations?.mkdir);
+    row.redirects += number(item.serverUsage?.redirects);
     row.serverDurationMs += number(item.serverUsage?.durationMs);
     row.serverUsageCalls += item.serverUsagePresent ? 1 : 0;
     row.hiddenCalls += item.context?.visibility === 'hidden' ? 1 : 0;
@@ -14446,6 +14475,14 @@ export const getCloudUsageSnapshot = () => {
       casAttempts: rows.reduce((sum, row) => sum + row.casAttempts, 0),
       casConflicts: rows.reduce((sum, row) => sum + row.casConflicts, 0),
       internalWebPushCalls: rows.reduce((sum, row) => sum + row.internalWebPushCalls, 0),
+      authorityCalls: rows.reduce((sum, row) => sum + row.authorityCalls, 0),
+      diskApiCalls: rows.reduce((sum, row) => sum + row.diskApiCalls, 0),
+      diskListCalls: rows.reduce((sum, row) => sum + row.diskListCalls, 0),
+      diskDownloadCalls: rows.reduce((sum, row) => sum + row.diskDownloadCalls, 0),
+      diskUploadCalls: rows.reduce((sum, row) => sum + row.diskUploadCalls, 0),
+      diskDeleteCalls: rows.reduce((sum, row) => sum + row.diskDeleteCalls, 0),
+      diskMkdirCalls: rows.reduce((sum, row) => sum + row.diskMkdirCalls, 0),
+      redirects: rows.reduce((sum, row) => sum + row.redirects, 0),
       serverDurationMs: rows.reduce((sum, row) => sum + row.serverDurationMs, 0),
       serverUsageCalls: rows.reduce((sum, row) => sum + row.serverUsageCalls, 0),
       observedCostRub: observedCost,
