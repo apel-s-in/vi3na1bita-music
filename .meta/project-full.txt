@@ -14056,6 +14056,13 @@ const encoder = new TextEncoder();
 const safe = value => String(value == null ? '' : value).trim();
 const number = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const bytes = value => encoder.encode(typeof value === 'string' ? value : JSON.stringify(value ?? null)).byteLength;
+const correlationKey = () => `cu_${crypto.randomUUID().replace(/-/g, '')}`;
+const resourceKey = async value => {
+  const url = new URL(String(value || ''), location.href);
+  url.hash = '';
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(url.href));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
+};
 const empty = () => ({ version: VERSION, windowMs: WINDOW_MS, startedAt: Date.now(), updatedAt: 0, events: [], droppedEvents: 0, persistenceErrors: 0 });
 let state = readState();
 let inFlight = 0;
@@ -14323,9 +14330,17 @@ export const recordCloudUsage = row => {
     operation: safe(row?.operation || 'request'),
     action: safe(row?.action),
     host: safe(row?.host),
+    correlationKey: safe(row?.correlationKey).slice(0, 80),
+    resourceKey: safe(row?.resourceKey).slice(0, 64),
+    source: safe(row?.source || 'page'),
     status: Math.floor(number(row?.status)),
     requestBytes: Math.floor(number(row?.requestBytes)),
     responseBytes: Math.floor(number(row?.responseBytes)),
+    transferSize: Math.floor(number(row?.transferSize)),
+    encodedBodySize: Math.floor(number(row?.encodedBodySize)),
+    decodedBodySize: Math.floor(number(row?.decodedBodySize)),
+    unknownBytes: row?.unknownBytes === true,
+    rangeRequest: row?.rangeRequest === true,
     durationMs: number(row?.durationMs),
     exact: row?.exact === true,
     estimated: row?.estimated === true,
@@ -14339,7 +14354,28 @@ export const recordCloudUsage = row => {
     context: row?.context && typeof row.context === 'object' ? { ...runtimeContext(), ...row.context } : runtimeContext(),
     at: Math.floor(number(row?.at) || Date.now())
   };
-  state.events.unshift(item);
+  const duplicateIndex = item.correlationKey
+    ? state.events.findIndex(existing => existing.correlationKey === item.correlationKey && existing.service === item.service)
+    : -1;
+  if (duplicateIndex >= 0) {
+    const existing = state.events[duplicateIndex];
+    state.events[duplicateIndex] = {
+      ...existing,
+      ...item,
+      status: item.status || existing.status,
+      requestBytes: Math.max(number(existing.requestBytes), item.requestBytes),
+      responseBytes: Math.max(number(existing.responseBytes), item.responseBytes),
+      transferSize: Math.max(number(existing.transferSize), item.transferSize),
+      encodedBodySize: Math.max(number(existing.encodedBodySize), item.encodedBodySize),
+      decodedBodySize: Math.max(number(existing.decodedBodySize), item.decodedBodySize),
+      durationMs: Math.max(number(existing.durationMs), item.durationMs),
+      cached: existing.cached || item.cached,
+      unknownBytes: existing.unknownBytes && item.unknownBytes,
+      source: [...new Set([existing.source, item.source].filter(Boolean))].join('+')
+    };
+  } else {
+    state.events.unshift(item);
+  }
   pruneState();
   saveState();
   window.dispatchEvent(new CustomEvent('cloud-usage:updated'));
@@ -14365,10 +14401,13 @@ export const meteredJsonFetch = async (url, { action = '', service = 'cloud_func
   const concurrentAtStart = ++inFlight;
   maxInFlight = Math.max(maxInFlight, inFlight);
   const requestBody = typeof init.body === 'string' ? init.body : init.body == null ? '' : JSON.stringify(init.body);
+  const requestCorrelationKey = correlationKey();
+  const headers = new Headers(init.headers || {});
+  headers.set('X-Vi3-Correlation', requestCorrelationKey);
   let status = 0;
   let responseText = '';
   try {
-    const response = await fetch(url, { ...init, body: requestBody || init.body });
+    const response = await fetch(url, { ...init, headers, body: requestBody || init.body });
     status = response.status;
     responseText = await response.text();
     let result = {};
@@ -14380,6 +14419,7 @@ export const meteredJsonFetch = async (url, { action = '', service = 'cloud_func
       operation,
       action,
       host: new URL(url, location.href).host,
+      correlationKey: requestCorrelationKey,
       status,
       requestBytes: bytes(requestBody),
       responseBytes: bytes(responseText),
@@ -14397,6 +14437,7 @@ export const meteredJsonFetch = async (url, { action = '', service = 'cloud_func
       operation,
       action,
       host: new URL(url, location.href).host,
+      correlationKey: requestCorrelationKey,
       status,
       requestBytes: bytes(requestBody),
       responseBytes: bytes(responseText),
