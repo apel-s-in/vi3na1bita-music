@@ -266,7 +266,7 @@ const validatePlaybackOwnershipFoundation = () => {
   contains('scripts/core/social-session.js', 'markPlaybackCoordinationRequired');
   contains('scripts/core/social-session.js', 'playbackClaimQueue');
   contains('scripts/analytics/playback-ownership.js', 'passiveClaimGeneration');
-  contains('scripts/analytics/playback-ownership.js', '}, 450)');
+  contains('scripts/analytics/playback-ownership.js', '}, 1500)');
   excludes(ownership, /listen-track-catalog\.env\.json|getTrackVersion|catalogPromise/, 'Ownership снова содержит клиентский trackVersion catalog');
   excludes(server, /requestedVersion\s*&&\s*requestedVersion\s*!==\s*track\.trackVersion/, 'Playback claim снова блокируется устаревшей клиентской версией каталога');
   excludes(ownership, /const version = safe\(trackVersion\) \|\| await getTrackVersion\(uid\)/, 'Ownership claim снова зависит от клиентского trackVersion');
@@ -461,10 +461,17 @@ const main = async () => {
   contains('scripts/core/cloud-usage-meter.js', 'unknownBytes');
   contains('service-worker.js', 'YANDEX_CACHE_HIT');
   contains('service-worker.js', 'YANDEX_NETWORK_FETCH');
-  contains('service-worker.js', 'X-Vi3-Correlation');
+  contains('service-worker.js', 'x-vi3-correlation');
   contains('scripts/analytics/backup-v7-recovery.js', 'createBackupV7Checkpoint');
   contains('scripts/analytics/backup-v7-recovery.js', 'restoreBackupV7Checkpoint');
   contains('scripts/analytics/backup-v7-sync.js', 'backup_chain_quarantine');
+  contains('scripts/analytics/backup-v7-sync.js', 'pullBackupV7Pages');
+  contains('scripts/analytics/backup-v7-sync.js', 'MAX_PULL_PAGES_PER_SLOT = 4');
+  contains('scripts/analytics/backup-v7-sync.js', 'no_watermark_progress');
+  contains('scripts/analytics/backup-v7-sync.js', 'pageLimitReached');
+  contains('scripts/analytics/backup-v7-sync.js', 'quarantinedKeys');
+  contains('scripts/analytics/backup-sync-engine.js', 'getBackupV7Checkpoint');
+  contains('scripts/analytics/backup-sync-engine.js', 'restoreBackupV7Checkpoint');
   contains('scripts/app/profile/settings-console-section.js', 'data-cloud-console-export');
   contains('scripts/app/profile/settings-console-section.js', 'data-cloud-console-copy');
   contains('scripts/core/social-session.js', 'single_flight_join');
