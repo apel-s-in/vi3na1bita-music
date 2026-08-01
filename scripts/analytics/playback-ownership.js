@@ -13,6 +13,7 @@ let passiveClaim = null;
 let passiveClaimUid = '';
 let passiveClaimTimer = 0;
 let passiveClaimGeneration = 0;
+let passiveClaimIntents = [];
 
 export const readOwnershipGrant = (owner = currentOwner()) => {
   try {
@@ -141,6 +142,10 @@ const claimPlaybackOwnershipInBackground = ({ trackUid, position = 0 } = {}) => 
 
   passiveClaimUid = uid;
   const generation = ++passiveClaimGeneration;
+  const at = Date.now();
+  passiveClaimIntents = passiveClaimIntents.filter(timestamp => at - timestamp <= 12000);
+  passiveClaimIntents.push(at);
+  const delayMs = passiveClaimIntents.length >= 3 ? 4500 : 1800;
   clearTimeout(passiveClaimTimer);
 
   passiveClaimTimer = setTimeout(() => {
@@ -171,7 +176,7 @@ const claimPlaybackOwnershipInBackground = ({ trackUid, position = 0 } = {}) => 
           passiveClaimUid = '';
         }
       });
-  }, 1500);
+  }, delayMs);
 
   return passiveClaim;
 };
