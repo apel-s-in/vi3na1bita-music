@@ -1,7 +1,10 @@
 'use strict';
 const crypto = require('crypto');
+const { AsyncLocalStorage } = require('async_hooks');
 const ydbMod = require('ydb-sdk');
 let driverPromise = null;
+const usageStorage = new AsyncLocalStorage();
+const currentUsage = () => usageStorage.getStore() || null;
 const CFG = {
   endpoint: process.env.YDB_ENDPOINT || '',
   database: process.env.YDB_DATABASE || '',
@@ -184,8 +187,30 @@ function corsHeaders(event) {
   }
   return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': reqHeaders || 'Content-Type, Accept, X-Requested-With, X-Vi3-Session, X-Yandex-OAuth, X-Vi3-Admin', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
 }
+function attachUsage(body) {
+  const context = currentUsage();
+  if (!context || !body || typeof body !== 'object' || Array.isArray(body)) return body;
+
+  const usage = {
+    queryCount: context.queryCount,
+    casAttempts: context.casAttempts,
+    casConflicts: context.casConflicts,
+    internalWebPushCalls: context.internalWebPushCalls,
+    durationMs: Math.max(0, now() - context.startedAt),
+    responseBytes: 0
+  };
+  const output = { ...body, usage };
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const measured = Buffer.byteLength(JSON.stringify(output), 'utf8');
+    if (usage.responseBytes === measured) break;
+    usage.responseBytes = measured;
+  }
+
+  return output;
+}
 function reply(event, statusCode, body) {
-  return { statusCode, headers: { ...corsHeaders(event), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, body: JSON.stringify(body) };
+  return { statusCode, headers: { ...corsHeaders(event), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, body: JSON.stringify(attachUsage(body)) };
 }
 function sanitizeId(v, max = 96) {
   return safe(v)
@@ -399,6 +424,8 @@ function tvUint64(v) {
   return ydbMod.TypedValues.uint64(num(v, 0));
 }
 async function query(sql, params = {}) {
+  const usage = currentUsage();
+  if (usage) usage.queryCount++;
   const driver = await getYdb();
   return driver.tableClient.withSession(async session => session.executeQuery(sql, params));
 }
@@ -489,6 +516,8 @@ async function kvInsert({ pk, type = '', owner = '', expiresAt = 0, data = {} })
   return true;
 }
 async function kvCompareAndPut({ row, type = '', owner = '', expiresAt = 0, data = {} }) {
+  const usage = currentUsage();
+  if (usage) usage.casAttempts++;
   if (!row?.pk) throw new Error('cas_row_required');
   const expectedPayloadJson = safe(row.payload_json);
   if (!expectedPayloadJson) {
@@ -520,7 +549,9 @@ async function kvCompareAndPut({ row, type = '', owner = '', expiresAt = 0, data
     { $pk: tvUtf8(row.pk), $expected_payload_json: tvUtf8(expectedPayloadJson), $type: tvUtf8(type), $owner: tvUtf8(owner), $next_updated_at: tvUint64(nextUpdatedAt), $expires_at: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(storedData)) }
   );
   const verified = await kvGet(row.pk);
-  return payload(verified)?.__casToken === casToken;
+  const changed = payload(verified)?.__casToken === casToken;
+  if (!changed && usage) usage.casConflicts++;
+  return changed;
 }
 async function kvDelete(pk) {
   await query(
@@ -1980,6 +2011,8 @@ async function actionFriendsSnapshot(event, body) {
 }
 async function sendSystemWebPush({ toPlayerId, targetDeviceId = '', title, body, url = './', tag = 'vi3-notification', requireInteraction = false, kind = '', fromFriendId = '', gameId = '', msgId = '', callId = '', logicalSessionId = '', ownerDeviceId = '', ownerLabel = '', ownerEpoch = 0 } = {}) {
   if (!CFG.webPushFunctionUrl || !CFG.webPushSecret || !toPlayerId) return { ok: false, skipped: true };
+  const usage = currentUsage();
+  if (usage) usage.internalWebPushCalls++;
   try {
     const res = await fetch(CFG.webPushFunctionUrl, {
       method: 'POST',
@@ -6941,7 +6974,7 @@ const ACTIONS = {
   voice_call_join: actionVoiceCallJoin,
   voice_call_end: actionVoiceCallEnd
 };
-exports.handler = async event => {
+const handleRequest = async event => {
   const method = safe(event.httpMethod || event.requestContext?.http?.method || event.requestContext?.httpMethod || '').toUpperCase();
   if (method === 'OPTIONS') return { statusCode: 200, headers: corsHeaders(event), body: '' };
   const body = parseBody(event);
@@ -7039,3 +7072,11 @@ exports.handler = async event => {
     return reply(event, status, { ok: false, error: msg });
   }
 };
+
+exports.handler = event => usageStorage.run({
+  startedAt: now(),
+  queryCount: 0,
+  casAttempts: 0,
+  casConflicts: 0,
+  internalWebPushCalls: 0
+}, () => handleRequest(event));
