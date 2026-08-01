@@ -171,7 +171,7 @@ const claimPlaybackOwnershipInBackground = ({ trackUid, position = 0 } = {}) => 
           passiveClaimUid = '';
         }
       });
-  }, 450);
+  }, 1500);
 
   return passiveClaim;
 };
