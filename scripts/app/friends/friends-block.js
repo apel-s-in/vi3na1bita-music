@@ -594,6 +594,7 @@ export const mountFriendsBlock = async ({ container } = {}) => {
       const friendsKey = W.APP_CONFIG?.SPECIAL_FRIENDS_KEY || FRIENDS_KEY;
       if (event.detail?.key !== friendsKey && !_embeddedFriendsContexts.size) {
         stopFriendsBackgroundTasks();
+        _core?.invalidateFriendsSnapshot?.('friends_screen_closed');
         return;
       }
       resumeFriendsBackgroundTasks();
@@ -604,6 +605,10 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     const onSwPushClick = async event => {
       const data = event.data || {};
       if (data.type === 'PUSH_NOTIFICATION_RECEIVED') {
+        if (['FRIENDS_CHANGED', 'FRIEND_ADDED', 'FRIEND_REMOVED'].includes(String(data.kind || ''))) {
+          _core?.invalidateFriendsSnapshot?.(`webpush:${data.kind}`);
+          if (isFriendsRuntimeActive()) _ui?.refresh?.({ force: true });
+        }
         if (isFriendsRuntimeActive()) recoverPendingPushes().catch(() => null);
         return;
       }
