@@ -4242,7 +4242,6 @@ export default {
 // UID.094_(No-paralysis rule)_(event logging не должен влиять на playback)_(ошибка ledger только возвращает события в очередь)
 
 import { metaDB } from './meta-db.js';
-import DeviceRegistry from './device-registry.js';
 import { normalizeEventEnvelope } from './event-contract.js';
 import { buildLedgerEvents, writeLedgerCheckpoint } from './event-integrity.js';
 
@@ -4260,9 +4259,27 @@ class EventLogger {
   }
   _deviceMeta() {
     try {
-      const sid = this.deviceStableId || localStorage.getItem('deviceStableId') || '', h = this.deviceHash || localStorage.getItem('deviceHash') || '', r = DeviceRegistry.getDeviceRegistry(), row = (r || []).find(d => (sid && d.deviceStableId === sid) || (h && d.deviceHash === h)) || {}, ua = navigator.userAgent || '', pf = window.Utils?.getPlatform?.() || {}, platform = pf.isIOS ? 'ios' : (pf.isAndroid ? 'android' : 'web'), cls = row.class || (pf.isIOS ? 'iPhone' : (pf.isAndroid ? 'Android' : 'Desktop')), br = row.browser || (/YaBrowser/i.test(ua) ? 'Яндекс Браузер' : /Edg\//i.test(ua) ? 'Edge' : /Chrome\//i.test(ua) ? 'Chrome' : /Safari\//i.test(ua) ? 'Safari' : /Firefox\//i.test(ua) ? 'Firefox' : 'Browser'), os = row.os || (/iPhone/i.test(ua) ? 'iPhone' : /iPad/i.test(ua) ? 'iPad' : /Android/i.test(ua) ? 'Android' : /Windows/i.test(ua) ? 'Windows' : /Mac/i.test(ua) ? 'macOS' : /Linux/i.test(ua) ? 'Linux' : '');
-      return { deviceLabel: row.label || localStorage.getItem('yandex:onboarding:device_label') || cls, deviceClass: cls, devicePwa: !!(row.pwa ?? pf.isPWA), deviceOs: os, deviceBrowser: br, deviceLang: row.lang || navigator.language || '', deviceTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '', deviceScreen: row.screen || `${screen.width || 0}×${screen.height || 0}`, platform };
-    } catch { return { deviceLabel: '', deviceClass: '', devicePwa: false }; }
+      const ua = navigator.userAgent || '';
+      const pf = window.Utils?.getPlatform?.() || {};
+      const platform = pf.isIOS ? 'ios' : pf.isAndroid ? 'android' : 'web';
+      const deviceClass = pf.isIOS ? (/iPad/i.test(ua) ? 'iPad' : 'iPhone') : pf.isAndroid ? 'Android' : 'Desktop';
+      const deviceBrowser = /YaBrowser/i.test(ua) ? 'Яндекс Браузер' : /Edg\//i.test(ua) ? 'Edge' : /Chrome\//i.test(ua) ? 'Chrome' : /Safari\//i.test(ua) ? 'Safari' : /Firefox\//i.test(ua) ? 'Firefox' : 'Browser';
+      const deviceOs = /iPhone/i.test(ua) ? 'iPhone' : /iPad/i.test(ua) ? 'iPad' : /Android/i.test(ua) ? 'Android' : /Windows/i.test(ua) ? 'Windows' : /Mac/i.test(ua) ? 'macOS' : /Linux/i.test(ua) ? 'Linux' : '';
+      const fallbackLabel = platform === 'ios' ? `Мой ${deviceClass}` : platform === 'android' ? 'Моё Android устройство' : 'Мой компьютер';
+      return {
+        deviceLabel: localStorage.getItem('yandex:onboarding:device_label') || fallbackLabel,
+        deviceClass,
+        devicePwa: pf.isPWA === true,
+        deviceOs,
+        deviceBrowser,
+        deviceLang: navigator.language || '',
+        deviceTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+        deviceScreen: `${screen.width || 0}×${screen.height || 0}`,
+        platform
+      };
+    } catch {
+      return { deviceLabel: '', deviceClass: '', devicePwa: false };
+    }
   }
   log(type, uid, data = {}) {
     if (window._isRestoring) return null;
