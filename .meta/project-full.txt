@@ -3178,8 +3178,10 @@ import {
 } from './backup-v7-range.js';
 import { stableStringify, sha256Hex } from './event-integrity.js';
 import { recordSyncRevision } from './sync-revisions.js';
+import { clearBackupV7Checkpoint, createBackupV7Checkpoint, restoreBackupV7Checkpoint } from './backup-v7-recovery.js';
 
 const TEMPLATE_KEY = 'backup:v7:settings-template-device';
+const MAX_PULL_PAGES_PER_SLOT = 4;
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 let syncPromise = null;
@@ -3202,6 +3204,23 @@ const parseRows = raw => {
     return [];
   }
 };
+
+const chainKey = range => `${safe(range?.deviceId)}:${safe(range?.chainId)}`;
+
+const quarantineChain = async ({ key, ranges, error }) => {
+  const row = {
+    key,
+    deviceId: safe(ranges?.[0]?.deviceId),
+    chainId: safe(ranges?.[0]?.chainId),
+    rangeKeys: (ranges || []).map(range => safe(range?.rangeKey)).filter(Boolean).slice(0, 100),
+    error: safe(error?.message || error).slice(0, 240),
+    quarantinedAt: Date.now()
+  };
+  await metaDB.setStoreValue('backup_chain_quarantine', key, row);
+  return row;
+};
+
+const clearChainQuarantine = key => metaDB.tx('backup_chain_quarantine', 'readwrite', store => store.delete(key));
 
 export const buildBackupV7SharedDocument = async () => ({
   version: '7.1',
@@ -3239,9 +3258,32 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
     if (key && !unique.has(key)) unique.set(key, range);
   }
 
-  const verified = [];
+  const groups = new Map();
   for (const range of unique.values()) {
-    verified.push(await verifyBackupV7Range(range, { ownerYandexIdHash }));
+    const key = chainKey(range);
+    if (!key || key === ':') continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(range);
+  }
+
+  const verified = [];
+  const quarantined = [];
+  for (const [key, chainRanges] of groups) {
+    const ordered = chainRanges.sort((left, right) => num(left.fromSeq) - num(right.fromSeq));
+    try {
+      const chainVerified = [];
+      for (const range of ordered) {
+        const checked = await verifyBackupV7Range(range, { ownerYandexIdHash });
+        const previous = chainVerified[chainVerified.length - 1];
+        if (previous && Number(checked.fromSeq) !== Number(previous.toSeq) + 1) throw new Error('backup_v71_chain_gap');
+        if (previous && safe(checked.previousRangeHash) !== safe(previous.hash)) throw new Error('backup_v71_previous_range_hash_mismatch');
+        chainVerified.push(checked);
+      }
+      verified.push(...chainVerified);
+      await clearChainQuarantine(key).catch(() => null);
+    } catch (error) {
+      quarantined.push(await quarantineChain({ key, ranges: ordered, error }));
+    }
   }
 
   await metaDB.init();
@@ -3291,7 +3333,7 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
       });
     });
 
-    tx.oncomplete = () => resolve({ inserted, verified: verified.length });
+    tx.oncomplete = () => resolve({ inserted, verified: verified.length, quarantined });
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error || new Error('backup_v71_range_store_aborted'));
   });
@@ -3432,10 +3474,13 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
 
   if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
 
-  const sharedDocument = result?.shared?.current || null;
-  const sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
-
+  const checkpoint = await createBackupV7Checkpoint({ reason: `backup_v71_sync:${reason}` });
+  let sharedApplied = { applied: false };
   let templateApplied = false;
+
+  try {
+    const sharedDocument = result?.shared?.current || null;
+    sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
   if (settingsTemplateDeviceId && result?.settings?.template) {
     const applied = await applySettingsDocument(result.settings.template);
     if (!applied.deferred) {
@@ -3460,8 +3505,9 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
     lastError: ''
   });
 
-  const rebuild = await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_sync' });
-  localStorage.setItem('yandex:last_backup_local_ts', String(at));
+    const rebuild = await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_sync' });
+    await clearBackupV7Checkpoint();
+    localStorage.setItem('yandex:last_backup_local_ts', String(at));
 
   const push = {
     uploaded: Number(result?.push?.accepted || 0),
@@ -3484,13 +3530,57 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   });
 
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok' } }));
-  return { ok: true, authorization, push, pull, rebuild, shared: { applied: sharedApplied.applied === true, changed: result?.shared?.changed === true, hash: safe(result?.shared?.hash) }, legacyCleanup: result?.legacyCleanup || null, settings: result.settings || null };
+    return { ok: true, authorization, push, pull, rebuild, quarantine: stored.quarantined || [], shared: { applied: sharedApplied.applied === true, changed: result?.shared?.changed === true, hash: safe(result?.shared?.hash) }, legacyCleanup: result?.legacyCleanup || null, settings: result.settings || null };
+  } catch (error) {
+    await restoreBackupV7Checkpoint(checkpoint).catch(() => null);
+    throw error;
+  }
 };
 
 export const syncBackupV7 = options => {
   if (syncPromise) return syncPromise;
 
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'syncing' } }));
+const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdHash, maxPages = MAX_PULL_PAGES_PER_SLOT } = {}) => {
+  const pages = [];
+  let request = { ...firstRequest };
+  let storedTotal = 0;
+  let quarantined = [];
+
+  for (let page = 0; page < Math.max(1, maxPages); page++) {
+    const result = await YandexBackupV7.sync(request);
+    const ranges = Array.isArray(result?.pull?.ranges) ? result.pull.ranges : [];
+    const stored = await saveVerifiedRanges({
+      ranges: page === 0 ? [...(request.pushRanges || []), ...ranges] : ranges,
+      watermarks: result?.pull?.watermarks || [],
+      currentDeviceId,
+      ownerYandexIdHash
+    });
+    storedTotal += Number(stored.inserted || 0);
+    quarantined = [...quarantined, ...(stored.quarantined || [])];
+    pages.push({ result, stored });
+
+    if (Number(result?.pull?.remaining || 0) <= 0) {
+      return { pages, result, storedTotal, quarantined, exhausted: false };
+    }
+
+    request = {
+      pushRanges: [],
+      watermarks: await readWatermarks(),
+      knownSettingsHash: safe(result?.settings?.pushed?.hash || result?.settings?.current?.hash || request.knownSettingsHash),
+      knownSharedHash: safe(result?.shared?.hash || request.knownSharedHash),
+      shared: null,
+      settings: null,
+      settingsTemplateDeviceId: '',
+      includeDeviceCatalog: false,
+      legacyCleanup: null,
+      maxPullRanges: request.maxPullRanges
+    };
+  }
+
+  const result = pages[pages.length - 1]?.result || null;
+  return { pages, result, storedTotal, quarantined, exhausted: Number(result?.pull?.remaining || 0) > 0 };
+};
   syncPromise = runSync(options).catch(async error => {
     await writeBackupV7State({ lastError: safe(error?.message || 'backup_v71_sync_failed') }).catch(() => null);
     recordSyncRevision({ reason: options?.reason || 'autosync', ok: false, error: safe(error?.message || 'backup_v71_sync_failed') });
