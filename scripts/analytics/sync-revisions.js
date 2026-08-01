@@ -3,7 +3,7 @@ const KEY = 'backup:sync_revisions:v1', s = v => String(v == null ? '' : v).trim
 export const readSyncRevisions = () => Array.isArray(jp(localStorage.getItem(KEY), [])) ? jp(localStorage.getItem(KEY), []) : [];
 export const recordSyncRevision = ({ hash='', timestamp=Date.now(), domains=[], uploadedShared=false, uploadedDevice=false, uploadedEventArchive=false, reason='autosync', ok=true, error='' } = {}) => {
   const row = { hash: s(hash).slice(0, 16), timestamp: n(timestamp) || Date.now(), domains: [...new Set((Array.isArray(domains) ? domains : []).map(s).filter(Boolean))].slice(0, 8), uploadedShared: !!uploadedShared, uploadedDevice: !!uploadedDevice, uploadedEventArchive: !!uploadedEventArchive, reason: s(reason || 'autosync'), ok: !!ok, error: s(error).slice(0, 160) };
-  try { localStorage.setItem(KEY, JSON.stringify([row, ...readSyncRevisions()].slice(0, 5))); window.dispatchEvent(new CustomEvent('backup:sync:revision', { detail: row })); } catch {} return row;
+  try { localStorage.setItem(KEY, JSON.stringify([row, ...readSyncRevisions()].filter(item => Date.now() - n(item?.timestamp) <= 30 * 24 * 60 * 60 * 1000).slice(0, 200))); window.dispatchEvent(new CustomEvent('backup:sync:revision', { detail: row })); } catch {} return row;
 };
 export const getSyncStatusLine = () => {
   const r = readSyncRevisions()[0]; if (!r) return 'ещё не сохранялось';
