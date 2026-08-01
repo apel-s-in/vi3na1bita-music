@@ -1166,6 +1166,30 @@ const STATIC_ASSETS = [...CORE_ASSETS, ...PROFILE_ASSETS, ...ANALYTICS_ASSETS, .
 
 const norm = u => { try { const p = new URL(u, self.registration.scope); p.hash = ''; p.search = ''; if (p.pathname.endsWith('/')) p.pathname += 'index.html'; return p.href; } catch { return String(u); } };
 const STATIC_SET = new Set([...new Set(STATIC_ASSETS)].map(norm));
+const yandexHost = host => String(host || '').endsWith('yandexcloud.net');
+const sha256Key = async value => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value || '')));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
+};
+const notifyCloudFetch = async ({ request, response, type, startedAt = 0 }) => {
+  const url = new URL(request.url);
+  if (!yandexHost(url.hostname)) return;
+  const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (!clientsList.length) return;
+  const correlationKey = request.headers.get('x-vi3-correlation') || '';
+  const resourceKey = await sha256Key(url.href);
+  const message = {
+    type,
+    correlationKey,
+    resourceKey,
+    host: url.host,
+    method: request.method,
+    status: Number(response?.status || 0),
+    responseBytes: Number(response?.headers?.get('content-length') || 0),
+    durationMs: startedAt ? Math.max(0, Date.now() - startedAt) : 0
+  };
+  clientsList.forEach(client => client.postMessage(message));
+};
 
 self.addEventListener('install', e => e.waitUntil((async () => {
   const cache = await caches.open(CORE_CACHE);
@@ -1241,12 +1265,35 @@ self.addEventListener('fetch', e => {
   if (url.hostname.includes('yandexcloud.net') || url.hostname.includes('github.io')) {
     if (/\.(png|jpe?g|webp|avif|gif|svg)$/i.test(url.pathname)) return e.respondWith((async () => {
       const c = await caches.open(MEDIA_CACHE), cached = await c.match(req);
-      if (cached) return cached; const res = await fetch(req); if (res.ok) await c.put(req, res.clone()); return res;
+      if (cached) {
+        e.waitUntil(notifyCloudFetch({ request: req, response: cached, type: 'YANDEX_CACHE_HIT' }));
+        return cached;
+      }
+      const startedAt = Date.now();
+      const res = await fetch(req);
+      if (res.ok) await c.put(req, res.clone());
+      e.waitUntil(notifyCloudFetch({ request: req, response: res, type: 'YANDEX_NETWORK_FETCH', startedAt }));
+      return res;
     })());
     if (url.pathname.endsWith('.json')) return e.respondWith((async () => {
       const c = await caches.open(RUNTIME_CACHE), cached = await c.match(req);
-      const fetchPromise = fetch(req).then(async res => { if (res.ok) await c.put(req, res.clone()); return res; }).catch(() => cached);
-      return cached || fetchPromise;
+      const fetchPromise = (async () => {
+        const startedAt = Date.now();
+        try {
+          const res = await fetch(req);
+          if (res.ok) await c.put(req, res.clone());
+          e.waitUntil(notifyCloudFetch({ request: req, response: res, type: 'YANDEX_NETWORK_FETCH', startedAt }));
+          return res;
+        } catch {
+          return cached;
+        }
+      })();
+      if (cached) {
+        e.waitUntil(notifyCloudFetch({ request: req, response: cached, type: 'YANDEX_CACHE_HIT' }));
+        fetchPromise.catch(() => null);
+        return cached;
+      }
+      return fetchPromise;
     })());
     return;
   }
