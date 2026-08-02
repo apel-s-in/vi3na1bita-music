@@ -1018,7 +1018,6 @@ const handleRequest = async event => {
           watermarks: true,
           batchSync: true,
           splitModesRemoved: true,
-          legacyCleanup: { enabled: true, transport: 'v7_sync', confirmation: 'required', protectsV7Root: true },
           sharedDocument: { enabled: true, schemaVersion: SHARED_SCHEMA_VERSION, path: SHARED_PATH, domains: ['playlists'] },
           rawEventsPermanent: true,
           rollups: { supported: false, planned: 'client_rebuildable_verified_rollups' },
