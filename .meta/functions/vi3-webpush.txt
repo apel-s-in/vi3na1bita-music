@@ -263,7 +263,7 @@ exports.handler = async event => {
   "dependencies": {
     "@yandex-cloud/nodejs-sdk": "^2.6.0",
     "web-push": "^3.6.7",
-    "ydb-sdk": "^5.8.0"
+    "ydb-sdk": "5.9.0"
   }
 }
 
