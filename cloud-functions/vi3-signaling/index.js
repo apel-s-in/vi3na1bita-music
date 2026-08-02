@@ -46,7 +46,7 @@ const CFG = {
   turnSharedSecret: safe(process.env.TURN_SHARED_SECRET || ''),
   turnCredentialTtlSec: Math.max(300, Math.min(num(process.env.TURN_CREDENTIAL_TTL_SEC, 3600), 86400))
 };
-const TABLE = `${CFG.prefix}kv`;
+const TABLE = `${CFG.prefix}kv_v2`;
 function num(v, d = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
@@ -435,9 +435,12 @@ function schemaDdl() {
   \`type\` Utf8,
   \`owner\` Utf8,
   \`updated_at\` Uint64,
-  \`expires_at\` Uint64,
+  \`expires_at\` Timestamp,
   \`payload_json\` Utf8,
   PRIMARY KEY (\`pk\`)
+)
+WITH (
+  TTL = Interval("PT0S") ON expires_at
 );`;
 }
 async function initSchema() {
@@ -456,7 +459,7 @@ async function kvGet(pk) {
   const res = await query(
     `
     DECLARE $pk AS Utf8;
-    SELECT pk, type, owner, updated_at, expires_at, payload_json
+    SELECT pk, type, owner, updated_at, DateTime::ToMilliseconds(expires_at) AS expires_at, payload_json
     FROM ${TABLE}
     WHERE pk = $pk;
   `,
@@ -474,13 +477,20 @@ async function kvPut({ pk, type = '', owner = '', expiresAt = 0, data = {} }) {
     DECLARE $type AS Utf8;
     DECLARE $owner AS Utf8;
     DECLARE $updated_at AS Uint64;
-    DECLARE $expires_at AS Uint64;
+    DECLARE $expires_at_ms AS Uint64;
     DECLARE $payload_json AS Utf8;
 
     UPSERT INTO ${TABLE} (pk, type, owner, updated_at, expires_at, payload_json)
-    VALUES ($pk, $type, $owner, $updated_at, $expires_at, $payload_json);
+    VALUES (
+      $pk,
+      $type,
+      $owner,
+      $updated_at,
+      IF($expires_at_ms = 0, NULL, DateTime::FromMilliseconds($expires_at_ms)),
+      $payload_json
+    );
   `,
-    { $pk: tvUtf8(pk), $type: tvUtf8(type), $owner: tvUtf8(owner), $updated_at: tvUint64(now()), $expires_at: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(data || {})) }
+    { $pk: tvUtf8(pk), $type: tvUtf8(type), $owner: tvUtf8(owner), $updated_at: tvUint64(now()), $expires_at_ms: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(data || {})) }
   );
   return true;
 }
@@ -491,7 +501,7 @@ async function kvInsert({ pk, type = '', owner = '', expiresAt = 0, data = {} })
     DECLARE $type AS Utf8;
     DECLARE $owner AS Utf8;
     DECLARE $updated_at AS Uint64;
-    DECLARE $expires_at AS Uint64;
+    DECLARE $expires_at_ms AS Uint64;
     DECLARE $payload_json AS Utf8;
 
     INSERT INTO ${TABLE} (
@@ -507,11 +517,11 @@ async function kvInsert({ pk, type = '', owner = '', expiresAt = 0, data = {} })
       $type,
       $owner,
       $updated_at,
-      $expires_at,
+      IF($expires_at_ms = 0, NULL, DateTime::FromMilliseconds($expires_at_ms)),
       $payload_json
     );
   `,
-    { $pk: tvUtf8(pk), $type: tvUtf8(type), $owner: tvUtf8(owner), $updated_at: tvUint64(now()), $expires_at: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(data || {})) }
+    { $pk: tvUtf8(pk), $type: tvUtf8(type), $owner: tvUtf8(owner), $updated_at: tvUint64(now()), $expires_at_ms: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(data || {})) }
   );
   return true;
 }
@@ -533,7 +543,7 @@ async function kvCompareAndPut({ row, type = '', owner = '', expiresAt = 0, data
     DECLARE $type AS Utf8;
     DECLARE $owner AS Utf8;
     DECLARE $next_updated_at AS Uint64;
-    DECLARE $expires_at AS Uint64;
+    DECLARE $expires_at_ms AS Uint64;
     DECLARE $payload_json AS Utf8;
 
     UPDATE ${TABLE}
@@ -541,12 +551,12 @@ async function kvCompareAndPut({ row, type = '', owner = '', expiresAt = 0, data
       type = $type,
       owner = $owner,
       updated_at = $next_updated_at,
-      expires_at = $expires_at,
+      expires_at = IF($expires_at_ms = 0, NULL, DateTime::FromMilliseconds($expires_at_ms)),
       payload_json = $payload_json
     WHERE pk = $pk
       AND payload_json = $expected_payload_json;
   `,
-    { $pk: tvUtf8(row.pk), $expected_payload_json: tvUtf8(expectedPayloadJson), $type: tvUtf8(type), $owner: tvUtf8(owner), $next_updated_at: tvUint64(nextUpdatedAt), $expires_at: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(storedData)) }
+    { $pk: tvUtf8(row.pk), $expected_payload_json: tvUtf8(expectedPayloadJson), $type: tvUtf8(type), $owner: tvUtf8(owner), $next_updated_at: tvUint64(nextUpdatedAt), $expires_at_ms: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(storedData)) }
   );
   const verified = await kvGet(row.pk);
   const changed = payload(verified)?.__casToken === casToken;
@@ -572,7 +582,7 @@ async function kvPrefix(prefix, limit = 100) {
     DECLARE $to AS Utf8;
     DECLARE $lim AS Uint64;
 
-    SELECT pk, type, owner, updated_at, expires_at, payload_json
+    SELECT pk, type, owner, updated_at, DateTime::ToMilliseconds(expires_at) AS expires_at, payload_json
     FROM ${TABLE}
     WHERE pk >= $from AND pk < $to
     LIMIT $lim;
@@ -589,22 +599,21 @@ async function kvPrefixOrdered(prefix, limit = 100) {
     `
     DECLARE $from AS Utf8;
     DECLARE $to AS Utf8;
-    DECLARE $at AS Uint64;
+    DECLARE $at_ms AS Uint64;
     DECLARE $lim AS Uint64;
 
-    SELECT pk, type, owner, updated_at, expires_at, payload_json
+    SELECT pk, type, owner, updated_at, DateTime::ToMilliseconds(expires_at) AS expires_at, payload_json
     FROM ${TABLE}
     WHERE pk >= $from
       AND pk < $to
       AND (
         expires_at IS NULL OR
-        expires_at = 0 OR
-        expires_at >= $at
+        expires_at >= DateTime::FromMilliseconds($at_ms)
       )
     ORDER BY pk
     LIMIT $lim;
   `,
-    { $from: tvUtf8(prefix), $to: tvUtf8(to), $at: tvUint64(at), $lim: tvUint64(limit) }
+    { $from: tvUtf8(prefix), $to: tvUtf8(to), $at_ms: tvUint64(at), $lim: tvUint64(limit) }
   );
   return rowsOf(res);
 }
