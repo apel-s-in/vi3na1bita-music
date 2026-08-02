@@ -149,8 +149,6 @@ export const buildStatsProjection = events => {
       return;
     }
 
-    if (type === 'LISTEN_SKIP') return;
-
     if (type === 'FEATURE_USED') {
       if (uid && uid !== 'global') {
         const track = ensureTrack(projection, uid);
