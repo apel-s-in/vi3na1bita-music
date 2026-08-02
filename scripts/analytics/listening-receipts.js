@@ -5,7 +5,9 @@ import { getDeviceContext, getDeviceId } from '../core/device-context.js';
 import { buildPlaybackFencePayload } from './playback-fence.js';
 import { applyShardRewardResult } from '../app/shards/reward-notifier.js';
 const HEARTBEAT_MS = 20000;
+const HEARTBEAT_JITTER_MS = 4000;
 const STATUS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const nextHeartbeatDelay = () => HEARTBEAT_MS - HEARTBEAT_JITTER_MS + Math.floor(Math.random() * (HEARTBEAT_JITTER_MS * 2 + 1));
 const COMPLETION_OUTBOX_KEY = 'listeningReceipts:completionOutbox:v1';
 const COMPLETION_OUTBOX_LIMIT = 100;
 const COMPLETION_OUTBOX_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -447,13 +449,16 @@ class ListeningReceiptService {
   }
   startTimer() {
     this.clearTimer();
-    this.timer = setInterval(() => {
-      if (!this.session || !window.playerCore?.isPlaying?.()) return;
-      this.scheduleHeartbeat();
-    }, HEARTBEAT_MS);
+    const tick = () => {
+      this.timer = 0;
+      if (!this.session) return;
+      if (window.playerCore?.isPlaying?.()) this.scheduleHeartbeat();
+      this.timer = setTimeout(tick, nextHeartbeatDelay());
+    };
+    this.timer = setTimeout(tick, nextHeartbeatDelay());
   }
   clearTimer() {
-    clearInterval(this.timer);
+    clearTimeout(this.timer);
     this.timer = 0;
   }
   emit(reason, result) {
