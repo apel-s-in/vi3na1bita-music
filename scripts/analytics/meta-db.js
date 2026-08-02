@@ -39,7 +39,7 @@ export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
 ]);
 
 export class MetaDB {
-  constructor() { this.dbName = 'MetaDB_v6'; this.version = 1; this.db = null; }
+  constructor() { this.dbName = 'MetaDB_v6'; this.version = 2; this.db = null; }
   async init() {
     if (this.db) return this.db;
     return window.Utils.func.memoAsyncOnce('analytics:meta-db:init', () => new Promise((res, rej) => {
@@ -55,7 +55,8 @@ export class MetaDB {
         if (!db.objectStoreNames.contains('backup_event_ranges')) db.createObjectStore('backup_event_ranges', { keyPath: 'rangeKey' });
         if (!db.objectStoreNames.contains('backup_chain_watermarks')) db.createObjectStore('backup_chain_watermarks', { keyPath: 'key' });
         if (!db.objectStoreNames.contains('backup_chain_quarantine')) db.createObjectStore('backup_chain_quarantine', { keyPath: 'key' });
-        if (!db.objectStoreNames.contains('backup_stats_rollups')) db.createObjectStore('backup_stats_rollups', { keyPath: 'rangeKey' });
+        const rollups = db.objectStoreNames.contains('backup_stats_rollups') ? e.target.transaction.objectStore('backup_stats_rollups') : db.createObjectStore('backup_stats_rollups', { keyPath: 'rangeKey' });
+        if (!rollups.indexNames.contains('chainSeq')) rollups.createIndex('chainSeq', 'chainSeq', { unique: false });
       };
       req.onsuccess = () => {
         this.db = req.result;
