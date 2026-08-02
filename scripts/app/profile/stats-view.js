@@ -51,6 +51,14 @@ export const renderProfileStats = ({ container, all = [] }) => {
       <div class="stat-box"><b>${features.sleep_timer || 0}</b><span>Таймер сна</span></div>
       <div class="stat-box"><b>${source === 'local' ? features.lyrics || 0 : '—'}</b><span>Лирика</span></div>
     </div>
+    ${source === 'local' ? `
+      <div class="stats-grid-compact">
+        <div class="stat-box"><b>${Math.round(Number(model.averageCompletionRate || 0) * 100)}%</b><span>Среднее покрытие</span></div>
+        <div class="stat-box"><b>${summary.microSkips || 0}</b><span>До 3 секунд</span></div>
+        <div class="stat-box"><b>${summary.earlySkips || 0}</b><span>3–24 секунды</span></div>
+        <div class="stat-box"><b>${summary.validSkips || 0}</b><span>25+ секунд</span></div>
+      </div>
+    ` : ''}
     ${renderChart('chart-hours', 'По часам суток', model.byHour, 'myStatsHoursOpen')}
     ${renderChart('chart-week', 'По дням недели', model.byWeekday, 'myStatsWeekOpen', ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'])}
     ${renderChart('chart-dayparts', 'По времени суток', model.dayparts.map(item => item.value), 'myStatsDayPartsOpen', model.dayparts.map(item => item.label))}
