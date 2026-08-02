@@ -11960,7 +11960,7 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
       if (element) element.textContent = String(value);
     };
 
-    renderProfileStats({ container, vm });
+    renderProfileStats({ container, all: rows, vm });
     set('#prof-stat-tracks', summary.totalFull);
     set('#prof-stat-time', window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(summary.totalSec) : `${Math.floor(summary.totalSec / 60)}м`);
     set(
@@ -22660,6 +22660,11 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
   .activity-controls__top span{text-align:right}
   .activity-controls__top select{width:100%;max-width:none}
 }
+/* Local/server statistics boundary */
+.stats-source-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:5px;border-radius:12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06)}
+.stats-source-tab{min-height:38px;padding:7px 9px;border-radius:9px;border:1px solid transparent;background:transparent;color:#7185a5;font-size:10.5px;font-weight:900;line-height:1.2;cursor:pointer}
+.stats-source-tab.is-active{border-color:rgba(77,170,255,.3);background:rgba(77,170,255,.14);color:#eaf2ff}
+.stats-source-tab:disabled{opacity:.38;cursor:not-allowed}
 
 //=================================================
 // FILE: /styles/shards.css
