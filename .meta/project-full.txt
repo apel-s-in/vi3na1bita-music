@@ -15677,6 +15677,7 @@ const validateWorkflows = () => {
   ["node-version: '24'", 'npm install --no-save @playwright/test@1.55.0', 'playwright.config.js --grep-invert "@remote"', 'playwright.config.js --grep "@remote"', 'continue-on-error: true', 'cancel-in-progress: true'].forEach(marker => contains('.github/workflows/e2e.yml', marker));
 };
 const main = async () => {
+  const server = 'cloud-functions/vi3-signaling/index.js';
   await validateAchievements();
   validateListening();
   contains(server, "const TABLE = `${CFG.prefix}kv_v2`");
