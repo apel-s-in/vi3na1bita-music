@@ -2,7 +2,7 @@
 // Переключает пользовательские данные, но не управляет playback.
 import { metaDB } from './meta-db.js';
 import { applyAccountCachePolicies, exportAccountCachePolicies } from '../offline/cache-db.js';
-const VAULT_DB = 'Vi3AccountVault_v1';
+const VAULT_DB = 'Vi3AccountVault_v2';
 const VAULT_STORE = 'profiles';
 const VAULT_VERSION = 1;
 const OWNER_KEY = 'account:data-owner:v1';
@@ -79,7 +79,12 @@ const openVault = () => {
         db.createObjectStore(VAULT_STORE, { keyPath: 'key' });
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      try {
+        indexedDB.deleteDatabase('Vi3AccountVault_v1');
+      } catch {}
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error);
   }).catch(error => {
     vaultPromise = null;
