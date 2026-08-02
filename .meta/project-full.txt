@@ -2643,6 +2643,7 @@ export default { WARM_EVENT_LIMIT, normalizeEventList, cleanupWarmEventsStore };
 // Экономный Backup v7.1 scheduler.
 // Push и pull чередуются в 12-часовых foreground-слотах; каждая фаза выполняется не чаще раза в 24 часа.
 import { syncBackupV7, getBackupV7Status, rebuildBackupV7LocalAnalytics } from './backup-v7-sync.js';
+import { packLocalBackupV7Ranges } from './backup-v7-range.js';
 import { clearBackupV7Checkpoint, getBackupV7Checkpoint, restoreBackupV7Checkpoint } from './backup-v7-recovery.js';
 import { isAppQuiet } from '../core/app-activity.js';
 
@@ -2655,8 +2656,11 @@ const LS_BLOCK_UNTIL = 'backup:v71:block-until';
 const SLOT_MS = 12 * 60 * 60 * 1000;
 const JITTER_MS = 30 * 60 * 1000;
 const DISK_FULL_RETRY_MS = 24 * 60 * 60 * 1000;
+const PLAYBACK_DEFER_MS = 30 * 60 * 1000;
+const LOCAL_PACK_DELAY_MS = 60 * 1000;
 let bound = false;
 let timer = 0;
+let packTimer = 0;
 let ready = false;
 
 export const isSyncEnabled = () => localStorage.getItem(LS_SYNC) !== '0';
@@ -2678,13 +2682,13 @@ const clearBlock = () => {
 const setBlock = (reason, until = 0) => {
   localStorage.setItem(LS_BLOCK_REASON, String(reason || 'backup_unavailable'));
   localStorage.setItem(LS_BLOCK_UNTIL, String(Math.max(0, Number(until) || 0)));
-  ready = false;
   window.dispatchEvent(new CustomEvent('backup:sync:availability', { detail: getBackupV7Availability() }));
 };
 export const getBackupV7Availability = () => {
   const block = readBlock();
   return {
     available: ready && isSyncEnabled() && (!block.reason || (block.until > 0 && block.until <= Date.now())),
+    blocked: !!block.reason && (block.until === 0 || block.until > Date.now()),
     enabled: isSyncEnabled(),
     ready,
     reason: block.reason,
@@ -2712,15 +2716,39 @@ export const setSyncEnabled = value => {
 };
 
 export const markSyncReady = reason => {
-  ready = !['no_auth_local_only', 'logged_out_local_only', 'offline_skip', 'account_switch', 'device_initialization_pending'].includes(String(reason || ''));
+  ready = !['no_auth_local_only', 'logged_out_local_only', 'offline_skip', 'account_switch', 'device_initialization_pending', 'disk_access_unavailable'].includes(String(reason || ''));
   window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason, blocked: !ready } }));
 };
 
 export const suspendSyncForAccountSwitch = () => {
   clearTimeout(timer);
+  clearTimeout(packTimer);
   timer = 0;
+  packTimer = 0;
   ready = false;
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'idle' } }));
+  return true;
+};
+
+const runLocalPack = async reason => {
+  if (document.hidden || window.playerCore?.isPlaying?.() || window.__accountDataSwitching) return false;
+  const result = await packLocalBackupV7Ranges().catch(error => ({ ok: false, error: String(error?.message || error) }));
+  if (result?.packed > 0) {
+    markDirty();
+    window.dispatchEvent(new CustomEvent('backup:local-spool-updated', {
+      detail: { reason, packed: result.packed, events: result.events, quarantined: result.quarantined?.length || 0 }
+    }));
+  }
+  return result;
+};
+
+const scheduleLocalPack = (reason = 'events', delayMs = LOCAL_PACK_DELAY_MS) => {
+  clearTimeout(packTimer);
+  if (document.hidden || window.playerCore?.isPlaying?.()) return false;
+  packTimer = setTimeout(() => {
+    packTimer = 0;
+    runLocalPack(reason).catch(() => null);
+  }, Math.max(1000, Number(delayMs) || LOCAL_PACK_DELAY_MS));
   return true;
 };
 
@@ -2747,6 +2775,10 @@ const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
     ready = true;
   }
   if (!isSyncReady() || document.hidden || (!force && isAppQuiet())) return false;
+  if (!force && window.playerCore?.isPlaying?.()) {
+    scheduleAt(Date.now() + PLAYBACK_DEFER_MS);
+    return false;
+  }
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return false;
 
   const dueAt = nextDueAt();
@@ -2866,6 +2898,10 @@ export const initBackupSyncEngine = () => {
     const reason = String(event.detail?.reason || '');
     if (reason.startsWith('backup_v71_')) return;
     markDirty();
+    scheduleLocalPack(`analytics:${reason || 'updated'}`);
+  });
+  ['player:pause', 'player:stop', 'player:ended'].forEach(name => {
+    window.addEventListener(name, () => scheduleLocalPack(name, 1500));
   });
   window.addEventListener('online', () => {
     if (!document.hidden) runDueSync({ reason: 'online_due' }).catch(() => null);
@@ -2882,6 +2918,7 @@ export const initBackupSyncEngine = () => {
     if (!document.hidden) runDueSync({ reason: 'foreground_due' }).catch(() => null);
   });
 
+  scheduleLocalPack('startup', 2500);
   enable();
 };
 
