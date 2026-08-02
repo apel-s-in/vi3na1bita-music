@@ -1370,6 +1370,7 @@ try {
       W.dispatchEvent(new CustomEvent('analytics:logUpdated'));
     } catch {}
     try {
+      await import('./analytics/backup-domain-state.js').then(m => m.initBackupDomainState?.());
       if (C.INTEL_LAYER_ENABLED !== false) await import('./intel/bootstrap.js').then(m => m.initIntelBootstrap?.({ W, D, C }));
     } catch {}
     try {
