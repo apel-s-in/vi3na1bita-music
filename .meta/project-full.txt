@@ -14993,7 +14993,6 @@ const safe = value => String(value == null ? '' : value).trim();
 const number = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const bytes = value => encoder.encode(typeof value === 'string' ? value : JSON.stringify(value ?? null)).byteLength;
 const correlationKey = () => `cu_${crypto.randomUUID().replace(/-/g, '')}`;
-export const createCloudCorrelationKey = () => correlationKey();
 const resourceKey = async value => {
   const url = new URL(String(value || ''), location.href);
   url.hash = '';
