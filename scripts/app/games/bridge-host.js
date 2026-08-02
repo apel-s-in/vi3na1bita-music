@@ -314,6 +314,9 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
         const root = JSON.parse(localStorage.getItem(storageKey) || '{}');
         root[`${save.gameId}_${save.key}`] = save.data;
         localStorage.setItem(storageKey, JSON.stringify(root));
+        if (['presets', 'uiSettings', 'matchDraft'].includes(save.key)) {
+          import('../../analytics/backup-domain-state.js').then(module => module.recordSafeGameState?.(save)).catch(() => null);
+        }
         sendSnapshot();
         W.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'profile', immediate: true } }));
       } catch (error) {
