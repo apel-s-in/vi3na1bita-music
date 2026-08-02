@@ -498,7 +498,7 @@ const main = async () => {
   contains('scripts/analytics/backup-v7-recovery.js', 'createBackupV7Checkpoint');
   contains('scripts/analytics/backup-v7-recovery.js', 'restoreBackupV7Checkpoint');
   contains('scripts/analytics/backup-v7-sync.js', 'backup_chain_quarantine');
-  contains('scripts/analytics/stats-shard-contract.js', 'STATS_SHARD_VERSION = 2');
+  contains('scripts/analytics/stats-shard-contract.js', 'STATS_SHARD_VERSION = 3');
   contains('scripts/analytics/stats-shard-contract.js', 'activeDays');
   contains('scripts/analytics/stats-shard-contract.js', 'firstPlayedAt');
   contains('scripts/analytics/stats-shard-contract.js', 'lastPlayedAt');
@@ -506,6 +506,16 @@ const main = async () => {
   contains('scripts/analytics/stats-shard-contract.js', 'sourceHash');
   contains('scripts/analytics/stats-shard-contract.js', 'verifyStatsProjectionShard');
   contains('scripts/analytics/stats-shard-contract.js', 'projectionToStatsRows');
+  contains('scripts/analytics/stats-shard-contract.js', 'uniqueCoveredMs');
+  contains('scripts/analytics/stats-shard-contract.js', 'completionBasisPointsSum');
+  contains('scripts/analytics/stats-shard-contract.js', 'analysisEligibleSessions');
+  contains('scripts/analytics/stats-shard-contract.js', 'microSkips');
+  contains('scripts/analytics/stats-shard-contract.js', 'earlySkips');
+  contains('scripts/analytics/stats-shard-contract.js', 'validSkips');
+  contains('scripts/analytics/stats-shard-contract.js', 'transitions');
+  contains('scripts/analytics/stats-shard-contract.js', 'lastActiveDate === today || lastActiveDate === yesterday');
+  excludes('scripts/analytics/stats-state.js', /readLocalEventLog|rebuildStatsFromEvents|migrateLocalTemporalV2/, 'Legacy full-event stats rebuild снова добавлен');
+  excludes('scripts/app.js', /migrateLocalTemporalV2/, 'Boot снова запускает устаревшую stats migration');
   contains('scripts/analytics/backup-v7-sync.js', 'streamStatsRollups');
   contains('scripts/analytics/backup-v7-sync.js', 'writeProjectionAtomic');
   contains('scripts/analytics/backup-v7-sync.js', 'compactOldRawRanges');
