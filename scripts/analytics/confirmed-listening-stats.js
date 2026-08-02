@@ -201,9 +201,36 @@ const buildServerViewModel = (server, localRows) => {
   };
 };
 
-export const resolveListeningStatsViewModel = (
-  localRows = []
-) => {
+export const resolveListeningStatsViews = (localRows = []) => {
+  const local = {
+    ...buildStatsViewModel(localRows),
+    source: 'local_rebuildable',
+    available: true,
+    pending: false,
+    exact: false,
+    legacyUnclassifiedSec: 0
+  };
+  const server = authorized() ? getConfirmedListeningStats() : emptyServerSnapshot();
+  return {
+    local,
+    server: server.available ? buildServerViewModel(server, localRows) : {
+      ...local,
+      source: 'server_confirmed',
+      available: false,
+      pending: authorized(),
+      exact: false,
+      serverPending: authorized(),
+      summary: {
+        ...local.summary,
+        totalFull: 0,
+        totalValid: 0,
+        totalSec: 0,
+        uniqueTracks: 0
+      }
+    }
+  };
+};
+
   if (!authorized()) {
     return {
       ...buildStatsViewModel(localRows),
@@ -236,5 +263,6 @@ export const resolveListeningStatsViewModel = (
 export default {
   normalizeConfirmedListeningStats,
   getConfirmedListeningStats,
+  resolveListeningStatsViews,
   resolveListeningStatsViewModel
 };
