@@ -4321,6 +4321,7 @@ class EventLogger {
     if (window._isRestoring) return null;
     const dm = this._deviceMeta(), ev = normalizeEventEnvelope({ sessionId: this.sessionId, deviceHash: this.deviceHash, deviceStableId: this.deviceStableId, ...dm, platform: window.Utils?.getPlatform()?.isIOS ? 'ios' : (window.Utils?.getPlatform()?.isAndroid ? 'android' : 'web'), type, uid, data });
     this.queue.push(ev);
+    window.dispatchEvent(new CustomEvent('analytics:eventQueued', { detail: { eventId: ev.eventId, domain: ev.domain, type: ev.type } }));
     if (this.queue.length > 20) this.flush();
     return ev;
   }
