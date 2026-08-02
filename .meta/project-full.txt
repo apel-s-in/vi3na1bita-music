@@ -7356,7 +7356,7 @@ import { isV7SyncEvent } from './event-contract.js';
 import { temporalPartsFromListenEvent } from './temporal-buckets.js';
 import { buildDeltaRangeKey, safeDeltaId } from './backup-delta-contract.js';
 
-export const STATS_SHARD_VERSION = 2;
+export const STATS_SHARD_VERSION = 3;
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const fixed = (raw, length) => Array.from({ length }, (_, index) => Math.max(0, Math.floor(num(raw?.[index]))));
@@ -7395,26 +7395,51 @@ const localMinute = event => {
 
 export const emptyStatsProjection = () => ({
   listenMs: 0,
+  uniqueCoveredMs: 0,
+  completionBasisPointsSum: 0,
+  analysisEligibleSessions: 0,
   validPlays: 0,
   fullPlays: 0,
   starts: 0,
-  skips: 0,
+  microSkips: 0,
+  earlySkips: 0,
+  validSkips: 0,
+  partialEnds: 0,
   firstEventAt: 0,
   lastEventAt: 0,
   activeDays: [],
   byHourMs: Array(24).fill(0),
   byWeekdayMs: Array(7).fill(0),
   tracks: {},
+  transitions: {},
   globalFeatures: {},
-  dimensions: { quality: {}, variant: {}, platform: {}, shuffle: {}, favoritesOnly: {}, launchSource: {} }
+  dimensions: {
+    quality: {},
+    variant: {},
+    platform: {},
+    deviceClass: {},
+    deviceOs: {},
+    deviceBrowser: {},
+    pwa: {},
+    shuffle: {},
+    repeat: {},
+    favoritesOnly: {},
+    launchSource: {}
+  }
 });
 
 const ensureTrack = (projection, uid) => projection.tracks[uid] ||= {
   listenMs: 0,
+  uniqueCoveredMs: 0,
+  completionBasisPointsSum: 0,
+  analysisEligibleSessions: 0,
   validPlays: 0,
   fullPlays: 0,
   starts: 0,
-  skips: 0,
+  microSkips: 0,
+  earlySkips: 0,
+  validSkips: 0,
+  partialEnds: 0,
   firstPlayedAt: 0,
   lastPlayedAt: 0,
   byHourMs: Array(24).fill(0),
@@ -7464,21 +7489,18 @@ export const buildStatsProjection = events => {
       bump(projection.dimensions.quality, data.quality || 'unknown');
       bump(projection.dimensions.variant, data.variant || 'audio');
       bump(projection.dimensions.platform, event.platform || 'web');
+      bump(projection.dimensions.deviceClass, event.deviceClass || 'unknown');
+      bump(projection.dimensions.deviceOs, event.deviceOs || 'unknown');
+      bump(projection.dimensions.deviceBrowser, event.deviceBrowser || 'unknown');
+      bump(projection.dimensions.pwa, event.devicePwa === true ? 'on' : 'off');
       bump(projection.dimensions.shuffle, data.shuffle === true ? 'on' : 'off');
+      bump(projection.dimensions.repeat, data.repeat === true ? 'on' : 'off');
       bump(projection.dimensions.favoritesOnly, data.favoritesOnly === true ? 'on' : 'off');
       if (data.launchSource) bump(projection.dimensions.launchSource, data.launchSource);
       return;
     }
 
-    if (type === 'LISTEN_SKIP') {
-      projection.skips++;
-      if (uid) {
-        const track = ensureTrack(projection, uid);
-        track.skips++;
-        touchTrack(track, event.timestamp);
-      }
-      return;
-    }
+    if (type === 'LISTEN_SKIP') return;
 
     if (type === 'FEATURE_USED') {
       if (uid && uid !== 'global') {
@@ -7494,11 +7516,44 @@ export const buildStatsProjection = events => {
     if (type !== 'LISTEN_COMPLETE' || !uid) return;
 
     const track = ensureTrack(projection, uid);
-    const listenMs = Math.max(0, Math.floor(num(data.listenedSeconds) * 1000));
+    const listenMs = Math.max(0, Math.floor(num(data.listenedMs || num(data.listenedSeconds) * 1000)));
+    const uniqueCoveredMs = Math.max(0, Math.min(listenMs, Math.floor(num(data.uniqueCoveredMs || num(data.uniqueCoveredSeconds) * 1000))));
+    const completionBasisPoints = Math.max(0, Math.min(10000, Math.floor(num(data.completionBasisPoints || num(data.completionRatio) * 10000))));
+    const analysisEligible = data.analysisEligible === true || listenMs >= 3000;
+    const skipClass = safe(data.skipClass);
     const playedAt = Math.max(0, num(data.startedAt || event.timestamp));
+
     projection.listenMs += listenMs;
+    projection.uniqueCoveredMs += uniqueCoveredMs;
     track.listenMs += listenMs;
+    track.uniqueCoveredMs += uniqueCoveredMs;
     touchTrack(track, playedAt);
+
+    if (analysisEligible) {
+      projection.analysisEligibleSessions++;
+      projection.completionBasisPointsSum += completionBasisPoints;
+      track.analysisEligibleSessions++;
+      track.completionBasisPointsSum += completionBasisPoints;
+    }
+
+    if (skipClass === 'micro_skip') {
+      projection.microSkips++;
+      track.microSkips++;
+    } else if (skipClass === 'early_skip') {
+      projection.earlySkips++;
+      track.earlySkips++;
+    } else if (skipClass === 'valid_skip') {
+      projection.validSkips++;
+      track.validSkips++;
+    } else if (skipClass === 'partial_end') {
+      projection.partialEnds++;
+      track.partialEnds++;
+    }
+
+    const transitionToUid = safe(data.transitionToUid);
+    if (transitionToUid && transitionToUid !== uid) {
+      bump(projection.transitions, `${uid}>${transitionToUid}`);
+    }
 
     if (data.isValidListen === true) {
       projection.validPlays++;
@@ -7529,7 +7584,12 @@ export const buildStatsProjection = events => {
     bump(projection.dimensions.quality, data.quality || 'unknown');
     bump(projection.dimensions.variant, data.variant || 'audio');
     bump(projection.dimensions.platform, event.platform || 'web');
+    bump(projection.dimensions.deviceClass, event.deviceClass || 'unknown');
+    bump(projection.dimensions.deviceOs, event.deviceOs || 'unknown');
+    bump(projection.dimensions.deviceBrowser, event.deviceBrowser || 'unknown');
+    bump(projection.dimensions.pwa, event.devicePwa === true ? 'on' : 'off');
     bump(projection.dimensions.shuffle, data.shuffle === true ? 'on' : 'off');
+    bump(projection.dimensions.repeat, data.repeat === true ? 'on' : 'off');
     bump(projection.dimensions.favoritesOnly, data.favoritesOnly === true ? 'on' : 'off');
     if (data.launchSource) bump(projection.dimensions.launchSource, data.launchSource);
   });
@@ -7539,10 +7599,16 @@ export const buildStatsProjection = events => {
 
 export const normalizeStatsProjection = raw => ({
   listenMs: Math.floor(num(raw?.listenMs)),
+  uniqueCoveredMs: Math.floor(num(raw?.uniqueCoveredMs)),
+  completionBasisPointsSum: Math.floor(num(raw?.completionBasisPointsSum)),
+  analysisEligibleSessions: Math.floor(num(raw?.analysisEligibleSessions)),
   validPlays: Math.floor(num(raw?.validPlays)),
   fullPlays: Math.floor(num(raw?.fullPlays)),
   starts: Math.floor(num(raw?.starts)),
-  skips: Math.floor(num(raw?.skips)),
+  microSkips: Math.floor(num(raw?.microSkips)),
+  earlySkips: Math.floor(num(raw?.earlySkips)),
+  validSkips: Math.floor(num(raw?.validSkips)),
+  partialEnds: Math.floor(num(raw?.partialEnds)),
   firstEventAt: Math.floor(num(raw?.firstEventAt)),
   lastEventAt: Math.floor(num(raw?.lastEventAt)),
   activeDays: dayList(raw?.activeDays),
@@ -7550,22 +7616,34 @@ export const normalizeStatsProjection = raw => ({
   byWeekdayMs: fixed(raw?.byWeekdayMs, 7),
   tracks: Object.fromEntries(Object.entries(raw?.tracks && typeof raw.tracks === 'object' ? raw.tracks : {}).map(([uid, row]) => [safe(uid), {
     listenMs: Math.floor(num(row?.listenMs)),
+    uniqueCoveredMs: Math.floor(num(row?.uniqueCoveredMs)),
+    completionBasisPointsSum: Math.floor(num(row?.completionBasisPointsSum)),
+    analysisEligibleSessions: Math.floor(num(row?.analysisEligibleSessions)),
     validPlays: Math.floor(num(row?.validPlays)),
     fullPlays: Math.floor(num(row?.fullPlays)),
     starts: Math.floor(num(row?.starts)),
-    skips: Math.floor(num(row?.skips)),
+    microSkips: Math.floor(num(row?.microSkips)),
+    earlySkips: Math.floor(num(row?.earlySkips)),
+    validSkips: Math.floor(num(row?.validSkips)),
+    partialEnds: Math.floor(num(row?.partialEnds)),
     firstPlayedAt: Math.floor(num(row?.firstPlayedAt)),
     lastPlayedAt: Math.floor(num(row?.lastPlayedAt)),
     byHourMs: fixed(row?.byHourMs, 24),
     byWeekdayMs: fixed(row?.byWeekdayMs, 7),
     features: countMap(row?.features)
   }]).filter(([uid]) => uid)),
+  transitions: countMap(raw?.transitions),
   globalFeatures: countMap(raw?.globalFeatures || raw?.features),
   dimensions: {
     quality: countMap(raw?.dimensions?.quality),
     variant: countMap(raw?.dimensions?.variant),
     platform: countMap(raw?.dimensions?.platform),
+    deviceClass: countMap(raw?.dimensions?.deviceClass),
+    deviceOs: countMap(raw?.dimensions?.deviceOs),
+    deviceBrowser: countMap(raw?.dimensions?.deviceBrowser),
+    pwa: countMap(raw?.dimensions?.pwa),
     shuffle: countMap(raw?.dimensions?.shuffle),
+    repeat: countMap(raw?.dimensions?.repeat),
     favoritesOnly: countMap(raw?.dimensions?.favoritesOnly),
     launchSource: countMap(raw?.dimensions?.launchSource)
   }
@@ -7602,24 +7680,37 @@ export const mergeStatsProjectionInto = (targetRaw, sourceRaw) => {
   const target = normalizeStatsProjection(targetRaw);
   const source = normalizeStatsProjection(sourceRaw?.projection || sourceRaw);
   target.listenMs += source.listenMs;
+  target.uniqueCoveredMs += source.uniqueCoveredMs;
+  target.completionBasisPointsSum += source.completionBasisPointsSum;
+  target.analysisEligibleSessions += source.analysisEligibleSessions;
   target.validPlays += source.validPlays;
   target.fullPlays += source.fullPlays;
   target.starts += source.starts;
-  target.skips += source.skips;
+  target.microSkips += source.microSkips;
+  target.earlySkips += source.earlySkips;
+  target.validSkips += source.validSkips;
+  target.partialEnds += source.partialEnds;
   target.firstEventAt = minPositive(target.firstEventAt, source.firstEventAt);
   target.lastEventAt = Math.max(target.lastEventAt, source.lastEventAt);
   target.activeDays = dayList([...target.activeDays, ...source.activeDays]);
   source.byHourMs.forEach((amount, index) => target.byHourMs[index] += amount);
   source.byWeekdayMs.forEach((amount, index) => target.byWeekdayMs[index] += amount);
+  Object.entries(source.transitions).forEach(([key, amount]) => bump(target.transitions, key, amount));
   Object.entries(source.globalFeatures).forEach(([key, amount]) => bump(target.globalFeatures, key, amount));
   Object.entries(source.dimensions).forEach(([dimension, rows]) => Object.entries(rows).forEach(([key, amount]) => bump(target.dimensions[dimension], key, amount)));
   Object.entries(source.tracks).forEach(([uid, row]) => {
     const track = ensureTrack(target, uid);
     track.listenMs += row.listenMs;
+    track.uniqueCoveredMs += row.uniqueCoveredMs;
+    track.completionBasisPointsSum += row.completionBasisPointsSum;
+    track.analysisEligibleSessions += row.analysisEligibleSessions;
     track.validPlays += row.validPlays;
     track.fullPlays += row.fullPlays;
     track.starts += row.starts;
-    track.skips += row.skips;
+    track.microSkips += row.microSkips;
+    track.earlySkips += row.earlySkips;
+    track.validSkips += row.validSkips;
+    track.partialEnds += row.partialEnds;
     track.firstPlayedAt = minPositive(track.firstPlayedAt, row.firstPlayedAt);
     track.lastPlayedAt = Math.max(track.lastPlayedAt, row.lastPlayedAt);
     row.byHourMs.forEach((amount, index) => track.byHourMs[index] += amount);
@@ -7634,6 +7725,13 @@ export const projectionToStatsRows = raw => {
   const rows = Object.entries(projection.tracks).map(([uid, track]) => ({
     uid,
     globalListenSeconds: track.listenMs / 1000,
+    uniqueCoveredSeconds: track.uniqueCoveredMs / 1000,
+    analysisEligibleSessions: track.analysisEligibleSessions,
+    averageCompletionRate: track.analysisEligibleSessions > 0 ? track.completionBasisPointsSum / track.analysisEligibleSessions / 10000 : 0,
+    microSkips: track.microSkips,
+    earlySkips: track.earlySkips,
+    validSkips: track.validSkips,
+    partialEnds: track.partialEnds,
     globalValidListenCount: track.validPlays,
     globalFullListenCount: track.fullPlays,
     firstPlayedAt: track.firstPlayedAt,
@@ -7642,7 +7740,7 @@ export const projectionToStatsRows = raw => {
     byWeekdayMs: [...track.byWeekdayMs],
     byHour: track.byHourMs.map(value => value / 1000),
     byWeekday: track.byWeekdayMs.map(value => value / 1000),
-    temporalSchemaVersion: 2,
+    temporalSchemaVersion: 3,
     featuresUsed: { ...track.features }
   }));
   if (Object.keys(projection.globalFeatures).length) {
@@ -7656,13 +7754,20 @@ export const projectionStreak = raw => {
   let longest = 0;
   let run = 0;
   let previous = 0;
+
   days.forEach(value => {
     const current = Date.parse(`${value}T00:00:00Z`);
     run = previous && current - previous === 86400000 ? run + 1 : 1;
     longest = Math.max(longest, run);
     previous = current;
   });
-  return { current: run, longest, lastActiveDate: days[days.length - 1] || '', activeDays: days };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const lastActiveDate = days[days.length - 1] || '';
+  const current = lastActiveDate === today || lastActiveDate === yesterday ? run : 0;
+
+  return { current, longest, lastActiveDate, activeDays: days };
 };
 
 export const mergeStatsProjections = shards => (Array.isArray(shards) ? shards : []).reduce((output, shard) => mergeStatsProjectionInto(output, shard), emptyStatsProjection());
