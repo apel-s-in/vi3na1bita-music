@@ -24,7 +24,6 @@ const CFG = {
 };
 const API = 'https://cloud-api.yandex.net/v1/disk';
 const VERSION = '7.1';
-const LEGACY_V7_VERSION = '7.0';
 const BACKUP_ROOT = 'app:/Backup';
 const ROOT = `${BACKUP_ROOT}/v7`;
 const DEVICES_DIR = `${ROOT}/devices`;
@@ -371,19 +370,6 @@ async function listFolder(token, path, maxItems = 1000) {
   }
   return output.slice(0, maxItems);
 }
-async function deleteResource(token, path) {
-  bumpDiskOperation('delete');
-  const cleanPath = safe(path);
-  if (!cleanPath || cleanPath === BACKUP_ROOT || cleanPath === ROOT || cleanPath.startsWith(`${ROOT}/`)) {
-    throw makeError('legacy_cleanup_path_forbidden', 403);
-  }
-  const response = await diskJson('DELETE', `${API}/resources?path=${encodeURIComponent(cleanPath)}&permanently=true`, token, null, 30000);
-  if (response.status === 404) return { ok: true, missing: true, path: cleanPath };
-  if (![200, 202, 204].includes(response.status)) {
-    throw makeError(`disk_delete_failed:${response.status}`, [401, 403].includes(response.status) ? response.status : 502, { path: cleanPath });
-  }
-  return { ok: true, missing: false, path: cleanPath, asynchronous: response.status === 202 };
-}
 const deviceDir = deviceId => `${DEVICES_DIR}/${safeId(deviceId, 120)}`;
 const chainDir = (deviceId, chainId) => `${deviceDir(deviceId)}/${safeId(chainId, 160)}`;
 const rangePath = range => `${chainDir(range.deviceId, range.chainId)}/range_${range.fromSeq}.json`;
@@ -435,9 +421,7 @@ function normalizeEvents(rawEvents, auth, chainId, fromSeq, toSeq) {
 function normalizeRange(raw, auth) {
   if (!isObject(raw)) throw makeError('range_object_required', 400);
   const version = safe(raw.version || VERSION);
-  if (![VERSION, LEGACY_V7_VERSION].includes(version)) {
-    throw makeError('range_version_invalid', 400);
-  }
+  if (version !== VERSION) throw makeError('range_version_invalid', 400);
   const deviceId = safeId(raw.deviceId || auth.deviceId, 120);
   const chainId = safeId(raw.chainId, 160);
   const fromSeq = integer(raw.fromSeq);
@@ -451,24 +435,7 @@ function normalizeRange(raw, auth) {
   if (previousRangeHash && !isHash(previousRangeHash)) {
     throw makeError('range_previous_hash_invalid', 400);
   }
-  let core;
-  if (version === LEGACY_V7_VERSION) {
-    core = {
-      version: LEGACY_V7_VERSION,
-      ownerYandexIdHash: auth.ownerYandexIdHash,
-      deviceId,
-      chainId,
-      fromSeq,
-      toSeq,
-      events,
-      projection: isObject(raw.projection) ? raw.projection : {},
-      audit: Array.isArray(raw.audit) ? raw.audit.slice(0, MAX_RANGE_EVENTS) : [],
-      mutations: isObject(raw.mutations) ? raw.mutations : isObject(raw.sharedMutations) ? raw.sharedMutations : {},
-      createdAt
-    };
-  } else {
-    core = { version: VERSION, ownerYandexIdHash: auth.ownerYandexIdHash, deviceId, chainId, fromSeq, toSeq, previousRangeHash, events, createdAt };
-  }
+  const core = { version: VERSION, ownerYandexIdHash: auth.ownerYandexIdHash, deviceId, chainId, fromSeq, toSeq, previousRangeHash, events, createdAt };
   const payloadHash = hash(stableStringify(core));
   const suppliedHash = safe(raw.hash || raw.payloadHash);
   if (suppliedHash && suppliedHash !== payloadHash) {
@@ -483,33 +450,18 @@ function normalizeRange(raw, auth) {
 }
 function verifyStoredRange(raw, expected = {}) {
   if (!isObject(raw)) throw makeError('stored_range_invalid', 502);
-  const version = safe(raw.version);
-  const core =
-    version === LEGACY_V7_VERSION
-      ? {
-          version: LEGACY_V7_VERSION,
-          ownerYandexIdHash: safe(raw.ownerYandexIdHash),
-          deviceId: safeId(raw.deviceId, 120),
-          chainId: safeId(raw.chainId, 160),
-          fromSeq: integer(raw.fromSeq),
-          toSeq: integer(raw.toSeq),
-          events: Array.isArray(raw.events) ? raw.events : [],
-          projection: isObject(raw.projection) ? raw.projection : {},
-          audit: Array.isArray(raw.audit) ? raw.audit : [],
-          mutations: isObject(raw.mutations) ? raw.mutations : {},
-          createdAt: integer(raw.createdAt)
-        }
-      : {
-          version: VERSION,
-          ownerYandexIdHash: safe(raw.ownerYandexIdHash),
-          deviceId: safeId(raw.deviceId, 120),
-          chainId: safeId(raw.chainId, 160),
-          fromSeq: integer(raw.fromSeq),
-          toSeq: integer(raw.toSeq),
-          previousRangeHash: safe(raw.previousRangeHash),
-          events: Array.isArray(raw.events) ? raw.events : [],
-          createdAt: integer(raw.createdAt)
-        };
+  if (safe(raw.version) !== VERSION) throw makeError('stored_range_version_invalid', 502);
+  const core = {
+    version: VERSION,
+    ownerYandexIdHash: safe(raw.ownerYandexIdHash),
+    deviceId: safeId(raw.deviceId, 120),
+    chainId: safeId(raw.chainId, 160),
+    fromSeq: integer(raw.fromSeq),
+    toSeq: integer(raw.toSeq),
+    previousRangeHash: safe(raw.previousRangeHash),
+    events: Array.isArray(raw.events) ? raw.events : [],
+    createdAt: integer(raw.createdAt)
+  };
   const actualHash = hash(stableStringify(core));
   const actualKey = `${core.deviceId}:${core.chainId}:${core.fromSeq}:${core.toSeq}:${actualHash}`;
   if (!isHash(raw.hash) || safe(raw.hash) !== actualHash) {
@@ -592,14 +544,14 @@ async function writeImmutableRange(auth, rawRange) {
     if (safe(firstEvent?.prevHash)) {
       throw makeError('range_chain_first_prev_hash_invalid', 409);
     }
-    if (range.version === VERSION && range.previousRangeHash) {
+    if (range.previousRangeHash) {
       throw makeError('range_chain_first_previous_range_invalid', 409);
     }
   } else {
     if (safe(firstEvent?.prevHash) !== safe(head.lastEventHash)) {
       throw makeError('range_chain_prev_hash_mismatch', 409);
     }
-    if (range.version === VERSION && safe(range.previousRangeHash) !== safe(head.lastRangeHash)) {
+    if (safe(range.previousRangeHash) !== safe(head.lastRangeHash)) {
       throw makeError('range_previous_range_hash_mismatch', 409);
     }
   }
@@ -707,7 +659,7 @@ async function pullAfterWatermarks(auth, rawWatermarks, { maxRanges = MAX_PULL_R
         chainId: head.chainId,
         fromSeq: nextFromSeq
       });
-      if (verified.version === VERSION && safe(verified.previousRangeHash) !== lastRangeHash) {
+      if (safe(verified.previousRangeHash) !== lastRangeHash) {
         throw makeError('range_pull_previous_hash_mismatch', 502);
       }
       const encodedBytes = byteLength(verified);
@@ -881,54 +833,7 @@ async function exchangeSharedDocument(auth, rawShared, knownHash = '') {
     hash: merged.document.hash
   };
 }
-const LEGACY_BACKUP_FILE_RE = /^vi3na1bita_backup(?:_[A-Za-z0-9._-]+)?\.vi3bak$/i;
-const LEGACY_ROOT_FILES = new Set(['vi3na1bita_backup_meta.json']);
-const LEGACY_ROOT_DIRS = new Set(['events', 'device-settings']);
 
-async function inspectLegacyBackupResources(auth) {
-  const [rootItems, heads, sharedRaw] = await Promise.all([
-    listFolder(auth.oauthToken, BACKUP_ROOT, 2000),
-    listChainHeads(auth),
-    downloadJson(auth.oauthToken, SHARED_PATH, { maxBytes: 2 * 1024 * 1024 }).catch(() => null)
-  ]);
-  let shared = null;
-  try {
-    shared = sharedRaw ? normalizeSharedDocument(sharedRaw, auth, { stored: true }) : null;
-  } catch {}
-  const candidates = rootItems
-    .map(item => {
-      const name = safe(item?.name);
-      const type = safe(item?.type);
-      const legacyFile = type === 'file' && (LEGACY_BACKUP_FILE_RE.test(name) || LEGACY_ROOT_FILES.has(name));
-      const legacyDir = type === 'dir' && LEGACY_ROOT_DIRS.has(name);
-      if (!legacyFile && !legacyDir) return null;
-      return { name, type, path: `${BACKUP_ROOT}/${name}`, size: integer(item?.size), modified: safe(item?.modified) };
-    })
-    .filter(Boolean)
-    .sort((left, right) => left.type.localeCompare(right.type) || left.name.localeCompare(right.name));
-  const knownFileBytes = candidates.filter(item => item.type === 'file').reduce((sum, item) => sum + item.size, 0);
-  return {
-    ready: heads.length > 0 && shared?.schemaVersion === SHARED_SCHEMA_VERSION && !!shared.hash,
-    v7: { heads: heads.length, shared: !!shared, sharedSchemaVersion: integer(shared?.schemaVersion), sharedHash: safe(shared?.hash) },
-    candidates,
-    count: candidates.length,
-    knownFileBytes,
-    note: 'directory_sizes_are_not_included'
-  };
-}
-
-async function cleanupLegacyBackupResources(auth, request) {
-  if (!isObject(request)) return null;
-  const preview = await inspectLegacyBackupResources(auth);
-  if (request.dryRun !== false) return { ...preview, dryRun: true, deleted: 0, results: [] };
-  if (safe(request.confirm) !== 'DELETE_LEGACY_V6') throw makeError('legacy_cleanup_confirmation_required', 409);
-  if (!preview.ready) throw makeError('legacy_cleanup_v7_not_ready', 409, { v7: preview.v7 });
-  const results = [];
-  for (const item of preview.candidates) {
-    results.push({ ...item, ...(await deleteResource(auth.oauthToken, item.path)) });
-  }
-  return { ...preview, dryRun: false, deleted: results.filter(item => item.ok).length, results, completedAt: now() };
-}
 function normalizeCachePolicies(raw) {
   if (!isObject(raw)) return {};
   return Object.fromEntries(
@@ -1082,7 +987,6 @@ async function runBatchSync(auth, body) {
     templateSettings = await getSettings(auth, templateDeviceId);
   }
   const deviceCatalog = body.includeDeviceCatalog === true ? await listDeviceSettingsCatalog(auth) : null;
-  const legacyCleanup = isObject(body.legacyCleanup) ? await cleanupLegacyBackupResources(auth, body.legacyCleanup) : null;
   return {
     ok: true,
     version: VERSION,
@@ -1090,7 +994,6 @@ async function runBatchSync(auth, body) {
     push: { accepted: push.filter(item => !item.duplicate).length, duplicates: push.filter(item => item.duplicate).length, ranges: push },
     pull,
     shared,
-    legacyCleanup,
     settings: { changed: !!settings, current: settings, pushed: settingsPush ? { changed: settingsPush.changed, hash: settingsPush.settings.hash, updatedAt: settingsPush.settings.updatedAt } : null, template: templateSettings, catalog: deviceCatalog },
     serverTime: now()
   };
