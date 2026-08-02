@@ -3277,6 +3277,7 @@ const LISTEN_VALID_MIN_SEC = 25;
 const LISTEN_SHORT_COMPLETION_MS = LISTEN_VALID_MIN_SEC * 1000;
 const LOGICAL_START_TOLERANCE_MS = 6000;
 const LISTEN_SESSION_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+const LISTEN_RECEIPT_RETENTION_MS = 180 * 24 * 60 * 60 * 1000;
 const LISTEN_ACTIVE_RETENTION_MS = CFG.listenSessionMaxMs + CFG.listenBackgroundMaxGapMs + 60 * 60 * 1000;
 const LISTEN_PROGRESS_RECEIPT_LIMIT = 500;
 const LISTEN_TIME_SESSION_LIMIT = 64;
@@ -3701,13 +3702,13 @@ async function finalizeLogicalListen(logicalRaw) {
   };
   if (!oldRow) {
     try {
-      await kvInsert({ pk: receiptPk, type: 'listenReceipt', owner: logical.playerId, expiresAt: 0, data: { ...receipt, progressApplied: false } });
+      await kvInsert({ pk: receiptPk, type: 'listenReceipt', owner: logical.playerId, expiresAt: Math.max(now(), logical.completedAt) + LISTEN_RECEIPT_RETENTION_MS, data: { ...receipt, progressApplied: false } });
     } catch {}
   }
   const applied = await applyListenReceiptProgress(receipt);
   const rewards = await reconcileAchievementRewards(logical.playerId, applied.progress);
   const completedReceipt = { ...receipt, progressApplied: true, rewardGranted: rewards.grants.length > 0, rewardAmount: rewards.grants.reduce((sum, grant) => sum + grant.amount, 0), rewardIds: rewards.grants.map(grant => grant.achievementId) };
-  await kvPut({ pk: receiptPk, type: 'listenReceipt', owner: logical.playerId, expiresAt: 0, data: completedReceipt });
+  await kvPut({ pk: receiptPk, type: 'listenReceipt', owner: logical.playerId, expiresAt: Math.max(now(), logical.completedAt) + LISTEN_RECEIPT_RETENTION_MS, data: completedReceipt });
   for (let attempt = 0; attempt < 8; attempt++) {
     const row = await kvGet(logicalListenKey(logical.playerId, logical.logicalSessionId));
     if (!row) break;
@@ -3926,18 +3927,23 @@ function utcDayKey(timestamp) {
 }
 function calculateServerStreakSummary(days = []) {
   const values = [...new Set(days)].filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)).sort();
-  let current = 0;
   let longest = 0;
   let run = 0;
   let previous = 0;
+
   values.forEach(value => {
     const timestamp = Date.parse(`${value}T00:00:00Z`);
     run = previous && timestamp - previous === 86400000 ? run + 1 : 1;
-    current = run;
     longest = Math.max(longest, run);
     previous = timestamp;
   });
-  return { current, longest, lastActiveDate: values[values.length - 1] || '', activeDays: values.length };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(now() - 86400000).toISOString().slice(0, 10);
+  const lastActiveDate = values[values.length - 1] || '';
+  const current = lastActiveDate === today || lastActiveDate === yesterday ? run : 0;
+
+  return { current, longest, lastActiveDate, activeDays: values.length };
 }
 function publicListenSession(session) {
   const data = normalizeListenSession(session);
