@@ -231,33 +231,11 @@ export const resolveListeningStatsViews = (localRows = []) => {
   };
 };
 
-  if (!authorized()) {
-    return {
-      ...buildStatsViewModel(localRows),
-      source: 'local_rebuildable',
-      available: true,
-      pending: false,
-      exact: false,
-      legacyUnclassifiedSec: 0
-    };
-  }
-
-  const server = getConfirmedListeningStats();
-
-  if (!server.available) {
-    const local = buildStatsViewModel(localRows);
-    return {
-      ...local,
-      source: 'local_rebuildable',
-      available: true,
-      pending: true,
-      exact: false,
-      serverPending: true,
-      legacyUnclassifiedSec: 0
-    };
-  }
-
-  return buildServerViewModel(server, localRows);
+export const resolveListeningStatsViewModel = (localRows = []) => {
+  const views = resolveListeningStatsViews(localRows);
+  if (!authorized()) return views.local;
+  if (!views.server.available) return { ...views.local, pending: true, serverPending: true };
+  return views.server;
 };
 
 export default {
