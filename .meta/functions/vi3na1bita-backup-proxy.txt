@@ -309,7 +309,8 @@ async function ensureDir(token, path) {
   bumpDiskOperation('mkdir');
   const created = await diskJson('PUT', `${API}/resources?path=${encodeURIComponent(cleanPath)}`, token, null, 10000);
   if (![200, 201, 202, 409].includes(created.status)) {
-    throw makeError(`disk_directory_create_failed:${created.status}`, [401, 403].includes(created.status) ? created.status : 502);
+    const status = [401, 403, 507].includes(created.status) ? created.status : 502;
+    throw makeError(created.status === 507 ? 'disk_space_exhausted' : `disk_directory_create_failed:${created.status}`, status);
   }
   usage?.ensuredDirs?.add(cleanPath);
   return true;
@@ -341,14 +342,16 @@ async function uploadJson(token, path, value, { overwrite = false } = {}) {
   const link = await diskJson('GET', `${API}/resources/upload?path=${encodeURIComponent(path)}&${overwriteQuery}`, token, null, 15000);
   if (link.status === 409 && !overwrite) return { ok: false, conflict: true, stage: 'link' };
   if (link.status !== 200 || !link.json?.href) {
-    throw makeError(`disk_upload_link_failed:${link.status}`, link.status === 401 ? 401 : link.status === 403 ? 403 : link.status === 409 ? 409 : 502);
+    const status = [401, 403, 409, 507].includes(link.status) ? link.status : 502;
+    throw makeError(link.status === 507 ? 'disk_space_exhausted' : `disk_upload_link_failed:${link.status}`, status);
   }
   const written = await request('PUT', link.json.href, { headers: { 'Content-Type': 'application/json' }, body: payload, timeoutMs: DOWNLOAD_TIMEOUT_MS, maxBytes: 1024 * 1024 });
   if (written.status === 409 && !overwrite) {
     return { ok: false, conflict: true, stage: 'put' };
   }
   if (written.status < 200 || written.status >= 300) {
-    throw makeError(`disk_upload_failed:${written.status}`, written.status === 409 ? 409 : 502);
+    const status = [401, 403, 409, 507].includes(written.status) ? written.status : 502;
+    throw makeError(written.status === 507 ? 'disk_space_exhausted' : `disk_upload_failed:${written.status}`, status);
   }
   return { ok: true, conflict: false };
 }
