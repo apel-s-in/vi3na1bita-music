@@ -103,7 +103,7 @@ F всегда относится к playing-context, а не к просто о
 СТРУКТУРА ПРОЕКТА (компактная):
 [/] .gitignore, albums.json, generate-context.js, index.html, manifest.json, oauth-callback.html, service-worker.js
 [/.git/] (пусто)
-[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-listen-catalog.yml, generate-lyrics-index.yml, release-version.yml, validate.yml
+[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-listen-catalog.yml, generate-lyrics-index.yml, probe-ydb-sdk.yml, release-version.yml, validate.yml
 [/.meta/] (пусто)
 [/.release/] version.json
 [/albums/] .gitkeep
@@ -693,6 +693,107 @@ jobs:
           file_pattern: "data/lyrics-index-v1.json"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
+
+//=================================================
+// FILE: /.github/workflows/probe-ydb-sdk.yml
+name: Probe ydb-sdk capabilities
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия ydb-sdk"
+        required: true
+        default: "5.9.0"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Install exact SDK
+        env:
+          YDB_SDK_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ydb-probe
+          cd /tmp/ydb-probe
+          npm init -y >/dev/null
+          npm install --save-exact "ydb-sdk@${YDB_SDK_VERSION}"
+          npm list ydb-sdk | tee installed-version.txt
+
+      - name: Inspect public exports and prototypes
+        run: |
+          set -euo pipefail
+          cd /tmp/ydb-probe
+          node <<'NODE' | tee runtime-api.txt
+          const sdk = require('ydb-sdk');
+
+          const methods = value => {
+            const output = new Set();
+            let current = value;
+
+            while (current && current !== Object.prototype) {
+              Object.getOwnPropertyNames(current)
+                .filter(name => name !== 'constructor')
+                .forEach(name => output.add(name));
+              current = Object.getPrototypeOf(current);
+            }
+
+            return [...output].sort();
+          };
+
+          console.log('SDK exports:');
+          console.log(Object.keys(sdk).sort().join('\n'));
+
+          for (const name of [
+            'Driver',
+            'TableClient',
+            'Session',
+            'Transaction',
+            'TransactionSettings'
+          ]) {
+            const value = sdk[name];
+            console.log(`\n[${name}]`);
+            console.log(value ? methods(value.prototype || value) : 'not exported');
+          }
+          NODE
+
+      - name: Search installed source for transaction API
+        run: |
+          set -euo pipefail
+          cd /tmp/ydb-probe
+          {
+            echo "=== transaction-related source references ==="
+            grep -RInE \
+              "beginTransaction|transaction\\(|executeQuery|commit\\(|rollback\\(|withSession|withSessionRetry|RETURNING" \
+              node_modules/ydb-sdk \
+              --include='*.js' \
+              --include='*.d.ts' \
+              | head -n 500 || true
+          } | tee source-api.txt
+
+      - name: Build report
+        run: |
+          set -euo pipefail
+          cd /tmp/ydb-probe
+          cat installed-version.txt runtime-api.txt source-api.txt > ydb-sdk-capabilities.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ydb-sdk-capabilities-${{ inputs.version }}
+          path: /tmp/ydb-probe/ydb-sdk-capabilities.txt
+          if-no-files-found: error
+          retention-days: 14
 
 //=================================================
 // FILE: /.github/workflows/release-version.yml
