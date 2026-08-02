@@ -32,7 +32,6 @@
       new ST.SessionTracker();
       W.statsAggregator = new SA.StatsAggregator();
       await W.statsAggregator.processHotEvents().catch(() => {});
-      import('./analytics/stats-state.js').then(m => m.migrateLocalTemporalV2?.(M.metaDB)).catch(() => {});
       await LS.liveStatsTracker.initialize();
       const receiptsModule = await import('./analytics/listening-receipts.js');
       receiptsModule.listeningReceiptService?.initialize?.();
