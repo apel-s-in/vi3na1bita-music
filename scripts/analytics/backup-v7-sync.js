@@ -520,7 +520,8 @@ export const readBackupV7JournalEvents = async ({ sinceAt = Date.now() - 30 * 24
     metaDB.getEvents('events_warm').catch(() => []),
     metaDB.getEvents('events_hot').catch(() => [])
   ]);
-  [...warm, ...hot].forEach(add);
+  const queued = Array.isArray(window.eventLogger?.queue) ? window.eventLogger.queue : [];
+  [...warm, ...hot, ...queued].forEach(add);
 
   return [...events.values()]
     .sort((left, right) => Number(right.timestamp || 0) - Number(left.timestamp || 0))
