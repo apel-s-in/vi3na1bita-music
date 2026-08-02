@@ -15430,7 +15430,7 @@ const validateDataBoundaries = () => {
   const account = 'scripts/analytics/account-data-boundary.js';
   const favorite = 'scripts/analytics/favorite-state-contract.js';
   const mirror = 'scripts/analytics/favorite-mirror.js';
-  ['Vi3AccountVault_v1', 'eventLedger:chainId:v1', 'favoriteMirror:outbox:v1', 'listeningReceipts:completionOutbox:v1', 'adoptLocalData'].forEach(marker => contains(account, marker));
+  ['Vi3AccountVault_v2', 'eventLedger:chainId:v1', 'favoriteMirror:outbox:v1', 'listeningReceipts:completionOutbox:v1', 'adoptLocalData'].forEach(marker => contains(account, marker));
   ['normalizeFavoriteItem', 'favoriteClock', 'favoriteStatus', 'mergeFavoritePair', 'remoteToLocal', 'localToRemote', 'favoriteSignature'].forEach(marker => contains(favorite, marker));
   ['favorite_state_get', 'favorite_state_mutate', 'favorite_state_reconcile'].forEach(marker => contains(mirror, marker));
   excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*__favorites_v2__/, 'Избранное осталось в shared backup');
@@ -15442,7 +15442,8 @@ const validateDataBoundaries = () => {
   assertNoMatch([favorite, mirror], /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|applyFavoritesOnlyFilter)\s*\(/g, 'Favorite contract или mirror управляет playback');
 };
 const validateRecommendationsAndStats = () => {
-  contains('scripts/app/profile/recs-view.js', 'stableScore');
+  contains('scripts/intel/recs/recommendation-engine.js', 'scoreUid');
+  excludes('scripts/app/profile/recs-view.js', /stableScore|scoreUid/, 'Recommendation ranking снова добавлен в UI renderer');
   excludes('scripts/app/profile/recs-view.js', /sort\(\s*\(\)\s*=>\s*Math\.random/, 'случайный comparator рекомендаций');
   excludes('scripts/app/profile/carousel-flat.js', /oldTabs/, 'legacy oldTabs');
   ['const activeDays = new Set', 'if (lSec > 0)', 's.globalListenSeconds += lSec', 'calculateStreakSummary'].forEach(marker => contains('scripts/analytics/stats-aggregator.js', marker));
@@ -15635,10 +15636,6 @@ const validateBackupProxy = () => {
   assertNoMatch([proxy], /upload_backup|upload_meta|upload_event_segment|archive_delete_segments|archive_inspect|ledger_verify|lease_acquire|lease_release/g, 'Backup proxy не содержит v6, archive, ledger или lease modes');
   assertNoMatch([proxy], /['"]v7_authorize['"]|['"]v7_push_range['"]|['"]v7_pull_ranges['"]|['"]v7_put_settings['"]|['"]v7_get_settings['"]/g, 'Раздельные v7 proxy modes удалены');
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
-  contains(proxy, 'cleanupLegacyBackupResources');
-  contains(proxy, 'legacy_cleanup_path_forbidden');
-  contains(proxy, 'permanently=true');
-  contains(proxy, "safe(request.confirm) !== 'DELETE_LEGACY_V6'");
   contains('scripts/analytics/backup-v7-sync.js', 'readBackupV7JournalEvents');
   contains('scripts/app/profile/logs-view.js', 'JOURNAL_DAY_COUNT = 30');
   contains('scripts/app/profile/logs-view.js', 'getJournalDayWindow');
@@ -15682,6 +15679,13 @@ const validateWorkflows = () => {
 const main = async () => {
   await validateAchievements();
   validateListening();
+  contains(server, "const TABLE = `${CFG.prefix}kv_v2`");
+  contains(server, '`expires_at` Timestamp');
+  contains(server, 'TTL = Interval("PT0S") ON expires_at');
+  contains(server, 'DateTime::FromMilliseconds');
+  contains(server, 'DateTime::ToMilliseconds');
+  excludes(server, /`expires_at`\s+Uint64/, 'Новая YDB schema снова использует Uint64 expires_at');
+  contains('cloud-functions/vi3-webpush/index.js', "const TABLE = `${CFG.prefix}kv_v2`");
   validateRewards();
   excludes('scripts/analytics/achievements-dict.js', /["']backup_saves["']/, 'Достижение за технический backup осталось в словаре');
   excludes('cloud-functions/vi3-signaling/index.js', /backup_achievement_receipt|actionBackupAchievementReceipt|backupReceiptIds|backupSaves|CFG\.backupRewardsShadow|CFG\.backupReceiptSecret/, 'Legacy backup achievement contour остался в signaling');
@@ -15720,9 +15724,9 @@ const main = async () => {
   contains('scripts/analytics/backup-v7-sync.js', 'maxPullRanges');
   contains('scripts/analytics/backup-v7-sync.js', 'buildBackupV7SharedDocument');
   contains('scripts/analytics/backup-v7-sync.js', 'applyBackupV7SharedDocument');
-  contains('scripts/analytics/backup-v7-sync.js', 'cleanupLegacyBackupV6');
-  contains('scripts/app/profile/cloud-action-render-kit.js', 'legacy-cloud-cleanup');
-  contains('scripts/app/profile/yandex-actions.js', 'openLegacyCloudCleanupModal');
+  excludes('scripts/analytics/backup-v7-sync.js', /cleanupLegacyBackupV6|legacyCleanup|DELETE_LEGACY_V6/, 'Legacy cleanup снова добавлен в Backup client');
+  excludes('scripts/app/profile/cloud-action-render-kit.js', /legacy-cloud-cleanup/, 'Legacy cleanup button снова добавлена');
+  excludes('scripts/app/profile/yandex-actions.js', /openLegacyCloudCleanupModal|cleanupLegacyBackupV6/, 'Legacy cleanup modal снова добавлена');
   contains('scripts/analytics/backup-v7-range.js', 'sharedServerHash');
   contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'SHARED_PATH');
   contains('cloud-functions/vi3na1bita-backup-proxy/index.js', 'exchangeSharedDocument');
@@ -15755,8 +15759,13 @@ const main = async () => {
   contains('service-worker.js', 'x-vi3-correlation');
   contains('scripts/analytics/backup-v7-recovery.js', 'createBackupV7Checkpoint');
   contains('scripts/analytics/backup-v7-recovery.js', 'restoreBackupV7Checkpoint');
-  contains('scripts/analytics/backup-v7-sync.js', 'backup_chain_quarantine');
-  contains('scripts/analytics/stats-shard-contract.js', 'STATS_SHARD_VERSION = 3');
+  contains('scripts/analytics/stats-shard-contract.js', 'STATS_SHARD_VERSION = 4');
+  contains('scripts/analytics/stats-v4-projection.js', 'REPEAT_GAP_MS = 60000');
+  contains('scripts/analytics/stats-v4-projection.js', 'completionsInRuns3');
+  contains('scripts/analytics/stats-v4-projection.js', 'singleRun');
+  contains('scripts/analytics/stats-v4-projection.js', 'cubeKey');
+  contains('scripts/analytics/stats-shard-contract.js', 'chainSeq');
+  contains('scripts/analytics/meta-db.js', "createIndex('chainSeq'");
   contains('scripts/analytics/stats-shard-contract.js', 'activeDays');
   contains('scripts/analytics/stats-shard-contract.js', 'firstPlayedAt');
   contains('scripts/analytics/stats-shard-contract.js', 'lastPlayedAt');
