@@ -254,7 +254,7 @@ const deleteStoreRow = async (storeName, key) => {
   });
 };
 
-const ensureStatsRollupsV2 = async () => {
+const ensureStatsRollups = async () => {
   let cursorKey = '';
   let built = 0;
   let verified = 0;
@@ -390,7 +390,7 @@ const compactOldRawRanges = async ({ retentionMs = 35 * 24 * 60 * 60 * 1000 } = 
 export const rebuildBackupV7LocalAnalytics = async ({ reason = 'backup_v71_rebuild', force = false } = {}) => {
   if (!force && window.playerCore?.isPlaying?.()) return { rebuilt: false, deferred: true };
 
-  const migration = await ensureStatsRollupsV2();
+  const migration = await ensureStatsRollups();
   const streamed = await streamStatsRollups();
   const [warm, hot] = await Promise.all([
     metaDB.getEvents('events_warm').catch(() => []),
