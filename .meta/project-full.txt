@@ -7332,8 +7332,9 @@ export class StatsAggregator {
 import { isV7SyncEvent } from './event-contract.js';
 import { temporalPartsFromListenEvent } from './temporal-buckets.js';
 import { buildDeltaRangeKey, safeDeltaId } from './backup-delta-contract.js';
+import { buildStatsV4, emptyStatsV4, mergeStatsV4, normalizeStatsV4 } from './stats-v4-projection.js';
 
-export const STATS_SHARD_VERSION = 3;
+export const STATS_SHARD_VERSION = 4;
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const fixed = (raw, length) => Array.from({ length }, (_, index) => Math.max(0, Math.floor(num(raw?.[index]))));
@@ -7390,6 +7391,7 @@ export const emptyStatsProjection = () => ({
   tracks: {},
   transitions: {},
   globalFeatures: {},
+  v4: emptyStatsV4(),
   dimensions: {
     quality: {},
     variant: {},
@@ -7450,7 +7452,8 @@ const applyFeature = (features, data = {}) => {
 
 export const buildStatsProjection = events => {
   const projection = emptyStatsProjection();
-  (Array.isArray(events) ? events : []).filter(isV7SyncEvent).forEach(event => {
+  const rows = (Array.isArray(events) ? events : []).filter(isV7SyncEvent);
+  rows.forEach(event => {
     const type = safe(event?.type);
     const uid = safe(event?.uid);
     const data = event?.data || {};
@@ -7569,6 +7572,7 @@ export const buildStatsProjection = events => {
     if (data.launchSource) bump(projection.dimensions.launchSource, data.launchSource);
   });
   projection.activeDays = dayList(projection.activeDays);
+  projection.v4 = buildStatsV4(rows);
   return projection;
 };
 
@@ -7609,6 +7613,7 @@ export const normalizeStatsProjection = raw => ({
   }]).filter(([uid]) => uid)),
   transitions: countMap(raw?.transitions),
   globalFeatures: countMap(raw?.globalFeatures || raw?.features),
+  v4: normalizeStatsV4(raw?.v4),
   dimensions: {
     quality: countMap(raw?.dimensions?.quality),
     variant: countMap(raw?.dimensions?.variant),
@@ -7636,7 +7641,7 @@ export const buildStatsProjectionShard = async segment => {
   const projection = normalizeStatsProjection(buildStatsProjection(events));
   const core = { version: STATS_SHARD_VERSION, rangeKey, sourceHash, projection };
   const hash = await sha256Hex(core);
-  return { ...core, deviceStableId, branchId, chainId, fromSeq, toSeq, eventCount: events.length, hash, createdAt: Date.now() };
+  return { ...core, deviceStableId, branchId, chainId, chainSeq: [deviceStableId, chainId || branchId, fromSeq], fromSeq, toSeq, eventCount: events.length, hash, createdAt: Date.now() };
 };
 
 export const verifyStatsProjectionShard = async (shard, sourceRange = null) => {
@@ -7670,6 +7675,7 @@ export const mergeStatsProjectionInto = (targetRaw, sourceRaw) => {
   target.activeDays = dayList([...target.activeDays, ...source.activeDays]);
   source.byHourMs.forEach((amount, index) => target.byHourMs[index] += amount);
   source.byWeekdayMs.forEach((amount, index) => target.byWeekdayMs[index] += amount);
+  target.v4 = mergeStatsV4(target.v4, source.v4);
   Object.entries(source.transitions).forEach(([key, amount]) => bump(target.transitions, key, amount));
   Object.entries(source.globalFeatures).forEach(([key, amount]) => bump(target.globalFeatures, key, amount));
   Object.entries(source.dimensions).forEach(([dimension, rows]) => Object.entries(rows).forEach(([key, amount]) => bump(target.dimensions[dimension], key, amount)));
@@ -7718,9 +7724,18 @@ export const projectionToStatsRows = raw => {
     temporalSchemaVersion: 3,
     featuresUsed: { ...track.features }
   }));
-  if (Object.keys(projection.globalFeatures).length) {
-    rows.push({ uid: 'global', globalListenSeconds: 0, globalValidListenCount: 0, globalFullListenCount: 0, firstPlayedAt: projection.firstEventAt, lastPlayedAt: projection.lastEventAt, featuresUsed: { ...projection.globalFeatures } });
-  }
+  rows.push({
+    uid: 'global',
+    globalListenSeconds: 0,
+    globalValidListenCount: 0,
+    globalFullListenCount: 0,
+    firstPlayedAt: projection.firstEventAt,
+    lastPlayedAt: projection.lastEventAt,
+    featuresUsed: { ...projection.globalFeatures },
+    analyticsSchemaVersion: STATS_SHARD_VERSION,
+    sparseCube: { ...projection.v4.cube },
+    repeatRuns: { ...projection.v4.repeat }
+  });
   return rows;
 };
 
