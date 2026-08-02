@@ -16494,7 +16494,20 @@ export const getCloudUsageSnapshot = () => {
     ]
   };
 };
-
+export const getCloudTrafficSummary = () => {
+  pruneState();
+  const rows = state.events.filter(item => !item.suppressed && !item.cached);
+  const sum = filter => rows.filter(filter).reduce((total, item) => total + number(item.responseBytes || item.transferSize || item.encodedBodySize), 0);
+  const wifi = sum(item => item.context?.networkType !== 'cellular');
+  const cellular = sum(item => item.context?.networkType === 'cellular');
+  return {
+    type: window.NetPolicy?.getPlatform?.()?.supportsNetControl ? 'split' : 'general',
+    periodLabel: '24 часа',
+    wifi: { total: wifi, period: wifi },
+    cellular: { total: cellular, period: cellular },
+    general: { total: wifi + cellular, period: wifi + cellular }
+  };
+};
 const getServiceWorkerVersion = () => new Promise(resolve => {
   const controller = navigator.serviceWorker?.controller;
   if (!controller) return resolve('');
@@ -16701,6 +16714,7 @@ export const initCloudNetworkObserver = () => {
 
 window.CloudUsageMeter = {
   getSnapshot: getCloudUsageSnapshot,
+  getTrafficSummary: getCloudTrafficSummary,
   buildReport: buildCloudUsageReport,
   downloadReport: downloadCloudUsageReport,
   copyReport: copyCloudUsageReport,
