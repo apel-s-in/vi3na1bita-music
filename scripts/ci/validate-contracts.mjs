@@ -369,7 +369,11 @@ const validateBackupProxy = () => {
     'ownerYandexIdHash',
     'legacyEnabled: false'
   ].forEach(marker => contains(proxy, marker));
-  ['usageStorage', 'authorityCalls', 'diskApiCalls', 'diskOperations', 'networkCalls', 'requestBytes', 'responseBytes', 'redirects', 'responseBytesFinal'].forEach(marker => contains(proxy, marker));
+  ['usageStorage', 'authorityCalls', 'diskApiCalls', 'diskOperations', 'networkCalls', 'requestBytes', 'responseBytes', 'redirects', 'responseBytesFinal', 'disk_space_exhausted'].forEach(marker => contains(proxy, marker));
+  contains('scripts/analytics/backup-sync-engine.js', 'disk_access_unavailable');
+  contains('scripts/analytics/backup-sync-engine.js', 'disk_space_exhausted');
+  contains('scripts/analytics/backup-sync-engine.js', 'DISK_FULL_RETRY_MS');
+  contains('scripts/analytics/backup-sync-engine.js', 'getBackupV7Availability');
   assertNoMatch([proxy], /upload_backup|upload_meta|upload_event_segment|archive_delete_segments|archive_inspect|ledger_verify|lease_acquire|lease_release/g, 'Backup proxy не содержит v6, archive, ledger или lease modes');
   assertNoMatch([proxy], /['"]v7_authorize['"]|['"]v7_push_range['"]|['"]v7_pull_ranges['"]|['"]v7_put_settings['"]|['"]v7_get_settings['"]/g, 'Раздельные v7 proxy modes удалены');
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
@@ -460,7 +464,7 @@ const main = async () => {
   contains('cloud-functions/vi3na1bita-backup-proxy/index.js', "domains: ['playlists']");
   excludes('scripts/analytics/backup-v7-sync.js', /metaDB\.setGlobal\(['"]user_profile['"]/, 'Backup v7 продолжает применять облачный профиль');
   excludes('scripts/core/yandex-backup-v7.js', /v7_authorize|v7_push_range|v7_pull_ranges|v7_put_settings|v7_get_settings/, 'Клиент продолжает использовать раздельные v7 вызовы');
-  excludes('scripts/analytics/backup-v7-sync.js', /knownRangeKeys|normalizeStatsProjection|projection\.tracks/, 'Sync продолжает применять projection или knownRangeKeys');
+  excludes('scripts/analytics/backup-v7-sync.js', /knownRangeKeys/, 'Sync снова использует legacy knownRangeKeys');
   excludes('scripts/analytics/snapshot-contract.js', /sleepTimerState:v2|app:first-install-ts|backup:conflict_policy:v1/, 'Runtime/legacy settings остались в device backup');
   excludes('scripts/app/profile/cloud-action-render-kit.js', /backup-export-manual|backup-import-manual|archive-maintenance|recovery-snapshot|trust-check|ledger-health/, 'Пользовательские ручные служебные backup-действия остались');
   contains('scripts/core/app-activity.js', 'IDLE_AFTER_MS = 5 * 60 * 1000');
@@ -486,6 +490,19 @@ const main = async () => {
   contains('scripts/analytics/backup-v7-recovery.js', 'createBackupV7Checkpoint');
   contains('scripts/analytics/backup-v7-recovery.js', 'restoreBackupV7Checkpoint');
   contains('scripts/analytics/backup-v7-sync.js', 'backup_chain_quarantine');
+  contains('scripts/analytics/stats-shard-contract.js', 'STATS_SHARD_VERSION = 2');
+  contains('scripts/analytics/stats-shard-contract.js', 'activeDays');
+  contains('scripts/analytics/stats-shard-contract.js', 'firstPlayedAt');
+  contains('scripts/analytics/stats-shard-contract.js', 'lastPlayedAt');
+  contains('scripts/analytics/stats-shard-contract.js', 'globalFeatures');
+  contains('scripts/analytics/stats-shard-contract.js', 'sourceHash');
+  contains('scripts/analytics/stats-shard-contract.js', 'verifyStatsProjectionShard');
+  contains('scripts/analytics/stats-shard-contract.js', 'projectionToStatsRows');
+  contains('scripts/analytics/backup-v7-sync.js', 'streamStatsRollups');
+  contains('scripts/analytics/backup-v7-sync.js', 'writeProjectionAtomic');
+  contains('scripts/analytics/backup-v7-sync.js', 'compactOldRawRanges');
+  excludes('scripts/analytics/backup-v7-sync.js', /ranges\.flatMap\(/, 'Backup rebuild снова загружает raw ranges в один массив');
+  excludes('scripts/analytics/backup-v7-sync.js', /readCompleteEventTruth/, 'Legacy full raw rebuild снова добавлен');
   contains('scripts/analytics/backup-v7-sync.js', 'pullBackupV7Pages');
   contains('scripts/analytics/backup-v7-sync.js', 'MAX_PULL_PAGES_PER_SLOT = 4');
   contains('scripts/analytics/backup-v7-sync.js', 'no_watermark_progress');
