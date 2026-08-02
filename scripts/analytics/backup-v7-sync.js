@@ -18,6 +18,7 @@ import {
 import { stableStringify, sha256Hex } from './event-integrity.js';
 import { recordSyncRevision } from './sync-revisions.js';
 import { clearBackupV7Checkpoint, createBackupV7Checkpoint, restoreBackupV7Checkpoint } from './backup-v7-recovery.js';
+import { ingestBackupDomainEvents } from './backup-domain-state.js';
 
 const TEMPLATE_KEY = 'backup:v7:settings-template-device';
 const MAX_PULL_PAGES_PER_SLOT = 4;
@@ -155,7 +156,7 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
 
   await metaDB.init();
 
-  return new Promise((resolve, reject) => {
+  const storedResult = await new Promise((resolve, reject) => {
     const tx = metaDB.db.transaction(['backup_event_ranges', 'backup_known_ranges', 'backup_chain_watermarks', 'backup_stats_rollups'], 'readwrite');
     const rangeStore = tx.objectStore('backup_event_ranges');
     const knownStore = tx.objectStore('backup_known_ranges');
@@ -213,6 +214,13 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error || new Error('backup_v71_range_store_aborted'));
   });
+
+  const domainEvents = [];
+  verified.forEach(range => {
+    (Array.isArray(range.events) ? range.events : []).forEach(event => domainEvents.push(event));
+  });
+  const domains = await ingestBackupDomainEvents(domainEvents).catch(() => ({ applied: 0 }));
+  return { ...storedResult, domainEventsApplied: Number(domains.applied || 0) };
 };
 
 const nextStoreRow = async (storeName, afterKey = '') => {
