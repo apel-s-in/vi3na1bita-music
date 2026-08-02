@@ -22,11 +22,10 @@ const replaceRows = async (store, rows = []) => {
 };
 
 export const createBackupV7Checkpoint = async ({ reason = 'backup_v71_materialization' } = {}) => {
-  const [stats, global, eventsHot, eventsWarm, watermarks, cachePolicies] = await Promise.all([
+  const [stats, global, eventsHot, watermarks, cachePolicies] = await Promise.all([
     readRows('stats'),
     readRows('global'),
     readRows('events_hot'),
-    readRows('events_warm'),
     readRows('backup_chain_watermarks'),
     exportAccountCachePolicies().catch(() => ({}))
   ]);
@@ -42,7 +41,6 @@ export const createBackupV7Checkpoint = async ({ reason = 'backup_v71_materializ
     stats,
     global,
     eventsHot,
-    eventsWarm,
     watermarks,
     cachePolicies
   };
@@ -57,7 +55,6 @@ export const restoreBackupV7Checkpoint = async checkpointRaw => {
     replaceRows('stats', checkpoint.stats),
     replaceRows('global', checkpoint.global),
     replaceRows('events_hot', checkpoint.eventsHot),
-    replaceRows('events_warm', checkpoint.eventsWarm),
     replaceRows('backup_chain_watermarks', checkpoint.watermarks)
   ]);
   if (checkpoint.localStorage?.playlists == null) localStorage.removeItem('sc3:playlists');
