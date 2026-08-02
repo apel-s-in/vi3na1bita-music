@@ -782,11 +782,27 @@ jobs:
               | head -n 500 || true
           } | tee source-api.txt
 
+      - name: Extract exact table transaction signatures
+        run: |
+          set -euo pipefail
+          cd /tmp/ydb-probe
+          {
+            echo "=== table-session transaction declarations ==="
+            grep -RInE \
+              "interface ITransactionMeta|interface IExistingTransaction|interface INewTransaction|type ITransactionMeta|type IExistingTransaction|type INewTransaction|beginTransaction\\(|commitTransaction\\(|rollbackTransaction\\(" \
+              node_modules/ydb-sdk/build/cjs \
+              --include='*.d.ts' \
+              -A 12 -B 4 || true
+
+            echo "=== table-session transaction implementation ==="
+            sed -n '300,390p' node_modules/ydb-sdk/build/cjs/src/table/table-session.js
+          } | tee transaction-signatures.txt
+          
       - name: Build report
         run: |
           set -euo pipefail
           cd /tmp/ydb-probe
-          cat installed-version.txt runtime-api.txt source-api.txt > ydb-sdk-capabilities.txt
+          cat installed-version.txt runtime-api.txt source-api.txt transaction-signatures.txt > ydb-sdk-capabilities.txt
 
       - uses: actions/upload-artifact@v4
         with:
