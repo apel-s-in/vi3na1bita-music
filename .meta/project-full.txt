@@ -21316,6 +21316,9 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
 .activity-day{position:relative;margin:5px 0 0;padding:6px 9px;border-radius:9px;background:rgba(20,27,39,.94);color:#8ab8fd;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;text-align:center}
 #prof-logs-list{display:flex;flex-direction:column;gap:10px}
 #prof-logs-list .profile-log-row{margin:0}
+.activity-to-top{position:fixed;right:max(14px,calc((100vw - 420px)/2 + 14px));bottom:calc(78px + env(safe-area-inset-bottom));z-index:9998;width:44px;height:44px;border:1px solid rgba(77,170,255,.35);border-radius:50%;background:rgba(12,18,28,.92);color:#dcecff;font-size:24px;font-weight:900;box-shadow:0 8px 24px rgba(0,0,0,.42);backdrop-filter:blur(8px);cursor:pointer;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .18s,transform .18s,visibility .18s}
+.activity-to-top.is-visible{opacity:1;visibility:visible;transform:none}
+.activity-to-top:active{transform:scale(.94)}
 @media(max-width:360px){
   .activity-controls__top{flex-wrap:wrap}
   .activity-controls__top span{text-align:right}
