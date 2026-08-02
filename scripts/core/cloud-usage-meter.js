@@ -22,6 +22,7 @@ const empty = () => ({ version: VERSION, windowMs: WINDOW_MS, startedAt: Date.no
 let state = readState();
 let inFlight = 0;
 let maxInFlight = 0;
+let saveTimer = 0;
 
 function readState() {
   try {
@@ -67,6 +68,20 @@ function saveState() {
     return false;
   }
 }
+
+const scheduleSave = () => {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = 0;
+    saveState();
+  }, 1500);
+};
+
+window.addEventListener('pagehide', () => {
+  clearTimeout(saveTimer);
+  saveTimer = 0;
+  saveState();
+}, { once: true });
 
 const normalizeServerUsage = raw => ({
   queryCount: Math.floor(number(raw?.queryCount)),
@@ -335,7 +350,7 @@ export const recordCloudUsage = row => {
     state.events.unshift(item);
   }
   pruneState();
-  saveState();
+  scheduleSave();
   window.dispatchEvent(new CustomEvent('cloud-usage:updated'));
   return item;
 };
@@ -498,7 +513,7 @@ export const getCloudUsageSnapshot = () => {
       'durationMs — wall time функции, а не официальный execution billing',
       'cold starts и округление Cloud Functions',
       'Cloud Logging bytes',
-      'операции Яндекс Диска без metadata Backup Proxy',
+      'официальная стоимость Disk API: счётчики Backup Proxy показывают операции, но не заменяют биллинг',
       'частичный Howler GET/Range traffic без доступного Resource Timing'
     ]
   };
