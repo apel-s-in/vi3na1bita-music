@@ -2270,23 +2270,42 @@ async function validateCryptoPack({ pack, playerId, friendId, room, kind, client
 }
 async function actionCryptoDeviceRegister(event, body) {
   const { playerId } = await requirePlayer(event, body);
-  await enforceRateLimit({ scope: 'crypto_register', actor: playerId, limit: 8, windowMs: 10 * 60 * 1000 });
-  if (!CFG.chatE2eeV2) {
-    throw new Error('chat_e2ee_disabled');
-  }
+  if (!CFG.chatE2eeV2) throw new Error('chat_e2ee_disabled');
+
   const deviceId = sanitizeId(body.deviceId, 120);
   if (!deviceId) throw new Error('crypto_device_required');
+
   const publicJwk = normalizePublicJwk(body.publicJwk);
   const fingerprint = publicKeyFingerprint(publicJwk);
   const suppliedFingerprint = safe(body.fingerprint);
   if (suppliedFingerprint && suppliedFingerprint !== fingerprint) {
     throw new Error('crypto_fingerprint_mismatch');
   }
+
   const pk = `cryptoDevice:${playerId}:${deviceId}`;
-  const old = payload(await kvGet(pk));
+  const oldRow = await kvGet(pk);
+  const old = payload(oldRow);
+
+  if (oldRow && old.fingerprint === fingerprint && !old.revokedAt) {
+    return {
+      ok: true,
+      duplicate: true,
+      unchanged: true,
+      device: old
+    };
+  }
+
+  await enforceRateLimit({
+    scope: 'crypto_register',
+    actor: playerId,
+    limit: 8,
+    windowMs: 10 * 60 * 1000
+  });
+
   if (old?.fingerprint && old.fingerprint !== fingerprint && !old.revokedAt) {
     throw new Error('crypto_device_key_conflict');
   }
+
   const deviceStableId = sanitizeId(body.deviceStableId || '', 120);
   const registeredAt = now();
   if (deviceStableId) {
