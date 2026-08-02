@@ -378,7 +378,12 @@ const validateBackupProxy = () => {
   contains(proxy, 'permanently=true');
   contains(proxy, "safe(request.confirm) !== 'DELETE_LEGACY_V6'");
   contains('scripts/analytics/backup-v7-sync.js', 'readBackupV7JournalEvents');
-  contains('scripts/app/profile/logs-view.js', 'JOURNAL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000');
+  contains('scripts/app/profile/logs-view.js', 'JOURNAL_DAY_COUNT = 30');
+  contains('scripts/app/profile/logs-view.js', 'getJournalDayWindow');
+  contains('scripts/app/profile/logs-view.js', 'analytics:eventQueued');
+  contains('scripts/app/profile/logs-view.js', 'data-log-top');
+  contains('scripts/app/profile/logs-formatters.js', 'journalTimezone');
+  contains('scripts/app/profile/logs-formatters.js', '30 полных календарных дней');
   contains('scripts/app/profile/logs-view.js', 'data-log-domain');
   contains('scripts/app/profile/logs-formatters.js', 'activity-filter-row');
   excludes('scripts/app/profile/logs-formatters.js', /ach-classic-tabs/, 'Журнал снова использует неудобную карусель вкладок');
@@ -473,6 +478,8 @@ const main = async () => {
   contains('scripts/core/cloud-usage-meter.js', 'initCloudNetworkObserver');
   contains('scripts/core/cloud-usage-meter.js', 'initHowlerMediaObserver');
   contains('scripts/core/cloud-usage-meter.js', 'unknownBytes');
+  contains('scripts/core/cloud-usage-meter.js', 'scheduleSave');
+  excludes('scripts/offline/net-policy.js', /X-Vi3-Correlation|createCloudCorrelationKey/, 'Измеритель снова меняет Object Storage запросы и может создавать preflight');
   contains('service-worker.js', 'YANDEX_CACHE_HIT');
   contains('service-worker.js', 'YANDEX_NETWORK_FETCH');
   contains('service-worker.js', 'x-vi3-correlation');
@@ -494,6 +501,8 @@ const main = async () => {
   contains('scripts/app/profile/settings-view.js', 'data-set-tab="console"');
   contains('scripts/analytics/favorite-mirror.js', 'scheduleFlush');
   contains('scripts/analytics/favorite-mirror.js', 'DIRTY_FLUSH_MS');
+  contains('scripts/analytics/favorite-mirror.js', 'REMOTE_MAX_AGE_MS');
+  contains('scripts/analytics/favorite-mirror.js', 'remoteIsFresh');
   excludes('scripts/analytics/favorite-mirror.js', /setInterval\([\s\S]{0,160}(?:favorite|sync)/, 'Favorite Mirror снова содержит постоянный poll');
   contains('scripts/offline/update-checker.js', 'isAppQuiet');
   contains('scripts/analytics/backup-sync-engine.js', 'isAppQuiet');
