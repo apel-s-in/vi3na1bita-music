@@ -223,12 +223,14 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
   return { ...storedResult, domainEventsApplied: Number(domains.applied || 0) };
 };
 
-const nextStoreRow = async (storeName, afterKey = '') => {
+const nextStoreRow = async (storeName, afterKey = null, indexName = '') => {
   await metaDB.init();
   return new Promise((resolve, reject) => {
-    const range = afterKey ? IDBKeyRange.lowerBound(afterKey, true) : null;
-    const request = metaDB.db.transaction(storeName, 'readonly').objectStore(storeName).openCursor(range);
-    request.onsuccess = () => resolve(request.result ? { key: String(request.result.primaryKey), value: request.result.value } : null);
+    const store = metaDB.db.transaction(storeName, 'readonly').objectStore(storeName);
+    const source = indexName ? store.index(indexName) : store;
+    const range = afterKey == null ? null : IDBKeyRange.lowerBound(afterKey, true);
+    const request = source.openCursor(range);
+    request.onsuccess = () => resolve(request.result ? { key: request.result.key, primaryKey: request.result.primaryKey, value: request.result.value } : null);
     request.onerror = () => reject(request.error);
   });
 };
@@ -289,11 +291,11 @@ const ensureStatsRollups = async () => {
 const streamStatsRollups = async () => {
   let projection = emptyStatsProjection();
   const coverage = new Map();
-  let cursorKey = '';
+  let cursorKey = null;
   let shards = 0;
 
   while (true) {
-    const entry = await nextStoreRow('backup_stats_rollups', cursorKey);
+    const entry = await nextStoreRow('backup_stats_rollups', cursorKey, 'chainSeq');
     if (!entry) break;
     cursorKey = entry.key;
     const shard = await verifyStatsProjectionShard(entry.value);
@@ -512,7 +514,6 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
       settings: null,
       settingsTemplateDeviceId: '',
       includeDeviceCatalog: false,
-      legacyCleanup: null,
       maxPullRanges: request.maxPullRanges
     };
   }
@@ -521,7 +522,7 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
   return { pages, firstResult: pages[0]?.result || null, result, storedTotal, quarantined, exhausted: Number(result?.pull?.remaining || 0) > 0, stoppedReason: 'page_limit' };
 };
 
-const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false, legacyCleanup = null } = {}) => {
+const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
@@ -553,7 +554,6 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       settings: sendSettings ? settingsPayload : null,
       settingsTemplateDeviceId,
       includeDeviceCatalog: includeDeviceCatalog === true,
-      legacyCleanup: legacyCleanup && typeof legacyCleanup === 'object' && !Array.isArray(legacyCleanup) ? legacyCleanup : null,
       maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
     },
     currentDeviceId: deviceId,
@@ -632,7 +632,6 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
         changed: result?.shared?.changed === true,
         hash: safe(result?.shared?.hash)
       },
-      legacyCleanup: result?.legacyCleanup || null,
       settings: result?.settings || null
     };
   } catch (error) {
@@ -655,20 +654,6 @@ export const syncBackupV7 = options => {
   });
 
   return syncPromise;
-};
-export const cleanupLegacyBackupV6 = async ({ confirmed = false } = {}) => {
-  const result = await syncBackupV7({
-    reason: confirmed ? 'legacy_v6_cleanup' : 'legacy_v6_cleanup_preview',
-    includeSettings: false,
-    pushEnabled: false,
-    maxPullRanges: 1,
-    legacyCleanup: {
-      dryRun: confirmed !== true,
-      confirm: confirmed === true ? 'DELETE_LEGACY_V6' : ''
-    }
-  });
-  if (!result?.legacyCleanup) throw new Error('legacy_cleanup_result_missing');
-  return result.legacyCleanup;
 };
 export const readBackupV7JournalEvents = async ({ sinceAt = Date.now() - 30 * 24 * 60 * 60 * 1000, limit = 2000 } = {}) => {
   await metaDB.init();
@@ -722,7 +707,6 @@ export const getBackupV7Status = async () => {
 
 export default {
   syncBackupV7,
-  cleanupLegacyBackupV6,
   getBackupV7Status,
   rebuildBackupV7LocalAnalytics,
   readBackupV7JournalEvents
