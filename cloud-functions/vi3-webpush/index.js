@@ -102,18 +102,25 @@ async function query(sql, params = {}) {
 }
 async function kvPrefix(prefix, limit = 100) {
   const to = `${prefix}\uffff`;
+  const at = Date.now();
   const res = await query(
     `
     DECLARE $from AS Utf8;
     DECLARE $to AS Utf8;
+    DECLARE $at_ms AS Uint64;
     DECLARE $lim AS Uint64;
 
     SELECT pk, type, owner, updated_at, DateTime::ToMilliseconds(expires_at) AS expires_at, payload_json
     FROM ${TABLE}
-    WHERE pk >= $from AND pk < $to
+    WHERE pk >= $from
+      AND pk < $to
+      AND (
+        expires_at IS NULL OR
+        expires_at >= DateTime::FromMilliseconds($at_ms)
+      )
     LIMIT $lim;
   `,
-    { '$from': tvUtf8(prefix), '$to': tvUtf8(to), '$lim': tvUint64(limit) }
+    { '$from': tvUtf8(prefix), '$to': tvUtf8(to), '$at_ms': tvUint64(at), '$lim': tvUint64(limit) }
   );
   return rowsOf(res);
 }
