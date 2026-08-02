@@ -9,6 +9,7 @@ import { favoriteSignature, localToRemote, remoteToLocal } from './favorite-stat
 const OUTBOX_KEY = 'favoriteMirror:outbox:v1';
 const REVISION_KEY = 'favoriteMirror:revision:v1';
 const DIRTY_FLUSH_MS = 15000;
+const REMOTE_MAX_AGE_MS = 10 * 60 * 1000;
 const safe = value => String(value == null ? '' : value).trim();
 const parse = (raw, fallback) => {
   try {
@@ -36,6 +37,8 @@ class FavoriteMirrorService {
     this.retryTimer = 0;
     this.lastLocal = new Map();
     this.serverRevision = 0;
+    this.lastRemoteAt = 0;
+    this.remoteOwner = '';
   }
   isAuthorized() {
     return window.YandexAuth?.getSessionStatus?.() === 'active' && window.YandexAuth?.isTokenAlive?.();
@@ -69,6 +72,8 @@ class FavoriteMirrorService {
     window.addEventListener('account:data-switching', () => {
       this.stopPolling();
       this.lastLocal.clear();
+      this.lastRemoteAt = 0;
+      this.remoteOwner = '';
     });
     window.addEventListener('account:data-switched', () => {
       this.captureBaseline();
@@ -86,14 +91,18 @@ class FavoriteMirrorService {
       }, 250);
     });
     window.addEventListener('online', () => {
-      if (!document.hidden) this.sync().catch(() => null);
+      if (document.hidden) return;
+      if (readOutbox().length) this.scheduleFlush(1000);
+      else if (!this.remoteIsFresh()) this.sync().catch(() => null);
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         this.stopPolling();
         return;
       }
-      if (this.isAuthorized()) this.sync().catch(() => null);
+      if (!this.isAuthorized()) return;
+      if (readOutbox().length) this.scheduleFlush(1000);
+      else if (!this.remoteIsFresh()) this.sync().catch(() => null);
     });
     window.addEventListener('listening-receipts:updated', () => {
       if (readOutbox().length) this.scheduleFlush(1000);
@@ -133,18 +142,26 @@ class FavoriteMirrorService {
     }
     this.lastLocal = new Map(current.map(item => [item.uid, favoriteSignature(item)]));
   }
+  currentOwner() {
+    return safe(window.YandexAuth?.getProfile?.()?.yandexId || window.YandexAuth?.getProfile?.()?.id);
+  }
+  rememberRemote(state) {
+    if (!state) return;
+    this.serverRevision = Number(state.revision || 0);
+    this.lastRemoteAt = Date.now();
+    this.remoteOwner = this.currentOwner();
+  }
+  remoteIsFresh() {
+    return !!this.remoteOwner && this.remoteOwner === this.currentOwner() && Date.now() - this.lastRemoteAt < REMOTE_MAX_AGE_MS;
+  }
   async bootstrap() {
     const result = await requestSocialAction('favorite_state_reconcile', { items: localSnapshot() });
-    if (result?.state) {
-      this.serverRevision = Number(result.state.revision || 0);
-    }
+    this.rememberRemote(result?.state);
     return result;
   }
   async getRemote() {
     const result = await requestSocialAction('favorite_state_get', {});
-    if (result?.state) {
-      this.serverRevision = Number(result.state.revision || 0);
-    }
+    this.rememberRemote(result?.state);
     return result;
   }
   applyRemote(state, reason = 'server_sync') {
@@ -223,6 +240,7 @@ class FavoriteMirrorService {
       return this.flush();
     }
 
+    if (this.remoteIsFresh()) return false;
     if (this.syncing) return this.syncing;
 
     this.syncing = (async () => {
@@ -254,7 +272,7 @@ class FavoriteMirrorService {
     return false;
   }
   stopPolling() {
-    clearInterval(this.timer);
+    clearTimeout(this.timer);
     clearTimeout(this.retryTimer);
     this.timer = 0;
     this.retryTimer = 0;
