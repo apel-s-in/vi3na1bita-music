@@ -8,8 +8,11 @@ const LS_SYNC = 'backup:autosync:enabled';
 const LS_DUE = 'backup:v71:next-sync-at';
 const LS_DIRTY = 'backup:v71:dirty';
 const LS_PHASE = 'backup:v71:next-phase';
+const LS_BLOCK_REASON = 'backup:v71:block-reason';
+const LS_BLOCK_UNTIL = 'backup:v71:block-until';
 const SLOT_MS = 12 * 60 * 60 * 1000;
 const JITTER_MS = 30 * 60 * 1000;
+const DISK_FULL_RETRY_MS = 24 * 60 * 60 * 1000;
 let bound = false;
 let timer = 0;
 let ready = false;
@@ -25,8 +28,35 @@ const readPhase = () => localStorage.getItem(LS_PHASE) === 'pull' ? 'pull' : 'pu
 const setPhase = phase => localStorage.setItem(LS_PHASE, phase === 'pull' ? 'pull' : 'push');
 const markDirty = () => localStorage.setItem(LS_DIRTY, '1');
 const clearDirty = () => localStorage.removeItem(LS_DIRTY);
+const readBlock = () => ({ reason: String(localStorage.getItem(LS_BLOCK_REASON) || ''), until: Math.max(0, Number(localStorage.getItem(LS_BLOCK_UNTIL) || 0)) });
+const clearBlock = () => {
+  localStorage.removeItem(LS_BLOCK_REASON);
+  localStorage.removeItem(LS_BLOCK_UNTIL);
+};
+const setBlock = (reason, until = 0) => {
+  localStorage.setItem(LS_BLOCK_REASON, String(reason || 'backup_unavailable'));
+  localStorage.setItem(LS_BLOCK_UNTIL, String(Math.max(0, Number(until) || 0)));
+  ready = false;
+  window.dispatchEvent(new CustomEvent('backup:sync:availability', { detail: getBackupV7Availability() }));
+};
+export const getBackupV7Availability = () => {
+  const block = readBlock();
+  return {
+    available: ready && isSyncEnabled() && (!block.reason || (block.until > 0 && block.until <= Date.now())),
+    enabled: isSyncEnabled(),
+    ready,
+    reason: block.reason,
+    retryAt: block.until,
+    retryInMs: Math.max(0, block.until - Date.now()),
+    diskAccess: window.YandexAuth?.hasDiskAccess?.() === true
+  };
+};
 export const clearBackupV7Dirty = () => {
   clearDirty();
+  return true;
+};
+export const clearBackupV7Block = () => {
+  clearBlock();
   return true;
 };
 
@@ -65,6 +95,15 @@ const scheduleAt = timestamp => {
 };
 
 const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
+  const block = readBlock();
+  if (block.reason && block.until > Date.now() && !force) {
+    scheduleAt(block.until);
+    return false;
+  }
+  if (block.reason && block.until > 0 && block.until <= Date.now()) {
+    clearBlock();
+    ready = true;
+  }
   if (!isSyncReady() || document.hidden || (!force && isAppQuiet())) return false;
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return false;
 
@@ -82,13 +121,31 @@ const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
       includeSettings: phase !== 'pull',
       maxPullRanges: phase === 'push' ? 5 : 50
     });
+    clearBlock();
+    ready = true;
     if (phase !== 'pull') clearDirty();
     if (!force) setPhase(phase === 'push' ? 'pull' : 'push');
     const next = Date.now() + SLOT_MS + Math.floor(Math.random() * JITTER_MS);
     setNextDue(next);
     scheduleAt(next);
     return true;
-  } catch {
+  } catch (error) {
+    const status = Number(error?.status || 0);
+    const message = String(error?.message || '');
+
+    if (status === 507 || /disk_space_exhausted|not.?enough.?space|insufficient.?storage/i.test(message)) {
+      const retry = Date.now() + DISK_FULL_RETRY_MS;
+      setBlock('disk_space_exhausted', retry);
+      setNextDue(retry);
+      scheduleAt(retry);
+      return false;
+    }
+
+    if (status === 401 || status === 403 || /disk.*(?:access|scope|forbidden)|oauth|required/i.test(message)) {
+      setBlock('disk_access_unavailable', 0);
+      return false;
+    }
+
     const retry = Date.now() + 60 * 60 * 1000;
     setNextDue(retry);
     scheduleAt(retry);
@@ -120,6 +177,14 @@ export const initBackupSyncEngine = () => {
       markSyncReady('no_auth_local_only');
       return;
     }
+
+    if (window.YandexAuth?.hasDiskAccess?.() !== true) {
+      setBlock('disk_access_unavailable', 0);
+      markSyncReady('disk_access_unavailable');
+      return;
+    }
+
+    clearBlock();
 
     try {
       const { getSocialSession } = await import('../core/social-session.js');
@@ -191,6 +256,8 @@ export default {
   suspendSyncForAccountSwitch,
   scheduleBackupV7Sync,
   clearBackupV7Dirty,
+  clearBackupV7Block,
+  getBackupV7Availability,
   syncBackupV7,
   getBackupV7Status,
   getSyncIntervalSec
