@@ -34,7 +34,7 @@ export const bindProfileLiveBindings = ({ ctx, getContainer: getContainer, metaD
       if (element) element.textContent = String(value);
     };
 
-    renderProfileStats({ container, vm });
+    renderProfileStats({ container, all: rows, vm });
     set('#prof-stat-tracks', summary.totalFull);
     set('#prof-stat-time', window.Utils?.fmt?.durationHuman ? window.Utils.fmt.durationHuman(summary.totalSec) : `${Math.floor(summary.totalSec / 60)}м`);
     set(
