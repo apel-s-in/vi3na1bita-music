@@ -13354,7 +13354,7 @@ export default { loadProfileView };
 // FILE: /scripts/app/profile/yandex-actions.js
 import { clearBackupV7Dirty, syncBackupV7 } from '../../analytics/backup-sync-engine.js';
 import { openBackupInfoModal } from './backup-info-modal.js';
-import { renderSyncLogRow, esc } from './profile-render-kit.js';
+import { renderSyncLogRow } from './profile-render-kit.js';
 
 const openSyncLogModal = async () => {
   const { readSyncRevisions } = await import('../../analytics/sync-revisions.js');
@@ -13364,51 +13364,6 @@ const openSyncLogModal = async () => {
     maxWidth: 420,
     bodyHtml: rows.length ? `<div class="sync-log-list">${rows.map(renderSyncLogRow).join('')}</div>` : '<div class="fav-empty">Журнал синхронизации пока пуст</div>'
   });
-};
-
-const openLegacyCloudCleanupModal = async () => {
-  if (!window.Modals?.open) return;
-  const modal = window.Modals.open({ title: 'Очистка старого Backup v6', maxWidth: 430, strictClose: true, bodyHtml: '<div class="fav-empty">Проверяем старые файлы на Яндекс Диске…</div>' });
-
-  try {
-    const { cleanupLegacyBackupV6 } = await import('../../analytics/backup-v7-sync.js');
-    const preview = await cleanupLegacyBackupV6();
-    const bytes = window.Utils?.fmt?.bytes?.(preview.knownFileBytes || 0) || `${Math.round(Number(preview.knownFileBytes || 0) / 1024)} KB`;
-    const rows = (preview.candidates || []).map(item => `<div class="profile-list-item"><div style="font-size:20px">${item.type === 'dir' ? '📁' : '📄'}</div><div class="log-info"><div class="log-title">${esc(item.name)}</div><div class="log-desc">${item.type === 'dir' ? 'размер будет освобождён вместе со всем содержимым' : window.Utils?.fmt?.bytes?.(item.size || 0) || item.size || 0}</div></div></div>`).join('');
-
-    if (!modal.isConnected) return;
-
-    modal.querySelector('.modal-body').innerHTML = preview.count
-      ? `<div class="modal-confirm-text">Найдено legacy-ресурсов: <b>${preview.count}</b>.<br>Известный размер отдельных файлов: <b>${esc(bytes)}</b>.<br><br>Папки <b>events</b> и <b>device-settings</b> могут занимать дополнительное место.</div><div style="display:flex;flex-direction:column;gap:7px;max-height:230px;overflow:auto">${rows}</div><div class="yandex-auth-note" style="color:#ffb74d">Удаление необратимо. Текущий <b>app:/Backup/v7</b> защищён и удалён не будет.</div><label style="display:block;margin-top:12px;color:#9db7dd;font-size:12px">Для подтверждения введите <b>УДАЛИТЬ</b></label><input type="text" id="legacy-cleanup-confirm" class="pm-name-inp" autocomplete="off" placeholder="УДАЛИТЬ"><button type="button" class="om-btn om-btn--danger om-fullw" id="legacy-cleanup-run" ${preview.ready ? '' : 'disabled'}>${preview.ready ? 'Удалить Backup v6 навсегда' : 'Backup v7 ещё не готов'}</button>`
-      : '<div class="fav-empty">Старые Backup v6, events и device-settings не найдены.</div>';
-
-    const button = modal.querySelector('#legacy-cleanup-run');
-    button?.addEventListener('click', async () => {
-      const input = modal.querySelector('#legacy-cleanup-confirm');
-      if (String(input?.value || '').trim().toUpperCase() !== 'УДАЛИТЬ') {
-        window.NotificationSystem?.warning?.('Введите слово УДАЛИТЬ');
-        input?.focus();
-        return;
-      }
-
-      button.disabled = true;
-      button.textContent = 'Удаляем…';
-
-      try {
-        const result = await cleanupLegacyBackupV6({ confirmed: true });
-        ['yandex:last_backup_meta', 'yandex:last_backup_check', 'yandex:last_backup_check_ts', 'backup:last_local_summary:v1', 'backup:restore_or_skip_done'].forEach(key => localStorage.removeItem(key));
-        modal.remove();
-        window.dispatchEvent(new CustomEvent('yandex:backup:meta-updated'));
-        window.NotificationSystem?.success?.(`Удалено legacy-ресурсов: ${result.deleted || 0}`);
-      } catch (error) {
-        button.disabled = false;
-        button.textContent = 'Удалить Backup v6 навсегда';
-        window.NotificationSystem?.error?.(`Очистка не выполнена: ${error?.message || 'ошибка'}`);
-      }
-    });
-  } catch (error) {
-    if (modal.isConnected) modal.querySelector('.modal-body').innerHTML = `<div class="fav-empty">Не удалось проверить legacy backup: ${esc(error?.message || 'ошибка')}</div>`;
-  }
 };
 
 const reconnectRights = ({ ya, rerender }) => window.Modals?.confirm?.({
@@ -13490,7 +13445,6 @@ export function initYandexActions() {
       },
       'backup-info': openBackupInfoModal,
       'sync-log': openSyncLogModal,
-      'legacy-cloud-cleanup': openLegacyCloudCleanupModal,
       'reconnect-rights': () => reconnectRights({ ya, rerender }),
       'save-backup': () => syncNow({ ya, notify, rerender })
     };
