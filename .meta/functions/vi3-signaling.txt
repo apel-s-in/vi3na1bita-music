@@ -539,14 +539,12 @@ async function kvCompareAndPut({ row, type = '', owner = '', expiresAt = 0, data
   const usage = currentUsage();
   if (usage) usage.casAttempts++;
   if (!row?.pk) throw new Error('cas_row_required');
+
   const expectedPayloadJson = safe(row.payload_json);
-  if (!expectedPayloadJson) {
-    throw new Error('cas_payload_required');
-  }
+  if (!expectedPayloadJson) throw new Error('cas_payload_required');
+
   const nextUpdatedAt = Math.max(now(), num(row.updated_at) + 1);
-  const casToken = rid('cas');
-  const storedData = { ...(data || {}), __casToken: casToken };
-  await query(
+  const result = await query(
     `
     DECLARE $pk AS Utf8;
     DECLARE $expected_payload_json AS Utf8;
@@ -564,12 +562,21 @@ async function kvCompareAndPut({ row, type = '', owner = '', expiresAt = 0, data
       expires_at = IF($expires_at_ms = 0, NULL, DateTime::FromMilliseconds($expires_at_ms)),
       payload_json = $payload_json
     WHERE pk = $pk
-      AND payload_json = $expected_payload_json;
+      AND payload_json = $expected_payload_json
+    RETURNING pk;
   `,
-    { $pk: tvUtf8(row.pk), $expected_payload_json: tvUtf8(expectedPayloadJson), $type: tvUtf8(type), $owner: tvUtf8(owner), $next_updated_at: tvUint64(nextUpdatedAt), $expires_at_ms: tvUint64(expiresAt), $payload_json: tvUtf8(JSON.stringify(storedData)) }
+    {
+      $pk: tvUtf8(row.pk),
+      $expected_payload_json: tvUtf8(expectedPayloadJson),
+      $type: tvUtf8(type),
+      $owner: tvUtf8(owner),
+      $next_updated_at: tvUint64(nextUpdatedAt),
+      $expires_at_ms: tvUint64(expiresAt),
+      $payload_json: tvUtf8(JSON.stringify(data || {}))
+    }
   );
-  const verified = await kvGet(row.pk);
-  const changed = payload(verified)?.__casToken === casToken;
+
+  const changed = rowsOf(result).some(item => safe(item.pk) === safe(row.pk));
   if (!changed && usage) usage.casConflicts++;
   return changed;
 }
@@ -586,21 +593,27 @@ async function kvDelete(pk) {
 }
 async function kvPrefix(prefix, limit = 100) {
   const to = `${prefix}\uffff`;
+  const at = now();
   const res = await query(
     `
     DECLARE $from AS Utf8;
     DECLARE $to AS Utf8;
+    DECLARE $at_ms AS Uint64;
     DECLARE $lim AS Uint64;
 
     SELECT pk, type, owner, updated_at, DateTime::ToMilliseconds(expires_at) AS expires_at, payload_json
     FROM ${TABLE}
-    WHERE pk >= $from AND pk < $to
+    WHERE pk >= $from
+      AND pk < $to
+      AND (
+        expires_at IS NULL OR
+        expires_at >= DateTime::FromMilliseconds($at_ms)
+      )
     LIMIT $lim;
   `,
-    { $from: tvUtf8(prefix), $to: tvUtf8(to), $lim: tvUint64(limit) }
+    { $from: tvUtf8(prefix), $to: tvUtf8(to), $at_ms: tvUint64(at), $lim: tvUint64(limit) }
   );
-  const t = now();
-  return rowsOf(res).filter(r => !num(r.expires_at) || num(r.expires_at) >= t);
+  return rowsOf(res);
 }
 async function kvPrefixOrdered(prefix, limit = 100) {
   const to = `${prefix}\uffff`;
