@@ -16,7 +16,7 @@ const CFG = {
     .map(x => x.trim())
     .filter(Boolean)
 };
-const TABLE = `${CFG.prefix}kv`;
+const TABLE = `${CFG.prefix}kv_v2`;
 const WEB_PUSH_LEASE_MS = 30 * 24 * 60 * 60 * 1000;
 const safe = v => String(v == null ? '' : v).trim();
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
@@ -108,7 +108,7 @@ async function kvPrefix(prefix, limit = 100) {
     DECLARE $to AS Utf8;
     DECLARE $lim AS Uint64;
 
-    SELECT pk, type, owner, updated_at, expires_at, payload_json
+    SELECT pk, type, owner, updated_at, DateTime::ToMilliseconds(expires_at) AS expires_at, payload_json
     FROM ${TABLE}
     WHERE pk >= $from AND pk < $to
     LIMIT $lim;
