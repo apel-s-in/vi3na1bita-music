@@ -168,15 +168,27 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
       if (shard) rollupStore.put(shard);
       const request = rangeStore.get(range.rangeKey);
       request.onsuccess = () => {
-        if (request.result) return;
+        const storedAt = Date.now();
+        if (request.result) {
+          rangeStore.put({
+            ...request.result,
+            cloudConfirmed: true,
+            cloudUploadedAt: Number(request.result.cloudUploadedAt || storedAt),
+            verifiedAt: Number(request.result.verifiedAt || storedAt)
+          });
+          return;
+        }
         inserted++;
         const own = safe(range.deviceId) === safe(currentDeviceId);
         rangeStore.put({
           ...range,
-          verifiedAt: Date.now(),
+          deviceChain: `${safe(range.deviceId)}:${safe(range.chainId)}`,
+          cloudConfirmed: true,
+          cloudUploadedAt: storedAt,
+          verifiedAt: storedAt,
           projected: own,
-          storedAt: Date.now(),
-          projectedAt: own ? Date.now() : 0
+          storedAt,
+          projectedAt: own ? storedAt : 0
         });
       };
     });
@@ -353,6 +365,8 @@ const compactOldRawRanges = async ({ retentionMs = 35 * 24 * 60 * 60 * 1000 } = 
     cursorKey = entry.key;
     const range = entry.value;
     if (Number(range?.createdAt || range?.storedAt || 0) >= cutoff) continue;
+    if (range.localPacked === true && Number(range.cloudUploadedAt || 0) <= 0) continue;
+    if (range.cloudConfirmed !== true && Number(range.cloudUploadedAt || 0) <= 0) continue;
     const shard = await metaDB.getStoreValue('backup_stats_rollups', range.rangeKey).catch(() => null);
     if (!shard) continue;
     try {
