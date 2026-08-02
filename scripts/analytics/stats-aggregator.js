@@ -25,10 +25,14 @@ const calculateStreakSummary = values => {
     previous = current;
   });
 
+  const today = localDayKey(Date.now());
+  const yesterday = localDayKey(Date.now() - 86400000);
+  const lastActiveDate = days[days.length - 1] || '';
+
   return {
-    current: run,
+    current: lastActiveDate === today || lastActiveDate === yesterday ? run : 0,
     longest,
-    lastActiveDate: days[days.length - 1] || '',
+    lastActiveDate,
     activeDays: days.slice(-400)
   };
 };
