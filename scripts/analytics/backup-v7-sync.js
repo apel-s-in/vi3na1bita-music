@@ -6,8 +6,7 @@ import { exportAccountCachePolicies, applyAccountCachePolicies } from '../offlin
 import { getDeviceContext } from '../core/device-context.js';
 import { getSocialSession } from '../core/social-session.js';
 import { AccountDataContext } from './account-data-boundary.js';
-import { normalizeEventList } from './backup-event-cleanup.js';
-import { rebuildStatsFromEvents } from './stats-state.js';
+import { buildStatsProjection, buildStatsProjectionShard, emptyStatsProjection, mergeStatsProjectionInto, projectionStreak, projectionToStatsRows, STATS_SHARD_VERSION, verifyStatsProjectionShard } from './stats-shard-contract.js';
 import YandexBackupV7 from '../core/yandex-backup-v7.js';
 import {
   buildPendingBackupV7Batch,
@@ -147,16 +146,26 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
     }
   }
 
+  const rollups = new Map();
+  for (const range of verified) {
+    const shard = await buildStatsProjectionShard(range);
+    await verifyStatsProjectionShard(shard, range);
+    rollups.set(range.rangeKey, shard);
+  }
+
   await metaDB.init();
 
   return new Promise((resolve, reject) => {
-    const tx = metaDB.db.transaction(['backup_event_ranges', 'backup_known_ranges', 'backup_chain_watermarks'], 'readwrite');
+    const tx = metaDB.db.transaction(['backup_event_ranges', 'backup_known_ranges', 'backup_chain_watermarks', 'backup_stats_rollups'], 'readwrite');
     const rangeStore = tx.objectStore('backup_event_ranges');
     const knownStore = tx.objectStore('backup_known_ranges');
     const watermarkStore = tx.objectStore('backup_chain_watermarks');
+    const rollupStore = tx.objectStore('backup_stats_rollups');
     let inserted = 0;
 
     verified.forEach(range => {
+      const shard = rollups.get(range.rangeKey);
+      if (shard) rollupStore.put(shard);
       const request = rangeStore.get(range.rangeKey);
       request.onsuccess = () => {
         if (request.result) return;
@@ -164,18 +173,10 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
         const own = safe(range.deviceId) === safe(currentDeviceId);
         rangeStore.put({
           ...range,
+          verifiedAt: Date.now(),
           projected: own,
           storedAt: Date.now(),
           projectedAt: own ? Date.now() : 0
-        });
-        knownStore.put({
-          rangeKey: range.rangeKey,
-          deviceId: range.deviceId,
-          chainId: range.chainId,
-          fromSeq: range.fromSeq,
-          toSeq: range.toSeq,
-          hash: range.hash,
-          appliedAt: own ? Date.now() : 0
         });
       };
     });
@@ -202,45 +203,200 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
   });
 };
 
-const readCompleteEventTruth = async () => {
-  const [ranges, warm, hot] = await Promise.all([
-    getAllRows('backup_event_ranges'),
-    metaDB.getEvents('events_warm').catch(() => []),
-    metaDB.getEvents('events_hot').catch(() => [])
-  ]);
+const nextStoreRow = async (storeName, afterKey = '') => {
+  await metaDB.init();
+  return new Promise((resolve, reject) => {
+    const range = afterKey ? IDBKeyRange.lowerBound(afterKey, true) : null;
+    const request = metaDB.db.transaction(storeName, 'readonly').objectStore(storeName).openCursor(range);
+    request.onsuccess = () => resolve(request.result ? { key: String(request.result.primaryKey), value: request.result.value } : null);
+    request.onerror = () => reject(request.error);
+  });
+};
 
-  return normalizeEventList([
-    ...ranges.flatMap(range => Array.isArray(range.events) ? range.events : []),
-    ...warm,
-    ...hot
-  ], {
-    limit: 0,
-    dropNoise: true,
-    sort: true,
-    dedupeAchievementUnlocks: false
+const putStoreRow = async (storeName, row) => {
+  await metaDB.init();
+  return new Promise((resolve, reject) => {
+    const tx = metaDB.db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(row);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error(`backup_store_put_failed:${storeName}`));
+  });
+};
+
+const deleteStoreRow = async (storeName, key) => {
+  await metaDB.init();
+  return new Promise((resolve, reject) => {
+    const tx = metaDB.db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+const ensureStatsRollupsV2 = async () => {
+  let cursorKey = '';
+  let built = 0;
+  let verified = 0;
+
+  while (true) {
+    const entry = await nextStoreRow('backup_event_ranges', cursorKey);
+    if (!entry) break;
+    cursorKey = entry.key;
+    const range = entry.value;
+    const existing = await metaDB.getStoreValue('backup_stats_rollups', range.rangeKey).catch(() => null);
+
+    try {
+      if (existing) {
+        await verifyStatsProjectionShard(existing, range);
+        verified++;
+        continue;
+      }
+    } catch {
+      await deleteStoreRow('backup_stats_rollups', range.rangeKey).catch(() => null);
+    }
+
+    const checked = await verifyBackupV7Range(range, { ownerYandexIdHash: range.ownerYandexIdHash });
+    const shard = await buildStatsProjectionShard(checked);
+    await verifyStatsProjectionShard(shard, checked);
+    await putStoreRow('backup_stats_rollups', shard);
+    built++;
+  }
+
+  return { built, verified };
+};
+
+const streamStatsRollups = async () => {
+  let projection = emptyStatsProjection();
+  const coverage = new Map();
+  let cursorKey = '';
+  let shards = 0;
+
+  while (true) {
+    const entry = await nextStoreRow('backup_stats_rollups', cursorKey);
+    if (!entry) break;
+    cursorKey = entry.key;
+    const shard = await verifyStatsProjectionShard(entry.value);
+    projection = mergeStatsProjectionInto(projection, shard);
+    const key = `${safe(shard.deviceStableId)}:${safe(shard.chainId)}`;
+    if (!coverage.has(key)) coverage.set(key, []);
+    coverage.get(key).push([Number(shard.fromSeq || 0), Number(shard.toSeq || 0)]);
+    shards++;
+  }
+
+  coverage.forEach(rows => rows.sort((left, right) => left[0] - right[0]));
+  return { projection, coverage, shards };
+};
+
+const eventCoveredByRollup = (event, coverage) => {
+  const key = `${safe(event?.deviceStableId)}:${safe(event?.chainId)}`;
+  const seq = Number(event?.deviceSeq || 0);
+  if (!key || !seq) return false;
+  return (coverage.get(key) || []).some(([fromSeq, toSeq]) => seq >= fromSeq && seq <= toSeq);
+};
+
+const writeProjectionAtomic = async projection => {
+  const rows = projectionToStatsRows(projection);
+  const streak = projectionStreak(projection);
+  await metaDB.init();
+
+  return new Promise((resolve, reject) => {
+    const tx = metaDB.db.transaction(['stats', 'global'], 'readwrite');
+    const statsStore = tx.objectStore('stats');
+    const globalStore = tx.objectStore('global');
+    statsStore.clear();
+    rows.forEach(row => statsStore.put(row));
+    globalStore.put({ key: 'global_streak', value: streak });
+    globalStore.put({ key: 'backup_stats_rollup_schema', value: { version: STATS_SHARD_VERSION, shards: 0, rebuiltAt: Date.now() } });
+    tx.oncomplete = () => resolve({ rows: rows.length, streak });
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('backup_stats_projection_commit_failed'));
   });
 };
 
 const markRangesProjected = async () => {
-  const rows = await getAllRows('backup_event_ranges');
-  await metaDB.tx('backup_event_ranges', 'readwrite', store => {
-    rows.forEach(row => store.put({ ...row, projected: true, projectedAt: Date.now() }));
+  await metaDB.init();
+  return new Promise((resolve, reject) => {
+    const tx = metaDB.db.transaction('backup_event_ranges', 'readwrite');
+    const request = tx.objectStore('backup_event_ranges').openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      if (cursor.value?.projected !== true) cursor.update({ ...cursor.value, projected: true, projectedAt: Date.now() });
+      cursor.continue();
+    };
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
   });
+};
+
+const compactUploadedLocalEvents = async coverage => {
+  const [warm, hot] = await Promise.all([
+    metaDB.getEvents('events_warm').catch(() => []),
+    metaDB.getEvents('events_hot').catch(() => [])
+  ]);
+  const warmCovered = warm.filter(event => eventCoveredByRollup(event, coverage));
+  const hotCovered = hot.filter(event => eventCoveredByRollup(event, coverage));
+  if (warmCovered.length) await metaDB.deleteEvents(warmCovered, 'events_warm');
+  if (hotCovered.length) await metaDB.deleteEvents(hotCovered, 'events_hot');
+  return { warm: warmCovered.length, hot: hotCovered.length };
+};
+
+const compactOldRawRanges = async ({ retentionMs = 35 * 24 * 60 * 60 * 1000 } = {}) => {
+  const cutoff = Date.now() - retentionMs;
+  let cursorKey = '';
+  let deleted = 0;
+
+  while (true) {
+    const entry = await nextStoreRow('backup_event_ranges', cursorKey);
+    if (!entry) break;
+    cursorKey = entry.key;
+    const range = entry.value;
+    if (Number(range?.createdAt || range?.storedAt || 0) >= cutoff) continue;
+    const shard = await metaDB.getStoreValue('backup_stats_rollups', range.rangeKey).catch(() => null);
+    if (!shard) continue;
+    try {
+      await verifyStatsProjectionShard(shard, range);
+      await deleteStoreRow('backup_event_ranges', range.rangeKey);
+      deleted++;
+    } catch {}
+  }
+
+  return deleted;
 };
 
 export const rebuildBackupV7LocalAnalytics = async ({ reason = 'backup_v71_rebuild', force = false } = {}) => {
   if (!force && window.playerCore?.isPlaying?.()) return { rebuilt: false, deferred: true };
 
-  const rows = await getAllRows('backup_event_ranges');
-  if (!rows.some(row => row.projected !== true)) return { rebuilt: false, deferred: false };
+  const migration = await ensureStatsRollupsV2();
+  const streamed = await streamStatsRollups();
+  const [warm, hot] = await Promise.all([
+    metaDB.getEvents('events_warm').catch(() => []),
+    metaDB.getEvents('events_hot').catch(() => [])
+  ]);
+  const pendingEvents = [...warm, ...hot].filter(event => !eventCoveredByRollup(event, streamed.coverage));
+  const localProjection = buildStatsProjection(pendingEvents);
+  const projection = mergeStatsProjectionInto(streamed.projection, localProjection);
+  const committed = await writeProjectionAtomic(projection);
 
-  const events = await readCompleteEventTruth();
-  await rebuildStatsFromEvents(metaDB, events, { reason });
   await markRangesProjected();
+  const compactedEvents = await compactUploadedLocalEvents(streamed.coverage);
+  const deletedRawRanges = await compactOldRawRanges();
 
-  window.dispatchEvent(new CustomEvent('analytics:logUpdated', { detail: { reason, events: events.length } }));
+  window.dispatchEvent(new CustomEvent('stats:rebuilt', { detail: { reason, shards: streamed.shards, pendingEvents: pendingEvents.length } }));
+  window.dispatchEvent(new CustomEvent('analytics:logUpdated', { detail: { reason, events: pendingEvents.length } }));
   window.dispatchEvent(new CustomEvent('profile:data:refreshed', { detail: { reason } }));
-  return { rebuilt: true, deferred: false, events: events.length };
+
+  return {
+    rebuilt: true,
+    deferred: false,
+    shards: streamed.shards,
+    pendingEvents: pendingEvents.length,
+    statsRows: committed.rows,
+    rollupsBuilt: migration.built,
+    compactedEvents,
+    deletedRawRanges
+  };
 };
 
 const bindDeferredRepair = () => {
