@@ -972,6 +972,25 @@ async function kvDelete(pk) {
   );
   return true;
 }
+async function kvDeleteIfPayload(pk, expectedPayloadJson) {
+  if (!pk || !expectedPayloadJson) return false;
+  const result = await query(
+    `
+    DECLARE $pk AS Utf8;
+    DECLARE $expected_payload_json AS Utf8;
+
+    DELETE FROM ${TABLE}
+    WHERE pk = $pk
+      AND payload_json = $expected_payload_json
+    RETURNING pk;
+  `,
+    {
+      $pk: tvUtf8(pk),
+      $expected_payload_json: tvUtf8(expectedPayloadJson)
+    }
+  );
+  return rowsOf(result).some(item => safe(item.pk) === safe(pk));
+}
 async function kvPrefix(prefix, limit = 100) {
   const to = `${prefix}\uffff`;
   const at = now();
@@ -7197,16 +7216,25 @@ function webPushEndpointKey(endpointHash) {
 }
 
 async function deleteWebPushSubscriptionRow(row) {
-  if (!row?.pk) return false;
+  if (!row?.pk || !row?.payload_json) return false;
   const data = payload(row);
   const endpointHash = sanitizeId(data.endpointHash, 64);
-  await kvDelete(row.pk).catch(() => null);
-  if (!endpointHash) return true;
+  const deleted = await kvDeleteIfPayload(row.pk, row.payload_json).catch(() => false);
+  if (!deleted) return false;
+
+  const remaining = await kvGet(row.pk).catch(() => null);
+  if (remaining || !endpointHash) return !remaining;
+
   const indexKey = webPushEndpointKey(endpointHash);
-  const indexRow = await kvGet(indexKey);
+  const indexRow = await kvGet(indexKey).catch(() => null);
   const index = payload(indexRow);
-  if (indexRow && safe(index.subscriptionKey) === safe(row.pk)) {
-    await kvDelete(indexKey).catch(() => null);
+  const sameGeneration =
+    safe(index.subscriptionKey) === safe(row.pk) &&
+    num(index.updatedAt) === num(data.updatedAt) &&
+    num(index.leaseExpiresAt) === num(data.leaseExpiresAt);
+
+  if (indexRow?.payload_json && sameGeneration) {
+    await kvDeleteIfPayload(indexKey, indexRow.payload_json).catch(() => false);
   }
   return true;
 }
@@ -7221,8 +7249,11 @@ async function removeDeviceWebPushSubscriptions(playerId, deviceId, exceptEndpoi
     const data = payload(row);
     return sanitizeId(data.deviceId, 120) === cleanDeviceId && sanitizeId(data.endpointHash, 64) !== except;
   });
-  for (const row of targets) await deleteWebPushSubscriptionRow(row);
-  return targets.length;
+  let removed = 0;
+  for (const row of targets) {
+    if (await deleteWebPushSubscriptionRow(row)) removed++;
+  }
+  return removed;
 }
 
 async function actionWebPushConfig(event, body) {
@@ -7280,7 +7311,8 @@ async function actionWebPushSubscribe(event, body) {
 
   const previousSubscriptionKey = safe(endpointOwner.subscriptionKey);
   if (previousSubscriptionKey && previousSubscriptionKey !== subscriptionKey) {
-    await kvDelete(previousSubscriptionKey).catch(() => null);
+    const previousRow = await kvGet(previousSubscriptionKey).catch(() => null);
+    if (previousRow) await deleteWebPushSubscriptionRow(previousRow).catch(() => false);
   }
 
   const replacedForDevice = await removeDeviceWebPushSubscriptions(auth.playerId, auth.deviceId, endpointHash);
