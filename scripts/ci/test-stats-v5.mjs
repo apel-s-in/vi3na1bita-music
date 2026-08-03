@@ -53,5 +53,38 @@ assert.equal(broken.repeat['GD-02']?.runs3 || 0, 0);
 
 const sessions = Object.values(merged.cube).reduce((sum, cell) => sum + Number(cell.sessions || 0), 0);
 assert.equal(sessions, 3);
+const skipped = buildStatsV4([
+  {
+    ...completion({ id: 's1', startedAt: 300000, completedAt: 301000 }),
+    data: {
+      ...completion({ id: 's1', startedAt: 300000, completedAt: 301000 }).data,
+      analysisEligible: false,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'micro_skip'
+    }
+  },
+  {
+    ...completion({ id: 's2', startedAt: 302000, completedAt: 303000 }),
+    data: {
+      ...completion({ id: 's2', startedAt: 302000, completedAt: 303000 }).data,
+      analysisEligible: false,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'micro_skip'
+    }
+  },
+  {
+    ...completion({ id: 's3', startedAt: 304000, completedAt: 305000 }),
+    data: {
+      ...completion({ id: 's3', startedAt: 304000, completedAt: 305000 }).data,
+      analysisEligible: false,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'micro_skip'
+    }
+  }
+]);
 
-console.log('✅ Stats v4 repeat boundary and sparse cube contract passed');
+assert.equal(skipped.repeat['GD-01']?.runs3 || 0, 0);
+console.log('✅ Stats v5 full-repeat boundary and sparse cube contract passed');
