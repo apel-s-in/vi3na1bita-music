@@ -558,6 +558,7 @@ export const buildCloudUsageReport = async () => {
   const storage = await navigator.storage?.estimate?.().catch(() => null);
   const backoff = window.SocialSessionDiagnostics?.getBackoffState?.() || null;
   const activity = window.AppActivity?.getState?.() || {};
+  const backupScheduler = window.BackupSyncEngine?.getSchedulerState?.() || null;
   return {
     schema: 'vi3-cloud-usage-report-v2',
     privacy: {
@@ -608,9 +609,13 @@ export const buildCloudUsageReport = async () => {
     queues: {
       favoriteMirrorOutbox: jsonArrayLength('favoriteMirror:outbox:v1'),
       listeningCompletionOutbox: window.ListeningReceipts?.getCompletionOutboxSnapshot?.().length ?? jsonArrayLength('listeningReceipts:completionOutbox:v1'),
-      backupDirty: localStorage.getItem('backup:v71:dirty') === '1',
-      backupNextPhase: safe(localStorage.getItem('backup:v71:next-phase')),
-      backupNextSyncAt: number(localStorage.getItem('backup:v71:next-sync-at'))
+      backupDirty: (backupScheduler?.dirtyDomains || []).length > 0,
+      backupDirtyDomains: [...(backupScheduler?.dirtyDomains || [])],
+      backupNextSyncAt: number(backupScheduler?.nextSyncAt),
+      backupContinuationAt: number(backupScheduler?.continuationAt),
+      backupLastFullSyncAt: number(backupScheduler?.lastFullSyncAt),
+      backupBlockReason: safe(backupScheduler?.blockReason),
+      backupBlockUntil: number(backupScheduler?.blockUntil)
     },
     cloudUsage: snapshot
   };
