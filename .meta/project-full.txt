@@ -125,7 +125,7 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, backup-domain-state.js, backup-event-cleanup.js, backup-scheduler-policy.js, backup-sync-engine.js, backup-v7-range.js, backup-v7-recovery.js, backup-v7-sync.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, stats-v4-projection.js, storage-merge-utils.js, storage-merge.js, sync-dirty-events.js, sync-domains.js, sync-revisions.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, backup-domain-state.js, backup-event-cleanup.js, backup-scheduler-policy.js, backup-sync-engine.js, backup-v7-range.js, backup-v7-recovery.js, backup-v7-sync.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, stats-v4-projection.js, storage-merge-utils.js, sync-dirty-events.js, sync-revisions.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
@@ -8426,22 +8426,6 @@ export const getBackupConflictPolicy = () => { try { const v = localStorage.getI
 export default { toNum, minPositive, getBackupConflictPolicy };
 
 //=================================================
-// FILE: /scripts/analytics/storage-merge.js
-// UID.096_(Helper-first anti-duplication policy)_(storage merge — каноническое имя вместо backup-merge)_(backup-merge остаётся только facade) UID.099_(Multi-device sync model)_(favorites/playlists/profile merge в одном public API)_(без circular imports)
-import { toNum, minPositive, getBackupConflictPolicy } from './storage-merge-utils.js';
-import { mergePlaylistsStorageSafe } from './playlists-storage-merge.js';
-
-export { toNum, minPositive, getBackupConflictPolicy, mergePlaylistsStorageSafe };
-
-export const mergeProfileStorageValueSafe = (key, localValue, remoteValue) => {
-  if (remoteValue == null) return localValue;
-  if (localValue == null) return remoteValue;
-  return key === 'sc3:playlists' ? mergePlaylistsStorageSafe(localValue, remoteValue) : remoteValue;
-};
-
-export default { toNum, minPositive, getBackupConflictPolicy, mergePlaylistsStorageSafe, mergeProfileStorageValueSafe };
-
-//=================================================
 // FILE: /scripts/analytics/sync-dirty-events.js
 // UID.096_(Helper-first anti-duplication policy)_(единая отправка backup dirty domain events)_(убрать локальные dirtyDev/emitPlDirty копии) UID.099_(Multi-device sync model)_(domain-driven autosave)_(изменения доменов должны помечаться единообразно)
 const sS = v => String(v == null ? '' : v).trim();
@@ -8452,30 +8436,6 @@ export const markFavoritesDirty = detail => markBackupDomainDirty('favorites', d
 export const markProfileDirty = detail => markBackupDomainDirty('profile', { immediate: true, ...(detail || {}) });
 export const markDevicesDirty = detail => markBackupDomainDirty('devices', detail);
 export default { markBackupDomainDirty, markDeviceSettingsDirty, markPlaylistsDirty, markFavoritesDirty, markProfileDirty, markDevicesDirty };
-
-//=================================================
-// FILE: /scripts/analytics/sync-domains.js
-export const SYNC_WATCH_KEYS = new Set(['sc3:playlists', 'sc3:activeId', 'sc3:ui_v2', 'sourcePref', 'favoritesOnlyMode', 'qualityMode:v1', 'offline:mode:v1', 'offline:cacheQuality:v1', 'cloud:listenThreshold', 'cloud:ttlDays', 'playerVolume', 'lyricsViewMode', 'lyricsAnimationEnabled', 'lyricsShowAnimBtn', 'logoPulseEnabled', 'logoPulsePreset', 'logoPulseIntensity', 'logoPulseDebug', 'profileShowControls', 'dl_format_v1', 'backup:conflict_policy:v1']);
-export const STORAGE_KEY_TO_DOMAIN = new Map([['sc3:playlists', 'playlists'], ['sc3:activeId', 'deviceSettings'], ['sc3:ui_v2', 'deviceSettings'], ['sourcePref', 'deviceSettings'], ['favoritesOnlyMode', 'deviceSettings'], ['qualityMode:v1', 'deviceSettings'], ['offline:mode:v1', 'deviceSettings'], ['offline:cacheQuality:v1', 'deviceSettings'], ['cloud:listenThreshold', 'deviceSettings'], ['cloud:ttlDays', 'deviceSettings'], ['playerVolume', 'deviceSettings'], ['lyricsViewMode', 'deviceSettings'], ['lyricsAnimationEnabled', 'deviceSettings'], ['lyricsShowAnimBtn', 'deviceSettings'], ['logoPulseEnabled', 'deviceSettings'], ['logoPulsePreset', 'deviceSettings'], ['logoPulseIntensity', 'deviceSettings'], ['logoPulseDebug', 'deviceSettings'], ['profileShowControls', 'deviceSettings'], ['dl_format_v1', 'deviceSettings'], ['backup:conflict_policy:v1', 'deviceSettings']]);
-export const DOMAIN_DEBOUNCE_MS = Object.freeze({
-  profile: 6 * 60 * 60 * 1000,
-  favorites: 6 * 60 * 60 * 1000,
-  playlists: 6 * 60 * 60 * 1000,
-  stats: 24 * 60 * 60 * 1000,
-  deviceSettings: 24 * 60 * 60 * 1000,
-  ui: 24 * 60 * 60 * 1000,
-  downloads: 24 * 60 * 60 * 1000,
-  devices: 24 * 60 * 60 * 1000,
-  generic: 6 * 60 * 60 * 1000
-});
-const _dirtyDomains = new Set(); let _lastDirtyAt = 0;
-export const getDomainForStorageKey = key => STORAGE_KEY_TO_DOMAIN.get(String(key || '').trim()) || 'generic';
-export const isWatchedStorageKey = key => SYNC_WATCH_KEYS.has(String(key || '').trim());
-export const markDomainDirty = domain => { _dirtyDomains.add(String(domain || '').trim() || 'generic'); _lastDirtyAt = Date.now(); return { domains: [..._dirtyDomains], lastDirtyAt: _lastDirtyAt }; };
-export const markStorageKeyDirty = key => !isWatchedStorageKey(key) ? { domains: [..._dirtyDomains], lastDirtyAt: _lastDirtyAt } : markDomainDirty(getDomainForStorageKey(key));
-export const consumeDirtyState = () => { const domains = [..._dirtyDomains], maxDebounceMs = domains.length ? Math.min(...domains.map(d => DOMAIN_DEBOUNCE_MS[d] || DOMAIN_DEBOUNCE_MS.generic)) : DOMAIN_DEBOUNCE_MS.generic; _dirtyDomains.clear(); return { domains, lastDirtyAt: _lastDirtyAt, debounceMs: maxDebounceMs }; };
-export const peekDirtyState = () => ({ domains: [..._dirtyDomains], lastDirtyAt: _lastDirtyAt });
-export default { SYNC_WATCH_KEYS, STORAGE_KEY_TO_DOMAIN, DOMAIN_DEBOUNCE_MS, getDomainForStorageKey, isWatchedStorageKey, markDomainDirty, markStorageKeyDirty, consumeDirtyState, peekDirtyState };
 
 //=================================================
 // FILE: /scripts/analytics/sync-revisions.js
