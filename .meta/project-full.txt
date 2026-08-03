@@ -4525,6 +4525,7 @@ import { clearBackupV7Checkpoint, createBackupV7Checkpoint, restoreBackupV7Check
 import { ingestBackupDomainEvents } from './backup-domain-state.js';
 
 const TEMPLATE_KEY = 'backup:v7:settings-template-device';
+const STATS_MIGRATION_KEY = 'backup_stats_rollup_migration';
 const MAX_PULL_PAGES_PER_SLOT = 4;
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -4754,7 +4755,133 @@ const deleteStoreRow = async (storeName, key) => {
     tx.onerror = () => reject(tx.error);
   });
 };
+const statsShardChainKey = shard => `${safe(shard?.deviceStableId)}:${safe(shard?.chainId || shard?.branchId)}`;
 
+export const prepareStatsRollupMigration = async ({ allowWatermarkRewind = false } = {}) => {
+  const schema = await metaDB.getGlobal('backup_stats_rollup_schema').catch(() => null);
+  if (Number(schema?.value?.version || 0) === STATS_SHARD_VERSION) {
+    return { needed: false, changed: false, requiresCloudRepair: false, rewoundChains: 0, deletedRollups: 0 };
+  }
+
+  if (window.playerCore?.isPlaying?.()) {
+    return { needed: true, changed: false, deferred: true, requiresCloudRepair: false, rewoundChains: 0, deletedRollups: 0 };
+  }
+
+  const [rollups, ranges] = await Promise.all([
+    getAllRows('backup_stats_rollups').catch(() => []),
+    getAllRows('backup_event_ranges').catch(() => [])
+  ]);
+  if (!rollups.length) {
+    return { needed: true, changed: false, requiresCloudRepair: false, rewoundChains: 0, deletedRollups: 0 };
+  }
+
+  const rawRangeKeys = new Set(ranges.map(range => safe(range?.rangeKey)).filter(Boolean));
+  const invalidWithRaw = new Set();
+  const orphanBreaks = new Map();
+
+  for (const shard of rollups) {
+    try {
+      await verifyStatsProjectionShard(shard);
+    } catch {
+      const rangeKey = safe(shard?.rangeKey);
+      if (rangeKey && rawRangeKeys.has(rangeKey)) {
+        invalidWithRaw.add(rangeKey);
+        continue;
+      }
+      const key = statsShardChainKey(shard);
+      const fromSeq = Math.max(1, Number(shard?.fromSeq || 0));
+      if (key === ':' || !fromSeq) continue;
+      orphanBreaks.set(key, Math.min(orphanBreaks.get(key) || fromSeq, fromSeq));
+    }
+  }
+
+  if (orphanBreaks.size && !allowWatermarkRewind) {
+    return {
+      needed: true,
+      changed: invalidWithRaw.size > 0,
+      deferred: false,
+      requiresCloudRepair: true,
+      rewoundChains: 0,
+      deletedRollups: invalidWithRaw.size
+    };
+  }
+
+  const deleteKeys = new Set(invalidWithRaw);
+  const rewinds = new Map();
+
+  for (const [chain, earliestBrokenSeq] of orphanBreaks) {
+    const [deviceId, ...chainParts] = chain.split(':');
+    const chainId = chainParts.join(':');
+    const chainRollups = rollups
+      .filter(shard => statsShardChainKey(shard) === chain)
+      .sort((left, right) => Number(left.fromSeq || 0) - Number(right.fromSeq || 0));
+
+    chainRollups
+      .filter(shard => Number(shard.fromSeq || 0) >= earliestBrokenSeq)
+      .forEach(shard => deleteKeys.add(safe(shard.rangeKey)));
+
+    let expectedFromSeq = 1;
+    let last = null;
+    for (const shard of chainRollups.filter(item => Number(item.toSeq || 0) < earliestBrokenSeq)) {
+      try {
+        const checked = await verifyStatsProjectionShard(shard);
+        if (Number(checked.fromSeq || 0) !== expectedFromSeq) break;
+        last = checked;
+        expectedFromSeq = Number(checked.toSeq || 0) + 1;
+      } catch {
+        break;
+      }
+    }
+
+    rewinds.set(chain, {
+      key: chain,
+      deviceId,
+      chainId,
+      toSeq: Number(last?.toSeq || 0),
+      lastRangeHash: safe(last?.sourceHash),
+      updatedAt: Date.now()
+    });
+  }
+
+  await metaDB.init();
+  await new Promise((resolve, reject) => {
+    const tx = metaDB.db.transaction(['backup_stats_rollups', 'backup_chain_watermarks', 'global'], 'readwrite');
+    const rollupStore = tx.objectStore('backup_stats_rollups');
+    const watermarkStore = tx.objectStore('backup_chain_watermarks');
+    const globalStore = tx.objectStore('global');
+
+    deleteKeys.forEach(key => {
+      if (key) rollupStore.delete(key);
+    });
+    rewinds.forEach(row => {
+      if (row.toSeq > 0 && row.lastRangeHash) watermarkStore.put(row);
+      else watermarkStore.delete(row.key);
+    });
+    globalStore.put({
+      key: STATS_MIGRATION_KEY,
+      value: {
+        targetVersion: STATS_SHARD_VERSION,
+        deletedRollups: deleteKeys.size,
+        rewoundChains: rewinds.size,
+        requiresCloudRepair: rewinds.size > 0,
+        migratedAt: Date.now()
+      }
+    });
+
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('backup_stats_rollup_migration_aborted'));
+  });
+
+  return {
+    needed: true,
+    changed: deleteKeys.size > 0 || rewinds.size > 0,
+    deferred: false,
+    requiresCloudRepair: rewinds.size > 0,
+    rewoundChains: rewinds.size,
+    deletedRollups: deleteKeys.size
+  };
+};
 const ensureStatsRollups = async () => {
   let cursorKey = '';
   let built = 0;
@@ -4875,6 +5002,16 @@ const compactOldRawRanges = async ({ retentionMs = 35 * 24 * 60 * 60 * 1000 } = 
 export const rebuildBackupV7LocalAnalytics = async ({ reason = 'backup_v71_rebuild', force = false } = {}) => {
   if (!force && window.playerCore?.isPlaying?.()) return { rebuilt: false, deferred: true };
 
+  const versionMigration = await prepareStatsRollupMigration({ allowWatermarkRewind: false });
+  if (versionMigration.deferred || versionMigration.requiresCloudRepair) {
+    return {
+      rebuilt: false,
+      deferred: true,
+      reason: versionMigration.deferred ? 'playback_active' : 'stats_rollup_cloud_repair_required',
+      migration: versionMigration
+    };
+  }
+
   const migration = await ensureStatsRollups();
   const streamed = await streamStatsRollups();
   const [warm, hot] = await Promise.all([
@@ -4900,6 +5037,7 @@ export const rebuildBackupV7LocalAnalytics = async ({ reason = 'backup_v71_rebui
     pendingEvents: pendingEvents.length,
     statsRows: committed.rows,
     rollupsBuilt: migration.built,
+    migration: versionMigration,
     compactedEvents,
     deletedRawRanges
   };
@@ -5045,6 +5183,11 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   if (!/^[a-f0-9]{64}$/.test(ownerYandexIdHash)) throw new Error('backup_v71_owner_hash_required');
   if (!deviceId) throw new Error('backup_v71_device_required');
 
+  const statsMigration = await prepareStatsRollupMigration({ allowWatermarkRewind: true });
+  if (statsMigration.deferred) {
+    throw new Error('backup_stats_migration_playback_deferred');
+  }
+
   const state = await readBackupV7State();
   const batch = pushEnabled ? await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash }) : null;
   const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
@@ -5086,7 +5229,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
 
   const sharedDocument = result?.shared?.current || null;
   const domainEvents = exchange.domainEvents || [];
-  const needsMaterialization = domainEvents.length > 0 || !!sharedDocument || !!result?.settings?.template;
+  const needsMaterialization = statsMigration.changed === true || domainEvents.length > 0 || !!sharedDocument || !!result?.settings?.template;
   const checkpoint = needsMaterialization
     ? await createBackupV7Checkpoint({ reason: `backup_v71_sync:${reason}` })
     : null;
@@ -5159,6 +5302,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       push,
       pull,
       rebuild,
+      migration: statsMigration,
       backlog,
       domainEventsApplied: Number(domainApplied.applied || 0),
       quarantine: exchange.quarantined,
@@ -5251,6 +5395,7 @@ export default {
   syncBackupV7,
   getBackupV7Status,
   rebuildBackupV7LocalAnalytics,
+  prepareStatsRollupMigration,
   getBackupV7BacklogStatus,
   readBackupV7JournalEvents
 };
