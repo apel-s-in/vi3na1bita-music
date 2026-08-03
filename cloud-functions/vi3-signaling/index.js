@@ -2793,6 +2793,8 @@ async function actionChatDeleteV2(event, body) {
   }
   return { ok: true, deleted: 1, tombstone: true, revision: msg.revision, cryptoVersion: 2, at: msg.deletedAt };
 }
+const VOICE_TERMINAL_STATUSES = new Set(['ended', 'ended_by_friend', 'closed', 'closed_external', 'cancelled', 'declined', 'failed']);
+
 async function saveVoiceLog({ callId, fromPlayerId, toPlayerId, roomId, status, startedAt = 0, endedAt = 0, durationSec = 0 } = {}) {
   const room = chatRoomId(fromPlayerId, toPlayerId);
   const at = now();
@@ -2892,8 +2894,12 @@ async function actionVoiceCallEnd(event, body) {
   if (roomId && log.roomId && log.roomId !== roomId) {
     throw new Error('voice_room_mismatch');
   }
-  await saveVoiceLog({ callId, fromPlayerId: log.fromPlayerId, toPlayerId: log.toPlayerId, roomId: log.roomId || roomId, status, startedAt: num(log.startedAt), endedAt: now(), durationSec });
-  return { ok: true, ended: true };
+  if (num(log.endedAt) > 0 || VOICE_TERMINAL_STATUSES.has(safe(log.status))) {
+    return { ok: true, ended: true, duplicate: true, status: safe(log.status), endedAt: num(log.endedAt), durationSec: num(log.durationSec) };
+  }
+  const endedAt = now();
+  const completed = await saveVoiceLog({ callId, fromPlayerId: log.fromPlayerId, toPlayerId: log.toPlayerId, roomId: log.roomId || roomId, status, startedAt: num(log.startedAt), endedAt, durationSec });
+  return { ok: true, ended: true, duplicate: false, status: completed.status, endedAt: completed.endedAt, durationSec: completed.durationSec };
 }
 const FAVORITE_STATE_VERSION = 1;
 const FAVORITE_MUTATION_HISTORY_LIMIT = 500;
