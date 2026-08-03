@@ -136,7 +136,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-stats-v4.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
@@ -15248,7 +15248,7 @@ if (!checkOnly) {
 console.log(checkOnly ? `✅ Версии согласованы: app=${version}, friends=${friendsBuild}, games=${gamesBuild}, warHearts=${warHeartsBuild}, date=${buildDate}` : `✅ Версии обновлены: app=${version}, friends=${friendsBuild}, games=${gamesBuild}, warHearts=${warHeartsBuild}, date=${buildDate}`);
 
 //=================================================
-// FILE: /scripts/ci/test-stats-v4.mjs
+// FILE: /scripts/ci/test-stats-v5.mjs
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { buildStatsV4, mergeStatsV4 } from '../analytics/stats-v4-projection.js';
@@ -15304,8 +15304,41 @@ assert.equal(broken.repeat['GD-02']?.runs3 || 0, 0);
 
 const sessions = Object.values(merged.cube).reduce((sum, cell) => sum + Number(cell.sessions || 0), 0);
 assert.equal(sessions, 3);
+const skipped = buildStatsV4([
+  {
+    ...completion({ id: 's1', startedAt: 300000, completedAt: 301000 }),
+    data: {
+      ...completion({ id: 's1', startedAt: 300000, completedAt: 301000 }).data,
+      analysisEligible: false,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'micro_skip'
+    }
+  },
+  {
+    ...completion({ id: 's2', startedAt: 302000, completedAt: 303000 }),
+    data: {
+      ...completion({ id: 's2', startedAt: 302000, completedAt: 303000 }).data,
+      analysisEligible: false,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'micro_skip'
+    }
+  },
+  {
+    ...completion({ id: 's3', startedAt: 304000, completedAt: 305000 }),
+    data: {
+      ...completion({ id: 's3', startedAt: 304000, completedAt: 305000 }).data,
+      analysisEligible: false,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'micro_skip'
+    }
+  }
+]);
 
-console.log('✅ Stats v4 repeat boundary and sparse cube contract passed');
+assert.equal(skipped.repeat['GD-01']?.runs3 || 0, 0);
+console.log('✅ Stats v5 full-repeat boundary and sparse cube contract passed');
 
 //=================================================
 // FILE: /scripts/ci/validate-content.mjs
