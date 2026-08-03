@@ -533,6 +533,18 @@ export const getFriendsCoreService = async () => {
   }
   return _core;
 };
+const publishVoiceActivity = detail => {
+  const state = {
+    active: detail?.active === true,
+    state: String(detail?.state || ''),
+    friendId: String(detail?.friendId || ''),
+    callId: String(detail?.callId || ''),
+    updatedAt: Number(detail?.updatedAt || Date.now())
+  };
+  W.__friendsVoiceActive = state.active;
+  W.dispatchEvent(new CustomEvent('friends:voice-activity', { detail: state }));
+};
+
 export const mountFriendsBlock = async ({ container } = {}) => {
   if (!container) return false;
   _container = container;
@@ -551,7 +563,8 @@ export const mountFriendsBlock = async ({ container } = {}) => {
     onChatOpened: async friendId => {
       await _core.markChatRead?.({ friendId }).catch(() => null);
       clearUnread(friendId, { refresh: false });
-    }
+    },
+    onVoiceStateChange: publishVoiceActivity
   });
   await applyIdentity();
   const url = new URL(W.location.href);
