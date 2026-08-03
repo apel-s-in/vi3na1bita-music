@@ -153,7 +153,8 @@ const validatePwaAndLegacy = () => {
   contains('scripts/core/device-context.js', 'display-mode: standalone');
   contains('scripts/app/promocode.js', 'W.PromocodeGate');
   contains('scripts/app/promocode.js', 'refresh:bind');
-  contains('scripts/e2e/utils.js', 'window.PromocodeGate?.refresh?.()');
+  contains('scripts/e2e/utils.js', "typeof window.PromocodeGate?.refresh==='function'");
+  assert(/window\.PromocodeGate\.refresh\(\)/.test(read('scripts/e2e/utils.js')), 'E2E явно запускает PromocodeGate.refresh()');
   excludes(pwa, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'PWA bridge управляет playback');
   const applicationFiles = [...listFiles('scripts').filter(file => !file.startsWith('scripts/ci/') && !file.startsWith('scripts/e2e/')), ...listFiles('data')];
   assertNoMatch(applicationFiles, /socials_all_visited|socialVisitAll|social_visit_all|Подписчик всего/g, 'Удалённое социальное достижение отсутствует');
@@ -345,7 +346,8 @@ const validateLoyaltyReleaseD = () => {
   contains('scripts/app/profile/loyalty-card.js', 'data-ach="loyalty"');
   contains('scripts/app/profile/loyalty-card.js', 'activityAccounted');
   contains('scripts/app/profile/loyalty-card.js', 'за один час');
-  ['LOYALTY_REMINDER', 'LOYALTY_VACATION_ENDING', 'LOYALTY_VACATION_ENDED', 'notificationTtl', 'notificationUrgency'].forEach(marker => contains(webpush, marker));
+  ['LOYALTY_REMINDER', 'LOYALTY_VACATION_ENDING', 'LOYALTY_VACATION_ENDED'].forEach(marker => contains(server, marker));
+  ['notificationTtl', 'notificationUrgency', "kind: safe(body.kind || '')"].forEach(marker => contains(webpush, marker));
   ["action: 'loyalty_due_run'", "'X-Vi3-Scheduler': SCHEDULER_SECRET", 'limit: 50'].forEach(marker => contains(scheduler, marker));
   ['setLoyaltyReminderEnabled', 'setLoyaltyVacationEnabled'].forEach(marker => contains('scripts/app/push/loyalty-reminders.js', marker));
   contains('scripts/app/profile/loyalty-card.js', 'renderLoyaltyCard');
@@ -392,7 +394,7 @@ const validateBackupProxy = () => {
   contains('scripts/app/profile/logs-view.js', 'data-log-top');
   contains('scripts/app/profile/logs-formatters.js', 'journalTimezone');
   contains('scripts/app/profile/logs-formatters.js', '30 полных календарных дней');
-  contains('scripts/app/profile/logs-view.js', 'data-log-domain');
+  contains('scripts/app/profile/logs-formatters.js', 'data-log-domain');
   contains('scripts/app/profile/logs-formatters.js', 'activity-filter-row');
   excludes('scripts/app/profile/logs-formatters.js', /ach-classic-tabs/, 'Журнал снова использует неудобную карусель вкладок');
   contains('cloud-functions/vi3-signaling/index.js', 'LISTEN_SHORT_COMPLETION_MS');
@@ -447,7 +449,7 @@ const main = async () => {
   await validateAchievements();
   validateListening();
   contains(server, "const TABLE = `${CFG.prefix}kv_v2`");
-  contains(server, '`expires_at` Timestamp');
+  assert(/\\?`expires_at\\?`\s+Timestamp\b/.test(read(server)), 'YDB schema: expires_at имеет тип Timestamp');
   contains(server, 'TTL = Interval("PT0S") ON expires_at');
   contains(server, 'DateTime::FromMilliseconds');
   contains(server, 'DateTime::ToMilliseconds');
