@@ -853,6 +853,22 @@ function publicAccountDevice(raw = {}) {
     updatedAt: device.updatedAt
   };
 }
+async function getActiveAccountPeerDevices(playerId, currentDeviceId = '', activeWindowMs = ACCOUNT_DEVICE_ACTIVE_MS) {
+  const current = sanitizeId(currentDeviceId, 120);
+  const cutoff = now() - Math.max(60000, num(activeWindowMs, ACCOUNT_DEVICE_ACTIVE_MS));
+  const rows = await kvPrefix(`accountDevice:${sanitizeId(playerId, 96)}:`, 100);
+  return rows
+    .map(payload)
+    .map(item => normalizeAccountDevice(item, playerId))
+    .filter(item =>
+      item.deviceId &&
+      item.deviceId !== current &&
+      item.revokedAt <= 0 &&
+      item.initializationPending !== true &&
+      item.lastSeenAt >= cutoff
+    )
+    .sort((left, right) => right.lastSeenAt - left.lastSeenAt);
+}
 async function upsertAccountDevice(playerId, body = {}) {
   const deviceId = sanitizeId(body.deviceId || 'web', 120) || 'web';
   const key = accountDeviceKey(playerId, deviceId);
@@ -1236,6 +1252,7 @@ async function actionBackupSyncClaim(event, body) {
     windowMs: 60 * 60 * 1000
   });
 
+  const activePeers = await getActiveAccountPeerDevices(auth.playerId, auth.deviceId);
   const leaseId = rid('backup_lease');
   const leaseToken = base64url(crypto.randomBytes(32));
   const suppliedLeaseToken = safe(body.leaseToken);
@@ -1263,6 +1280,11 @@ async function actionBackupSyncClaim(event, body) {
     position: num(result.position),
     queueLength: num(result.queueLength),
     retryAt: num(result.retryAt),
+    coordinationRequired: activePeers.length > 0,
+    crossDeviceQueueEnabled: activePeers.length > 0 || result.queued === true,
+    activePeerCount: activePeers.length,
+    activePeerDeviceIds: activePeers.map(item => item.deviceId).slice(0, 10),
+    activeWindowMs: ACCOUNT_DEVICE_ACTIVE_MS,
     block: result.block || null,
     activeLease: result.activeLease || null,
     ...(result.granted === true && result.existing !== true ? {
@@ -1346,7 +1368,6 @@ async function actionBackupSyncStatus(event, body) {
 }
 const PLAYBACK_LEASE_MS = 20 * 60 * 1000;
 const PLAYBACK_TRANSFER_TTL_MS = 2 * 60 * 1000;
-const PLAYBACK_DEVICE_ACTIVE_MS = 30 * 60 * 1000;
 function playbackTransferKey(playerId, transferId) {
   return `playbackTransfer:${sanitizeId(playerId, 96)}:${sanitizeId(transferId, 120)}`;
 }
@@ -1439,16 +1460,10 @@ async function closeActiveListenSegment(playerId, deviceId, position, reason = '
 }
 async function getPlaybackCoordinationState(playerId, currentDeviceId = '') {
   const deviceId = sanitizeId(currentDeviceId, 120);
-  const cutoff = now() - PLAYBACK_DEVICE_ACTIVE_MS;
-  const [deviceRows, playbackRow] = await Promise.all([
-    kvPrefix(`accountDevice:${sanitizeId(playerId, 96)}:`, 100),
+  const [peers, playbackRow] = await Promise.all([
+    getActiveAccountPeerDevices(playerId, deviceId),
     kvGet(playbackStateKey(playerId))
   ]);
-  const peers = deviceRows
-    .map(payload)
-    .map(item => normalizeAccountDevice(item, playerId))
-    .filter(item => item.deviceId && item.deviceId !== deviceId && item.revokedAt <= 0 && item.initializationPending !== true && item.lastSeenAt >= cutoff)
-    .sort((left, right) => right.lastSeenAt - left.lastSeenAt);
   const playback = normalizePlaybackState(payload(playbackRow), playerId);
   const remoteOwnerActive = playbackIsActive(playback) && !!playback.ownerDeviceId && playback.ownerDeviceId !== deviceId;
   return {
@@ -1459,7 +1474,7 @@ async function getPlaybackCoordinationState(playerId, currentDeviceId = '') {
     activePeerDeviceIds: peers.map(item => item.deviceId).slice(0, 10),
     remoteOwnerActive,
     checkedAt: now(),
-    activeWindowMs: PLAYBACK_DEVICE_ACTIVE_MS
+    activeWindowMs: ACCOUNT_DEVICE_ACTIVE_MS
   };
 }
 
@@ -1699,7 +1714,7 @@ async function actionSocialSessionIssue(event, body) {
     activePeerDeviceIds: [],
     remoteOwnerActive: false,
     checkedAt: now(),
-    activeWindowMs: PLAYBACK_DEVICE_ACTIVE_MS
+    activeWindowMs: ACCOUNT_DEVICE_ACTIVE_MS
   }));
   const sessionJti = rid('ss');
   const sessionDeviceId = sanitizeId(body.deviceId || 'web', 120) || 'web';
