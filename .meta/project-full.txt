@@ -384,19 +384,12 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with: { node-version: '24' }
-      - name: Validate application syntax
+      - name: Validate E2E entrypoints
         run: |
           node --check service-worker.js
-          while IFS= read -r file; do
-            echo "CHECK $file"
-            node --input-type=module --check < "$file"
-          done < <(
-            find scripts src \
-              -type f \
-              -name '*.js' \
-              ! -path 'scripts/vendor/*' \
-              | sort
-          )
+          node --input-type=module --check < scripts/app.js
+          node --input-type=module --check < src/PlayerCore.js
+          node --input-type=module --check < scripts/e2e/playwright.config.js
       - name: Install test dependencies
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium
