@@ -12875,7 +12875,7 @@ export const renderProfileTabsData = async ({
     all,
     vm: resolveListeningStatsViewModel(all || [])
   });
-  renderProfileRecs({ container, all });
+  await renderProfileRecs({ container });
 
   setTimeout(() => {
     renderProfileLogs({ container, metaDB });
