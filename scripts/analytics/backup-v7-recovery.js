@@ -27,6 +27,14 @@ const restoreStorage = values => {
     } catch {}
   });
 };
+const restoreDomainStorage = values => {
+  [...DOMAIN_STORAGE_KEYS, ...dynamicDomainKeys()].forEach(key => {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  });
+  restoreStorage(values);
+};
 
 const readRows = async store => metaDB.getStoreAll(store).catch(() => []);
 
@@ -92,7 +100,7 @@ export const restoreBackupV7Checkpoint = async checkpointRaw => {
   if (checkpoint.localStorage?.settingsTemplateDevice == null) localStorage.removeItem('backup:v7:settings-template-device');
   else localStorage.setItem('backup:v7:settings-template-device', checkpoint.localStorage.settingsTemplateDevice);
   restoreStorage(checkpoint.localStorage?.deviceSettings);
-  restoreStorage(checkpoint.localStorage?.domainState);
+  restoreDomainStorage(checkpoint.localStorage?.domainState);
   await applyAccountCachePolicies(checkpoint.cachePolicies || {}).catch(() => null);
   window.dispatchEvent(new CustomEvent('backup:v7:checkpoint-restored', { detail: { checkpointId: checkpoint.checkpointId, reason: checkpoint.reason } }));
   return checkpoint;
