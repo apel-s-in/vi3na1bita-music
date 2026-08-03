@@ -3879,8 +3879,20 @@ import { exportAccountCachePolicies, applyAccountCachePolicies } from '../offlin
 import { DEVICE_STORAGE_KEYS } from './snapshot-contract.js';
 
 const CHECKPOINT_KEY = 'latest';
+const DOMAIN_STORES = Object.freeze(['recommendation_state', 'intel_runtime']);
+const DOMAIN_STORAGE_KEYS = Object.freeze(['intel:recommendation-controls:v1', 'profile:ui-personalization:v1']);
 const safe = value => String(value == null ? '' : value).trim();
-const captureStorage = keys => Object.fromEntries(keys.map(key => [key, localStorage.getItem(key)]));
+const dynamicDomainKeys = () => {
+  const keys = [];
+  try {
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (key?.startsWith('gc_data_')) keys.push(key);
+    }
+  } catch {}
+  return keys;
+};
+const captureStorage = keys => Object.fromEntries([...new Set(keys)].map(key => [key, localStorage.getItem(key)]));
 const restoreStorage = values => {
   Object.entries(values || {}).forEach(([key, value]) => {
     try {
@@ -3906,27 +3918,32 @@ const replaceRows = async (store, rows = []) => {
 };
 
 export const createBackupV7Checkpoint = async ({ reason = 'backup_v71_materialization' } = {}) => {
-  const [stats, global, eventsHot, eventsWarm, cachePolicies] = await Promise.all([
+  const [stats, global, eventsHot, eventsWarm, recommendationState, intelRuntime, cachePolicies] = await Promise.all([
     readRows('stats'),
     readRows('global'),
     readRows('events_hot'),
     readRows('events_warm'),
+    readRows('recommendation_state'),
+    readRows('intel_runtime'),
     exportAccountCachePolicies().catch(() => ({}))
   ]);
   const checkpoint = {
-    version: 2,
+    version: 3,
     checkpointId: `checkpoint_${crypto.randomUUID()}`,
     reason: safe(reason),
     createdAt: Date.now(),
     localStorage: {
       playlists: localStorage.getItem('sc3:playlists'),
       settingsTemplateDevice: localStorage.getItem('backup:v7:settings-template-device'),
-      deviceSettings: captureStorage(DEVICE_STORAGE_KEYS)
+      deviceSettings: captureStorage(DEVICE_STORAGE_KEYS),
+      domainState: captureStorage([...DOMAIN_STORAGE_KEYS, ...dynamicDomainKeys()])
     },
     stats,
     global,
     eventsHot,
     eventsWarm,
+    recommendationState,
+    intelRuntime,
     cachePolicies
   };
   await metaDB.setStoreValue('backup_recovery_checkpoints', CHECKPOINT_KEY, checkpoint);
@@ -3940,13 +3957,16 @@ export const restoreBackupV7Checkpoint = async checkpointRaw => {
     replaceRows('stats', checkpoint.stats),
     replaceRows('global', checkpoint.global),
     replaceRows('events_hot', checkpoint.eventsHot),
-    ...(Array.isArray(checkpoint.eventsWarm) ? [replaceRows('events_warm', checkpoint.eventsWarm)] : [])
+    ...(Array.isArray(checkpoint.eventsWarm) ? [replaceRows('events_warm', checkpoint.eventsWarm)] : []),
+    ...(Array.isArray(checkpoint.recommendationState) ? [replaceRows('recommendation_state', checkpoint.recommendationState)] : []),
+    ...(Array.isArray(checkpoint.intelRuntime) ? [replaceRows('intel_runtime', checkpoint.intelRuntime)] : [])
   ]);
   if (checkpoint.localStorage?.playlists == null) localStorage.removeItem('sc3:playlists');
   else localStorage.setItem('sc3:playlists', checkpoint.localStorage.playlists);
   if (checkpoint.localStorage?.settingsTemplateDevice == null) localStorage.removeItem('backup:v7:settings-template-device');
   else localStorage.setItem('backup:v7:settings-template-device', checkpoint.localStorage.settingsTemplateDevice);
   restoreStorage(checkpoint.localStorage?.deviceSettings);
+  restoreStorage(checkpoint.localStorage?.domainState);
   await applyAccountCachePolicies(checkpoint.cachePolicies || {}).catch(() => null);
   window.dispatchEvent(new CustomEvent('backup:v7:checkpoint-restored', { detail: { checkpointId: checkpoint.checkpointId, reason: checkpoint.reason } }));
   return checkpoint;
