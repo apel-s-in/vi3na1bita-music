@@ -184,7 +184,8 @@ const claimCoordinatorLease = (raw, input = {}, options = {}) => {
   }
 
   if (state.lease?.holderDeviceId === deviceId) {
-    const tokenMatches = !!input.tokenHash && input.tokenHash === state.lease.tokenHash;
+    const existingTokenHash = safe(input.existingTokenHash).slice(0, 64);
+    const tokenMatches = !!existingTokenHash && existingTokenHash === state.lease.tokenHash;
     return {
       changed: changedState(before, state),
       state,
