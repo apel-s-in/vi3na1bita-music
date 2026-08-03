@@ -449,7 +449,7 @@ const validateBackupAuthorization = ({ result, deviceId, ownerYandexIdHash }) =>
   return authorization;
 };
 
-const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdHash, maxPages = MAX_PULL_PAGES_PER_SLOT } = {}) => {
+const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdHash, maxPages = MAX_PULL_PAGES_PER_SLOT, renewCoordinatorLease = null } = {}) => {
   const pages = [];
   let request = { ...firstRequest };
   let storedTotal = 0;
@@ -487,6 +487,10 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
     }
     previousWatermarkSignature = nextSignature;
 
+    if (typeof renewCoordinatorLease === 'function') {
+      await renewCoordinatorLease();
+    }
+
     request = {
       pushRanges: [],
       watermarks,
@@ -501,6 +505,9 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
       includeSharedRead: false,
       includeSharedWrite: false,
       includeSettingsRead: false,
+      deviceId: request.deviceId,
+      leaseId: request.leaseId,
+      leaseToken: request.leaseToken,
       maxPullRanges: request.maxPullRanges
     };
   }
@@ -520,7 +527,7 @@ export const getBackupV7BacklogStatus = async () => {
   };
 };
 
-const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, pullEnabled = true, sharedReadEnabled = true, sharedWriteEnabled = true, settingsReadEnabled = false, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
+const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, pullEnabled = true, sharedReadEnabled = true, sharedWriteEnabled = true, settingsReadEnabled = false, maxPullRanges = 50, includeDeviceCatalog = false, coordinatorLease = null } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
@@ -551,6 +558,9 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       shared: sharedPayload,
       settings: sendSettings ? settingsPayload : null,
       settingsTemplateDeviceId,
+      deviceId,
+      leaseId: safe(coordinatorLease?.leaseId),
+      leaseToken: safe(coordinatorLease?.leaseToken),
       includeDeviceCatalog: includeDeviceCatalog === true,
       includePull: pullEnabled === true,
       includeShared: sharedReadEnabled === true || sharedWriteEnabled === true,
@@ -561,7 +571,8 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
     },
     currentDeviceId: deviceId,
     ownerYandexIdHash,
-    maxPages: MAX_PULL_PAGES_PER_SLOT
+    maxPages: MAX_PULL_PAGES_PER_SLOT,
+    renewCoordinatorLease: coordinatorLease?.renew
   });
 
   const result = exchange.firstResult;
