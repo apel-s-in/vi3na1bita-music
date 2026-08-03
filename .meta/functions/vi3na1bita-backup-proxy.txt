@@ -17,6 +17,7 @@ const usageStorage = new AsyncLocalStorage();
 const currentUsage = () => usageStorage.getStore() || null;
 const CFG = {
   authorityUrl: String(process.env.BACKUP_AUTHORITY_URL || 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av').trim(),
+  coordinatorRequired: String(process.env.BACKUP_COORDINATOR_REQUIRED || '0').trim() === '1',
   allowedOrigins: String(process.env.CORS_ORIGINS || 'https://vi3na1bita.website.yandexcloud.net,https://apel-s-in.github.io,http://localhost:4173,http://127.0.0.1:4173')
     .split(',')
     .map(value => value.trim())
@@ -267,10 +268,32 @@ async function authorizeRequest(event, body) {
   if (!socialSession) throw makeError('social_session_required', 401);
   if (!CFG.authorityUrl) throw makeError('backup_authority_not_configured', 503);
   const requestedDeviceId = safeId(body?.deviceId, 120);
+  const leaseId = safeId(body?.leaseId, 120);
+  const leaseToken = safe(body?.leaseToken);
+  const hasLease = !!leaseId && !!leaseToken;
+
+  if (CFG.coordinatorRequired && !hasLease) {
+    throw makeError('backup_coordinator_lease_required', 409);
+  }
+
+  const authorityAction = hasLease
+    ? 'backup_sync_authorize'
+    : 'backup_device_authorize';
+
   bumpUsage('authorityCalls');
   const [identity, authorityResponse] = await Promise.all([
     readYandexIdentity(oauthToken),
-    request('POST', CFG.authorityUrl, { headers: { 'X-Vi3-Session': socialSession }, body: { action: 'backup_device_authorize', ...(requestedDeviceId ? { deviceId: requestedDeviceId } : {}) }, timeoutMs: 15000, maxBytes: 1024 * 1024, usageKind: 'authority' })
+    request('POST', CFG.authorityUrl, {
+      headers: { 'X-Vi3-Session': socialSession },
+      body: {
+        action: authorityAction,
+        ...(requestedDeviceId ? { deviceId: requestedDeviceId } : {}),
+        ...(hasLease ? { leaseId, leaseToken } : {})
+      },
+      timeoutMs: 15000,
+      maxBytes: 1024 * 1024,
+      usageKind: 'authority'
+    })
   ]);
   const authority = parseJson(authorityResponse.text);
   if (authorityResponse.status < 200 || authorityResponse.status >= 300 || authority?.ok !== true || !authority?.authorization) {
@@ -1059,6 +1082,11 @@ const handleRequest = async event => {
           watermarks: true,
           batchSync: true,
           splitModesRemoved: true,
+          backupCoordinator: {
+            supported: true,
+            required: CFG.coordinatorRequired,
+            authorityAction: 'backup_sync_authorize'
+          },
           sharedDocument: { enabled: true, schemaVersion: SHARED_SCHEMA_VERSION, path: SHARED_PATH, domains: ['playlists'] },
           rawEventsPermanent: true,
           rollups: { supported: false, planned: 'client_rebuildable_verified_rollups' },
