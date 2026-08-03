@@ -2,9 +2,19 @@
 // Не управляет playback и не содержит физических audio blobs.
 import { metaDB } from './meta-db.js';
 import { exportAccountCachePolicies, applyAccountCachePolicies } from '../offline/cache-db.js';
+import { DEVICE_STORAGE_KEYS } from './snapshot-contract.js';
 
 const CHECKPOINT_KEY = 'latest';
 const safe = value => String(value == null ? '' : value).trim();
+const captureStorage = keys => Object.fromEntries(keys.map(key => [key, localStorage.getItem(key)]));
+const restoreStorage = values => {
+  Object.entries(values || {}).forEach(([key, value]) => {
+    try {
+      if (value == null) localStorage.removeItem(key);
+      else localStorage.setItem(key, String(value));
+    } catch {}
+  });
+};
 
 const readRows = async store => metaDB.getStoreAll(store).catch(() => []);
 
@@ -22,26 +32,27 @@ const replaceRows = async (store, rows = []) => {
 };
 
 export const createBackupV7Checkpoint = async ({ reason = 'backup_v71_materialization' } = {}) => {
-  const [stats, global, eventsHot, watermarks, cachePolicies] = await Promise.all([
+  const [stats, global, eventsHot, eventsWarm, cachePolicies] = await Promise.all([
     readRows('stats'),
     readRows('global'),
     readRows('events_hot'),
-    readRows('backup_chain_watermarks'),
+    readRows('events_warm'),
     exportAccountCachePolicies().catch(() => ({}))
   ]);
   const checkpoint = {
-    version: 1,
+    version: 2,
     checkpointId: `checkpoint_${crypto.randomUUID()}`,
     reason: safe(reason),
     createdAt: Date.now(),
     localStorage: {
       playlists: localStorage.getItem('sc3:playlists'),
-      settingsTemplateDevice: localStorage.getItem('backup:v7:settings-template-device')
+      settingsTemplateDevice: localStorage.getItem('backup:v7:settings-template-device'),
+      deviceSettings: captureStorage(DEVICE_STORAGE_KEYS)
     },
     stats,
     global,
     eventsHot,
-    watermarks,
+    eventsWarm,
     cachePolicies
   };
   await metaDB.setStoreValue('backup_recovery_checkpoints', CHECKPOINT_KEY, checkpoint);
@@ -55,12 +66,13 @@ export const restoreBackupV7Checkpoint = async checkpointRaw => {
     replaceRows('stats', checkpoint.stats),
     replaceRows('global', checkpoint.global),
     replaceRows('events_hot', checkpoint.eventsHot),
-    replaceRows('backup_chain_watermarks', checkpoint.watermarks)
+    ...(Array.isArray(checkpoint.eventsWarm) ? [replaceRows('events_warm', checkpoint.eventsWarm)] : [])
   ]);
   if (checkpoint.localStorage?.playlists == null) localStorage.removeItem('sc3:playlists');
   else localStorage.setItem('sc3:playlists', checkpoint.localStorage.playlists);
   if (checkpoint.localStorage?.settingsTemplateDevice == null) localStorage.removeItem('backup:v7:settings-template-device');
   else localStorage.setItem('backup:v7:settings-template-device', checkpoint.localStorage.settingsTemplateDevice);
+  restoreStorage(checkpoint.localStorage?.deviceSettings);
   await applyAccountCachePolicies(checkpoint.cachePolicies || {}).catch(() => null);
   window.dispatchEvent(new CustomEvent('backup:v7:checkpoint-restored', { detail: { checkpointId: checkpoint.checkpointId, reason: checkpoint.reason } }));
   return checkpoint;
