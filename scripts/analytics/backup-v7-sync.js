@@ -313,7 +313,7 @@ const eventCoveredByRollup = (event, coverage) => {
   return (coverage.get(key) || []).some(([fromSeq, toSeq]) => seq >= fromSeq && seq <= toSeq);
 };
 
-const writeProjectionAtomic = async projection => {
+const writeProjectionAtomic = async (projection, shards = 0) => {
   const rows = projectionToStatsRows(projection);
   const streak = projectionStreak(projection);
   await metaDB.init();
@@ -325,7 +325,7 @@ const writeProjectionAtomic = async projection => {
     statsStore.clear();
     rows.forEach(row => statsStore.put(row));
     globalStore.put({ key: 'global_streak', value: streak });
-    globalStore.put({ key: 'backup_stats_rollup_schema', value: { version: STATS_SHARD_VERSION, shards: 0, rebuiltAt: Date.now() } });
+    globalStore.put({ key: 'backup_stats_rollup_schema', value: { version: STATS_SHARD_VERSION, shards: Math.max(0, Number(shards) || 0), rebuiltAt: Date.now() } });
     tx.oncomplete = () => resolve({ rows: rows.length, streak });
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error || new Error('backup_stats_projection_commit_failed'));
@@ -381,7 +381,7 @@ export const rebuildBackupV7LocalAnalytics = async ({ reason = 'backup_v71_rebui
   const pendingEvents = [...warm, ...hot].filter(event => !eventCoveredByRollup(event, streamed.coverage));
   const localProjection = buildStatsProjection(pendingEvents);
   const projection = mergeStatsProjectionInto(streamed.projection, localProjection);
-  const committed = await writeProjectionAtomic(projection);
+  const committed = await writeProjectionAtomic(projection, streamed.shards);
 
   const compactedEvents = await compactUploadedLocalEvents(streamed.coverage);
   const deletedRawRanges = await compactOldRawRanges();
