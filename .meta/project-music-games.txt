@@ -1307,17 +1307,6 @@ try {
         W.achievementEngine.achievements = W.achievementEngine._buildUIArray();
         W.achievementEngine.broadcast(0, { reason: 'achievement_boot_degraded' });
       });
-      try {
-        const MK = 'migration:cleanup_duplicates:v3';
-        if (!localStorage.getItem(MK)) {
-          const { default: DR } = await import('./analytics/device-registry.js'),
-            b = DR.getDeviceRegistry(),
-            c = DR.normalizeDeviceRegistry(b);
-          if (c.length < b.length) DR.saveDeviceRegistry(c);
-          await import('./analytics/backup-event-cleanup.js').then(m => m.cleanupWarmEventsStore(M.metaDB));
-          localStorage.setItem(MK, String(Date.now()));
-        }
-      } catch {}
       W.addEventListener('achievements:updated', e => {
         const d = e.detail || {},
           t = Number.isFinite(Number(d.total)) ? Number(d.total) : W.achievementEngine?.achievements?.length || 0,

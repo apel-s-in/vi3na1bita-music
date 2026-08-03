@@ -2901,29 +2901,42 @@ export default {
 
 //=================================================
 // FILE: /scripts/analytics/backup-event-cleanup.js
-// UID.003_(Event log truth)_(единая очистка event log перед backup/restore/rebuild)_(dedupe/filter/trim должны быть одинаковыми во всех местах) UID.099_(Multi-device sync model)_(merge по eventId)_(не раздувать backup дублями событий) UID.096_(Helper-first anti-duplication policy)_(убрать копипасту cleanup из builders/importers/app)
+// Pure event-list normalization для ledger/trust diagnostics.
+// Local spool сам удаляет успешно упакованные события.
 import { isBackupSemanticNoiseEvent } from './event-contract.js';
 
-export const WARM_EVENT_LIMIT = 0;
-const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
-export const normalizeEventList = (events = [], { limit = WARM_EVENT_LIMIT, dropNoise = true, sort = true, dedupeAchievementUnlocks = true } = {}) => {
-  const seen = new Set(), achSeen = new Set();
-  let out = (Array.isArray(events) ? events : []).filter(ev => ev?.eventId && !seen.has(ev.eventId) && seen.add(ev.eventId)).filter(ev => !dropNoise || !isBackupSemanticNoiseEvent(ev));
-  if (sort) out.sort((a, b) => toNum(a?.timestamp) - toNum(b?.timestamp));
-  if (dedupeAchievementUnlocks) out = out.filter(ev => { if (String(ev?.type || '') !== 'ACHIEVEMENT_UNLOCK') return true; const id = String(ev?.data?.id || '').trim(); return id ? !achSeen.has(id) && !!achSeen.add(id) : true; });
-  return limit > 0 && out.length > limit ? out.slice(-limit) : out;
+export const normalizeEventList = (events = [], {
+  limit = 0,
+  dropNoise = true,
+  sort = true,
+  dedupeAchievementUnlocks = true
+} = {}) => {
+  const seen = new Set();
+  const achievementIds = new Set();
+  let rows = (Array.isArray(events) ? events : [])
+    .filter(event => event?.eventId && !seen.has(event.eventId) && seen.add(event.eventId))
+    .filter(event => !dropNoise || !isBackupSemanticNoiseEvent(event));
+
+  if (sort) {
+    rows.sort((left, right) => num(left?.timestamp) - num(right?.timestamp));
+  }
+
+  if (dedupeAchievementUnlocks) {
+    rows = rows.filter(event => {
+      if (String(event?.type || '') !== 'ACHIEVEMENT_UNLOCK') return true;
+      const id = String(event?.data?.id || '').trim();
+      if (!id || achievementIds.has(id)) return !id;
+      achievementIds.add(id);
+      return true;
+    });
+  }
+
+  return limit > 0 && rows.length > limit ? rows.slice(-limit) : rows;
 };
 
-export const cleanupWarmEventsStore = async (metaDB, { limit = WARM_EVENT_LIMIT } = {}) => {
-  if (!metaDB) return { changed: false, before: 0, after: 0 };
-  const b = await metaDB.getEvents('events_warm').catch(() => []), c = normalizeEventList(b, { limit });
-  if (!Array.isArray(b) || b.length === c.length) return { changed: false, before: b?.length || 0, after: c.length };
-  await metaDB.clearEvents('events_warm'); if (c.length) await metaDB.addEvents(c, 'events_warm');
-  return { changed: true, before: b.length, after: c.length };
-};
-
-export default { WARM_EVENT_LIMIT, normalizeEventList, cleanupWarmEventsStore };
+export default { normalizeEventList };
 
 //=================================================
 // FILE: /scripts/analytics/backup-sync-engine.js
@@ -8369,17 +8382,6 @@ export default { TRUST_STATE_KEY, computeTrustState, refreshTrustState, readTrus
         W.achievementEngine.achievements = W.achievementEngine._buildUIArray();
         W.achievementEngine.broadcast(0, { reason: 'achievement_boot_degraded' });
       });
-      try {
-        const MK = 'migration:cleanup_duplicates:v3';
-        if (!localStorage.getItem(MK)) {
-          const { default: DR } = await import('./analytics/device-registry.js'),
-            b = DR.getDeviceRegistry(),
-            c = DR.normalizeDeviceRegistry(b);
-          if (c.length < b.length) DR.saveDeviceRegistry(c);
-          await import('./analytics/backup-event-cleanup.js').then(m => m.cleanupWarmEventsStore(M.metaDB));
-          localStorage.setItem(MK, String(Date.now()));
-        }
-      } catch {}
       W.addEventListener('achievements:updated', e => {
         const d = e.detail || {},
           t = Number.isFinite(Number(d.total)) ? Number(d.total) : W.achievementEngine?.achievements?.length || 0,
