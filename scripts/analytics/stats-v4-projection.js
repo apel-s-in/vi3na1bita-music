@@ -9,9 +9,8 @@ const count = value => Math.max(0, Math.floor(num(value)));
 const cloneRun = raw => raw ? {
   uid: safe(raw.uid),
   deviceId: safe(raw.deviceId),
+  chainKey: safe(raw.chainKey),
   count: count(raw.count),
-  validCount: count(raw.validCount),
-  fullCount: count(raw.fullCount),
   firstStartedAt: count(raw.firstStartedAt),
   lastCompletedAt: count(raw.lastCompletedAt)
 } : null;
@@ -25,13 +24,18 @@ const addRun = (summary, run, direction = 1) => {
   row.completionsInRuns3 = Math.max(0, row.completionsInRuns3 + run.count * direction);
   if (direction > 0) row.maxRun = Math.max(row.maxRun, run.count);
 };
-const sameRun = (left, right) => !!left && !!right && left.uid === right.uid && left.deviceId === right.deviceId && right.firstStartedAt >= left.lastCompletedAt && right.firstStartedAt - left.lastCompletedAt <= REPEAT_GAP_MS;
+const sameRun = (left, right) => !!left &&
+  !!right &&
+  left.uid === right.uid &&
+  left.deviceId === right.deviceId &&
+  left.chainKey === right.chainKey &&
+  right.firstStartedAt >= left.lastCompletedAt &&
+  right.firstStartedAt - left.lastCompletedAt <= REPEAT_GAP_MS;
 const joinRun = (left, right) => ({
   uid: left.uid,
   deviceId: left.deviceId,
+  chainKey: left.chainKey,
   count: left.count + right.count,
-  validCount: left.validCount + right.validCount,
-  fullCount: left.fullCount + right.fullCount,
   firstStartedAt: left.firstStartedAt,
   lastCompletedAt: right.lastCompletedAt
 });
@@ -45,9 +49,8 @@ const eventChainKey = event => `${safe(event?.deviceStableId)}:${safe(event?.cha
 const runFromEvent = event => ({
   uid: safe(event?.uid),
   deviceId: safe(event?.deviceStableId),
+  chainKey: eventChainKey(event),
   count: 1,
-  validCount: event?.data?.isValidListen === true ? 1 : 0,
-  fullCount: event?.data?.isFullListen === true ? 1 : 0,
   firstStartedAt: count(event?.data?.startedAt || event?.timestamp),
   lastCompletedAt: count(event?.timestamp)
 });
@@ -84,12 +87,15 @@ export const buildStatsV4 = (events = []) => {
 
   const runs = [];
   completions.forEach(event => {
-    const next = runFromEvent(event);
-    const previous = runs[runs.length - 1];
-    if (sameRun(previous, next)) runs[runs.length - 1] = joinRun(previous, next);
-    else runs.push(next);
-
     const data = event.data || {};
+    if (data.isValidListen === true && data.isFullListen === true && data.skipClass === 'full') {
+      const next = runFromEvent(event);
+      const previous = runs[runs.length - 1];
+      if (sameRun(previous, next)) runs[runs.length - 1] = joinRun(previous, next);
+      else runs.push(next);
+    } else if (runs.length) {
+      runs.push(null);
+    }
     const parts = temporalPartsFromListenEvent(event);
     const totalTemporalMs = parts.reduce((sum, part) => sum + count(part.creditedMs), 0);
     const listenMs = count(data.listenedMs || num(data.listenedSeconds) * 1000);
@@ -120,13 +126,14 @@ export const buildStatsV4 = (events = []) => {
     });
   });
 
-  runs.forEach(run => addRun(output.repeat, run));
+  const completedRuns = runs.filter(Boolean);
+  completedRuns.forEach(run => addRun(output.repeat, run));
   const chainKeys = [...new Set(completions.map(eventChainKey).filter(key => key !== ':'))];
   output.boundary = {
     chainKey: chainKeys.length === 1 ? chainKeys[0] : '',
     firstRun: cloneRun(runs[0]),
     lastRun: cloneRun(runs[runs.length - 1]),
-    singleRun: runs.length === 1
+    singleRun: runs.length === 1 && completedRuns.length === 1
   };
   return output;
 };
