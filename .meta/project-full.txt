@@ -144,7 +144,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
 [/scripts/intel/listener/] listener-collection.js, listener-profile.js
 [/scripts/intel/providers/] hybrid-sync.js, provider-actions.js, provider-consents.js, provider-identity.js
-[/scripts/intel/recs/] recommendation-engine.js, recommendation-reasons.js, recommendation-strategies.js, rediscovery.js
+[/scripts/intel/recs/] recommendation-engine.js, recommendation-reasons.js, recommendation-strategies.js
 [/scripts/intel/shared/] bus.js, contracts.js, guards.js, helpers.js
 [/scripts/intel/telemetry/] telemetry-mapper.js
 [/scripts/intel/track/] track-presentation.js, track-profiles.js, track-relations.js
@@ -13532,7 +13532,6 @@ export const fmtTime = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleTim
 
 export const renderMetaBox = ({ label = '', value = '' } = {}) =>
   `<div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">${esc(label)}</div><div class="yandex-auth-metabox-value">${esc(value)}</div></div>`;
-export const renderCloudMetaBox = renderMetaBox;
 
 export const renderSectionCard = ({ title = '', body = '', style = '' } = {}) =>
   `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;${esc(style)}">${title ? `<div style="font-size:11px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${esc(title)}</div>` : ''}${body}</div>`;
@@ -13598,9 +13597,7 @@ export const renderCloudStatPair = ({ localSummary: l, cloudSummary: c } = {}) =
 export const renderSyncLogRow = r =>
   `<div class="profile-list-item sync-log-row"><div style="font-size:20px">${r?.ok ? '✅' : '⚠️'}</div><div class="log-info"><div class="log-title">${esc(fmtDateTime(r?.timestamp))} · ${esc(r?.reason || 'sync')}</div><div class="log-desc">${esc(r?.ok ? 'успешно' : `ошибка: ${r?.error || 'unknown'}`)}</div><div class="log-desc">hash: ${esc(r?.hash || '—')} · domains: ${esc((r?.domains || []).join(', ') || '—')}</div><div class="log-desc">shared: ${r?.uploadedShared ? 'да' : 'нет'} · archive: ${r?.uploadedEventArchive ? 'да' : 'нет'} · device: ${r?.uploadedDevice ? 'да' : 'нет'}</div></div></div>`;
 
-export const renderCloudCompareNotice = () => '';
-
-export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderCloudMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderStatusPill, renderDeviceTitle, renderModalNote, renderActionGrid, renderSmallListRow, renderInlineActions, renderCloudStatPair, renderSyncLogRow, renderCloudCompareNotice };
+export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderStatusPill, renderDeviceTitle, renderModalNote, renderActionGrid, renderSmallListRow, renderInlineActions, renderCloudStatPair, renderSyncLogRow };
 
 //=================================================
 // FILE: /scripts/app/profile/profile-tab-bindings.js
@@ -19653,24 +19650,6 @@ export const recommendationStrategies = Object.freeze({
 });
 
 export default recommendationStrategies;
-
-//=================================================
-// FILE: /scripts/intel/recs/rediscovery.js
-// UID.053_(Rediscovery engine)_(возвращать забытые любимые треки)_(держать отдельный источник forgotten_hits, не смешивая его с common recs)
-// UID.062_(Recommendation memory and feedback)_(не спамить одинаковыми возвратами)_(позже учитывать cooldown и recommendation_state)
-// UID.095_(Ownership boundary: legacy vs intel)_(rediscovery не должен владеть favorites/history truth)_(модуль только вычисляет кандидатов поверх existing stats/favorites и не меняет их напрямую)
-
-export const rediscovery = {
-  async init() {
-    return true;
-  },
-
-  async getCandidates() {
-    return [];
-  }
-};
-
-export default rediscovery;
 
 //=================================================
 // FILE: /scripts/intel/roadmap.js

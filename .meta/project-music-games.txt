@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/intel/community/] cohorts.js, community-stats.js, similar-listeners.js
 [/scripts/intel/listener/] listener-collection.js, listener-profile.js
 [/scripts/intel/providers/] hybrid-sync.js, provider-actions.js, provider-consents.js, provider-identity.js
-[/scripts/intel/recs/] recommendation-engine.js, recommendation-reasons.js, recommendation-strategies.js, rediscovery.js
+[/scripts/intel/recs/] recommendation-engine.js, recommendation-reasons.js, recommendation-strategies.js
 [/scripts/intel/shared/] bus.js, contracts.js, guards.js, helpers.js
 [/scripts/intel/telemetry/] telemetry-mapper.js
 [/scripts/intel/track/] track-presentation.js, track-profiles.js, track-relations.js
