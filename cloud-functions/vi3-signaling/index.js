@@ -752,6 +752,7 @@ const TIMEZONE_POLICY_VERSION = 1;
 const ACCOUNT_DEVICE_VERSION = 1;
 const PLAYBACK_STATE_VERSION = 1;
 const ACCOUNT_DEVICE_ARCHIVE_MS = 90 * 24 * 60 * 60 * 1000;
+const ACCOUNT_DEVICE_ACTIVE_MS = 30 * 60 * 1000;
 const WEB_PUSH_LEASE_MS = 30 * 24 * 60 * 60 * 1000;
 function timezonePolicyKey(playerId) {
   return `timezonePolicy:${sanitizeId(playerId, 96)}`;
