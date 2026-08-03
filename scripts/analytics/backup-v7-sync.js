@@ -215,8 +215,7 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], ownerYandexIdH
   verified.forEach(range => {
     (Array.isArray(range.events) ? range.events : []).forEach(event => domainEvents.push(event));
   });
-  const domains = await ingestBackupDomainEvents(domainEvents).catch(() => ({ applied: 0 }));
-  return { ...storedResult, domainEventsApplied: Number(domains.applied || 0) };
+  return { ...storedResult, domainEvents };
 };
 
 const nextStoreRow = async (storeName, afterKey = null, indexName = '') => {
@@ -455,6 +454,7 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
   let request = { ...firstRequest };
   let storedTotal = 0;
   let quarantined = [];
+  const domainEvents = new Map();
   let previousWatermarkSignature = stableStringify(await readWatermarks());
 
   for (let page = 0; page < Math.max(1, Math.floor(Number(maxPages) || 1)); page++) {
@@ -470,16 +470,20 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
 
     storedTotal += Number(stored.inserted || 0);
     quarantined = [...quarantined, ...(stored.quarantined || [])];
+    (stored.domainEvents || []).forEach(event => {
+      const eventId = safe(event?.eventId);
+      if (eventId) domainEvents.set(eventId, event);
+    });
     pages.push({ result, stored });
 
     if (Number(result?.pull?.remaining || 0) <= 0) {
-      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, exhausted: false };
+      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, domainEvents: [...domainEvents.values()], exhausted: false };
     }
 
     const watermarks = await readWatermarks();
     const nextSignature = stableStringify(watermarks);
     if (nextSignature === previousWatermarkSignature) {
-      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, exhausted: true, stoppedReason: 'no_watermark_progress' };
+      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, domainEvents: [...domainEvents.values()], exhausted: true, stoppedReason: 'no_watermark_progress' };
     }
     previousWatermarkSignature = nextSignature;
 
@@ -494,16 +498,29 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
       includeDeviceCatalog: false,
       includePull: request.includePull !== false,
       includeShared: false,
+      includeSharedRead: false,
+      includeSharedWrite: false,
       includeSettingsRead: false,
       maxPullRanges: request.maxPullRanges
     };
   }
 
   const result = pages[pages.length - 1]?.result || null;
-  return { pages, firstResult: pages[0]?.result || null, result, storedTotal, quarantined, exhausted: Number(result?.pull?.remaining || 0) > 0, stoppedReason: 'page_limit' };
+  return { pages, firstResult: pages[0]?.result || null, result, storedTotal, quarantined, domainEvents: [...domainEvents.values()], exhausted: Number(result?.pull?.remaining || 0) > 0, stoppedReason: 'page_limit' };
+};
+export const getBackupV7BacklogStatus = async () => {
+  const [ranges, hot, warm] = await Promise.all([
+    getAllRows('backup_event_ranges').catch(() => []),
+    metaDB.getEvents('events_hot').catch(() => []),
+    metaDB.getEvents('events_warm').catch(() => [])
+  ]);
+  return {
+    pendingRanges: ranges.filter(range => range?.localPacked === true && Number(range?.cloudUploadedAt || 0) <= 0).length,
+    unpackedEvents: new Set([...hot, ...warm].map(event => safe(event?.eventId)).filter(Boolean)).size
+  };
 };
 
-const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, pullEnabled = true, includeShared = true, settingsReadEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
+const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, pullEnabled = true, sharedReadEnabled = true, sharedWriteEnabled = true, settingsReadEnabled = false, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
@@ -521,7 +538,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   const batch = pushEnabled ? await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash }) : null;
   const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
   const localSettingsHash = settingsPayload ? await settingsSemanticHash(settingsPayload) : '';
-  const sharedPayload = pushEnabled && includeShared ? await buildBackupV7SharedDocument() : null;
+  const sharedPayload = pushEnabled && sharedWriteEnabled ? await buildBackupV7SharedDocument() : null;
   const settingsTemplateDeviceId = safe(localStorage.getItem(TEMPLATE_KEY));
   const sendSettings = !!settingsPayload && !settingsTemplateDeviceId && localSettingsHash !== state.settingsLocalHash;
 
@@ -536,7 +553,9 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       settingsTemplateDeviceId,
       includeDeviceCatalog: includeDeviceCatalog === true,
       includePull: pullEnabled === true,
-      includeShared: includeShared === true,
+      includeShared: sharedReadEnabled === true || sharedWriteEnabled === true,
+      includeSharedRead: sharedReadEnabled === true,
+      includeSharedWrite: sharedWriteEnabled === true,
       includeSettingsRead: settingsReadEnabled === true,
       maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
     },
@@ -551,11 +570,15 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
 
   const sharedDocument = result?.shared?.current || null;
-  const needsMaterialization = pullEnabled === true || !!sharedDocument || !!result?.settings?.template;
+  const domainEvents = exchange.domainEvents || [];
+  const needsMaterialization = domainEvents.length > 0 || !!sharedDocument || !!result?.settings?.template;
   const checkpoint = needsMaterialization
     ? await createBackupV7Checkpoint({ reason: `backup_v71_sync:${reason}` })
     : null;
   try {
+    const domainApplied = domainEvents.length
+      ? await ingestBackupDomainEvents(domainEvents)
+      : { applied: 0 };
     const sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
     let templateApplied = false;
 
@@ -597,6 +620,12 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       pageLimitReached: exchange.exhausted === true,
       stoppedReason: safe(exchange.stoppedReason)
     };
+    const localBacklog = await getBackupV7BacklogStatus();
+    const backlog = {
+      ...localBacklog,
+      pullRemaining: pull.remaining,
+      pageLimitReached: pull.pageLimitReached
+    };
 
     recordSyncRevision({
       timestamp: at,
@@ -615,10 +644,14 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       push,
       pull,
       rebuild,
+      backlog,
+      domainEventsApplied: Number(domainApplied.applied || 0),
       quarantine: exchange.quarantined,
       shared: {
         applied: sharedApplied.applied === true,
         changed: result?.shared?.changed === true,
+        pushed: result?.shared?.pushed === true,
+        skipped: result?.shared?.skipped === true,
         hash: safe(result?.shared?.hash)
       },
       settings: result?.settings || null
@@ -697,5 +730,6 @@ export default {
   syncBackupV7,
   getBackupV7Status,
   rebuildBackupV7LocalAnalytics,
+  getBackupV7BacklogStatus,
   readBackupV7JournalEvents
 };
