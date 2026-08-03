@@ -112,8 +112,8 @@ jobs:
             " "$package_file"
           done
 
-      - name: Validate pure Stats v4 contract
-        run: node scripts/ci/test-stats-v4.mjs
+      - name: Validate pure Stats v5 contract
+        run: node scripts/ci/test-stats-v5.mjs
 
       - name: Validate application contracts
         run: node scripts/ci/validate-contracts.mjs
