@@ -1,4 +1,4 @@
-// Stats shard v4: sparse cube и boundary-aware repeat runs.
+// Stats shard v5: sparse cube и boundary-aware full repeat runs.
 // Pure helper: не читает storage, не выполняет сеть и не управляет playback.
 import { temporalPartsFromListenEvent } from './temporal-buckets.js';
 
@@ -93,7 +93,7 @@ export const buildStatsV4 = (events = []) => {
       const previous = runs[runs.length - 1];
       if (sameRun(previous, next)) runs[runs.length - 1] = joinRun(previous, next);
       else runs.push(next);
-    } else if (runs.length) {
+    } else {
       runs.push(null);
     }
     const parts = temporalPartsFromListenEvent(event);
