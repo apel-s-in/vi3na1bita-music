@@ -12280,7 +12280,7 @@ const schedulerLabel = () => {
   }
   if (state.deferredReason === 'coordinator_blocked') return 'Синхронизация аккаунта временно заблокирована';
   if (state.continuationAt > Date.now()) return `Продолжение: ${new Date(state.continuationAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
-  if (state.nextSyncAt > 0) return `Следующая: ${new Date(state.nextSyncAt).toLocaleString('ru-RU')}`;
+  if (state.nextSyncAt > 0) return `Ежедневный режим · следующая: ${new Date(state.nextSyncAt).toLocaleString('ru-RU')}`;
   return '';
 };
 
