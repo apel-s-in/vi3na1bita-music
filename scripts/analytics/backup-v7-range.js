@@ -222,9 +222,7 @@ const persistPackedRange = async ({ range, shard, eventIds }) => {
       cloudConfirmed: false,
       cloudUploadedAt: 0,
       verifiedAt: storedAt,
-      storedAt,
-      projected: true,
-      projectedAt: storedAt
+      storedAt
     });
     tx.objectStore('backup_stats_rollups').put(shard);
     eventIds.forEach(eventId => {
