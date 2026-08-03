@@ -211,7 +211,7 @@ const persistPackedRange = async ({ range, shard, eventIds }) => {
   await metaDB.init();
   return new Promise((resolve, reject) => {
     const tx = metaDB.db.transaction(
-      ['backup_event_ranges', 'backup_known_ranges', 'backup_stats_rollups', 'events_hot', 'events_warm'],
+      ['backup_event_ranges', 'backup_stats_rollups', 'events_hot', 'events_warm'],
       'readwrite'
     );
     const storedAt = Date.now();
@@ -225,17 +225,6 @@ const persistPackedRange = async ({ range, shard, eventIds }) => {
       storedAt,
       projected: true,
       projectedAt: storedAt
-    });
-    tx.objectStore('backup_known_ranges').put({
-      rangeKey: range.rangeKey,
-      deviceId: range.deviceId,
-      chainId: range.chainId,
-      fromSeq: range.fromSeq,
-      toSeq: range.toSeq,
-      hash: range.hash,
-      localPacked: true,
-      cloudUploadedAt: 0,
-      updatedAt: storedAt
     });
     tx.objectStore('backup_stats_rollups').put(shard);
     eventIds.forEach(eventId => {
@@ -467,9 +456,8 @@ export const commitUploadedBackupV7Batch = async batch => {
   await metaDB.init();
 
   await new Promise((resolve, reject) => {
-    const tx = metaDB.db.transaction(['backup_event_ranges', 'backup_known_ranges'], 'readwrite');
+    const tx = metaDB.db.transaction('backup_event_ranges', 'readwrite');
     const rangeStore = tx.objectStore('backup_event_ranges');
-    const knownStore = tx.objectStore('backup_known_ranges');
     const uploadedAt = Date.now();
 
     ranges.forEach(range => {
@@ -480,17 +468,6 @@ export const commitUploadedBackupV7Batch = async batch => {
           rangeStore.put({ ...stored, cloudConfirmed: true, cloudUploadedAt: stored.cloudUploadedAt || uploadedAt });
         }
       };
-      knownStore.put({
-        rangeKey: range.rangeKey,
-        deviceId: range.deviceId,
-        chainId: range.chainId,
-        fromSeq: range.fromSeq,
-        toSeq: range.toSeq,
-        hash: range.hash,
-        localPacked: true,
-        cloudUploadedAt: uploadedAt,
-        updatedAt: uploadedAt
-      });
     });
 
     tx.oncomplete = () => resolve(true);
