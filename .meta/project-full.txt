@@ -125,14 +125,14 @@ F всегда относится к playing-context, а не к просто о
 [/img/mobile/] logo@1x.jpg, logo@2x.jpg
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
-[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, backup-coordinator-client.js, backup-domain-state.js, backup-event-cleanup.js, backup-scheduler-policy.js, backup-sync-engine.js, backup-v7-range.js, backup-v7-recovery.js, backup-v7-sync.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, playlists-storage-merge.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, stats-v4-projection.js, storage-merge-utils.js, sync-dirty-events.js, sync-revisions.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
+[/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, backup-coordinator-client.js, backup-domain-state.js, backup-event-cleanup.js, backup-scheduler-policy.js, backup-sync-engine.js, backup-v7-range.js, backup-v7-recovery.js, backup-v7-sync.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, stats-v4-projection.js, sync-dirty-events.js, sync-revisions.js, temporal-buckets.js, tombstone-contract.js, trust-state.js
 [/scripts/app/] albums.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
 [/scripts/app/player/] favorites-only-actions.js, favorites-only-resolver.js, playback-clock.js, playback-context-source.js
 [/scripts/app/player-ui/] lyrics.js
-[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-device-initialization.js, account-devices-view.js, account-timezone-view.js, achievements-view.js, actions-trash.js, actions.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, live-bindings.js, logs-formatters.js, logs-view.js, loyalty-card.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, settings-conflict-section.js, settings-console-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, view.js, yandex-actions.js, yandex-auth-view.js
+[/scripts/app/profile/] account-benefits-view.js, account-bindings.js, account-cloud-renderers.js, account-device-initialization.js, account-devices-view.js, account-timezone-view.js, achievements-view.js, actions-trash.js, actions.js, backup-info-modal.js, carousel-flat.js, cloud-action-render-kit.js, live-bindings.js, logs-formatters.js, logs-view.js, loyalty-card.js, model.js, profile-render-kit.js, profile-tab-bindings.js, profile-tab-renderers.js, recs-view.js, render-shell.js, settings-console-section.js, settings-data-section.js, settings-download-section.js, settings-interface-section.js, settings-trash-section.js, settings-view.js, stats-view.js, tab-strip-physics.js, template.js, trust-check-modal.js, view.js, yandex-actions.js, yandex-auth-view.js
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
@@ -7694,39 +7694,6 @@ export default {
 };
 
 //=================================================
-// FILE: /scripts/analytics/playlists-storage-merge.js
-import { toNum, minPositive, getBackupConflictPolicy } from './storage-merge-utils.js';
-
-const parseS = (r, f) => { try { return JSON.parse(r); } catch { return f; } };
-const uniq = a => [...new Set((Array.isArray(a) ? a : []).filter(Boolean))];
-const plClock = p => Math.max(toNum(p?.updatedAt), toNum(p?.deletedAt), toNum(p?.createdAt));
-const normPl = pl => ({ ...(pl || {}), id: String(pl?.id || '').trim(), name: String(pl?.name || 'Плейлист'), color: String(pl?.color || ''), createdAt: toNum(pl?.createdAt) || Date.now(), updatedAt: toNum(pl?.updatedAt) || toNum(pl?.createdAt) || 0, deletedAt: toNum(pl?.deletedAt), order: uniq(pl?.order), hidden: uniq(pl?.hidden), ops: Array.isArray(pl?.ops) ? pl.ops : [] });
-
-const mergePlPair = (p, pl, policy) => {
-  const newest = plClock(pl) >= plClock(p) ? pl : p, oldest = newest === pl ? p : pl;
-  if (policy === 'latest') return { ...oldest, ...newest, id: pl.id };
-  if (policy === 'trash' && (toNum(p.deletedAt) || toNum(pl.deletedAt))) {
-    const del = toNum(p.deletedAt) >= toNum(pl.deletedAt) ? p : pl, live = del === p ? pl : p;
-    if (toNum(del.deletedAt) >= plClock(live)) return { ...live, ...del, id: pl.id, deletedAt: toNum(del.deletedAt), updatedAt: Math.max(plClock(live), plClock(del)) };
-  }
-  let ord = [], ops = [];
-  if ((p.ops?.length || 0) || (pl.ops?.length || 0)) {
-    const oM = new Map(); [...(p.ops || []), ...(pl.ops || [])].forEach(op => oM.set(`${op.t}:${op.u}:${op.ts}`, op));
-    ops = [...oM.values()].sort((a, b) => toNum(a.ts) - toNum(b.ts));
-    const st = new Set(); ops.forEach(op => op.t === 'add' ? st.add(op.u) : st.delete(op.u)); ord = [...st];
-  } else ord = uniq([...(p.order || []), ...(pl.order || [])]);
-  const deletedAt = Math.max(toNum(p.deletedAt), toNum(pl.deletedAt)), updatedAt = Math.max(toNum(p.updatedAt), toNum(pl.updatedAt));
-  return { ...p, ...pl, id: pl.id, name: pl.name || p.name || 'Плейлист', color: pl.color || p.color || '', createdAt: minPositive(p.createdAt, pl.createdAt) || Date.now(), updatedAt, deletedAt: deletedAt >= updatedAt ? deletedAt : 0, order: ord, hidden: uniq([...(p.hidden || []), ...(pl.hidden || [])]).filter(u => ord.includes(u)), ops: ops.slice(-300) };
-};
-
-export const mergePlaylistsStorageSafe = (lR, rR, policy = getBackupConflictPolicy()) => {
-  const m = new Map();
-  [...parseS(lR, []), ...parseS(rR, [])].map(normPl).forEach(pl => pl.id && m.set(pl.id, m.has(pl.id) ? mergePlPair(m.get(pl.id), pl, policy) : pl));
-  return JSON.stringify([...m.values()].filter(x => x.id));
-};
-export default { mergePlaylistsStorageSafe };
-
-//=================================================
 // FILE: /scripts/analytics/session-tracker.js
 // UID.003_(Event log truth)_(оставить session-tracker строителем playback-session событий)_(session intelligence должна опираться на эти события, а не обходить их) UID.018_(Variant and quality stats)_(готовить future variant-aware session accounting)_(audio/minus/stems/clip session semantics должны развиваться здесь) UID.050_(Session profile)_(дать listener/intel слою корректную основу текущей сессии)_(session tracker остаётся truth-layer для session context, а не UI слой) UID.060_(Session-aware next-track strategy)_(подготовить основу для context-aware рекомендаций)_(future session recs должны читать session data отсюда, не вмешиваясь в трекинг) UID.084_(AI content analysis)_(не смешивать AI и session truth)_(AI может интерпретировать session patterns позже, но не заменяет этот слой) UID.094_(No-paralysis rule)_(session tracking должен быть независимым от intel availability)_(никакой intel failure не должен ломать LISTEN_* events)
 import { eventLogger } from './event-logger.js';
@@ -8946,13 +8913,6 @@ export const mergeStatsV4 = (targetRaw, sourceRaw) => {
 };
 
 export default { emptyStatsV4, buildStatsV4, normalizeStatsV4, mergeStatsV4 };
-
-//=================================================
-// FILE: /scripts/analytics/storage-merge-utils.js
-export const toNum = v => Number.isFinite(Number(v)) ? Number(v) : 0;
-export const minPositive = (...vs) => Math.min(...vs.map(toNum).filter(v => v > 0)) || 0;
-export const getBackupConflictPolicy = () => { try { const v = localStorage.getItem('backup:conflict_policy:v1'); return ['ask', 'latest', 'trash'].includes(v) ? v : 'ask'; } catch { return 'ask'; } };
-export default { toNum, minPositive, getBackupConflictPolicy };
 
 //=================================================
 // FILE: /scripts/analytics/sync-dirty-events.js
@@ -13868,13 +13828,6 @@ export const renderProfileShell = ({ container: c, profile: p, totalFull: tF, to
 export default { renderProfileShell };
 
 //=================================================
-// FILE: /scripts/app/profile/settings-conflict-section.js
-import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
-export const renderConflictSettingsSection = () => `<button type="button" class="set-acc-btn">ПОЛИТИКА КОНФЛИКТОВ</button><div class="set-acc-body"><div class="set-row"><div class="set-info"><div class="set-title">Как решать конфликт restore</div><div class="set-sub">Применяется к merge избранного, плейлистов и device settings</div></div><select id="backup-conflict-policy" style="max-width:190px"><option value="ask" ${localStorage.getItem('backup:conflict_policy:v1')==='ask'||!localStorage.getItem('backup:conflict_policy:v1')?'selected':''}>Спрашивать</option><option value="latest" ${localStorage.getItem('backup:conflict_policy:v1')==='latest'?'selected':''}>Latest-write-wins</option><option value="trash" ${localStorage.getItem('backup:conflict_policy:v1')==='trash'?'selected':''}>Удалённое в корзину</option></select></div></div>`;
-export const bindConflictSettingsSection = r => { const s=r?.querySelector('#backup-conflict-policy'); if(!s||s._bound)return; s._bound=true; s.addEventListener('change',e=>{localStorage.setItem('backup:conflict_policy:v1',e.target.value||'ask'); markDeviceSettingsDirty(); window.NotificationSystem?.success?.('Политика конфликтов сохранена');});};
-export default { renderConflictSettingsSection, bindConflictSettingsSection };
-
-//=================================================
 // FILE: /scripts/app/profile/settings-console-section.js
 import { copyCloudUsageReport, downloadCloudUsageReport, getCloudUsageSnapshot, resetCloudUsage } from '../../core/cloud-usage-meter.js';
 
@@ -14031,11 +13984,18 @@ export default { renderConsoleSettingsSection, bindConsoleSettingsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-data-section.js
-import { renderConflictSettingsSection, bindConflictSettingsSection } from './settings-conflict-section.js'; import { renderTrashSettingsSections, readDeletedPlaylists, readDeletedFavorites } from './settings-trash-section.js';
+import { renderTrashSettingsSections, readDeletedPlaylists, readDeletedFavorites } from './settings-trash-section.js';
+
 export { readDeletedPlaylists, readDeletedFavorites };
-export const bindDataSettingsSection = r => bindConflictSettingsSection(r);
-export const renderDataSettingsSection = () => `<div class="settings-content" id="set-data">${renderConflictSettingsSection()}${renderTrashSettingsSections()}</div>`;
-export default { readDeletedPlaylists, readDeletedFavorites, renderDataSettingsSection, bindDataSettingsSection };
+export const bindDataSettingsSection = () => {};
+export const renderDataSettingsSection = () => `<div class="settings-content" id="set-data">${renderTrashSettingsSections()}</div>`;
+
+export default {
+  readDeletedPlaylists,
+  readDeletedFavorites,
+  renderDataSettingsSection,
+  bindDataSettingsSection
+};
 
 //=================================================
 // FILE: /scripts/app/profile/settings-download-section.js
