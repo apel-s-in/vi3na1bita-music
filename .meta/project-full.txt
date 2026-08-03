@@ -3372,6 +3372,7 @@ import { packLocalBackupV7Ranges } from './backup-v7-range.js';
 import { clearBackupV7Checkpoint, getBackupV7Checkpoint, restoreBackupV7Checkpoint } from './backup-v7-recovery.js';
 import { STATS_SHARD_VERSION } from './stats-shard-contract.js';
 import { isAppQuiet } from '../core/app-activity.js';
+import { getBackupResourceBusyReason, withBackupCoordinatorLease } from './backup-coordinator-client.js';
 import {
   BACKUP_CONTINUATION_MS,
   BACKUP_DAILY_MS,
@@ -3543,6 +3544,7 @@ const finishSuccessfulSync = async ({ result, dirtyDomains, sharedWriteRequired,
     lastSuccessAt: completedAt,
     lastError: '',
     deferredReason: '',
+    queue: null,
     blockReason: '',
     blockUntil: 0
   });
@@ -3566,8 +3568,14 @@ const runDueSyncImpl = async ({ reason = 'scheduled_daily', force = false } = {}
     scheduleRetry(BACKUP_QUIET_RETRY_MS, 'quiet_mode');
     return false;
   }
-  if (window.playerCore?.isPlaying?.()) {
-    scheduleRetry(BACKUP_PLAYBACK_DEFER_MS, 'playback_active');
+  const busyReason = getBackupResourceBusyReason();
+  if (busyReason) {
+    scheduleRetry(
+      busyReason === 'playback_active'
+        ? BACKUP_PLAYBACK_DEFER_MS
+        : BACKUP_QUIET_RETRY_MS,
+      busyReason
+    );
     return false;
   }
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
@@ -3589,16 +3597,42 @@ const runDueSyncImpl = async ({ reason = 'scheduled_daily', force = false } = {}
   window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'syncing', reason } }));
 
   try {
-    const result = await syncBackupV7({
-      reason: `${reason}:daily_full`,
-      pushEnabled: true,
-      pullEnabled: true,
-      sharedReadEnabled: true,
-      sharedWriteEnabled: sharedWriteRequired,
-      includeSettings: true,
-      settingsReadEnabled: false,
-      maxPullRanges: 50
+    const backlogBefore = await getBackupV7BacklogStatus();
+    const coordinated = await withBackupCoordinatorLease({
+      reason: state.continuationAt ? 'continuation' : reason === 'device_initialized' ? 'initial_device' : 'daily',
+      manual: false,
+      dirtyDomains,
+      pendingRanges: backlogBefore.pendingRanges,
+      task: coordinatorLease => syncBackupV7({
+        reason: `${reason}:daily_full`,
+        pushEnabled: true,
+        pullEnabled: true,
+        sharedReadEnabled: true,
+        sharedWriteEnabled: sharedWriteRequired,
+        includeSettings: true,
+        settingsReadEnabled: false,
+        maxPullRanges: 50,
+        coordinatorLease
+      })
     });
+
+    if (!coordinated.granted) {
+      const retryAt = Number(coordinated.retryAt || Date.now() + BACKUP_QUIET_RETRY_MS);
+      await persistState({
+        queue: coordinated.coordinator || null,
+        nextSyncAt: retryAt,
+        continuationAt: retryAt,
+        deferredReason: coordinated.queued
+          ? 'coordinator_queued'
+          : coordinated.blocked
+            ? 'coordinator_blocked'
+            : coordinated.reason || 'coordinator_busy'
+      });
+      scheduleAt(retryAt);
+      return false;
+    }
+
+    const result = coordinated.result;
     await finishSuccessfulSync({ result, dirtyDomains, sharedWriteRequired, settingsWriteRequired });
     window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok', reason, backlog: result.backlog } }));
     return result;
