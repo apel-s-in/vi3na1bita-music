@@ -13,8 +13,17 @@ const schedulerLabel = () => {
   if (state.blockReason === 'disk_space_exhausted') return 'Яндекс Диск заполнен';
   if (state.blockReason === 'disk_access_unavailable') return 'Нет доступа к Яндекс Диску';
   if (state.deferredReason === 'playback_active') return 'Отложено до завершения воспроизведения';
+  if (state.deferredReason === 'game_active') return 'Отложено до закрытия игры';
+  if (state.deferredReason === 'voice_call_active') return 'Отложено до завершения звонка';
   if (state.deferredReason === 'quiet_mode') return 'Отложено до возвращения в приложение';
   if (state.deferredReason === 'network_unavailable') return 'Ожидает сеть';
+  if (state.deferredReason === 'coordinator_local_busy') return 'Синхронизация уже идёт в другой вкладке';
+  if (state.deferredReason === 'coordinator_queued') {
+    const position = Number(state.queue?.position || state.queue?.queuePosition || 0);
+    const holder = String(state.queue?.activeLease?.holderLabel || state.queue?.holder?.label || '').trim();
+    return `В очереди${position > 0 ? `: ${position}` : ''}${holder ? ` · синхронизирует ${holder}` : ''}`;
+  }
+  if (state.deferredReason === 'coordinator_blocked') return 'Синхронизация аккаунта временно заблокирована';
   if (state.continuationAt > Date.now()) return `Продолжение: ${new Date(state.continuationAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
   if (state.nextSyncAt > 0) return `Следующая: ${new Date(state.nextSyncAt).toLocaleString('ru-RU')}`;
   return '';
