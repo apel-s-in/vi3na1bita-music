@@ -7363,8 +7363,8 @@ async function actionWebPushUnsubscribe(event, body) {
   const endpointHash = hash(endpoint).slice(0, 32);
   const row = await kvGet(`webPushSub:${auth.playerId}:${endpointHash}`);
   if (!row) return { ok: true, removed: false };
-  await deleteWebPushSubscriptionRow(row);
-  return { ok: true, removed: true };
+  const removed = await deleteWebPushSubscriptionRow(row);
+  return { ok: true, removed };
 }
 function nearbyCode() {
   return String(crypto.randomInt(100000, 999999));
