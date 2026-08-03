@@ -2,6 +2,15 @@
 const crypto = require('crypto');
 const { AsyncLocalStorage } = require('async_hooks');
 const ydbMod = require('ydb-sdk');
+const YDB_METADATA_AUTH_MODULE = '@yandex-cloud/nodejs-sdk/dist/token-service/metadata-token-service';
+const ydbMetadataAuthAvailable = (() => {
+  try {
+    require.resolve(YDB_METADATA_AUTH_MODULE);
+    return true;
+  } catch {
+    return false;
+  }
+})();
 const {
   DEFAULT_LEASE_MS: BACKUP_COORDINATOR_LEASE_MS,
   authorizeCoordinatorLease,
@@ -415,6 +424,7 @@ function rowsOf(res) {
 async function getYdb() {
   if (driverPromise) return driverPromise;
   driverPromise = (async () => {
+    if (!ydbMetadataAuthAvailable) throw new Error('ydb_metadata_auth_dependency_missing');
     const { Driver, getCredentialsFromEnv } = ydbMod;
     if (!CFG.endpoint || !CFG.database) throw new Error('ydb_env_missing');
     const driver = new Driver({ endpoint: CFG.endpoint, database: CFG.database, authService: getCredentialsFromEnv() });
@@ -7292,6 +7302,7 @@ const handleRequest = async event => {
         ok: true,
         service: 'vi3-signaling',
         ydbConfigured: !!(CFG.endpoint && CFG.database),
+        ydbMetadataAuthAvailable,
         table: TABLE,
         actions: Object.keys(ACTIONS).length,
         turnDisabled: CFG.turnDisabled,
