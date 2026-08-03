@@ -1,6 +1,6 @@
 import { renderDownloadSettingsSection, bindDownloadSettingsSection } from './settings-download-section.js';
 import { renderInterfaceSettingsSection, bindInterfaceSettingsSection } from './settings-interface-section.js';
-import { renderDataSettingsSection, bindDataSettingsSection } from './settings-data-section.js';
+import { renderDataSettingsSection } from './settings-data-section.js';
 import { renderConsoleSettingsSection, bindConsoleSettingsSection } from './settings-console-section.js';
 import { bindTabStripPhysics } from './tab-strip-physics.js';
 
@@ -19,7 +19,6 @@ export const renderProfileSettings = root => {
   bindTabStripPhysics(root);
   bindInterfaceSettingsSection(root);
   bindDownloadSettingsSection(root);
-  bindDataSettingsSection(root);
   bindConsoleSettingsSection(root);
 };
 
