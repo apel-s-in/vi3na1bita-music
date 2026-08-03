@@ -87,4 +87,22 @@ const skipped = buildStatsV4([
 ]);
 
 assert.equal(skipped.repeat['GD-01']?.runs3 || 0, 0);
+
+const leadingBreak = buildStatsV4([
+  {
+    ...completion({ id: 's4', startedAt: 182000, completedAt: 183000 }),
+    data: {
+      ...completion({ id: 's4', startedAt: 182000, completedAt: 183000 }).data,
+      analysisEligible: false,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'micro_skip'
+    }
+  },
+  completion({ id: 'e4', startedAt: 184000, completedAt: 224000 })
+]);
+
+const brokenAcrossBoundary = mergeStatsV4(first, leadingBreak);
+assert.equal(brokenAcrossBoundary.repeat['GD-01']?.runs3 || 0, 0);
+
 console.log('✅ Stats v5 full-repeat boundary and sparse cube contract passed');
