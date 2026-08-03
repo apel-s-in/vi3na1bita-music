@@ -16818,6 +16818,12 @@ const validatePlaybackOwnershipFoundation = () => {
   contains(server, 'webPushEndpointKey');
   contains(server, 'removeDeviceWebPushSubscriptions');
   contains(server, 'transferredEndpoint');
+  contains(server, 'kvDeleteIfPayload');
+  contains(server, 'expected_payload_json');
+  contains(server, 'sameGeneration');
+  contains(server, 'RETURNING pk');
+  excludes(server, /async function deleteWebPushSubscriptionRow[\s\S]{0,500}await kvDelete\(row\.pk\)/, 'Signaling Web Push cleanup снова использует unconditional delete');
+  excludes(server, /previousSubscriptionKey[\s\S]{0,180}kvDelete\(previousSubscriptionKey\)/, 'Endpoint transfer снова удаляет старую подписку без payload fencing');
   contains('cloud-functions/vi3-webpush/index.js', 'subscriptionLeaseExpiresAt');
   contains('cloud-functions/vi3-webpush/index.js', 'expiredSubscriptionsDeleted');
   contains('cloud-functions/vi3-webpush/index.js', 'kvDeleteIfPayload');
@@ -16984,6 +16990,9 @@ const validateCloudFunctionFiles = () => {
       const value = JSON.parse(read(packagePath));
       assert(value && typeof value === 'object' && !Array.isArray(value), `${packagePath}: корректный JSON object`);
       assert(!value.main || value.main === 'index.js', `${packagePath}: main=index.js`);
+      if (name === 'vi3-signaling') {
+        assert(!value.dependencies?.['@yandex-cloud/nodejs-sdk'], `${packagePath}: неиспользуемый @yandex-cloud/nodejs-sdk удалён`);
+      }
     } catch (error) {
       failures.push(`${packagePath}: ${error.message}`);
     }
