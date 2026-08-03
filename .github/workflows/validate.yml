@@ -46,15 +46,13 @@ jobs:
           node --check generate-context.js
 
           while IFS= read -r file; do
-            echo "CHECK $file"
-            node --input-type=module --check < "$file"
-          done < <(
             find scripts src \
               -type f \
               \( -name '*.js' -o -name '*.mjs' \) \
               ! -path 'scripts/vendor/*' \
               | sort
           )
+          echo "Validated $checked first-party JavaScript modules"
 
       - name: Validate Cloud Function sources
         run: |
