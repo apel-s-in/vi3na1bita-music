@@ -38,6 +38,7 @@ let packTimer = 0;
 let state = emptyBackupSchedulerState();
 let stateLoaded = false;
 let stateWrite = Promise.resolve();
+let duePromise = null;
 
 const safe = value => String(value == null ? '' : value).trim();
 const ownerKey = () => safe(window.AccountDataContext?.getCurrentOwner?.());
@@ -58,6 +59,7 @@ const persistState = patch => {
 
 const loadState = async ({ force = false } = {}) => {
   if (stateLoaded && !force) return state;
+  await stateWrite.catch(() => null);
   const row = await metaDB.getStoreValue('backup_sync_state', STATE_KEY).catch(() => null);
   state = normalizeBackupSchedulerState(row?.value || {});
   stateLoaded = true;
@@ -177,10 +179,10 @@ const finishSuccessfulSync = async ({ result, dirtyDomains, sharedWriteRequired,
   return { continuation, nextSyncAt, backlog, dirtyDomains: nextDirty };
 };
 
-const runDueSync = async ({ reason = 'scheduled_daily', force = false } = {}) => {
+const runDueSyncImpl = async ({ reason = 'scheduled_daily', force = false } = {}) => {
   await loadState();
 
-  if (state.blockReason && state.blockUntil > Date.now() && !force) {
+  if (state.blockReason && state.blockUntil > Date.now()) {
     scheduleAt(state.blockUntil);
     return false;
   }
@@ -246,6 +248,14 @@ const runDueSync = async ({ reason = 'scheduled_daily', force = false } = {}) =>
     window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'idle', reason, error: message } }));
     return false;
   }
+};
+
+const runDueSync = options => {
+  if (duePromise) return duePromise;
+  duePromise = runDueSyncImpl(options).finally(() => {
+    duePromise = null;
+  });
+  return duePromise;
 };
 
 export const getBackupSchedulerState = () => ({
