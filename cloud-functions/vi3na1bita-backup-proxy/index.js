@@ -947,22 +947,43 @@ async function runBatchSync(auth, body) {
     throw makeError('push_ranges_limit', 413);
   }
   const push = [];
+  const pushWatermarks = new Map();
   const sortedPushRanges = [...pushRanges].sort((left, right) => safe(left?.chainId).localeCompare(safe(right?.chainId)) || integer(left?.fromSeq) - integer(right?.fromSeq));
   for (const rawRange of sortedPushRanges) {
     const result = await writeImmutableRange(auth, rawRange);
     push.push({ duplicate: result.duplicate, repairedHead: result.repairedHead, rangeKey: result.range.rangeKey, hash: result.range.hash, deviceId: result.range.deviceId, chainId: result.range.chainId, fromSeq: result.range.fromSeq, toSeq: result.range.toSeq, path: result.path });
+    pushWatermarks.set(`${result.range.deviceId}:${result.range.chainId}`, {
+      deviceId: result.range.deviceId,
+      chainId: result.range.chainId,
+      toSeq: integer(result.head?.lastToSeq || result.range.toSeq),
+      lastRangeHash: safe(result.head?.lastRangeHash || result.range.hash)
+    });
   }
   let settingsPush = null;
   if (isObject(body.settings)) {
     settingsPush = await putSettings(auth, body.settings);
   }
-  const shared = await exchangeSharedDocument(auth, body.shared, body.knownSharedHash);
-  const pull = await pullAfterWatermarks(auth, body.watermarks || body.knownWatermarks || [], {
-    maxRanges: Math.max(1, Math.min(MAX_PULL_RANGES, integer(body.maxPullRanges, MAX_PULL_RANGES))),
-    maxBytes: Math.max(256 * 1024, Math.min(MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES, integer(body.maxPullBytes, MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES)))
-  });
+  const shared = body.includeShared === false
+    ? { skipped: true, changed: false, migrated: false, pushed: false, current: null, hash: safe(body.knownSharedHash) }
+    : await exchangeSharedDocument(auth, body.shared, body.knownSharedHash);
+
+  const pull = body.includePull === false
+    ? {
+        skipped: true,
+        ranges: [],
+        heads: [],
+        watermarks: [...pushWatermarks.values()],
+        returned: 0,
+        remaining: 0,
+        bytes: 0
+      }
+    : await pullAfterWatermarks(auth, body.watermarks || body.knownWatermarks || [], {
+        maxRanges: Math.max(1, Math.min(MAX_PULL_RANGES, integer(body.maxPullRanges, MAX_PULL_RANGES))),
+        maxBytes: Math.max(256 * 1024, Math.min(MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES, integer(body.maxPullBytes, MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES)))
+      });
+
   const knownSettingsHash = safe(body.knownSettingsHash);
-  const currentSettings = await getSettings(auth).catch(() => null);
+  const currentSettings = body.includeSettingsRead === false ? null : await getSettings(auth).catch(() => null);
   const settings = currentSettings && currentSettings.hash !== knownSettingsHash ? currentSettings : null;
   let templateSettings = null;
   const templateDeviceId = safeId(body.settingsTemplateDeviceId, 120);
