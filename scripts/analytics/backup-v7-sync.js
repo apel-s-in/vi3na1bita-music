@@ -90,7 +90,7 @@ const readWatermarks = async () => (await getAllRows('backup_chain_watermarks'))
   lastRangeHash: safe(row.lastRangeHash)
 })).filter(row => row.deviceId && row.chainId);
 
-const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceId = '', ownerYandexIdHash = '' } = {}) => {
+const saveVerifiedRanges = async ({ ranges = [], watermarks = [], ownerYandexIdHash = '' } = {}) => {
   const unique = new Map();
 
   for (const range of Array.isArray(ranges) ? ranges : []) {
@@ -179,16 +179,13 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
           return;
         }
         inserted++;
-        const own = safe(range.deviceId) === safe(currentDeviceId);
         rangeStore.put({
           ...range,
           deviceChain: `${safe(range.deviceId)}:${safe(range.chainId)}`,
           cloudConfirmed: true,
           cloudUploadedAt: storedAt,
           verifiedAt: storedAt,
-          projected: own,
-          storedAt,
-          projectedAt: own ? storedAt : 0
+          storedAt
         });
       };
     });
@@ -335,22 +332,6 @@ const writeProjectionAtomic = async projection => {
   });
 };
 
-const markRangesProjected = async () => {
-  await metaDB.init();
-  return new Promise((resolve, reject) => {
-    const tx = metaDB.db.transaction('backup_event_ranges', 'readwrite');
-    const request = tx.objectStore('backup_event_ranges').openCursor();
-    request.onsuccess = () => {
-      const cursor = request.result;
-      if (!cursor) return;
-      if (cursor.value?.projected !== true) cursor.update({ ...cursor.value, projected: true, projectedAt: Date.now() });
-      cursor.continue();
-    };
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
-};
-
 const compactUploadedLocalEvents = async coverage => {
   const [warm, hot] = await Promise.all([
     metaDB.getEvents('events_warm').catch(() => []),
@@ -402,7 +383,6 @@ export const rebuildBackupV7LocalAnalytics = async ({ reason = 'backup_v71_rebui
   const projection = mergeStatsProjectionInto(streamed.projection, localProjection);
   const committed = await writeProjectionAtomic(projection);
 
-  await markRangesProjected();
   const compactedEvents = await compactUploadedLocalEvents(streamed.coverage);
   const deletedRawRanges = await compactOldRawRanges();
 
@@ -485,7 +465,6 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
     const stored = await saveVerifiedRanges({
       ranges: page === 0 ? [...(request.pushRanges || []), ...ranges] : ranges,
       watermarks: result?.pull?.watermarks || [],
-      currentDeviceId,
       ownerYandexIdHash
     });
 
@@ -699,7 +678,6 @@ export const getBackupV7Status = async () => {
     ...state,
     syncing: !!syncPromise,
     storedRanges: ranges.length,
-    pendingProjectionRanges: ranges.filter(row => row.projected !== true).length,
     watermarks: watermarks.length
   };
 };
