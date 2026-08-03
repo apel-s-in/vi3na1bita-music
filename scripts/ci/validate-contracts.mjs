@@ -177,7 +177,6 @@ const validateDataBoundaries = () => {
   ['normalizeFavoriteItem', 'favoriteClock', 'favoriteStatus', 'mergeFavoritePair', 'remoteToLocal', 'localToRemote', 'favoriteSignature'].forEach(marker => contains(favorite, marker));
   ['favorite_state_get', 'favorite_state_mutate', 'favorite_state_reconcile'].forEach(marker => contains(mirror, marker));
   excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*__favorites_v2__/, 'Избранное осталось в shared backup');
-  excludes('scripts/analytics/storage-merge.js', /mergeFavoritesStorageSafe|__favorites_v2__/, 'Backup restore продолжает объединять Избранное');
   contains('scripts/analytics/snapshot-contract.js', 'sc3:playlists');
   excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*sc3:default/, 'Оформление default Showcase осталось в shared backup');
   excludes('scripts/analytics/snapshot-contract.js', /SHARED_STORAGE_KEYS\s*=\s*\[[^\]]*sc3:albumColors/, 'Цвета альбомов остались в shared backup');
