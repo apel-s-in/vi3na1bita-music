@@ -1,4 +1,4 @@
-// Read-only view model поверх materialized Stats shard v4.
+// Read-only view model поверх materialized Stats shard v5.
 // Запись stats выполняют только StatsAggregator и Backup streaming rebuild.
 import { metaDB as defaultMetaDB } from './meta-db.js';
 
