@@ -422,6 +422,19 @@ const validateCloudFunctionFiles = () => {
     }
   });
 };
+const validateRemovedRuntimeFiles = () => {
+  [
+    'scripts/analytics/playlists-storage-merge.js',
+    'scripts/analytics/storage-merge-utils.js',
+    'scripts/analytics/tombstone-contract.js',
+    'scripts/analytics/trust-state.js',
+    'scripts/app/profile/settings-conflict-section.js',
+    'scripts/app/profile/trust-check-modal.js'
+  ].forEach(relative => {
+    assert(!fs.existsSync(path.join(root, relative)), `${relative}: удалённый runtime-файл не возвращён`);
+  });
+};
+
 const validateWorkflows = () => {
   const workflows = listFiles('.github/workflows');
   assertNoMatch(workflows, /node-version:\s*['"]?20['"]?/g, 'Workflow с Node.js 20 отсутствуют');
@@ -490,6 +503,7 @@ const main = async () => {
   contains('scripts/core/cloud-usage-meter.js', 'serverDurationMs');
   excludes('scripts/core/app-activity.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Activity controller управляет playback');
   excludes('scripts/core/cloud-usage-meter.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Cloud usage meter управляет playback');
+  validateRemovedRuntimeFiles();
   validateCloudFunctionFiles();
   validateWorkflows();
   if (failures.length) {
