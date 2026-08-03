@@ -1260,7 +1260,8 @@ async function actionBackupSyncClaim(event, body) {
   const result = await mutateBackupCoordinator(auth.playerId, state => claimCoordinatorLease(state, {
     ticketId,
     leaseId,
-    tokenHash: suppliedLeaseToken ? hash(suppliedLeaseToken) : hash(leaseToken),
+    tokenHash: hash(leaseToken),
+    existingTokenHash: suppliedLeaseToken ? hash(suppliedLeaseToken) : '',
     deviceId: auth.deviceId,
     deviceLabel: auth.device.label,
     phase: sanitizeId(body.phase || 'full', 30),
