@@ -4,6 +4,7 @@
   "main": "index.js",
   "type": "commonjs",
   "dependencies": {
+    "@yandex-cloud/nodejs-sdk": "2.6.0",
     "ydb-sdk": "5.9.0"
   }
 }
