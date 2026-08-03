@@ -80,7 +80,7 @@ export const temporalPartsFromListenEvent = event => {
 
   const listenedMs = Math.max(
     0,
-    Math.floor(n(data.listenedSeconds) * 1000)
+    Math.floor(n(data.listenedMs || n(data.listenedSeconds) * 1000))
   );
   const startedAt = Math.max(
     0,
