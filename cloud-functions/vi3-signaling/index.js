@@ -2,6 +2,16 @@
 const crypto = require('crypto');
 const { AsyncLocalStorage } = require('async_hooks');
 const ydbMod = require('ydb-sdk');
+const {
+  DEFAULT_LEASE_MS: BACKUP_COORDINATOR_LEASE_MS,
+  authorizeCoordinatorLease,
+  claimCoordinatorLease,
+  completeCoordinatorLease,
+  normalizeCoordinatorState,
+  publicCoordinatorState,
+  releaseCoordinatorLease,
+  renewCoordinatorLease
+} = require('./backup-coordinator.js');
 let driverPromise = null;
 const usageStorage = new AsyncLocalStorage();
 const currentUsage = () => usageStorage.getStore() || null;
@@ -1086,7 +1096,65 @@ async function actionAccountDeviceInitialize(event, body) {
 
   throw new Error('account_device_initialization_conflict');
 }
+const BACKUP_COORDINATOR_DISK_BLOCK_MS = 24 * 60 * 60 * 1000;
+const BACKUP_COORDINATOR_CAS_ATTEMPTS = 10;
 
+function backupCoordinatorKey(playerId) {
+  return `backupCoordinator:${sanitizeId(playerId, 96)}`;
+}
+
+function backupCoordinatorError(message, status = 409) {
+  const error = new Error(message);
+  error.httpStatus = status;
+  return error;
+}
+
+async function requireBackupCoordinatorDevice(event, body) {
+  const auth = await requirePlayer(event, body);
+  const requestedDeviceId = sanitizeId(body.deviceId, 120);
+  if (!auth.deviceId) throw backupCoordinatorError('backup_device_session_required', 401);
+  if (requestedDeviceId && requestedDeviceId !== auth.deviceId) {
+    throw backupCoordinatorError('backup_device_identity_mismatch', 403);
+  }
+  const row = await kvGet(accountDeviceKey(auth.playerId, auth.deviceId));
+  const device = normalizeAccountDevice(payload(row), auth.playerId);
+  if (!row || !device.deviceId) throw backupCoordinatorError('backup_device_not_registered', 403);
+  if (device.revokedAt > 0) throw backupCoordinatorError('backup_device_revoked', 403);
+  if (device.initializationPending) throw backupCoordinatorError('backup_device_initialization_required', 409);
+  return { ...auth, device };
+}
+
+async function mutateBackupCoordinator(playerId, transition) {
+  const key = backupCoordinatorKey(playerId);
+  for (let attempt = 0; attempt < BACKUP_COORDINATOR_CAS_ATTEMPTS; attempt++) {
+    const row = await kvGet(key);
+    const current = normalizeCoordinatorState(payload(row));
+    const step = transition(current);
+    if (!step?.state || !step?.result) throw new Error('backup_coordinator_transition_invalid');
+    if (step.changed !== true) return step.result;
+
+    let changed = false;
+    if (!row) {
+      try {
+        await kvInsert({ pk: key, type: 'backupCoordinator', owner: playerId, data: step.state });
+        changed = true;
+      } catch {}
+    } else {
+      changed = await kvCompareAndPut({ row, type: 'backupCoordinator', owner: playerId, data: step.state });
+    }
+    if (changed) return step.result;
+  }
+  throw backupCoordinatorError('backup_coordinator_conflict', 409);
+}
+
+function backupLeaseInput(body, auth) {
+  const leaseToken = safe(body.leaseToken);
+  return {
+    deviceId: auth.deviceId,
+    leaseId: sanitizeId(body.leaseId, 120),
+    tokenHash: leaseToken ? hash(leaseToken) : ''
+  };
+}
 function backupAuthorizationError(message, status = 403) {
   const error = new Error(message);
   error.httpStatus = status;
@@ -1138,6 +1206,120 @@ async function actionBackupDeviceAuthorize(event, body) {
       device: publicAccountDevice(device)
     }
   };
+}
+async function actionBackupSyncClaim(event, body) {
+  const auth = await requireBackupCoordinatorDevice(event, body);
+  await enforceRateLimit({
+    scope: 'backup_sync_claim',
+    actor: `${auth.playerId}:${auth.deviceId}`,
+    limit: 120,
+    windowMs: 60 * 60 * 1000
+  });
+
+  const leaseId = rid('backup_lease');
+  const leaseToken = base64url(crypto.randomBytes(32));
+  const ticketId = sanitizeId(body.ticketId, 120) || rid('backup_ticket');
+  const result = await mutateBackupCoordinator(auth.playerId, state => claimCoordinatorLease(state, {
+    ticketId,
+    leaseId,
+    tokenHash: hash(leaseToken),
+    deviceId: auth.deviceId,
+    deviceLabel: auth.device.label,
+    phase: sanitizeId(body.phase || 'full', 30),
+    reason: sanitizeId(body.reason || 'daily', 60),
+    manual: body.manual === true,
+    dirtyDomains: body.dirtyDomains,
+    pendingRanges: body.pendingRanges
+  }, { at: now() }));
+
+  return {
+    ok: true,
+    granted: result.granted === true,
+    queued: result.queued === true,
+    blocked: result.blocked === true,
+    position: num(result.position),
+    queueLength: num(result.queueLength),
+    retryAt: num(result.retryAt),
+    block: result.block || null,
+    activeLease: result.activeLease || null,
+    ...(result.granted === true && result.existing !== true ? {
+      leaseId,
+      leaseToken,
+      leaseExpiresAt: num(result.lease?.expiresAt),
+      lease: { ...result.lease, tokenHash: undefined }
+    } : {}),
+    ...(result.granted === true && result.existing === true ? {
+      existing: true,
+      leaseId: result.lease?.leaseId || '',
+      leaseExpiresAt: num(result.lease?.expiresAt)
+    } : {})
+  };
+}
+
+async function actionBackupSyncAuthorize(event, body) {
+  const auth = await requireBackupCoordinatorDevice(event, body);
+  const result = await mutateBackupCoordinator(auth.playerId, state => authorizeCoordinatorLease(state, backupLeaseInput(body, auth), { at: now() }));
+  if (!result.authorized) throw backupCoordinatorError(result.reason || 'backup_lease_forbidden', 409);
+
+  return {
+    ok: true,
+    authorized: true,
+    lease: result.lease,
+    authorization: {
+      version: 2,
+      playerId: auth.playerId,
+      ownerYandexIdHash: auth.yandexIdHash,
+      deviceId: auth.deviceId,
+      sessionExpiresAt: auth.expiresAt,
+      authorizedAt: now(),
+      initializationRequired: false,
+      initializationMode: auth.device.initializationMode,
+      settingsSourceDeviceId: auth.device.inheritedFromDeviceId,
+      device: publicAccountDevice(auth.device)
+    }
+  };
+}
+
+async function actionBackupSyncRenew(event, body) {
+  const auth = await requireBackupCoordinatorDevice(event, body);
+  const result = await mutateBackupCoordinator(auth.playerId, state => renewCoordinatorLease(state, backupLeaseInput(body, auth), {
+    at: now(),
+    leaseMs: BACKUP_COORDINATOR_LEASE_MS
+  }));
+  if (!result.renewed) throw backupCoordinatorError(result.reason || 'backup_lease_renew_forbidden', 409);
+  return { ok: true, renewed: true, lease: result.lease, leaseExpiresAt: num(result.lease?.expiresAt) };
+}
+
+async function actionBackupSyncComplete(event, body) {
+  const auth = await requireBackupCoordinatorDevice(event, body);
+  const result = await mutateBackupCoordinator(auth.playerId, state => completeCoordinatorLease(state, {
+    ...backupLeaseInput(body, auth),
+    phase: sanitizeId(body.phase || 'full', 30),
+    pushCompleted: body.pushCompleted === true,
+    pullCompleted: body.pullCompleted === true
+  }, { at: now() }));
+  if (!result.completed) throw backupCoordinatorError(result.reason || 'backup_lease_complete_forbidden', 409);
+  return { ok: true, completed: true, nextDeviceId: result.nextDeviceId || '', coordinator: result.coordinator };
+}
+
+async function actionBackupSyncRelease(event, body) {
+  const auth = await requireBackupCoordinatorDevice(event, body);
+  const blockReason = sanitizeId(body.blockReason, 60);
+  const result = await mutateBackupCoordinator(auth.playerId, state => releaseCoordinatorLease(state, {
+    ...backupLeaseInput(body, auth),
+    reason: sanitizeId(body.reason || 'sync_failed', 80),
+    error: safe(body.error).slice(0, 160),
+    blockReason: blockReason === 'disk_space_exhausted' ? blockReason : '',
+    blockUntil: blockReason === 'disk_space_exhausted' ? now() + BACKUP_COORDINATOR_DISK_BLOCK_MS : 0
+  }, { at: now() }));
+  if (!result.released) throw backupCoordinatorError(result.reason || 'backup_lease_release_forbidden', 409);
+  return { ok: true, released: true, blocked: result.blocked === true, block: result.block || null, nextDeviceId: result.nextDeviceId || '' };
+}
+
+async function actionBackupSyncStatus(event, body) {
+  const auth = await requireBackupCoordinatorDevice(event, body);
+  const row = await kvGet(backupCoordinatorKey(auth.playerId));
+  return { ok: true, coordinator: publicCoordinatorState(payload(row), auth.deviceId, now()) };
 }
 const PLAYBACK_LEASE_MS = 20 * 60 * 1000;
 const PLAYBACK_TRANSFER_TTL_MS = 2 * 60 * 1000;
@@ -6940,6 +7122,12 @@ const ACTIONS = {
   account_device_update: actionAccountDeviceUpdate,
   account_device_initialize: actionAccountDeviceInitialize,
   backup_device_authorize: actionBackupDeviceAuthorize,
+  backup_sync_claim: actionBackupSyncClaim,
+  backup_sync_authorize: actionBackupSyncAuthorize,
+  backup_sync_renew: actionBackupSyncRenew,
+  backup_sync_complete: actionBackupSyncComplete,
+  backup_sync_release: actionBackupSyncRelease,
+  backup_sync_status: actionBackupSyncStatus,
   playback_state_get: actionPlaybackStateGet,
   playback_claim: actionPlaybackClaim,
   playback_release: actionPlaybackRelease,
@@ -7083,6 +7271,13 @@ const handleRequest = async event => {
           logicalSessionRequired: true
         },
         accountDevices: { archiveAfterMs: ACCOUNT_DEVICE_ARCHIVE_MS },
+        backupCoordinator: {
+          enabled: true,
+          version: 1,
+          leaseMs: BACKUP_COORDINATOR_LEASE_MS,
+          actions: ['backup_sync_claim', 'backup_sync_authorize', 'backup_sync_renew', 'backup_sync_complete', 'backup_sync_release', 'backup_sync_status'],
+          accountWideDiskBlock: true
+        },
         webPushSubscriptions: { endpointIndex: true, leaseMs: WEB_PUSH_LEASE_MS, oneEndpointOwner: true, oneSubscriptionPerDevice: true },
         favoriteMirror: { enabled: true, rewardsShadow: CFG.favoriteRewardsShadow, catalogTracks: LISTEN_TRACK_CATALOG.size },
         listeningContextRewards: {
