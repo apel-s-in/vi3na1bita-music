@@ -140,27 +140,29 @@ async function kvPrefix(prefix, limit = 100) {
 }
 async function kvDeleteIfPayload(pk, expectedPayloadJson) {
   if (!pk || !expectedPayloadJson) return false;
-  await query(
+  const result = await query(
     `
     DECLARE $pk AS Utf8;
     DECLARE $expected_payload_json AS Utf8;
 
     DELETE FROM ${TABLE}
     WHERE pk = $pk
-      AND payload_json = $expected_payload_json;
+      AND payload_json = $expected_payload_json
+    RETURNING pk;
   `,
     {
       '$pk': tvUtf8(pk),
       '$expected_payload_json': tvUtf8(expectedPayloadJson)
     }
   );
-  return true;
+  return rowsOf(result).some(item => safe(item.pk) === safe(pk));
 }
 
 async function deleteSubscriptionRow(row) {
   if (!row?.pk || !row?.payload_json) return false;
   const data = payload(row);
-  await kvDeleteIfPayload(row.pk, row.payload_json).catch(() => null);
+  const deleted = await kvDeleteIfPayload(row.pk, row.payload_json).catch(() => false);
+  if (!deleted) return false;
 
   const remaining = await kvGet(row.pk).catch(() => null);
   if (remaining) return false;
@@ -171,8 +173,13 @@ async function deleteSubscriptionRow(row) {
   const indexKey = `webPushEndpoint:${endpointHash}`;
   const indexRow = await kvGet(indexKey).catch(() => null);
   const index = payload(indexRow);
-  if (indexRow && safe(index.subscriptionKey) === safe(row.pk)) {
-    await kvDeleteIfPayload(indexKey, indexRow.payload_json).catch(() => null);
+  const sameGeneration =
+    safe(index.subscriptionKey) === safe(row.pk) &&
+    num(index.updatedAt) === num(data.updatedAt) &&
+    num(index.leaseExpiresAt) === num(data.leaseExpiresAt);
+
+  if (indexRow?.payload_json && sameGeneration) {
+    await kvDeleteIfPayload(indexKey, indexRow.payload_json).catch(() => false);
   }
   return true;
 }
