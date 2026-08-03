@@ -30,7 +30,17 @@ const nextDueAt = () => Math.max(0, Number(localStorage.getItem(LS_DUE) || 0));
 const setNextDue = at => localStorage.setItem(LS_DUE, String(Math.max(0, Number(at) || 0)));
 const readPhase = () => localStorage.getItem(LS_PHASE) === 'pull' ? 'pull' : 'push';
 const setPhase = phase => localStorage.setItem(LS_PHASE, phase === 'pull' ? 'pull' : 'push');
-const markDirty = () => localStorage.setItem(LS_DIRTY, '1');
+const readDirtyDomains = () => {
+  const raw = String(localStorage.getItem(LS_DIRTY) || '');
+  if (!raw) return new Set();
+  if (raw === '1') return new Set(['events', 'playlists', 'settings']);
+  return new Set(raw.split(',').map(value => value.trim()).filter(Boolean));
+};
+const markDirty = (domain = 'events') => {
+  const domains = readDirtyDomains();
+  domains.add(String(domain || 'events').trim() || 'events');
+  localStorage.setItem(LS_DIRTY, [...domains].sort().join(','));
+};
 const clearDirty = () => localStorage.removeItem(LS_DIRTY);
 const readBlock = () => ({ reason: String(localStorage.getItem(LS_BLOCK_REASON) || ''), until: Math.max(0, Number(localStorage.getItem(LS_BLOCK_UNTIL) || 0)) });
 const clearBlock = () => {
@@ -92,10 +102,11 @@ const runLocalPack = async reason => {
   if (document.hidden || window.playerCore?.isPlaying?.() || window.__accountDataSwitching) return false;
   const result = await packLocalBackupV7Ranges().catch(error => ({ ok: false, error: String(error?.message || error) }));
   if (result?.packed > 0) {
-    markDirty();
+    markDirty('events');
     window.dispatchEvent(new CustomEvent('backup:local-spool-updated', {
       detail: { reason, packed: result.packed, events: result.events, quarantined: result.quarantined?.length || 0 }
     }));
+    if (Number(result.remainingCapacity || 0) === 0) scheduleLocalPack('local_backlog_continue', 1200);
   }
   return result;
 };
@@ -133,7 +144,7 @@ const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
     ready = true;
   }
   if (!isSyncReady() || document.hidden || (!force && isAppQuiet())) return false;
-  if (!force && window.playerCore?.isPlaying?.()) {
+  if (window.playerCore?.isPlaying?.()) {
     scheduleAt(Date.now() + PLAYBACK_DEFER_MS);
     return false;
   }
@@ -146,12 +157,18 @@ const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
   }
 
   try {
-    const phase = force ? 'full' : readPhase();
+    const dirtyDomains = readDirtyDomains();
+    let phase = force ? 'full' : readPhase();
+    if (!force && phase === 'push' && !dirtyDomains.size) phase = 'pull';
+
     await syncBackupV7({
       reason: `${reason}:${phase}`,
       pushEnabled: phase !== 'pull',
+      pullEnabled: phase !== 'push',
+      includeShared: force || phase === 'pull' || dirtyDomains.has('playlists'),
       includeSettings: phase !== 'pull',
-      maxPullRanges: phase === 'push' ? 5 : 50
+      settingsReadEnabled: phase !== 'push',
+      maxPullRanges: phase === 'push' ? 1 : 50
     });
     clearBlock();
     ready = true;
@@ -186,7 +203,7 @@ const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
 };
 
 export const scheduleBackupV7Sync = ({ immediate = false, reason = 'autosync' } = {}) => {
-  markDirty();
+  markDirty('events');
   if (!isSyncReady()) return false;
 
   if (immediate) {
@@ -250,12 +267,13 @@ export const initBackupSyncEngine = () => {
 
   window.addEventListener('backup:domain-dirty', event => {
     if (window.__backupV7SharedApplying || event.detail?.domain === 'favorites') return;
-    markDirty();
+    const domain = String(event.detail?.domain || '');
+    markDirty(domain === 'playlists' ? 'playlists' : domain === 'deviceSettings' ? 'settings' : 'events');
   });
   window.addEventListener('analytics:logUpdated', event => {
     const reason = String(event.detail?.reason || '');
     if (reason.startsWith('backup_v71_')) return;
-    markDirty();
+    markDirty('events');
     scheduleLocalPack(`analytics:${reason || 'updated'}`);
   });
   ['player:pause', 'player:stop', 'player:ended'].forEach(name => {
