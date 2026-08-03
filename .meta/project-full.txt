@@ -16610,6 +16610,7 @@ import path from 'node:path';
 import { validateBackupAnalytics } from './contracts/backup-analytics.mjs';
 const root = process.cwd();
 const failures = [];
+let checks = 0;
 const read = relative => {
   const file = path.join(root, relative);
   if (!fs.existsSync(file)) {
@@ -16619,29 +16620,20 @@ const read = relative => {
   return fs.readFileSync(file, 'utf8');
 };
 const assert = (condition, message) => {
-  if (condition) {
-    console.log(`✅ ${message}`);
-  } else {
-    failures.push(message);
-  }
+  checks++;
+  if (!condition) failures.push(message);
 };
 const contains = (relative, marker) => {
-  const found = read(relative).includes(marker);
-  if (found) {
-    console.log(`✅ ${relative}: найден ${marker}`);
-  } else {
+  checks++;
+  if (!read(relative).includes(marker)) {
     failures.push(`${relative}: отсутствует ${marker}`);
   }
 };
 const excludes = (relative, pattern, message) => {
+  checks++;
   const source = read(relative);
   pattern.lastIndex = 0;
-  const found = pattern.test(source);
-  if (!found) {
-    console.log(`✅ ${relative}: нарушение отсутствует — ${message}`);
-  } else {
-    failures.push(`${relative}: ${message}`);
-  }
+  if (pattern.test(source)) failures.push(`${relative}: ${message}`);
 };
 const listFiles = directory => {
   const base = path.join(root, directory);
@@ -17112,7 +17104,7 @@ const main = async () => {
     });
     process.exit(2);
   }
-  console.log('\n✅ Все application contracts прошли');
+  console.log(`\n✅ Все application contracts прошли: ${checks} проверок`);
 };
 main().catch(error => {
   console.error('\n❌ validate-contracts crashed:', error?.stack || error);
