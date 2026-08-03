@@ -95,7 +95,7 @@ export class StatsAggregator {
             const total = Number(rows.get(row.uid)?.globalFullListenCount || 0);
             if (total >= threshold && !window._isRestoring) {
               window.dispatchEvent(new CustomEvent('analytics:cloudThresholdReached', {
-                detail: { uid: row.uid }
+                detail: { uid: row.uid, fullCount: total }
               }));
             }
           });
