@@ -1,4 +1,6 @@
-import { clearBackupV7Dirty, syncBackupV7 } from '../../analytics/backup-sync-engine.js';
+import { clearBackupV7Dirty, getBackupSchedulerState, syncBackupV7 } from '../../analytics/backup-sync-engine.js';
+import { withBackupCoordinatorLease } from '../../analytics/backup-coordinator-client.js';
+import { getBackupV7BacklogStatus } from '../../analytics/backup-v7-sync.js';
 import { openBackupInfoModal } from './backup-info-modal.js';
 import { renderSyncLogRow } from './profile-render-kit.js';
 
@@ -34,15 +36,38 @@ const syncNow = async ({ ya, notify, rerender }) => {
   notify?.info?.('Сохраняем новые данные v7…');
 
   try {
-    const result = await syncBackupV7({
-      reason: 'manual_save',
-      includeSettings: true,
-      pushEnabled: true,
-      pullEnabled: true,
-      sharedReadEnabled: true,
-      sharedWriteEnabled: true,
-      settingsReadEnabled: false
+    const scheduler = getBackupSchedulerState();
+    const backlog = await getBackupV7BacklogStatus();
+    const coordinated = await withBackupCoordinatorLease({
+      reason: 'manual',
+      manual: true,
+      dirtyDomains: scheduler.dirtyDomains || [],
+      pendingRanges: backlog.pendingRanges,
+      task: coordinatorLease => syncBackupV7({
+        reason: 'manual_save',
+        includeSettings: true,
+        pushEnabled: true,
+        pullEnabled: true,
+        sharedReadEnabled: true,
+        sharedWriteEnabled: true,
+        settingsReadEnabled: false,
+        coordinatorLease
+      })
     });
+
+    if (!coordinated.granted) {
+      const position = Number(coordinated.coordinator?.position || 0);
+      notify?.info?.(
+        coordinated.blocked
+          ? 'Синхронизация временно заблокирована для аккаунта'
+          : position > 0
+            ? `Синхронизация поставлена в очередь: ${position}`
+            : 'Другое устройство уже выполняет синхронизацию'
+      );
+      return;
+    }
+
+    const result = coordinated.result;
     await clearBackupV7Dirty({ result });
     const quarantined = Array.isArray(result.quarantine) ? result.quarantine.length : 0;
     const remaining = Number(result.pull?.remaining || 0);
