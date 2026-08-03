@@ -115,5 +115,8 @@ jobs:
       - name: Validate pure Stats v5 contract
         run: node scripts/ci/test-stats-v5.mjs
 
+      - name: Validate pure Backup scheduler contract
+        run: node scripts/ci/test-backup-scheduler.mjs
+
       - name: Validate application contracts
         run: node scripts/ci/validate-contracts.mjs
