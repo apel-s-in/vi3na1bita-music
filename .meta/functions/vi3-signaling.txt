@@ -7758,8 +7758,7 @@ exports.handler = event => usageStorage.run({
   "main": "index.js",
   "type": "commonjs",
   "dependencies": {
-    "ydb-sdk": "5.9.0",
-    "@yandex-cloud/nodejs-sdk": "^2.6.0"
+    "ydb-sdk": "5.9.0"
   }
 }
 
