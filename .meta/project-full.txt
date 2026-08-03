@@ -987,8 +987,12 @@ jobs:
               exit 2
             fi
 
-            echo "CHECK $index_file"
-            node --check "$index_file"
+            while IFS= read -r source_file; do
+              echo "CHECK $source_file"
+              node --check "$source_file"
+            done < <(
+              find "$function_dir" -maxdepth 1 -type f -name '*.js' | sort
+            )
 
             echo "CHECK $package_file"
             node -e "
@@ -1024,6 +1028,9 @@ jobs:
 
       - name: Validate pure Backup scheduler contract
         run: node scripts/ci/test-backup-scheduler.mjs
+
+      - name: Validate pure Backup coordinator contract
+        run: node scripts/ci/test-backup-coordinator.mjs
 
       - name: Validate application contracts
         run: node scripts/ci/validate-contracts.mjs
