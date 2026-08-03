@@ -2,6 +2,15 @@
 const crypto = require('crypto');
 const webpush = require('web-push');
 const ydbMod = require('ydb-sdk');
+const YDB_METADATA_AUTH_MODULE = '@yandex-cloud/nodejs-sdk/dist/token-service/metadata-token-service';
+const ydbMetadataAuthAvailable = (() => {
+  try {
+    require.resolve(YDB_METADATA_AUTH_MODULE);
+    return true;
+  } catch {
+    return false;
+  }
+})();
 let driverPromise = null;
 const CFG = {
   endpoint: process.env.YDB_ENDPOINT || '',
@@ -85,6 +94,7 @@ function tvUint64(v) {
 async function getYdb() {
   if (driverPromise) return driverPromise;
   driverPromise = (async () => {
+    if (!ydbMetadataAuthAvailable) throw new Error('ydb_metadata_auth_dependency_missing');
     const { Driver, getCredentialsFromEnv } = ydbMod;
     if (!CFG.endpoint || !CFG.database) throw new Error('ydb_env_missing');
     const driver = new Driver({ endpoint: CFG.endpoint, database: CFG.database, authService: getCredentialsFromEnv() });
@@ -298,7 +308,7 @@ exports.handler = async event => {
   const action = safe(body.action || event.queryStringParameters?.action || 'ping');
   try {
     if (action === 'ping') {
-      return reply(event, 200, { ok: true, service: 'vi3-webpush', ydbConfigured: !!(CFG.endpoint && CFG.database), vapidConfigured: !!(CFG.vapidPublicKey && CFG.vapidPrivateKey), table: TABLE, ts: Date.now() });
+      return reply(event, 200, { ok: true, service: 'vi3-webpush', ydbConfigured: !!(CFG.endpoint && CFG.database), ydbMetadataAuthAvailable, vapidConfigured: !!(CFG.vapidPublicKey && CFG.vapidPrivateKey), table: TABLE, ts: Date.now() });
     }
     if (action === 'send_to_player') {
       return reply(event, 200, await actionSendToPlayer(event, body));
