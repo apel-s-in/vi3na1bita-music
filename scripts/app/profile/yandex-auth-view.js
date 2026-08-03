@@ -32,6 +32,9 @@ const bindReactiveEvents = (rt, r) => {
   const s = async () => { if (!rt.isConnected) return; try { if (window.AlbumsManager?.getCurrentAlbum?.() === (window.APP_CONFIG?.SPECIAL_PROFILE_KEY || '__profile__')) { const m = await import('./view.js'), ok = await m.refreshProfileViewSoft?.(window.AlbumsManager).catch(() => false); if (ok) return; } } catch {} r(); };
   const d = () => rt.isConnected && updateSyncDot(rt);
   rt._yaReactiveHandlers = {
+    onAuthChanged:()=>s(),
+    onBackupMetaUpdated:()=>s(),
+    onSyncReady:d,
     onSyncSettingsChanged:d,
     onSchedulerState:()=>s(),
     onSyncRevision:()=>{ const l = rt.querySelector('#ya-last-sync-label'); if (l) l.textContent = getSyncStatusLine(); },
