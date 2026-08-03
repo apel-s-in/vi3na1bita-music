@@ -15356,9 +15356,12 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
     'no_watermark_progress',
     'quarantinedKeys',
     'pullEnabled',
-    'includeShared',
+    'sharedReadEnabled',
+    'sharedWriteEnabled',
     'settingsReadEnabled',
-    'transport_only_push'
+    'transport_only_push',
+    'getBackupV7BacklogStatus',
+    'domainEvents'
   ].forEach(marker => contains(sync, marker));
 
   [
@@ -15368,11 +15371,16 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
     'disk_space_exhausted',
     'DISK_FULL_RETRY_MS',
     'getBackupV7Availability',
-    'readDirtyDomains',
-    "dirtyDomains.has('playlists')",
-    "pullEnabled: phase !== 'push'",
-    "settingsReadEnabled: phase !== 'push'",
-    'local_backlog_continue'
+    'STATE_KEY',
+    'scheduler:v1',
+    'BACKUP_DAILY_MS',
+    'backupNeedsContinuation',
+    'dirtyDomainsAfterSync',
+    'sharedReadEnabled: true',
+    'sharedWriteEnabled: sharedWriteRequired',
+    'settingsReadEnabled: false',
+    'local_backlog_continue',
+    'activity_resumed'
   ].forEach(marker => contains(scheduler, marker));
 
   [
@@ -15407,10 +15415,20 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
   contains(proxy, "domains: ['playlists']");
   contains(proxy, 'body.includePull === false');
-  contains(proxy, 'body.includeShared === false');
+  contains(proxy, 'includeSharedRead');
+  contains(proxy, 'includeSharedWrite');
+  contains(proxy, 'sharedReadEnabled');
+  contains(proxy, 'sharedWriteEnabled');
   contains(proxy, 'body.includeSettingsRead === false');
   contains(proxy, 'pushWatermarks');
 
+  contains('scripts/analytics/backup-scheduler-policy.js', 'BACKUP_DAILY_MS');
+  contains('scripts/analytics/backup-scheduler-policy.js', 'dirtyDomainsAfterSync');
+  contains('scripts/analytics/backup-v7-recovery.js', "readRows('recommendation_state')");
+  contains('scripts/analytics/backup-v7-recovery.js', "readRows('intel_runtime')");
+  contains('scripts/analytics/backup-v7-recovery.js', 'domainState');
+  excludes(scheduler, /LS_PHASE|readPhase\(|setPhase\(|next-phase|phase !== 'pull'|phase !== 'push'/, 'Alternating push/pull scheduler снова добавлен');
+  excludes(scheduler, /backup:v71:next-sync-at|backup:v71:block-reason|backup:v71:block-until/, 'Scheduler снова использует не account-scoped runtime state');
   excludes(range, /PENDING_KEY|v71_batch|savePendingBackupV7Batch|clearPendingBackupV7Batch/, 'Одиночный pending batch снова добавлен');
   excludes(sync, /cleanupLegacyBackupV6|legacyCleanup|DELETE_LEGACY_V6|knownRangeKeys|projectedAt/, 'Legacy Backup state снова добавлен');
   excludes(meta, /createObjectStore\(\s*['"]backup_known_ranges['"]|['"]backup_pending_ranges['"]|['"]backup_mutations['"]/, 'Мёртвый Backup store снова добавлен');
