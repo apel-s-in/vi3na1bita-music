@@ -116,6 +116,10 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   excludes(coordinator, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Backup coordinator управляет playback');
   [
     'withBackupCoordinatorLease',
+    'backupCoordinatorSchedulerPatch',
+    'coordinator_local_busy',
+    'coordinator_queued',
+    'coordinator_blocked',
     'navigator.locks',
     'backup_sync_claim',
     'backup_sync_renew',
@@ -129,9 +133,14 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   contains(sync, 'coordinatorLease');
   contains(sync, 'renewCoordinatorLease');
   contains(scheduler, 'withBackupCoordinatorLease');
+  contains(scheduler, 'backupCoordinatorSchedulerPatch');
   contains(proxy, 'BACKUP_COORDINATOR_REQUIRED');
   contains(proxy, 'backup_sync_authorize');
   excludes(coordinatorClient, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Coordinator client управляет playback');
+  contains('scripts/app/games/bridge-host.js', "publishGameActivity(false, 'closed_by_user'");
+  contains('scripts/app/games/host.js', 'bridge?.destroy?.()');
+  contains('scripts/app/profile/account-cloud-renderers.js', 'coordinator_queued');
+  contains('scripts/app/profile/account-cloud-renderers.js', 'activeLease?.holderLabel');
   contains(meta, "this.dbName = 'MetaDB_v6'");
   contains(meta, "createIndex('chainSeq'");
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
