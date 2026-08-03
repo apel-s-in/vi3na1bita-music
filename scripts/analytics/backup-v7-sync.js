@@ -157,9 +157,8 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], currentDeviceI
   await metaDB.init();
 
   const storedResult = await new Promise((resolve, reject) => {
-    const tx = metaDB.db.transaction(['backup_event_ranges', 'backup_known_ranges', 'backup_chain_watermarks', 'backup_stats_rollups'], 'readwrite');
+    const tx = metaDB.db.transaction(['backup_event_ranges', 'backup_chain_watermarks', 'backup_stats_rollups'], 'readwrite');
     const rangeStore = tx.objectStore('backup_event_ranges');
-    const knownStore = tx.objectStore('backup_known_ranges');
     const watermarkStore = tx.objectStore('backup_chain_watermarks');
     const rollupStore = tx.objectStore('backup_stats_rollups');
     let inserted = 0;
