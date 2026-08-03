@@ -4760,7 +4760,13 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
         skipped: result?.shared?.skipped === true,
         hash: safe(result?.shared?.hash)
       },
-      settings: result?.settings || null
+      settings: {
+        ...(result?.settings || {}),
+        writeRequired: sendSettings,
+        confirmed: !sendSettings || !!result?.settings?.pushed,
+        localHash: localSettingsHash,
+        serverHash: serverSettingsHash
+      }
     };
   } catch (error) {
     if (checkpoint) await restoreBackupV7Checkpoint(checkpoint).catch(() => null);
