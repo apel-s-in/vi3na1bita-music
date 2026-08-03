@@ -190,10 +190,12 @@ function subscriptionLeaseExpiresAt(row) {
 }
 
 function notificationTtl(kind) {
-  return ['CHAT_MESSAGE', 'GAME_INVITE', 'VOICE_CALL', 'PLAYBACK_TRANSFERRED', 'LOYALTY_VACATION_ENDED'].includes(kind) ? 120 : 86400;
+  if (['CHAT_MESSAGE', 'GAME_INVITE', 'VOICE_CALL', 'PLAYBACK_TRANSFERRED', 'LOYALTY_VACATION_ENDED'].includes(kind)) return 120;
+  if (['LOYALTY_REMINDER', 'LOYALTY_VACATION_ENDING'].includes(kind)) return 2 * 60 * 60;
+  return 86400;
 }
 function notificationUrgency(kind) {
-  return ['CHAT_MESSAGE', 'GAME_INVITE', 'VOICE_CALL', 'PLAYBACK_TRANSFERRED', 'LOYALTY_VACATION_ENDED'].includes(kind) ? 'high' : 'normal';
+  return ['CHAT_MESSAGE', 'GAME_INVITE', 'VOICE_CALL', 'PLAYBACK_TRANSFERRED', 'LOYALTY_REMINDER', 'LOYALTY_VACATION_ENDING', 'LOYALTY_VACATION_ENDED'].includes(kind) ? 'high' : 'normal';
 }
 async function sendToSubscription(row, notification) {
   const data = payload(row);
