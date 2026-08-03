@@ -17011,7 +17011,8 @@ const validateRemovedRuntimeFiles = () => {
     'scripts/analytics/tombstone-contract.js',
     'scripts/analytics/trust-state.js',
     'scripts/app/profile/settings-conflict-section.js',
-    'scripts/app/profile/trust-check-modal.js'
+    'scripts/app/profile/trust-check-modal.js',
+    'scripts/intel/recs/rediscovery.js'
   ].forEach(relative => {
     assert(!fs.existsSync(path.join(root, relative)), `${relative}: удалённый runtime-файл не возвращён`);
   });
