@@ -14,10 +14,12 @@ import {
 const base = normalizeBackupSchedulerState({
   enabled: true,
   dirtyDomains: ['events', 'playlists', 'events'],
-  nextSyncAt: 100
+  nextSyncAt: 100,
+  deferredReason: 'playback_active'
 });
 
 assert.deepEqual(base.dirtyDomains, ['events', 'playlists']);
+assert.equal(base.deferredReason, 'playback_active');
 assert.deepEqual(mergeDirtyDomains(base.dirtyDomains, 'settings'), ['events', 'playlists', 'settings']);
 
 const anchor = Date.UTC(2026, 7, 3, 12);
@@ -65,6 +67,25 @@ assert.deepEqual(
     backlog: { pendingRanges: 0, unpackedEvents: 0, pullRemaining: 0 },
     sharedWriteRequired: true,
     sharedWriteConfirmed: true,
+    settingsWriteRequired: true,
+    settingsWriteConfirmed: true
+  }),
+  []
+);
+assert.deepEqual(
+  dirtyDomainsAfterSync({
+    dirtyDomains: ['settings'],
+    backlog: {},
+    settingsWriteRequired: true,
+    settingsWriteConfirmed: false
+  }),
+  ['settings']
+);
+
+assert.deepEqual(
+  dirtyDomainsAfterSync({
+    dirtyDomains: ['settings'],
+    backlog: {},
     settingsWriteRequired: true,
     settingsWriteConfirmed: true
   }),
