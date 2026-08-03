@@ -10,7 +10,6 @@ export const META_DB_STORES = Object.freeze([
   'recommendation_state',
   'collection_state',
   'intel_runtime',
-  'backup_known_ranges',
   'backup_sync_state',
   'backup_event_ranges',
   'backup_chain_watermarks',
@@ -30,7 +29,6 @@ export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
   'recommendation_state',
   'collection_state',
   'intel_runtime',
-  'backup_known_ranges',
   'backup_sync_state',
   'backup_event_ranges',
   'backup_chain_watermarks',
@@ -39,7 +37,7 @@ export const ACCOUNT_SNAPSHOT_STORES = Object.freeze([
 ]);
 
 export class MetaDB {
-  constructor() { this.dbName = 'MetaDB_v6'; this.version = 2; this.db = null; }
+  constructor() { this.dbName = 'MetaDB_v6'; this.version = 3; this.db = null; }
   async init() {
     if (this.db) return this.db;
     return window.Utils.func.memoAsyncOnce('analytics:meta-db:init', () => new Promise((res, rej) => {
@@ -51,7 +49,7 @@ export class MetaDB {
         if (!db.objectStoreNames.contains('stats')) db.createObjectStore('stats', { keyPath: 'uid' });
         if (!db.objectStoreNames.contains('global')) db.createObjectStore('global', { keyPath: 'key' });
         ['listener_profile', 'provider_identity', 'hybrid_sync', 'recommendation_state', 'collection_state', 'intel_runtime', 'backup_sync_state', 'backup_recovery_checkpoints'].forEach(n => !db.objectStoreNames.contains(n) && db.createObjectStore(n, { keyPath: 'key' }));
-        if (!db.objectStoreNames.contains('backup_known_ranges')) db.createObjectStore('backup_known_ranges', { keyPath: 'rangeKey' });
+        if (db.objectStoreNames.contains('backup_known_ranges')) db.deleteObjectStore('backup_known_ranges');
         if (!db.objectStoreNames.contains('backup_event_ranges')) db.createObjectStore('backup_event_ranges', { keyPath: 'rangeKey' });
         if (!db.objectStoreNames.contains('backup_chain_watermarks')) db.createObjectStore('backup_chain_watermarks', { keyPath: 'key' });
         if (!db.objectStoreNames.contains('backup_chain_quarantine')) db.createObjectStore('backup_chain_quarantine', { keyPath: 'key' });
