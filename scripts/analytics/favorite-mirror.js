@@ -260,16 +260,12 @@ class FavoriteMirrorService {
           ? 'favorite_bootstrap'
           : 'favorite_poll'
       );
-      this.startPolling();
       return true;
     })().finally(() => {
       this.syncing = null;
     });
 
     return this.syncing;
-  }
-  startPolling() {
-    return false;
   }
   stopPolling() {
     clearTimeout(this.timer);
