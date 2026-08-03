@@ -15346,6 +15346,8 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   const statsV5 = 'scripts/analytics/stats-v4-projection.js';
   const meta = 'scripts/analytics/meta-db.js';
   const proxy = 'cloud-functions/vi3na1bita-backup-proxy/index.js';
+  const signaling = 'cloud-functions/vi3-signaling/index.js';
+  const coordinator = 'cloud-functions/vi3-signaling/backup-coordinator.js';
 
   [
     "BACKUP_V7_VERSION = '7.1'",
@@ -15424,6 +15426,34 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   contains('scripts/analytics/backup-v7-recovery.js', "readRows('events_warm')");
   contains('scripts/analytics/backup-v7-recovery.js', 'captureStorage(DEVICE_STORAGE_KEYS)');
   excludes('scripts/analytics/backup-v7-recovery.js', /replaceRows\(['"]backup_chain_watermarks['"]/, 'Checkpoint снова откатывает уже подтверждённые cloud watermarks');
+  [
+    'normalizeCoordinatorState',
+    'claimCoordinatorLease',
+    'authorizeCoordinatorLease',
+    'renewCoordinatorLease',
+    'completeCoordinatorLease',
+    'releaseCoordinatorLease',
+    'publicCoordinatorState',
+    'manual: 100',
+    'continuation: 50',
+    'initial_device: 40',
+    'daily: 10'
+  ].forEach(marker => contains(coordinator, marker));
+
+  [
+    'backup_sync_claim',
+    'backup_sync_authorize',
+    'backup_sync_renew',
+    'backup_sync_complete',
+    'backup_sync_release',
+    'backup_sync_status',
+    'backupCoordinatorKey',
+    'mutateBackupCoordinator',
+    'BACKUP_COORDINATOR_DISK_BLOCK_MS'
+  ].forEach(marker => contains(signaling, marker));
+
+  excludes(coordinator, /require\(['"]ydb-sdk['"]\)|fetch\(|process\.env|playerCore|localStorage|sessionStorage/, 'Pure Backup coordinator получил runtime-зависимость');
+  excludes(coordinator, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Backup coordinator управляет playback');
   contains(meta, "this.dbName = 'MetaDB_v6'");
   contains(meta, "createIndex('chainSeq'");
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
