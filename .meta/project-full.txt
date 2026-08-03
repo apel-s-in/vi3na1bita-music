@@ -14531,7 +14531,7 @@ export function renderYandexAuthBlock({ root, localProfile }) {
 
   if (st === 'active' && pr) {
     const avatarHtml = pr.avatar ? `<img class="yandex-auth-avatar" src="${esc(pr.avatar)}" alt="avatar" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'yandex-auth-avatar--fallback',textContent:'Я'}))">` : `<div class="yandex-auth-avatar--fallback">Я</div>`;
-    root.innerHTML = renderYandexConnectedBlock({ profile:pr, statusLabel:sL, statusColor:sC, hasDiskAccess:hDA, avatarHtml, cloudInfo:null, compareVm:null, restoreDone:true, lastSyncLabel:lSL, autosaveChecked:aCh, autoRelogin:aL });
+    root.innerHTML = renderYandexConnectedBlock({ profile:pr, statusLabel:sL, statusColor:sC, hasDiskAccess:hDA, avatarHtml, lastSyncLabel:lSL, autosaveChecked:aCh, autoRelogin:aL });
   } else root.innerHTML = renderYandexLoggedOutBlock({ statusLabel:sL, statusColor:sC });
 
   bindYandexActions(root, rr);
