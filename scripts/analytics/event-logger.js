@@ -5,7 +5,23 @@
 
 import { metaDB } from './meta-db.js';
 import { normalizeEventEnvelope } from './event-contract.js';
-import { buildLedgerEvents, writeLedgerCheckpoint } from './event-integrity.js';
+import { buildLedgerEvents, LEDGER_CHECKPOINT_KEY, publishLedgerCheckpoint, writeLedgerCheckpoint } from './event-integrity.js';
+
+const commitLedgerBatch = async ({ events, checkpoint }) => {
+  await metaDB.init();
+  return new Promise((resolve, reject) => {
+    const tx = metaDB.db.transaction(['events_hot', 'global'], 'readwrite');
+    const eventStore = tx.objectStore('events_hot');
+    const globalStore = tx.objectStore('global');
+
+    events.forEach(event => eventStore.put(event));
+    globalStore.put({ key: LEDGER_CHECKPOINT_KEY, value: checkpoint });
+
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('event_ledger_commit_aborted'));
+  });
+};
 
 class EventLogger {
   constructor() {
@@ -80,8 +96,8 @@ class EventLogger {
         const raw = this.queue.splice(0);
         try {
           const built = await buildLedgerEvents(raw, { db: metaDB });
-          await metaDB.addEvents(built.events, 'events_hot');
-          await writeLedgerCheckpoint(metaDB, built.checkpoint);
+          await commitLedgerBatch(built);
+          publishLedgerCheckpoint(built.checkpoint);
           window.dispatchEvent(new CustomEvent('analytics:logUpdated', { detail: { count: built.events.length, domains: [...new Set(built.events.map(item => item.domain).filter(Boolean))] } }));
         } catch {
           this.queue.unshift(...raw);
