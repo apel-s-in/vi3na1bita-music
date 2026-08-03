@@ -483,6 +483,7 @@ const main = async () => {
   contains('scripts/analytics/favorite-mirror.js', 'REMOTE_MAX_AGE_MS');
   contains('scripts/analytics/favorite-mirror.js', 'remoteIsFresh');
   excludes('scripts/analytics/favorite-mirror.js', /setInterval\([\s\S]{0,160}(?:favorite|sync)/, 'Favorite Mirror снова содержит постоянный poll');
+  excludes('scripts/analytics/favorite-mirror.js', /startPolling\s*\(/, 'Мёртвый Favorite Mirror polling facade снова добавлен');
   contains('scripts/offline/update-checker.js', 'isAppQuiet');
   contains('scripts/analytics/backup-sync-engine.js', 'isAppQuiet');
   contains('scripts/core/config.js', 'OFFLINE_UPDATE_CHECKER_ENABLED: false');
