@@ -294,11 +294,13 @@ export const prepareStatsRollupMigration = async ({ allowWatermarkRewind = false
   if (orphanBreaks.size && !allowWatermarkRewind) {
     return {
       needed: true,
-      changed: invalidWithRaw.size > 0,
+      changed: false,
       deferred: false,
       requiresCloudRepair: true,
       rewoundChains: 0,
-      deletedRollups: invalidWithRaw.size
+      deletedRollups: 0,
+      pendingLocalRebuilds: invalidWithRaw.size,
+      pendingOrphanChains: orphanBreaks.size
     };
   }
 
