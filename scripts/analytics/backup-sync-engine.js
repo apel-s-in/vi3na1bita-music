@@ -155,7 +155,7 @@ const finishSuccessfulSync = async ({ result, dirtyDomains, sharedWriteRequired,
     sharedWriteRequired,
     sharedWriteConfirmed: !sharedWriteRequired || result?.shared?.pushed === true,
     settingsWriteRequired,
-    settingsWriteConfirmed: !settingsWriteRequired || result?.settings?.pushed != null
+    settingsWriteConfirmed: !settingsWriteRequired || result?.settings?.confirmed === true
   });
   const continuation = backupNeedsContinuation(backlog);
   const completedAt = Date.now();
