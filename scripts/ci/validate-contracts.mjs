@@ -251,6 +251,10 @@ const validatePlaybackOwnershipFoundation = () => {
   contains(server, 'transferredEndpoint');
   contains('cloud-functions/vi3-webpush/index.js', 'subscriptionLeaseExpiresAt');
   contains('cloud-functions/vi3-webpush/index.js', 'expiredSubscriptionsDeleted');
+  contains('cloud-functions/vi3-webpush/index.js', 'kvDeleteIfPayload');
+  contains('cloud-functions/vi3-webpush/index.js', 'expected_payload_json');
+  contains('cloud-functions/vi3-webpush/index.js', 'safe(index.subscriptionKey) === safe(row.pk)');
+  excludes('cloud-functions/vi3-webpush/index.js', /async function kvDelete\(pk\)/, 'Web Push снова использует unconditional delete');
   contains('scripts/app/push/web-push.js', 'refreshExistingWebPushLease');
   contains('scripts/app/push/web-push.js', 'LEASE_REFRESH_MS');
   contains('cloud-functions/vi3-signaling/index.js', "kind: 'PLAYBACK_TRANSFERRED'");
