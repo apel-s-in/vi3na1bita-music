@@ -3396,7 +3396,7 @@ import { packLocalBackupV7Ranges } from './backup-v7-range.js';
 import { clearBackupV7Checkpoint, getBackupV7Checkpoint, restoreBackupV7Checkpoint } from './backup-v7-recovery.js';
 import { STATS_SHARD_VERSION } from './stats-shard-contract.js';
 import { isAppQuiet } from '../core/app-activity.js';
-import { getBackupResourceBusyReason, withBackupCoordinatorLease } from './backup-coordinator-client.js';
+import { backupCoordinatorSchedulerPatch, getBackupResourceBusyReason, withBackupCoordinatorLease } from './backup-coordinator-client.js';
 import {
   BACKUP_CONTINUATION_MS,
   BACKUP_DAILY_MS,
@@ -3641,18 +3641,9 @@ const runDueSyncImpl = async ({ reason = 'scheduled_daily', force = false } = {}
     });
 
     if (!coordinated.granted) {
-      const retryAt = Number(coordinated.retryAt || Date.now() + BACKUP_QUIET_RETRY_MS);
-      await persistState({
-        queue: coordinated.coordinator || null,
-        nextSyncAt: retryAt,
-        continuationAt: retryAt,
-        deferredReason: coordinated.queued
-          ? 'coordinator_queued'
-          : coordinated.blocked
-            ? 'coordinator_blocked'
-            : coordinated.reason || 'coordinator_busy'
-      });
-      scheduleAt(retryAt);
+      const patch = backupCoordinatorSchedulerPatch(coordinated, Date.now() + BACKUP_QUIET_RETRY_MS);
+      await persistState(patch);
+      scheduleAt(patch.nextSyncAt);
       return false;
     }
 
