@@ -9,6 +9,17 @@ import { getEmbeddedFriendsRpcMethod } from 'https://vi3na1bita.website.yandexcl
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const publishGameActivity = (active, state = 'closed', gameId = '') => {
+  const detail = {
+    active: active === true,
+    state: safe(state),
+    gameId: safe(gameId),
+    updatedAt: Date.now()
+  };
+  W.__gameActivity = detail;
+  W.dispatchEvent(new CustomEvent('game:activity', { detail }));
+  return detail;
+};
 const GAME_SIGNALING_SCOPES = Object.freeze({
   tower: new Set(['player_register', 'presence_heartbeat', 'friends_snapshot', 'friend_status_check', 'presence_batch', 'friend_list', 'profile_get', 'rtc_config', 'leaderboard_v2_get']),
   war_hearts: new Set([
@@ -341,6 +352,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       return;
     }
     if (d.type === 'GC_COLLAPSE_GAME') {
+      publishGameActivity(true, 'collapsed_running', d.payload?.gameId || 'war_hearts');
       const host = document.querySelector('.gc-host.is-mounted');
       if (host) {
         document.body.appendChild(host); // Спасаем iframe от уничтожения при рендере альбома
@@ -429,6 +441,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
       return;
     }
     if (d.type === 'GC_CLOSE') {
+      publishGameActivity(false, 'closed', d.payload?.gameId || '');
       try {
         W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_close', revision: safe(config.revision || '') });
       } catch {}
@@ -450,6 +463,7 @@ export const createGameBridgeHost = ({ iframe, config = {}, onState } = {}) => {
     bridgeId,
     sendSnapshot,
     destroy() {
+      publishGameActivity(false, 'destroyed', '');
       alive = false;
       activeFriendsRequests.clear();
       activeSignalingRequests.clear();
