@@ -9,7 +9,6 @@ export const fmtTime = ts => safeNum(ts) > 0 ? new Date(safeNum(ts)).toLocaleTim
 
 export const renderMetaBox = ({ label = '', value = '' } = {}) =>
   `<div class="yandex-auth-metabox"><div class="yandex-auth-metabox-label">${esc(label)}</div><div class="yandex-auth-metabox-value">${esc(value)}</div></div>`;
-export const renderCloudMetaBox = renderMetaBox;
 
 export const renderSectionCard = ({ title = '', body = '', style = '' } = {}) =>
   `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;${esc(style)}">${title ? `<div style="font-size:11px;font-weight:900;color:#8ab8fd;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${esc(title)}</div>` : ''}${body}</div>`;
@@ -75,6 +74,4 @@ export const renderCloudStatPair = ({ localSummary: l, cloudSummary: c } = {}) =
 export const renderSyncLogRow = r =>
   `<div class="profile-list-item sync-log-row"><div style="font-size:20px">${r?.ok ? '✅' : '⚠️'}</div><div class="log-info"><div class="log-title">${esc(fmtDateTime(r?.timestamp))} · ${esc(r?.reason || 'sync')}</div><div class="log-desc">${esc(r?.ok ? 'успешно' : `ошибка: ${r?.error || 'unknown'}`)}</div><div class="log-desc">hash: ${esc(r?.hash || '—')} · domains: ${esc((r?.domains || []).join(', ') || '—')}</div><div class="log-desc">shared: ${r?.uploadedShared ? 'да' : 'нет'} · archive: ${r?.uploadedEventArchive ? 'да' : 'нет'} · device: ${r?.uploadedDevice ? 'да' : 'нет'}</div></div></div>`;
 
-export const renderCloudCompareNotice = () => '';
-
-export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderCloudMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderStatusPill, renderDeviceTitle, renderModalNote, renderActionGrid, renderSmallListRow, renderInlineActions, renderCloudStatPair, renderSyncLogRow, renderCloudCompareNotice };
+export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderStatusPill, renderDeviceTitle, renderModalNote, renderActionGrid, renderSmallListRow, renderInlineActions, renderCloudStatPair, renderSyncLogRow };
