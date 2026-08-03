@@ -102,9 +102,14 @@ const scheduleAt = timestamp => {
   return true;
 };
 
-const scheduleRetry = (delayMs, reason) => {
+const scheduleRetry = (delayMs, reason, { error = false } = {}) => {
   const at = Date.now() + Math.max(1000, Number(delayMs) || BACKUP_RETRY_MS);
-  persistState({ nextSyncAt: at, continuationAt: at, lastError: reason || state.lastError }).catch(() => null);
+  persistState({
+    nextSyncAt: at,
+    continuationAt: at,
+    deferredReason: error ? '' : safe(reason),
+    ...(error ? { lastError: safe(reason) || state.lastError } : {})
+  }).catch(() => null);
   scheduleAt(at);
   return at;
 };
@@ -172,6 +177,7 @@ const finishSuccessfulSync = async ({ result, dirtyDomains, sharedWriteRequired,
     lastFullSyncAt: continuation ? state.lastFullSyncAt : completedAt,
     lastSuccessAt: completedAt,
     lastError: '',
+    deferredReason: '',
     blockReason: '',
     blockUntil: 0
   });
@@ -242,7 +248,7 @@ const runDueSyncImpl = async ({ reason = 'scheduled_daily', force = false } = {}
     } else if (status === 401 || status === 403 || /disk.*(?:access|scope|forbidden)|oauth|required/i.test(message)) {
       await persistState({ blockReason: 'disk_access_unavailable', blockUntil: 0, lastError: message });
     } else {
-      scheduleRetry(BACKUP_RETRY_MS, message || 'backup_sync_failed');
+      scheduleRetry(BACKUP_RETRY_MS, message || 'backup_sync_failed', { error: true });
     }
 
     window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'idle', reason, error: message } }));
