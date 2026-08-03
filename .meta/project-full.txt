@@ -3036,111 +3036,127 @@ export default {
 
 //=================================================
 // FILE: /scripts/analytics/backup-sync-engine.js
-// Экономный Backup v7.1 scheduler.
-// Push и pull чередуются в 12-часовых foreground-слотах; каждая фаза выполняется не чаще раза в 24 часа.
-import { syncBackupV7, getBackupV7Status, rebuildBackupV7LocalAnalytics } from './backup-v7-sync.js';
+// Account-scoped Backup V7.1 scheduler.
+// Один selective full sync в сутки; local packing не выполняет сеть.
+// Автоматические операции всегда откладываются во время playback.
+import { metaDB } from './meta-db.js';
+import { syncBackupV7, getBackupV7BacklogStatus, getBackupV7Status, rebuildBackupV7LocalAnalytics } from './backup-v7-sync.js';
 import { packLocalBackupV7Ranges } from './backup-v7-range.js';
 import { clearBackupV7Checkpoint, getBackupV7Checkpoint, restoreBackupV7Checkpoint } from './backup-v7-recovery.js';
+import { STATS_SHARD_VERSION } from './stats-shard-contract.js';
 import { isAppQuiet } from '../core/app-activity.js';
+import {
+  BACKUP_CONTINUATION_MS,
+  BACKUP_DAILY_MS,
+  BACKUP_PLAYBACK_DEFER_MS,
+  BACKUP_QUIET_RETRY_MS,
+  BACKUP_RETRY_MS,
+  backupNeedsContinuation,
+  dirtyDomainsAfterSync,
+  emptyBackupSchedulerState,
+  mergeDirtyDomains,
+  nextBackupDailyAt,
+  normalizeBackupSchedulerState
+} from './backup-scheduler-policy.js';
 
-const LS_SYNC = 'backup:autosync:enabled';
-const LS_DUE = 'backup:v71:next-sync-at';
-const LS_DIRTY = 'backup:v71:dirty';
-const LS_PHASE = 'backup:v71:next-phase';
-const LS_BLOCK_REASON = 'backup:v71:block-reason';
-const LS_BLOCK_UNTIL = 'backup:v71:block-until';
-const SLOT_MS = 12 * 60 * 60 * 1000;
-const JITTER_MS = 30 * 60 * 1000;
+const STATE_KEY = 'scheduler:v1';
+const LEGACY_KEYS = Object.freeze([
+  'backup:v71:next-sync-at',
+  'backup:v71:next-phase',
+  'backup:v71:dirty',
+  'backup:v71:block-reason',
+  'backup:v71:block-until'
+]);
 const DISK_FULL_RETRY_MS = 24 * 60 * 60 * 1000;
-const PLAYBACK_DEFER_MS = 30 * 60 * 1000;
 const LOCAL_PACK_DELAY_MS = 60 * 1000;
 let bound = false;
+let ready = false;
 let timer = 0;
 let packTimer = 0;
-let ready = false;
+let state = emptyBackupSchedulerState();
+let stateLoaded = false;
+let stateWrite = Promise.resolve();
 
-export const isSyncEnabled = () => localStorage.getItem(LS_SYNC) !== '0';
-export const isSyncReady = () => ready && isSyncEnabled();
-export const isRestoreOrSkipDone = () => true;
-export const markRestoreOrSkipDone = () => true;
+const safe = value => String(value == null ? '' : value).trim();
+const ownerKey = () => safe(window.AccountDataContext?.getCurrentOwner?.());
+const deviceId = () => safe(localStorage.getItem('deviceStableId') || localStorage.getItem('deviceHash') || 'web');
 
-const nextDueAt = () => Math.max(0, Number(localStorage.getItem(LS_DUE) || 0));
-const setNextDue = at => localStorage.setItem(LS_DUE, String(Math.max(0, Number(at) || 0)));
-const readPhase = () => localStorage.getItem(LS_PHASE) === 'pull' ? 'pull' : 'push';
-const setPhase = phase => localStorage.setItem(LS_PHASE, phase === 'pull' ? 'pull' : 'push');
-const readDirtyDomains = () => {
-  const raw = String(localStorage.getItem(LS_DIRTY) || '');
-  if (!raw) return new Set();
-  if (raw === '1') return new Set(['events', 'playlists', 'settings']);
-  return new Set(raw.split(',').map(value => value.trim()).filter(Boolean));
-};
-const markDirty = (domain = 'events') => {
-  const domains = readDirtyDomains();
-  domains.add(String(domain || 'events').trim() || 'events');
-  localStorage.setItem(LS_DIRTY, [...domains].sort().join(','));
-};
-const clearDirty = () => localStorage.removeItem(LS_DIRTY);
-const readBlock = () => ({ reason: String(localStorage.getItem(LS_BLOCK_REASON) || ''), until: Math.max(0, Number(localStorage.getItem(LS_BLOCK_UNTIL) || 0)) });
-const clearBlock = () => {
-  localStorage.removeItem(LS_BLOCK_REASON);
-  localStorage.removeItem(LS_BLOCK_UNTIL);
-};
-const setBlock = (reason, until = 0) => {
-  localStorage.setItem(LS_BLOCK_REASON, String(reason || 'backup_unavailable'));
-  localStorage.setItem(LS_BLOCK_UNTIL, String(Math.max(0, Number(until) || 0)));
-  window.dispatchEvent(new CustomEvent('backup:sync:availability', { detail: getBackupV7Availability() }));
-};
-export const getBackupV7Availability = () => {
-  const block = readBlock();
-  return {
-    available: ready && isSyncEnabled() && (!block.reason || (block.until > 0 && block.until <= Date.now())),
-    blocked: !!block.reason && (block.until === 0 || block.until > Date.now()),
-    enabled: isSyncEnabled(),
-    ready,
-    reason: block.reason,
-    retryAt: block.until,
-    retryInMs: Math.max(0, block.until - Date.now()),
-    diskAccess: window.YandexAuth?.hasDiskAccess?.() === true
-  };
-};
-export const clearBackupV7Dirty = () => {
-  clearDirty();
-  return true;
-};
-export const clearBackupV7Block = () => {
-  clearBlock();
-  return true;
+const publishState = reason => {
+  window.dispatchEvent(new CustomEvent('backup:sync:scheduler', {
+    detail: { reason, ...getBackupSchedulerState() }
+  }));
 };
 
-export const setSyncEnabled = value => {
-  localStorage.setItem(LS_SYNC, value ? '1' : '0');
-  if (!value) {
-    clearTimeout(timer);
-    timer = 0;
+const persistState = patch => {
+  state = normalizeBackupSchedulerState({ ...state, ...(patch || {}), updatedAt: Date.now() });
+  stateWrite = stateWrite.catch(() => null).then(() => metaDB.setStoreValue('backup_sync_state', STATE_KEY, state));
+  publishState('persist');
+  return stateWrite.then(() => state);
+};
+
+const loadState = async ({ force = false } = {}) => {
+  if (stateLoaded && !force) return state;
+  const row = await metaDB.getStoreValue('backup_sync_state', STATE_KEY).catch(() => null);
+  state = normalizeBackupSchedulerState(row?.value || {});
+  stateLoaded = true;
+
+  if (!row) {
+    const legacyDirty = safe(localStorage.getItem('backup:v71:dirty'));
+    const dirtyDomains = legacyDirty
+      ? legacyDirty === '1'
+        ? ['events', 'playlists', 'settings']
+        : legacyDirty.split(',').map(safe).filter(Boolean)
+      : [];
+    state = normalizeBackupSchedulerState({
+      ...state,
+      enabled: localStorage.getItem('backup:autosync:enabled') !== '0',
+      nextSyncAt: Number(localStorage.getItem('backup:v71:next-sync-at') || 0),
+      blockReason: safe(localStorage.getItem('backup:v71:block-reason')),
+      blockUntil: Number(localStorage.getItem('backup:v71:block-until') || 0),
+      dirtyDomains
+    });
+    await persistState(state);
   }
-  window.dispatchEvent(new CustomEvent('backup:sync:settings:changed'));
+
+  LEGACY_KEYS.forEach(key => {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  });
+  return state;
 };
 
-export const markSyncReady = reason => {
-  ready = !['no_auth_local_only', 'logged_out_local_only', 'offline_skip', 'account_switch', 'device_initialization_pending', 'disk_access_unavailable'].includes(String(reason || ''));
-  window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason, blocked: !ready } }));
-};
-
-export const suspendSyncForAccountSwitch = () => {
+const scheduleAt = timestamp => {
   clearTimeout(timer);
-  clearTimeout(packTimer);
   timer = 0;
-  packTimer = 0;
-  ready = false;
-  window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'idle' } }));
+  if (!isSyncReady()) return false;
+  const delay = Math.max(0, Number(timestamp || 0) - Date.now());
+  timer = setTimeout(() => {
+    timer = 0;
+    runDueSync({ reason: 'scheduled_daily' }).catch(() => null);
+  }, Math.min(delay, 2147483647));
   return true;
+};
+
+const scheduleRetry = (delayMs, reason) => {
+  const at = Date.now() + Math.max(1000, Number(delayMs) || BACKUP_RETRY_MS);
+  persistState({ nextSyncAt: at, continuationAt: at, lastError: reason || state.lastError }).catch(() => null);
+  scheduleAt(at);
+  return at;
+};
+
+const markDirty = async (domain = 'events') => {
+  await loadState();
+  const dirtyDomains = mergeDirtyDomains(state.dirtyDomains, domain);
+  await persistState({ dirtyDomains });
+  return dirtyDomains;
 };
 
 const runLocalPack = async reason => {
   if (document.hidden || window.playerCore?.isPlaying?.() || window.__accountDataSwitching) return false;
-  const result = await packLocalBackupV7Ranges().catch(error => ({ ok: false, error: String(error?.message || error) }));
+  const result = await packLocalBackupV7Ranges().catch(error => ({ ok: false, error: safe(error?.message || error) }));
   if (result?.packed > 0) {
-    markDirty('events');
+    await markDirty('events');
     window.dispatchEvent(new CustomEvent('backup:local-spool-updated', {
       detail: { reason, packed: result.packed, events: result.events, quarantined: result.quarantined?.length || 0 }
     }));
@@ -3151,6 +3167,7 @@ const runLocalPack = async reason => {
 
 const scheduleLocalPack = (reason = 'events', delayMs = LOCAL_PACK_DELAY_MS) => {
   clearTimeout(packTimer);
+  packTimer = 0;
   if (document.hidden || window.playerCore?.isPlaying?.()) return false;
   packTimer = setTimeout(() => {
     packTimer = 0;
@@ -3159,99 +3176,190 @@ const scheduleLocalPack = (reason = 'events', delayMs = LOCAL_PACK_DELAY_MS) => 
   return true;
 };
 
-const scheduleAt = timestamp => {
-  clearTimeout(timer);
-  if (!isSyncReady()) return false;
+const shouldRunStartupRebuild = async restoredCheckpoint => {
+  if (restoredCheckpoint) return true;
+  const [schema, status] = await Promise.all([
+    metaDB.getGlobal('backup_stats_rollup_schema').catch(() => null),
+    getBackupV7Status().catch(() => null)
+  ]);
+  return Number(status?.storedRanges || 0) > 0 && Number(schema?.value?.version || 0) !== STATS_SHARD_VERSION;
+};
 
-  const delay = Math.max(0, timestamp - Date.now());
-  timer = setTimeout(() => {
-    timer = 0;
-    runDueSync({ reason: 'scheduled_24h' }).catch(() => null);
-  }, Math.min(delay, 2147483647));
+const finishSuccessfulSync = async ({ result, dirtyDomains, sharedWriteRequired, settingsWriteRequired }) => {
+  const backlog = result?.backlog || await getBackupV7BacklogStatus();
+  const nextDirty = dirtyDomainsAfterSync({
+    dirtyDomains,
+    backlog,
+    sharedWriteRequired,
+    sharedWriteConfirmed: !sharedWriteRequired || result?.shared?.pushed === true,
+    settingsWriteRequired,
+    settingsWriteConfirmed: !settingsWriteRequired || result?.settings?.pushed != null
+  });
+  const continuation = backupNeedsContinuation(backlog);
+  const completedAt = Date.now();
+  const nextSyncAt = continuation
+    ? completedAt + BACKUP_CONTINUATION_MS
+    : nextBackupDailyAt({ fromAt: completedAt, owner: ownerKey(), deviceId: deviceId() });
+
+  await persistState({
+    dirtyDomains: nextDirty,
+    nextSyncAt,
+    continuationAt: continuation ? nextSyncAt : 0,
+    lastFullSyncAt: continuation ? state.lastFullSyncAt : completedAt,
+    lastSuccessAt: completedAt,
+    lastError: '',
+    blockReason: '',
+    blockUntil: 0
+  });
+  scheduleAt(nextSyncAt);
+  return { continuation, nextSyncAt, backlog, dirtyDomains: nextDirty };
+};
+
+const runDueSync = async ({ reason = 'scheduled_daily', force = false } = {}) => {
+  await loadState();
+
+  if (state.blockReason && state.blockUntil > Date.now() && !force) {
+    scheduleAt(state.blockUntil);
+    return false;
+  }
+  if (state.blockReason && state.blockUntil > 0 && state.blockUntil <= Date.now()) {
+    await persistState({ blockReason: '', blockUntil: 0 });
+  }
+  if (!isSyncReady()) return false;
+  if (document.hidden) return false;
+  if (!force && isAppQuiet()) {
+    scheduleRetry(BACKUP_QUIET_RETRY_MS, 'quiet_mode');
+    return false;
+  }
+  if (window.playerCore?.isPlaying?.()) {
+    scheduleRetry(BACKUP_PLAYBACK_DEFER_MS, 'playback_active');
+    return false;
+  }
+  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) {
+    scheduleRetry(BACKUP_RETRY_MS, 'network_unavailable');
+    return false;
+  }
+  if (!force && state.nextSyncAt > Date.now()) {
+    scheduleAt(state.nextSyncAt);
+    return false;
+  }
+
+  await runLocalPack(`before_sync:${reason}`).catch(() => null);
+  await loadState({ force: true });
+  const dirtyDomains = [...state.dirtyDomains];
+  const sharedWriteRequired = dirtyDomains.includes('playlists');
+  const settingsWriteRequired = dirtyDomains.includes('settings');
+
+  await persistState({ lastAttemptAt: Date.now(), lastError: '' });
+  window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'syncing', reason } }));
+
+  try {
+    const result = await syncBackupV7({
+      reason: `${reason}:daily_full`,
+      pushEnabled: true,
+      pullEnabled: true,
+      sharedReadEnabled: true,
+      sharedWriteEnabled: sharedWriteRequired,
+      includeSettings: true,
+      settingsReadEnabled: false,
+      maxPullRanges: 50
+    });
+    await finishSuccessfulSync({ result, dirtyDomains, sharedWriteRequired, settingsWriteRequired });
+    window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'ok', reason, backlog: result.backlog } }));
+    return result;
+  } catch (error) {
+    const status = Number(error?.status || 0);
+    const message = safe(error?.message);
+
+    if (status === 507 || /disk_space_exhausted|not.?enough.?space|insufficient.?storage/i.test(message)) {
+      const retryAt = Date.now() + DISK_FULL_RETRY_MS;
+      await persistState({ blockReason: 'disk_space_exhausted', blockUntil: retryAt, nextSyncAt: retryAt, lastError: message });
+      scheduleAt(retryAt);
+    } else if (status === 401 || status === 403 || /disk.*(?:access|scope|forbidden)|oauth|required/i.test(message)) {
+      await persistState({ blockReason: 'disk_access_unavailable', blockUntil: 0, lastError: message });
+    } else {
+      scheduleRetry(BACKUP_RETRY_MS, message || 'backup_sync_failed');
+    }
+
+    window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'idle', reason, error: message } }));
+    return false;
+  }
+};
+
+export const getBackupSchedulerState = () => ({
+  ...normalizeBackupSchedulerState(state),
+  ready,
+  loaded: stateLoaded,
+  playing: window.playerCore?.isPlaying?.() === true,
+  hidden: document.hidden
+});
+
+export const isSyncEnabled = () => state.enabled !== false;
+export const isSyncReady = () => ready && isSyncEnabled();
+export const isRestoreOrSkipDone = () => true;
+export const markRestoreOrSkipDone = () => true;
+
+export const getBackupV7Availability = () => ({
+  available: ready && isSyncEnabled() && (!state.blockReason || (state.blockUntil > 0 && state.blockUntil <= Date.now())),
+  blocked: !!state.blockReason && (state.blockUntil === 0 || state.blockUntil > Date.now()),
+  enabled: isSyncEnabled(),
+  ready,
+  reason: state.blockReason,
+  retryAt: state.blockUntil,
+  retryInMs: Math.max(0, state.blockUntil - Date.now()),
+  diskAccess: window.YandexAuth?.hasDiskAccess?.() === true
+});
+
+export const clearBackupV7Dirty = async ({ result = null } = {}) => {
+  await loadState();
+  const backlog = result?.backlog || await getBackupV7BacklogStatus();
+  if (backupNeedsContinuation(backlog)) return false;
+  await persistState({ dirtyDomains: [] });
   return true;
 };
 
-const runDueSync = async ({ reason = 'scheduled_24h', force = false } = {}) => {
-  const block = readBlock();
-  if (block.reason && block.until > Date.now() && !force) {
-    scheduleAt(block.until);
-    return false;
-  }
-  if (block.reason && block.until > 0 && block.until <= Date.now()) {
-    clearBlock();
-    ready = true;
-  }
-  if (!isSyncReady() || document.hidden || (!force && isAppQuiet())) return false;
-  if (window.playerCore?.isPlaying?.()) {
-    scheduleAt(Date.now() + PLAYBACK_DEFER_MS);
-    return false;
-  }
-  if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return false;
-
-  const dueAt = nextDueAt();
-  if (!force && dueAt > Date.now()) {
-    scheduleAt(dueAt);
-    return false;
-  }
-
-  try {
-    const dirtyDomains = readDirtyDomains();
-    let phase = force ? 'full' : readPhase();
-    if (!force && phase === 'push' && !dirtyDomains.size) phase = 'pull';
-
-    await syncBackupV7({
-      reason: `${reason}:${phase}`,
-      pushEnabled: phase !== 'pull',
-      pullEnabled: phase !== 'push',
-      includeShared: force || phase === 'pull' || dirtyDomains.has('playlists'),
-      includeSettings: phase !== 'pull',
-      settingsReadEnabled: phase !== 'push',
-      maxPullRanges: phase === 'push' ? 1 : 50
-    });
-    clearBlock();
-    ready = true;
-    if (phase !== 'pull') clearDirty();
-    if (!force) setPhase(phase === 'push' ? 'pull' : 'push');
-    const next = Date.now() + SLOT_MS + Math.floor(Math.random() * JITTER_MS);
-    setNextDue(next);
-    scheduleAt(next);
-    return true;
-  } catch (error) {
-    const status = Number(error?.status || 0);
-    const message = String(error?.message || '');
-
-    if (status === 507 || /disk_space_exhausted|not.?enough.?space|insufficient.?storage/i.test(message)) {
-      const retry = Date.now() + DISK_FULL_RETRY_MS;
-      setBlock('disk_space_exhausted', retry);
-      setNextDue(retry);
-      scheduleAt(retry);
-      return false;
-    }
-
-    if (status === 401 || status === 403 || /disk.*(?:access|scope|forbidden)|oauth|required/i.test(message)) {
-      setBlock('disk_access_unavailable', 0);
-      return false;
-    }
-
-    const retry = Date.now() + 60 * 60 * 1000;
-    setNextDue(retry);
-    scheduleAt(retry);
-    return false;
-  }
+export const clearBackupV7Block = async () => {
+  await loadState();
+  await persistState({ blockReason: '', blockUntil: 0, lastError: '' });
+  return true;
 };
 
-export const scheduleBackupV7Sync = ({ immediate = false, reason = 'autosync' } = {}) => {
-  markDirty('events');
-  if (!isSyncReady()) return false;
-
-  if (immediate) {
-    if (document.hidden) return false;
-    queueMicrotask(() => runDueSync({ reason, force: true }).catch(() => null));
-    return true;
+export const setSyncEnabled = value => {
+  state.enabled = value === true;
+  localStorage.setItem('backup:autosync:enabled', state.enabled ? '1' : '0');
+  persistState({ enabled: state.enabled }).catch(() => null);
+  if (!state.enabled) {
+    clearTimeout(timer);
+    timer = 0;
+  } else {
+    scheduleAt(state.nextSyncAt || Date.now());
   }
+  window.dispatchEvent(new CustomEvent('backup:sync:settings:changed'));
+};
 
-  const due = nextDueAt() || Date.now();
-  scheduleAt(due);
+export const markSyncReady = reason => {
+  ready = !['no_auth_local_only', 'logged_out_local_only', 'offline_skip', 'account_switch', 'device_initialization_pending', 'disk_access_unavailable'].includes(safe(reason));
+  window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason, blocked: !ready } }));
+};
+
+export const suspendSyncForAccountSwitch = () => {
+  clearTimeout(timer);
+  clearTimeout(packTimer);
+  timer = 0;
+  packTimer = 0;
+  ready = false;
+  stateLoaded = false;
+  state = emptyBackupSchedulerState();
+  window.dispatchEvent(new CustomEvent('backup:sync:state', { detail: { state: 'idle' } }));
+  return true;
+};
+
+export const scheduleBackupV7Sync = ({ immediate = false, reason = 'autosync', domain = 'events' } = {}) => {
+  markDirty(domain).then(() => {
+    if (!isSyncReady()) return;
+    if (immediate) queueMicrotask(() => runDueSync({ reason, force: true }).catch(() => null));
+    else scheduleAt(state.nextSyncAt || Date.now());
+  }).catch(() => null);
   return true;
 };
 
@@ -3260,18 +3368,16 @@ export const initBackupSyncEngine = () => {
   bound = true;
 
   const enable = async () => {
+    await loadState({ force: true });
     if (window.YandexAuth?.getSessionStatus?.() !== 'active' || !window.YandexAuth?.isTokenAlive?.()) {
       markSyncReady('no_auth_local_only');
       return;
     }
-
     if (window.YandexAuth?.hasDiskAccess?.() !== true) {
-      setBlock('disk_access_unavailable', 0);
+      await persistState({ blockReason: 'disk_access_unavailable', blockUntil: 0 });
       markSyncReady('disk_access_unavailable');
       return;
     }
-
-    clearBlock();
 
     try {
       const { getSocialSession } = await import('../core/social-session.js');
@@ -3281,62 +3387,76 @@ export const initBackupSyncEngine = () => {
         return;
       }
     } catch {
-      ready = false;
-      window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'device_authorization_unavailable', blocked: true } }));
+      markSyncReady('device_authorization_unavailable');
       return;
     }
 
     ready = true;
+    await persistState({ blockReason: '', blockUntil: 0 });
     window.dispatchEvent(new CustomEvent('backup:sync:ready', { detail: { reason: 'backup_v71_ready' } }));
 
     const checkpoint = await getBackupV7Checkpoint().catch(() => null);
+    let restored = false;
     if (checkpoint?.checkpointId) {
       await restoreBackupV7Checkpoint(checkpoint);
       await clearBackupV7Checkpoint();
+      restored = true;
       window.NotificationSystem?.info?.('Локальные данные восстановлены после прерванной синхронизации');
     }
 
-    await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_startup_repair' }).catch(() => null);
+    if (await shouldRunStartupRebuild(restored)) {
+      await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_startup_repair' }).catch(() => null);
+    }
+
     const status = await getBackupV7Status().catch(() => null);
-    const due = nextDueAt() || (status?.lastSyncAt ? status.lastSyncAt + SLOT_MS : Date.now());
-    setNextDue(due);
+    const fallbackDue = status?.lastSyncAt
+      ? nextBackupDailyAt({ fromAt: status.lastSyncAt, owner: ownerKey(), deviceId: deviceId() })
+      : Date.now();
+    if (!state.nextSyncAt) await persistState({ nextSyncAt: fallbackDue });
+    scheduleLocalPack('startup', 2500);
     if (!document.hidden) runDueSync({ reason: 'startup_due' }).catch(() => null);
   };
 
   window.addEventListener('backup:domain-dirty', event => {
     if (window.__backupV7SharedApplying || event.detail?.domain === 'favorites') return;
-    const domain = String(event.detail?.domain || '');
-    markDirty(domain === 'playlists' ? 'playlists' : domain === 'deviceSettings' ? 'settings' : 'events');
+    const domain = safe(event.detail?.domain);
+    markDirty(domain === 'playlists' ? 'playlists' : domain === 'deviceSettings' ? 'settings' : 'events').catch(() => null);
   });
   window.addEventListener('analytics:logUpdated', event => {
-    const reason = String(event.detail?.reason || '');
+    const reason = safe(event.detail?.reason);
     if (reason.startsWith('backup_v71_')) return;
-    markDirty('events');
+    markDirty('events').catch(() => null);
     scheduleLocalPack(`analytics:${reason || 'updated'}`);
   });
   ['player:pause', 'player:stop', 'player:ended'].forEach(name => {
-    window.addEventListener(name, () => scheduleLocalPack(name, 1500));
+    window.addEventListener(name, () => {
+      scheduleLocalPack(name, 1500);
+      if (state.continuationAt || state.nextSyncAt <= Date.now()) runDueSync({ reason: name }).catch(() => null);
+    });
   });
   window.addEventListener('online', () => {
     if (!document.hidden) runDueSync({ reason: 'online_due' }).catch(() => null);
   });
-  window.addEventListener('account:device-initialized', () => {
-    scheduleBackupV7Sync({ immediate: true, reason: 'device_initialized' });
+  window.addEventListener('app:activity-mode', event => {
+    if (event.detail?.mode === 'active' && !document.hidden) runDueSync({ reason: 'activity_resumed' }).catch(() => null);
   });
+  window.addEventListener('account:device-initialized', () => scheduleBackupV7Sync({ immediate: true, reason: 'device_initialized' }));
   window.addEventListener('yandex:auth:changed', event => {
     if (event.detail?.status === 'active') enable();
     else suspendSyncForAccountSwitch();
   });
   window.addEventListener('account:data-switched', enable);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) runDueSync({ reason: 'foreground_due' }).catch(() => null);
+    if (document.hidden) return;
+    scheduleLocalPack('foreground', 1200);
+    runDueSync({ reason: 'foreground_due' }).catch(() => null);
   });
 
-  scheduleLocalPack('startup', 2500);
+  window.BackupSyncEngine = { getSchedulerState: getBackupSchedulerState };
   enable();
 };
 
-export const getSyncIntervalSec = () => SLOT_MS / 1000;
+export const getSyncIntervalSec = () => BACKUP_DAILY_MS / 1000;
 export { syncBackupV7, getBackupV7Status };
 export default {
   initBackupSyncEngine,
@@ -3351,6 +3471,7 @@ export default {
   clearBackupV7Dirty,
   clearBackupV7Block,
   getBackupV7Availability,
+  getBackupSchedulerState,
   syncBackupV7,
   getBackupV7Status,
   getSyncIntervalSec
@@ -4197,8 +4318,7 @@ const saveVerifiedRanges = async ({ ranges = [], watermarks = [], ownerYandexIdH
   verified.forEach(range => {
     (Array.isArray(range.events) ? range.events : []).forEach(event => domainEvents.push(event));
   });
-  const domains = await ingestBackupDomainEvents(domainEvents).catch(() => ({ applied: 0 }));
-  return { ...storedResult, domainEventsApplied: Number(domains.applied || 0) };
+  return { ...storedResult, domainEvents };
 };
 
 const nextStoreRow = async (storeName, afterKey = null, indexName = '') => {
@@ -4437,6 +4557,7 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
   let request = { ...firstRequest };
   let storedTotal = 0;
   let quarantined = [];
+  const domainEvents = new Map();
   let previousWatermarkSignature = stableStringify(await readWatermarks());
 
   for (let page = 0; page < Math.max(1, Math.floor(Number(maxPages) || 1)); page++) {
@@ -4452,16 +4573,20 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
 
     storedTotal += Number(stored.inserted || 0);
     quarantined = [...quarantined, ...(stored.quarantined || [])];
+    (stored.domainEvents || []).forEach(event => {
+      const eventId = safe(event?.eventId);
+      if (eventId) domainEvents.set(eventId, event);
+    });
     pages.push({ result, stored });
 
     if (Number(result?.pull?.remaining || 0) <= 0) {
-      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, exhausted: false };
+      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, domainEvents: [...domainEvents.values()], exhausted: false };
     }
 
     const watermarks = await readWatermarks();
     const nextSignature = stableStringify(watermarks);
     if (nextSignature === previousWatermarkSignature) {
-      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, exhausted: true, stoppedReason: 'no_watermark_progress' };
+      return { pages, firstResult: pages[0].result, result, storedTotal, quarantined, domainEvents: [...domainEvents.values()], exhausted: true, stoppedReason: 'no_watermark_progress' };
     }
     previousWatermarkSignature = nextSignature;
 
@@ -4476,16 +4601,29 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
       includeDeviceCatalog: false,
       includePull: request.includePull !== false,
       includeShared: false,
+      includeSharedRead: false,
+      includeSharedWrite: false,
       includeSettingsRead: false,
       maxPullRanges: request.maxPullRanges
     };
   }
 
   const result = pages[pages.length - 1]?.result || null;
-  return { pages, firstResult: pages[0]?.result || null, result, storedTotal, quarantined, exhausted: Number(result?.pull?.remaining || 0) > 0, stoppedReason: 'page_limit' };
+  return { pages, firstResult: pages[0]?.result || null, result, storedTotal, quarantined, domainEvents: [...domainEvents.values()], exhausted: Number(result?.pull?.remaining || 0) > 0, stoppedReason: 'page_limit' };
+};
+export const getBackupV7BacklogStatus = async () => {
+  const [ranges, hot, warm] = await Promise.all([
+    getAllRows('backup_event_ranges').catch(() => []),
+    metaDB.getEvents('events_hot').catch(() => []),
+    metaDB.getEvents('events_warm').catch(() => [])
+  ]);
+  return {
+    pendingRanges: ranges.filter(range => range?.localPacked === true && Number(range?.cloudUploadedAt || 0) <= 0).length,
+    unpackedEvents: new Set([...hot, ...warm].map(event => safe(event?.eventId)).filter(Boolean)).size
+  };
 };
 
-const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, pullEnabled = true, includeShared = true, settingsReadEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
+const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, pullEnabled = true, sharedReadEnabled = true, sharedWriteEnabled = true, settingsReadEnabled = false, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
@@ -4503,7 +4641,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   const batch = pushEnabled ? await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash }) : null;
   const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
   const localSettingsHash = settingsPayload ? await settingsSemanticHash(settingsPayload) : '';
-  const sharedPayload = pushEnabled && includeShared ? await buildBackupV7SharedDocument() : null;
+  const sharedPayload = pushEnabled && sharedWriteEnabled ? await buildBackupV7SharedDocument() : null;
   const settingsTemplateDeviceId = safe(localStorage.getItem(TEMPLATE_KEY));
   const sendSettings = !!settingsPayload && !settingsTemplateDeviceId && localSettingsHash !== state.settingsLocalHash;
 
@@ -4518,7 +4656,9 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       settingsTemplateDeviceId,
       includeDeviceCatalog: includeDeviceCatalog === true,
       includePull: pullEnabled === true,
-      includeShared: includeShared === true,
+      includeShared: sharedReadEnabled === true || sharedWriteEnabled === true,
+      includeSharedRead: sharedReadEnabled === true,
+      includeSharedWrite: sharedWriteEnabled === true,
       includeSettingsRead: settingsReadEnabled === true,
       maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
     },
@@ -4533,11 +4673,15 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
 
   const sharedDocument = result?.shared?.current || null;
-  const needsMaterialization = pullEnabled === true || !!sharedDocument || !!result?.settings?.template;
+  const domainEvents = exchange.domainEvents || [];
+  const needsMaterialization = domainEvents.length > 0 || !!sharedDocument || !!result?.settings?.template;
   const checkpoint = needsMaterialization
     ? await createBackupV7Checkpoint({ reason: `backup_v71_sync:${reason}` })
     : null;
   try {
+    const domainApplied = domainEvents.length
+      ? await ingestBackupDomainEvents(domainEvents)
+      : { applied: 0 };
     const sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
     let templateApplied = false;
 
@@ -4579,6 +4723,12 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       pageLimitReached: exchange.exhausted === true,
       stoppedReason: safe(exchange.stoppedReason)
     };
+    const localBacklog = await getBackupV7BacklogStatus();
+    const backlog = {
+      ...localBacklog,
+      pullRemaining: pull.remaining,
+      pageLimitReached: pull.pageLimitReached
+    };
 
     recordSyncRevision({
       timestamp: at,
@@ -4597,10 +4747,14 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       push,
       pull,
       rebuild,
+      backlog,
+      domainEventsApplied: Number(domainApplied.applied || 0),
       quarantine: exchange.quarantined,
       shared: {
         applied: sharedApplied.applied === true,
         changed: result?.shared?.changed === true,
+        pushed: result?.shared?.pushed === true,
+        skipped: result?.shared?.skipped === true,
         hash: safe(result?.shared?.hash)
       },
       settings: result?.settings || null
@@ -4679,6 +4833,7 @@ export default {
   syncBackupV7,
   getBackupV7Status,
   rebuildBackupV7LocalAnalytics,
+  getBackupV7BacklogStatus,
   readBackupV7JournalEvents
 };
 
