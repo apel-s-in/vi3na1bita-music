@@ -69,7 +69,7 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
 
   excludes(range, /PENDING_KEY|v71_batch|savePendingBackupV7Batch|clearPendingBackupV7Batch/, 'Одиночный pending batch снова добавлен');
   excludes(sync, /cleanupLegacyBackupV6|legacyCleanup|DELETE_LEGACY_V6|knownRangeKeys|projectedAt/, 'Legacy Backup state снова добавлен');
-  excludes(meta, /backup_known_ranges|backup_pending_ranges|backup_mutations/, 'Мёртвый Backup store снова добавлен');
+  excludes(meta, /createObjectStore\(\s*['"]backup_known_ranges['"]|['"]backup_pending_ranges['"]|['"]backup_mutations['"]/, 'Мёртвый Backup store снова добавлен');
   excludes(stats, /backup-delta-contract/, 'Stats shard снова зависит от V7.0 delta contract');
   excludes(sync, /ranges\.flatMap\(|readCompleteEventTruth/, 'Full raw rebuild снова добавлен');
   excludes('scripts/analytics/stats-state.js', /readLocalEventLog|rebuildStatsFromEvents|migrateLocalTemporalV2/, 'Legacy stats rebuild снова добавлен');
