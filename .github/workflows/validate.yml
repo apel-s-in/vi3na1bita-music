@@ -71,6 +71,9 @@ jobs:
             "vi3-loyalty-reminder"
           )
 
+          checked_sources=0
+          checked_packages=0
+
           for function_name in "${functions[@]}"; do
             function_dir="cloud-functions/$function_name"
             index_file="$function_dir/index.js"
@@ -85,13 +88,12 @@ jobs:
             fi
 
             while IFS= read -r source_file; do
-              echo "CHECK $source_file"
               node --check "$source_file"
+              checked_sources=$((checked_sources + 1))
             done < <(
               find "$function_dir" -maxdepth 1 -type f -name '*.js' | sort
             )
 
-            echo "CHECK $package_file"
             node -e "
               const fs = require('fs');
               const file = process.argv[1];
@@ -118,7 +120,12 @@ jobs:
                 );
               }
             " "$package_file"
+            checked_packages=$((checked_packages + 1))
           done
+
+          test "$checked_sources" -gt 0
+          test "$checked_packages" -eq "${#functions[@]}"
+          echo "Validated $checked_sources Cloud Function sources and $checked_packages package manifests"
 
       - name: Validate pure Stats v5 contract
         run: node scripts/ci/test-stats-v5.mjs
