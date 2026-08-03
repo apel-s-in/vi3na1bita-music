@@ -1072,7 +1072,7 @@ async function putSettings(auth, rawSettings) {
   const dDir = deviceDir(auth.deviceId);
   await ensureDirs(auth.oauthToken, ['app:/Backup', ROOT, DEVICES_DIR, dDir]);
   const path = settingsPath(auth.deviceId);
-  const existing = await downloadJson(auth.oauthToken, path, { maxBytes: 2 * 1024 * 1024 }).catch(() => null);
+  const existing = await downloadJson(auth.oauthToken, path, { maxBytes: 2 * 1024 * 1024 });
   if (existing && safe(existing.hash) === settings.hash) {
     return { changed: false, settings: verifySettings(existing, { ownerYandexIdHash: auth.ownerYandexIdHash, deviceId: auth.deviceId }), path };
   }
