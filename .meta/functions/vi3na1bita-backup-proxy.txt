@@ -18,6 +18,7 @@ const currentUsage = () => usageStorage.getStore() || null;
 const CFG = {
   authorityUrl: String(process.env.BACKUP_AUTHORITY_URL || 'https://functions.yandexcloud.net/d4e2epg33mkshjoar6av').trim(),
   coordinatorRequired: String(process.env.BACKUP_COORDINATOR_REQUIRED || '0').trim() === '1',
+  catalogEnabled: String(process.env.BACKUP_CATALOG_ENABLED || '0').trim() === '1',
   allowedOrigins: String(process.env.CORS_ORIGINS || 'https://vi3na1bita.website.yandexcloud.net,https://apel-s-in.github.io,http://localhost:4173,http://127.0.0.1:4173')
     .split(',')
     .map(value => value.trim())
@@ -29,6 +30,8 @@ const BACKUP_ROOT = 'app:/Backup';
 const ROOT = `${BACKUP_ROOT}/v7`;
 const DEVICES_DIR = `${ROOT}/devices`;
 const SHARED_PATH = `${ROOT}/shared.json`;
+const CATALOG_PATH = `${ROOT}/catalog.json`;
+const CATALOG_SCHEMA_VERSION = 1;
 const SHARED_SCHEMA_VERSION = 2;
 const MAX_SHARED_PLAYLISTS = 500;
 const MAX_SHARED_PLAYLIST_TRACKS = 2000;
@@ -622,9 +625,138 @@ async function listChainHeads(auth) {
   }
   return output.sort((left, right) => left.deviceId.localeCompare(right.deviceId) || left.chainId.localeCompare(right.chainId));
 }
-async function pullAfterWatermarks(auth, rawWatermarks, { maxRanges = MAX_PULL_RANGES, maxBytes = MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES } = {}) {
-  const watermarks = normalizeWatermarks(rawWatermarks);
+function normalizeCatalogHead(raw = {}) {
+  const deviceId = safeId(raw.deviceId, 120);
+  const chainId = safeId(raw.chainId, 160);
+  const lastToSeq = integer(raw.lastToSeq);
+  const lastRangeHash = safe(raw.lastRangeHash);
+  if (!deviceId || !chainId || lastToSeq < 1 || !isHash(lastRangeHash)) return null;
+  return {
+    deviceId,
+    chainId,
+    lastFromSeq: integer(raw.lastFromSeq),
+    lastToSeq,
+    lastRangeHash,
+    lastEventHash: safe(raw.lastEventHash),
+    ranges: integer(raw.ranges),
+    events: integer(raw.events),
+    updatedAt: integer(raw.updatedAt)
+  };
+}
+
+function catalogCore(raw = {}, ownerYandexIdHash = '') {
+  const chains = [...new Map(
+    (Array.isArray(raw.chains) ? raw.chains : [])
+      .map(normalizeCatalogHead)
+      .filter(Boolean)
+      .map(head => [`${head.deviceId}:${head.chainId}`, head])
+  ).values()]
+    .sort((left, right) => left.deviceId.localeCompare(right.deviceId) || left.chainId.localeCompare(right.chainId))
+    .slice(0, MAX_PULL_CHAINS);
+
+  return {
+    version: VERSION,
+    schemaVersion: CATALOG_SCHEMA_VERSION,
+    ownerYandexIdHash: safe(ownerYandexIdHash || raw.ownerYandexIdHash),
+    revision: integer(raw.revision),
+    chains,
+    updatedAt: integer(raw.updatedAt)
+  };
+}
+
+function buildCatalogDocument(auth, chains = [], revision = 0) {
+  const core = catalogCore({
+    revision,
+    chains,
+    updatedAt: now()
+  }, auth.ownerYandexIdHash);
+  return { ...core, hash: hash(stableStringify(core)) };
+}
+
+function verifyCatalogDocument(raw, auth) {
+  if (!isObject(raw)) throw makeError('catalog_document_invalid', 502);
+  const core = catalogCore(raw, raw.ownerYandexIdHash);
+  if (core.version !== VERSION || core.schemaVersion !== CATALOG_SCHEMA_VERSION) {
+    throw makeError('catalog_version_invalid', 502);
+  }
+  if (core.ownerYandexIdHash !== auth.ownerYandexIdHash) {
+    throw makeError('catalog_owner_mismatch', 403);
+  }
+  const expectedHash = hash(stableStringify(core));
+  if (!isHash(raw.hash) || safe(raw.hash) !== expectedHash) {
+    throw makeError('catalog_hash_mismatch', 502);
+  }
+  return { ...core, hash: expectedHash };
+}
+
+async function writeCatalogDocument(auth, document) {
+  await ensureDirs(auth.oauthToken, [BACKUP_ROOT, ROOT]);
+  await uploadJson(auth.oauthToken, CATALOG_PATH, document, { overwrite: true });
+  return document;
+}
+
+async function rebuildCatalogDocument(auth, reason = 'catalog_bootstrap') {
   const heads = await listChainHeads(auth);
+  const document = buildCatalogDocument(auth, heads, 1);
+  await writeCatalogDocument(auth, document);
+  return { document, rebuilt: true, reason };
+}
+
+async function readOrRebuildCatalog(auth) {
+  const raw = await downloadJson(auth.oauthToken, CATALOG_PATH, { maxBytes: 1024 * 1024 }).catch(() => null);
+  if (!raw) return rebuildCatalogDocument(auth, 'catalog_missing');
+
+  try {
+    return {
+      document: verifyCatalogDocument(raw, auth),
+      rebuilt: false,
+      reason: ''
+    };
+  } catch {
+    return rebuildCatalogDocument(auth, 'catalog_invalid');
+  }
+}
+
+function updateCatalogHead(documentRaw, result, auth) {
+  const current = verifyCatalogDocument(documentRaw, auth);
+  const incoming = normalizeCatalogHead({
+    deviceId: result.range.deviceId,
+    chainId: result.range.chainId,
+    lastFromSeq: result.head?.lastFromSeq || result.range.fromSeq,
+    lastToSeq: result.head?.lastToSeq || result.range.toSeq,
+    lastRangeHash: result.head?.lastRangeHash || result.range.hash,
+    lastEventHash: result.head?.lastEventHash || result.range.events?.[result.range.events.length - 1]?.eventHash,
+    ranges: result.head?.ranges || 1,
+    events: result.head?.events || result.range.events?.length,
+    updatedAt: result.head?.updatedAt || now()
+  });
+  if (!incoming) throw makeError('catalog_head_invalid', 502);
+
+  const key = `${incoming.deviceId}:${incoming.chainId}`;
+  const heads = new Map(current.chains.map(head => [`${head.deviceId}:${head.chainId}`, head]));
+  const old = heads.get(key);
+
+  if (
+    old &&
+    old.lastToSeq === incoming.lastToSeq &&
+    old.lastRangeHash === incoming.lastRangeHash &&
+    old.lastEventHash === incoming.lastEventHash
+  ) {
+    return { changed: false, document: current };
+  }
+
+  heads.set(key, incoming);
+  return {
+    changed: true,
+    document: buildCatalogDocument(auth, [...heads.values()], current.revision + 1)
+  };
+}
+async function pullAfterWatermarks(auth, rawWatermarks, { maxRanges = MAX_PULL_RANGES, maxBytes = MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES, catalogHeads = null } = {}) {
+  const watermarks = normalizeWatermarks(rawWatermarks);
+  const heads = (Array.isArray(catalogHeads) ? catalogHeads : await listChainHeads(auth))
+    .map(normalizeCatalogHead)
+    .filter(Boolean)
+    .sort((left, right) => left.deviceId.localeCompare(right.deviceId) || left.chainId.localeCompare(right.chainId));
   const ranges = [];
   const nextWatermarks = [];
   let bytes = 0;
@@ -987,6 +1119,15 @@ async function runBatchSync(auth, body) {
   }
   const push = [];
   const pushWatermarks = new Map();
+  let catalogState = null;
+  let catalog = null;
+  let catalogChanged = false;
+
+  if (CFG.catalogEnabled && (pushRanges.length > 0 || body.includePull !== false)) {
+    catalogState = await readOrRebuildCatalog(auth);
+    catalog = catalogState.document;
+  }
+
   const sortedPushRanges = [...pushRanges].sort((left, right) => safe(left?.chainId).localeCompare(safe(right?.chainId)) || integer(left?.fromSeq) - integer(right?.fromSeq));
   for (const rawRange of sortedPushRanges) {
     const result = await writeImmutableRange(auth, rawRange);
@@ -997,7 +1138,18 @@ async function runBatchSync(auth, body) {
       toSeq: integer(result.head?.lastToSeq || result.range.toSeq),
       lastRangeHash: safe(result.head?.lastRangeHash || result.range.hash)
     });
+
+    if (catalog) {
+      const updated = updateCatalogHead(catalog, result, auth);
+      catalog = updated.document;
+      catalogChanged = catalogChanged || updated.changed;
+    }
   }
+
+  if (catalog && catalogChanged) {
+    await writeCatalogDocument(auth, catalog);
+  }
+
   let settingsPush = null;
   if (isObject(body.settings)) {
     settingsPush = await putSettings(auth, body.settings);
@@ -1022,7 +1174,8 @@ async function runBatchSync(auth, body) {
       }
     : await pullAfterWatermarks(auth, body.watermarks || body.knownWatermarks || [], {
         maxRanges: Math.max(1, Math.min(MAX_PULL_RANGES, integer(body.maxPullRanges, MAX_PULL_RANGES))),
-        maxBytes: Math.max(256 * 1024, Math.min(MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES, integer(body.maxPullBytes, MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES)))
+        maxBytes: Math.max(256 * 1024, Math.min(MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES, integer(body.maxPullBytes, MAX_RESPONSE_BYTES - RESPONSE_RESERVE_BYTES))),
+        catalogHeads: catalog?.chains || null
       });
 
   const knownSettingsHash = safe(body.knownSettingsHash);
@@ -1047,6 +1200,23 @@ async function runBatchSync(auth, body) {
     authorization: publicAuthorization(auth),
     push: { accepted: push.filter(item => !item.duplicate).length, duplicates: push.filter(item => item.duplicate).length, ranges: push },
     pull,
+    catalog: catalog ? {
+      enabled: true,
+      path: CATALOG_PATH,
+      revision: catalog.revision,
+      chains: catalog.chains.length,
+      rebuilt: catalogState?.rebuilt === true,
+      rebuildReason: safe(catalogState?.reason),
+      changed: catalogChanged
+    } : {
+      enabled: false,
+      path: CATALOG_PATH,
+      revision: 0,
+      chains: 0,
+      rebuilt: false,
+      rebuildReason: '',
+      changed: false
+    },
     shared,
     settings: { changed: !!settings, current: settings, pushed: settingsPush ? { changed: settingsPush.changed, hash: settingsPush.settings.hash, updatedAt: settingsPush.settings.updatedAt } : null, template: templateSettings, catalog: deviceCatalog },
     serverTime: now()
@@ -1079,6 +1249,13 @@ const handleRequest = async event => {
           immutableRanges: true,
           canonicalRangeSlot: 'range_<fromSeq>.json',
           chainHeads: true,
+          accountChainCatalog: {
+            supported: true,
+            enabled: CFG.catalogEnabled,
+            path: CATALOG_PATH,
+            schemaVersion: CATALOG_SCHEMA_VERSION,
+            legacyBootstrap: true
+          },
           watermarks: true,
           batchSync: true,
           splitModesRemoved: true,
