@@ -7,6 +7,8 @@ const {
   authorizeCoordinatorLease,
   claimCoordinatorLease,
   completeCoordinatorLease,
+  DEFAULT_RETRY_MS,
+  MANUAL_RETRY_MS,
   normalizeCoordinatorState,
   publicCoordinatorState,
   releaseCoordinatorLease,
@@ -63,11 +65,13 @@ state = step.state;
 step = claim(state, 'device-b', 'daily', 'hash-b', 100);
 assert.equal(step.result.queued, true);
 assert.equal(step.result.position, 1);
+assert.equal(step.result.retryAt, at + 100 + DEFAULT_RETRY_MS);
 state = step.state;
 
 step = claim(state, 'device-c', 'manual', 'hash-c', 200, true);
 assert.equal(step.result.queued, true);
 assert.equal(step.result.position, 1);
+assert.equal(step.result.retryAt, at + 200 + MANUAL_RETRY_MS);
 assert.equal(step.state.queue[0].deviceId, 'device-c');
 state = step.state;
 
