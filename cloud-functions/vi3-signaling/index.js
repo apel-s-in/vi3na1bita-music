@@ -1218,11 +1218,12 @@ async function actionBackupSyncClaim(event, body) {
 
   const leaseId = rid('backup_lease');
   const leaseToken = base64url(crypto.randomBytes(32));
+  const suppliedLeaseToken = safe(body.leaseToken);
   const ticketId = sanitizeId(body.ticketId, 120) || rid('backup_ticket');
   const result = await mutateBackupCoordinator(auth.playerId, state => claimCoordinatorLease(state, {
     ticketId,
     leaseId,
-    tokenHash: hash(leaseToken),
+    tokenHash: suppliedLeaseToken ? hash(suppliedLeaseToken) : hash(leaseToken),
     deviceId: auth.deviceId,
     deviceLabel: auth.device.label,
     phase: sanitizeId(body.phase || 'full', 30),
@@ -1236,6 +1237,8 @@ async function actionBackupSyncClaim(event, body) {
     ok: true,
     granted: result.granted === true,
     queued: result.queued === true,
+    busy: result.busy === true,
+    sameDevice: result.sameDevice === true,
     blocked: result.blocked === true,
     position: num(result.position),
     queueLength: num(result.queueLength),
