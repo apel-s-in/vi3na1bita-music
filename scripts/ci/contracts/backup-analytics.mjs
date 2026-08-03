@@ -37,7 +37,11 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
     'settingsReadEnabled',
     'transport_only_push',
     'getBackupV7BacklogStatus',
-    'domainEvents'
+    'domainEvents',
+    'prepareStatsRollupMigration',
+    'stats_rollup_cloud_repair_required',
+    'backup_stats_rollup_migration',
+    'allowWatermarkRewind'
   ].forEach(marker => contains(sync, marker));
 
   [
@@ -136,11 +140,17 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   contains(scheduler, 'backupCoordinatorSchedulerPatch');
   contains(proxy, 'BACKUP_COORDINATOR_REQUIRED');
   contains(proxy, 'backup_sync_authorize');
+  contains(proxy, 'accountChainCatalog');
+  contains(proxy, 'catalogEnabled');
   excludes(coordinatorClient, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Coordinator client управляет playback');
   contains('scripts/app/games/bridge-host.js', "publishGameActivity(false, 'closed_by_user'");
   contains('scripts/app/games/host.js', 'bridge?.destroy?.()');
   contains('scripts/app/profile/account-cloud-renderers.js', 'coordinator_queued');
   contains('scripts/app/profile/account-cloud-renderers.js', 'activeLease?.holderLabel');
+  contains(proxy, 'Array.isArray(catalogHeads) ? catalogHeads : await listChainHeads(auth)');
+  contains(sync, "metaDB.db.transaction(['backup_stats_rollups', 'backup_chain_watermarks', 'global'], 'readwrite')");
+  contains(sync, 'watermarkStore.delete(row.key)');
+  contains(sync, 'requiresCloudRepair');
   contains(meta, "this.dbName = 'MetaDB_v6'");
   contains(meta, "createIndex('chainSeq'");
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
@@ -152,6 +162,13 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   contains(proxy, 'sharedWriteEnabled');
   contains(proxy, 'body.includeSettingsRead === false');
   contains(proxy, 'pushWatermarks');
+  contains(proxy, 'BACKUP_CATALOG_ENABLED');
+  contains(proxy, 'CATALOG_PATH');
+  contains(proxy, 'catalog.json');
+  contains(proxy, 'readOrRebuildCatalog');
+  contains(proxy, 'rebuildCatalogDocument');
+  contains(proxy, 'updateCatalogHead');
+  contains(proxy, 'catalogHeads');
 
   contains('scripts/analytics/backup-scheduler-policy.js', 'BACKUP_DAILY_MS');
   contains('scripts/analytics/backup-scheduler-policy.js', 'dirtyDomainsAfterSync');
