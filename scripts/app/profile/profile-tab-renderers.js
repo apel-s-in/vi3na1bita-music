@@ -5,8 +5,7 @@ import { renderProfileLogs } from './logs-view.js';
 
 export const renderProfileTabsData = async ({
   container,
-  all,
-  metaDB
+  all
 } = {}) => {
   if (!container) return;
 
@@ -18,7 +17,7 @@ export const renderProfileTabsData = async ({
   await renderProfileRecs({ container });
 
   setTimeout(() => {
-    renderProfileLogs({ container, metaDB });
+    renderProfileLogs({ container });
     window.AlbumsManager?.highlightCurrentTrack?.();
   }, 120);
 };
