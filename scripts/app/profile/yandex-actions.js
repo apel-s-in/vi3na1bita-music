@@ -34,8 +34,16 @@ const syncNow = async ({ ya, notify, rerender }) => {
   notify?.info?.('Сохраняем новые данные v7…');
 
   try {
-    const result = await syncBackupV7({ reason: 'manual_save', includeSettings: true });
-    clearBackupV7Dirty();
+    const result = await syncBackupV7({
+      reason: 'manual_save',
+      includeSettings: true,
+      pushEnabled: true,
+      pullEnabled: true,
+      sharedReadEnabled: true,
+      sharedWriteEnabled: true,
+      settingsReadEnabled: false
+    });
+    await clearBackupV7Dirty({ result });
     const quarantined = Array.isArray(result.quarantine) ? result.quarantine.length : 0;
     const remaining = Number(result.pull?.remaining || 0);
     const pages = Number(result.pull?.pages || 1);
