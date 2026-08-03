@@ -251,10 +251,26 @@ async function actionSendToPlayer(event, body) {
   };
   const allRows = await kvPrefix(`webPushSub:${playerId}:`, 100);
   const at = Date.now();
-  const expired = allRows.filter(row => subscriptionLeaseExpiresAt(row) <= at);
-  for (const row of expired) await deleteSubscriptionRow(row);
+  const activeRows = [];
+  let expiredSubscriptionsDeleted = 0;
 
-  const activeRows = allRows.filter(row => subscriptionLeaseExpiresAt(row) > at);
+  for (const row of allRows) {
+    if (subscriptionLeaseExpiresAt(row) > at) {
+      activeRows.push(row);
+      continue;
+    }
+
+    if (await deleteSubscriptionRow(row)) {
+      expiredSubscriptionsDeleted++;
+      continue;
+    }
+
+    const renewed = await kvGet(row.pk).catch(() => null);
+    if (renewed && subscriptionLeaseExpiresAt(renewed) > at) {
+      activeRows.push(renewed);
+    }
+  }
+
   const rows = targetDeviceId
     ? activeRows.filter(row => safe(payload(row).deviceId) === targetDeviceId)
     : activeRows;
@@ -269,7 +285,7 @@ async function actionSendToPlayer(event, body) {
     subscriptions: rows.length,
     totalSubscriptions: allRows.length,
     activeSubscriptions: activeRows.length,
-    expiredSubscriptionsDeleted: expired.length,
+    expiredSubscriptionsDeleted,
     sent: results.filter(item => item.ok).length,
     results
   };
