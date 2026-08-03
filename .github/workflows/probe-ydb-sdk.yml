@@ -12,10 +12,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: probe-ydb-sdk-${{ inputs.version }}
+  cancel-in-progress: true
+
 jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      PROBE_ROOT: /tmp/ydb-probe
+      YDB_SDK_VERSION: ${{ inputs.version }}
 
     steps:
       - uses: actions/setup-node@v5
@@ -23,185 +30,341 @@ jobs:
           node-version: "24"
 
       - name: Install exact SDK
-        env:
-          YDB_SDK_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          mkdir -p /tmp/ydb-probe
-          cd /tmp/ydb-probe
+          rm -rf "$PROBE_ROOT"
+          mkdir -p "$PROBE_ROOT"
+          cd "$PROBE_ROOT"
           npm init -y >/dev/null
           npm install --save-exact "ydb-sdk@${YDB_SDK_VERSION}"
           npm list ydb-sdk | tee installed-version.txt
 
-      - name: Inspect public exports and prototypes
+      - name: Inspect package and public runtime API
         run: |
           set -euo pipefail
-          cd /tmp/ydb-probe
-          node <<'NODE' | tee runtime-api.txt
-          const sdk = require('ydb-sdk');
+          cd "$PROBE_ROOT"
 
-          const methods = value => {
-            const output = new Set();
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const findPackageRoot = () => {
+            const entrypoint = require.resolve('ydb-sdk');
+            let directory = path.dirname(entrypoint);
+
+            while (true) {
+              const manifest = path.join(directory, 'package.json');
+              if (fs.existsSync(manifest)) {
+                try {
+                  const value = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+                  if (value?.name === 'ydb-sdk') return { directory, entrypoint, manifest, value };
+                } catch {}
+              }
+
+              const parent = path.dirname(directory);
+              if (parent === directory) break;
+              directory = parent;
+            }
+
+            throw new Error('ydb_sdk_package_root_not_found');
+          };
+
+          const packageInfo = findPackageRoot();
+          const output = {
+            name: packageInfo.value.name,
+            version: packageInfo.value.version,
+            entrypoint: packageInfo.entrypoint,
+            packageRoot: packageInfo.directory,
+            main: packageInfo.value.main || '',
+            module: packageInfo.value.module || '',
+            types: packageInfo.value.types || packageInfo.value.typings || '',
+            exports: packageInfo.value.exports || null,
+            engines: packageInfo.value.engines || null,
+            dependencies: packageInfo.value.dependencies || {}
+          };
+
+          fs.writeFileSync('package-info.json', `${JSON.stringify(output, null, 2)}\n`);
+
+          const sdk = require('ydb-sdk');
+          const describe = value => {
+            const methods = new Set();
             let current = value;
 
-            while (current && current !== Object.prototype) {
+            while (current && current !== Object.prototype && current !== Function.prototype) {
               Object.getOwnPropertyNames(current)
                 .filter(name => name !== 'constructor')
-                .forEach(name => output.add(name));
+                .forEach(name => methods.add(name));
               current = Object.getPrototypeOf(current);
             }
 
-            return [...output].sort();
+            return [...methods].sort();
           };
 
-          console.log('SDK exports:');
-          console.log(Object.keys(sdk).sort().join('\n'));
+          const runtime = {
+            exports: Object.keys(sdk).sort(),
+            values: {}
+          };
 
-          for (const name of [
-            'Driver',
-            'TableClient',
-            'Session',
-            'Transaction',
-            'TransactionSettings'
-          ]) {
-            const value = sdk[name];
-            console.log(`\n[${name}]`);
-            console.log(value ? methods(value.prototype || value) : 'not exported');
+          for (const [name, value] of Object.entries(sdk)) {
+            runtime.values[name] = {
+              type: typeof value,
+              prototypeMethods: value && ['function', 'object'].includes(typeof value)
+                ? describe(value.prototype || value)
+                : []
+            };
           }
+
+          fs.writeFileSync('runtime-api.json', `${JSON.stringify(runtime, null, 2)}\n`);
+          console.log(`Package root: ${packageInfo.directory}`);
+          console.log(`Public exports: ${runtime.exports.length}`);
           NODE
 
-      - name: Search installed source for transaction API
+      - name: Extract transaction declarations and implementations
         run: |
           set -euo pipefail
-          cd /tmp/ydb-probe
-          {
-            echo "=== transaction-related source references ==="
-            grep -RInE \
-              "beginTransaction|transaction\\(|executeQuery|commit\\(|rollback\\(|withSession|withSessionRetry|RETURNING" \
-              node_modules/ydb-sdk \
-              --include='*.js' \
-              --include='*.d.ts' \
-              | head -n 500 || true
-          } | tee source-api.txt
+          cd "$PROBE_ROOT"
 
-      - name: Extract exact transaction declarations and implementation
-        run: |
-          set -euo pipefail
-          cd /tmp/ydb-probe
-
-          node <<'NODE' > transaction-contract.json
+          node <<'NODE'
           const fs = require('fs');
           const path = require('path');
           const crypto = require('crypto');
-          const root = path.dirname(require.resolve('ydb-sdk/package.json'));
-          const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-          const patterns = [
-            /beginTransaction/g,
-            /commitTransaction/g,
-            /rollbackTransaction/g,
-            /ITransactionMeta/g,
-            /IExistingTransaction/g,
-            /INewTransaction/g,
-            /txId/g,
-            /transactionId/g
+
+          const findPackageRoot = () => {
+            const entrypoint = require.resolve('ydb-sdk');
+            let directory = path.dirname(entrypoint);
+
+            while (true) {
+              const manifest = path.join(directory, 'package.json');
+              if (fs.existsSync(manifest)) {
+                try {
+                  const value = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+                  if (value?.name === 'ydb-sdk') return directory;
+                } catch {}
+              }
+
+              const parent = path.dirname(directory);
+              if (parent === directory) break;
+              directory = parent;
+            }
+
+            throw new Error('ydb_sdk_package_root_not_found');
+          };
+
+          const packageRoot = findPackageRoot();
+          const outputRoot = path.resolve('transaction-sources');
+          const terms = [
+            'beginTransaction',
+            'commitTransaction',
+            'rollbackTransaction',
+            'executeQuery',
+            'executeDataQuery',
+            'withTransaction',
+            'transactionControl',
+            'txControl',
+            'serializableReadWrite',
+            'onlineReadOnly',
+            'staleReadOnly',
+            'ITransactionMeta',
+            'IExistingTransaction',
+            'INewTransaction',
+            'TransactionSettings',
+            'transactionId',
+            'txId'
           ];
+          const termPattern = new RegExp(terms.join('|'));
           const files = [];
-          const stack = [root];
+          const stack = [packageRoot];
+          let scannedFiles = 0;
+
+          const copySource = (absolute, relative) => {
+            const destination = path.join(outputRoot, relative);
+            fs.mkdirSync(path.dirname(destination), { recursive: true });
+            fs.copyFileSync(absolute, destination);
+          };
 
           while (stack.length) {
             const directory = stack.pop();
             for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-              if (entry.name === 'node_modules') continue;
+              if (entry.name === 'node_modules' || entry.name.endsWith('.map')) continue;
               const absolute = path.join(directory, entry.name);
+
               if (entry.isDirectory()) {
                 stack.push(absolute);
                 continue;
               }
-              if (!/\.(?:js|d\.ts)$/.test(entry.name)) continue;
+
+              if (!/\.(?:js|cjs|mjs|d\.ts)$/.test(entry.name)) continue;
+              scannedFiles++;
+
               const source = fs.readFileSync(absolute, 'utf8');
-              if (!patterns.some(pattern => {
-                pattern.lastIndex = 0;
-                return pattern.test(source);
-              })) continue;
+              if (!termPattern.test(source)) continue;
 
+              const relative = path.relative(packageRoot, absolute).replace(/\\/g, '/');
               const lines = source.split(/\r?\n/);
-              const matches = [];
+              const hitLines = [];
+
               lines.forEach((line, index) => {
-                if (!/beginTransaction|commitTransaction|rollbackTransaction|ITransactionMeta|IExistingTransaction|INewTransaction|txId|transactionId/.test(line)) return;
-                matches.push({
-                  line: index + 1,
-                  context: lines.slice(Math.max(0, index - 4), Math.min(lines.length, index + 9))
-                });
+                if (termPattern.test(line)) hitLines.push(index);
               });
+
+              const groups = [];
+              hitLines.forEach(index => {
+                const last = groups[groups.length - 1];
+                if (!last || index - last[last.length - 1] > 12) groups.push([index]);
+                else last.push(index);
+              });
+
+              const contexts = groups.map(group => {
+                const from = Math.max(0, group[0] - 6);
+                const to = Math.min(lines.length, group[group.length - 1] + 9);
+                return {
+                  fromLine: from + 1,
+                  toLine: to,
+                  matchedLines: group.map(index => index + 1),
+                  source: lines.slice(from, to)
+                };
+              });
+
+              const matchedTerms = terms.filter(term => source.includes(term));
               files.push({
-                file: path.relative(root, absolute).replace(/\\/g, '/'),
+                file: relative,
+                kind: entry.name.endsWith('.d.ts') ? 'declaration' : 'implementation',
+                bytes: Buffer.byteLength(source, 'utf8'),
                 sha256: crypto.createHash('sha256').update(source).digest('hex'),
-                matches
+                matchedTerms,
+                contexts
+              });
+              copySource(absolute, relative);
+            }
+          }
+
+          files.sort((left, right) => left.file.localeCompare(right.file));
+
+          const termFiles = Object.fromEntries(terms.map(term => [
+            term,
+            files.filter(file => file.matchedTerms.includes(term)).map(file => file.file)
+          ]));
+
+          const report = {
+            packageRoot,
+            scannedFiles,
+            matchingFiles: files.length,
+            capabilities: Object.fromEntries(terms.map(term => [term, termFiles[term].length > 0])),
+            termFiles,
+            files
+          };
+
+          fs.writeFileSync('transaction-contract.json', `${JSON.stringify(report, null, 2)}\n`);
+
+          const text = [];
+          text.push(`Package root: ${packageRoot}`);
+          text.push(`Scanned source files: ${scannedFiles}`);
+          text.push(`Transaction-related files: ${files.length}`);
+          text.push('');
+
+          for (const file of files) {
+            text.push(`===== ${file.file} [${file.kind}] =====`);
+            text.push(`terms: ${file.matchedTerms.join(', ')}`);
+            text.push(`sha256: ${file.sha256}`);
+
+            for (const context of file.contexts) {
+              text.push(`--- lines ${context.fromLine}-${context.toLine} ---`);
+              context.source.forEach((line, offset) => {
+                text.push(`${String(context.fromLine + offset).padStart(5, ' ')} | ${line}`);
               });
             }
+
+            text.push('');
           }
 
-          const result = {
-            package: packageJson.name,
-            version: packageJson.version,
-            packageRoot: root,
-            transactionFiles: files.sort((left, right) => left.file.localeCompare(right.file))
-          };
-          process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-          NODE
+          fs.writeFileSync('transaction-signatures.txt', `${text.join('\n')}\n`);
 
-          node <<'NODE' > transaction-runtime.txt
-          const sdk = require('ydb-sdk');
-          const methods = value => {
-            const output = new Set();
-            let current = value;
-            while (current && current !== Object.prototype) {
-              Object.getOwnPropertyNames(current)
-                .filter(name => name !== 'constructor')
-                .forEach(name => output.add(name));
-              current = Object.getPrototypeOf(current);
-            }
-            return [...output].sort();
-          };
-
-          for (const name of ['Driver', 'TableClient', 'Session', 'Transaction', 'TransactionSettings']) {
-            const value = sdk[name];
-            console.log(`[${name}]`);
-            console.log(value ? methods(value.prototype || value).join('\n') : 'not exported');
-            console.log('');
+          if (!scannedFiles) throw new Error('ydb_sdk_sources_not_found');
+          if (!files.length) throw new Error('ydb_sdk_transaction_references_not_found');
+          if (!report.capabilities.executeQuery && !report.capabilities.executeDataQuery) {
+            throw new Error('ydb_sdk_execute_api_not_found');
           }
+
+          console.log(`Scanned files: ${scannedFiles}`);
+          console.log(`Transaction-related files: ${files.length}`);
           NODE
 
-          {
-            echo "=== exact package ==="
-            npm list ydb-sdk
-            echo
-            echo "=== transaction contract ==="
-            cat transaction-contract.json
-            echo
-            echo "=== runtime prototypes ==="
-            cat transaction-runtime.txt
-          } | tee transaction-signatures.txt
-          
-      - name: Build report
+      - name: Build capability report
         run: |
           set -euo pipefail
-          cd /tmp/ydb-probe
-          cat installed-version.txt runtime-api.txt source-api.txt transaction-signatures.txt > ydb-sdk-capabilities.txt
-          test -s transaction-contract.json
-          test -s transaction-runtime.txt
-          test -s ydb-sdk-capabilities.txt
+          cd "$PROBE_ROOT"
 
-      - uses: actions/upload-artifact@v4
+          node <<'NODE'
+          const fs = require('fs');
+
+          const packageInfo = JSON.parse(fs.readFileSync('package-info.json', 'utf8'));
+          const runtime = JSON.parse(fs.readFileSync('runtime-api.json', 'utf8'));
+          const contract = JSON.parse(fs.readFileSync('transaction-contract.json', 'utf8'));
+          const expectedVersion = String(process.env.YDB_SDK_VERSION || '').trim();
+
+          if (packageInfo.version !== expectedVersion) {
+            throw new Error(`ydb_sdk_version_mismatch:${packageInfo.version}:${expectedVersion}`);
+          }
+
+          const capabilityRows = Object.entries(contract.capabilities)
+            .map(([name, available]) => `- ${name}: ${available ? 'yes' : 'no'}`)
+            .join('\n');
+
+          const report = [
+            '# ydb-sdk capability probe',
+            '',
+            `- Package: ${packageInfo.name}`,
+            `- Version: ${packageInfo.version}`,
+            `- Entrypoint: ${packageInfo.entrypoint}`,
+            `- Package root: ${packageInfo.packageRoot}`,
+            `- Public exports: ${runtime.exports.length}`,
+            `- Scanned files: ${contract.scannedFiles}`,
+            `- Transaction-related files: ${contract.matchingFiles}`,
+            '',
+            '## Transaction symbols',
+            '',
+            capabilityRows,
+            '',
+            '## Important note',
+            '',
+            'This probe performs static/runtime inspection only.',
+            'It does not connect to YDB and does not assume whether the transaction identifier is id, txId or an SDK object.',
+            ''
+          ].join('\n');
+
+          fs.writeFileSync('ydb-sdk-capabilities.md', report);
+          fs.writeFileSync(
+            'ydb-sdk-capabilities.txt',
+            [
+              fs.readFileSync('installed-version.txt', 'utf8'),
+              fs.readFileSync('package-info.json', 'utf8'),
+              fs.readFileSync('runtime-api.json', 'utf8'),
+              fs.readFileSync('transaction-signatures.txt', 'utf8')
+            ].join('\n')
+          );
+          NODE
+
+          test -s package-info.json
+          test -s runtime-api.json
+          test -s transaction-contract.json
+          test -s transaction-signatures.txt
+          test -s ydb-sdk-capabilities.md
+          test -s ydb-sdk-capabilities.txt
+          cat ydb-sdk-capabilities.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload capability artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: ydb-sdk-capabilities-${{ inputs.version }}
           path: |
             /tmp/ydb-probe/installed-version.txt
-            /tmp/ydb-probe/runtime-api.txt
-            /tmp/ydb-probe/source-api.txt
+            /tmp/ydb-probe/package-info.json
+            /tmp/ydb-probe/runtime-api.json
             /tmp/ydb-probe/transaction-contract.json
-            /tmp/ydb-probe/transaction-runtime.txt
             /tmp/ydb-probe/transaction-signatures.txt
+            /tmp/ydb-probe/transaction-sources/
+            /tmp/ydb-probe/ydb-sdk-capabilities.md
             /tmp/ydb-probe/ydb-sdk-capabilities.txt
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
