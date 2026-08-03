@@ -15769,7 +15769,7 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   const proxy = 'cloud-functions/vi3na1bita-backup-proxy/index.js';
   const signaling = 'cloud-functions/vi3-signaling/index.js';
   const coordinator = 'cloud-functions/vi3-signaling/backup-coordinator.js';
-
+  const coordinatorClient = 'scripts/analytics/backup-coordinator-client.js';
   [
     "BACKUP_V7_VERSION = '7.1'",
     'packLocalBackupV7Ranges',
@@ -15875,6 +15875,24 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
 
   excludes(coordinator, /require\(['"]ydb-sdk['"]\)|fetch\(|process\.env|playerCore|localStorage|sessionStorage/, 'Pure Backup coordinator получил runtime-зависимость');
   excludes(coordinator, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Backup coordinator управляет playback');
+  [
+    'withBackupCoordinatorLease',
+    'navigator.locks',
+    'backup_sync_claim',
+    'backup_sync_renew',
+    'backup_sync_complete',
+    'backup_sync_release',
+    'voice_call_active',
+    'game_active',
+    'playback_active'
+  ].forEach(marker => contains(coordinatorClient, marker));
+
+  contains(sync, 'coordinatorLease');
+  contains(sync, 'renewCoordinatorLease');
+  contains(scheduler, 'withBackupCoordinatorLease');
+  contains(proxy, 'BACKUP_COORDINATOR_REQUIRED');
+  contains(proxy, 'backup_sync_authorize');
+  excludes(coordinatorClient, /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Coordinator client управляет playback');
   contains(meta, "this.dbName = 'MetaDB_v6'");
   contains(meta, "createIndex('chainSeq'");
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
