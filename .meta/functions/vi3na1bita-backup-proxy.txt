@@ -805,17 +805,22 @@ function publicSharedDocument(raw) {
   return document;
 }
 
-async function exchangeSharedDocument(auth, rawShared, knownHash = '') {
+async function exchangeSharedDocument(auth, rawShared, knownHash = '', { readEnabled = true, writeEnabled = true } = {}) {
+  if (!readEnabled && !writeEnabled) {
+    return { skipped: true, changed: false, migrated: false, pushed: false, current: null, hash: safe(knownHash) };
+  }
+
   await ensureDirs(auth.oauthToken, [BACKUP_ROOT, ROOT]);
   const storedRaw = await downloadJson(auth.oauthToken, SHARED_PATH, { maxBytes: 2 * 1024 * 1024 });
   const current = storedRaw ? normalizeSharedDocument(storedRaw, auth, { stored: true }) : null;
 
-  if (!isObject(rawShared)) {
+  if (!writeEnabled || !isObject(rawShared)) {
     return {
+      skipped: false,
       changed: false,
       migrated: false,
       pushed: false,
-      current: current && current.hash !== safe(knownHash) ? publicSharedDocument(current) : null,
+      current: readEnabled && current && current.hash !== safe(knownHash) ? publicSharedDocument(current) : null,
       hash: current?.hash || ''
     };
   }
@@ -826,10 +831,11 @@ async function exchangeSharedDocument(auth, rawShared, knownHash = '') {
   }
 
   return {
+    skipped: false,
     changed: merged.changed || merged.migrated || !current,
     migrated: merged.migrated,
     pushed: true,
-    current: publicSharedDocument(merged.document),
+    current: readEnabled ? publicSharedDocument(merged.document) : null,
     hash: merged.document.hash
   };
 }
@@ -973,9 +979,13 @@ async function runBatchSync(auth, body) {
   if (isObject(body.settings)) {
     settingsPush = await putSettings(auth, body.settings);
   }
-  const shared = body.includeShared === false
-    ? { skipped: true, changed: false, migrated: false, pushed: false, current: null, hash: safe(body.knownSharedHash) }
-    : await exchangeSharedDocument(auth, body.shared, body.knownSharedHash);
+  const legacySharedEnabled = body.includeShared !== false;
+  const sharedReadEnabled = body.includeSharedRead == null ? legacySharedEnabled : body.includeSharedRead === true;
+  const sharedWriteEnabled = body.includeSharedWrite == null ? legacySharedEnabled && isObject(body.shared) : body.includeSharedWrite === true;
+  const shared = await exchangeSharedDocument(auth, body.shared, body.knownSharedHash, {
+    readEnabled: sharedReadEnabled,
+    writeEnabled: sharedWriteEnabled
+  });
 
   const pull = body.includePull === false
     ? {

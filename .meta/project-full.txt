@@ -136,7 +136,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
@@ -15698,6 +15698,83 @@ if (!checkOnly) {
   write(manifestPath, `${JSON.stringify({ appVersion: version, buildDate, friendsBuild, gamesBuild, warHeartsBuild }, null, 2)}\n`);
 }
 console.log(checkOnly ? `✅ Версии согласованы: app=${version}, friends=${friendsBuild}, games=${gamesBuild}, warHearts=${warHeartsBuild}, date=${buildDate}` : `✅ Версии обновлены: app=${version}, friends=${friendsBuild}, games=${gamesBuild}, warHearts=${warHeartsBuild}, date=${buildDate}`);
+
+//=================================================
+// FILE: /scripts/ci/test-backup-scheduler.mjs
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import {
+  BACKUP_CONTINUATION_MS,
+  BACKUP_DAILY_MS,
+  backupNeedsContinuation,
+  deterministicBackupJitter,
+  dirtyDomainsAfterSync,
+  mergeDirtyDomains,
+  nextBackupDailyAt,
+  normalizeBackupSchedulerState
+} from '../analytics/backup-scheduler-policy.js';
+
+const base = normalizeBackupSchedulerState({
+  enabled: true,
+  dirtyDomains: ['events', 'playlists', 'events'],
+  nextSyncAt: 100
+});
+
+assert.deepEqual(base.dirtyDomains, ['events', 'playlists']);
+assert.deepEqual(mergeDirtyDomains(base.dirtyDomains, 'settings'), ['events', 'playlists', 'settings']);
+
+const anchor = Date.UTC(2026, 7, 3, 12);
+const jitterA = deterministicBackupJitter({ owner: 'owner-a', deviceId: 'device-a', anchorAt: anchor });
+const jitterARepeat = deterministicBackupJitter({ owner: 'owner-a', deviceId: 'device-a', anchorAt: anchor });
+assert.equal(jitterARepeat, jitterA);
+
+const next = nextBackupDailyAt({ fromAt: anchor, owner: 'owner-a', deviceId: 'device-a' });
+assert.equal(next, anchor + BACKUP_DAILY_MS + jitterA);
+
+assert.equal(backupNeedsContinuation({ pendingRanges: 1 }), true);
+assert.equal(backupNeedsContinuation({ unpackedEvents: 1 }), true);
+assert.equal(backupNeedsContinuation({ pullRemaining: 1 }), true);
+assert.equal(backupNeedsContinuation({ pageLimitReached: true }), true);
+assert.equal(backupNeedsContinuation({ pendingRanges: 0, unpackedEvents: 0, pullRemaining: 0 }), false);
+assert.equal(BACKUP_CONTINUATION_MS, 3 * 60 * 1000);
+
+assert.deepEqual(
+  dirtyDomainsAfterSync({
+    dirtyDomains: ['events', 'playlists', 'settings'],
+    backlog: { pendingRanges: 2, unpackedEvents: 0, pullRemaining: 0 },
+    sharedWriteRequired: true,
+    sharedWriteConfirmed: true,
+    settingsWriteRequired: true,
+    settingsWriteConfirmed: true
+  }),
+  ['events']
+);
+
+assert.deepEqual(
+  dirtyDomainsAfterSync({
+    dirtyDomains: ['events', 'playlists', 'settings'],
+    backlog: { pendingRanges: 0, unpackedEvents: 0, pullRemaining: 0 },
+    sharedWriteRequired: true,
+    sharedWriteConfirmed: false,
+    settingsWriteRequired: true,
+    settingsWriteConfirmed: true
+  }),
+  ['playlists']
+);
+
+assert.deepEqual(
+  dirtyDomainsAfterSync({
+    dirtyDomains: ['events', 'playlists', 'settings'],
+    backlog: { pendingRanges: 0, unpackedEvents: 0, pullRemaining: 0 },
+    sharedWriteRequired: true,
+    sharedWriteConfirmed: true,
+    settingsWriteRequired: true,
+    settingsWriteConfirmed: true
+  }),
+  []
+);
+
+console.log('✅ Daily Backup scheduler and backlog policy passed');
 
 //=================================================
 // FILE: /scripts/ci/test-stats-v5.mjs
