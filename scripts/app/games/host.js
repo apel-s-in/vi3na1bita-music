@@ -154,6 +154,15 @@ const makeRoomUrl = cfg => {
       }
 
       host?.classList.add('is-mounted');
+      W.__gameActivity = {
+        active: true,
+        state: 'active',
+        gameId: invite.gcGame || 'game_center',
+        updatedAt: Date.now()
+      };
+      W.dispatchEvent(new CustomEvent('game:activity', {
+        detail: { ...W.__gameActivity }
+      }));
       if (panel) panel.hidden = true;
 
       frameWrap.hidden = false;
