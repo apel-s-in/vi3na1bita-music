@@ -17281,6 +17281,19 @@ const validateWorkflows = () => {
   assertNoMatch(workflows, /node-version:\s*['"]?20['"]?/g, 'Workflow с Node.js 20 отсутствуют');
   assertNoMatch(workflows, /actions\/(checkout|setup-node)@v4/g, 'Legacy GitHub Actions v4 отсутствуют');
   ["node-version: '24'", 'npm install --no-save @playwright/test@1.55.0', 'playwright.config.js --grep-invert "@remote"', 'playwright.config.js --grep "@remote"', 'continue-on-error: true', 'cancel-in-progress: true'].forEach(marker => contains('.github/workflows/e2e.yml', marker));
+  [
+    "require.resolve('ydb-sdk')",
+    'findPackageRoot',
+    'transaction-contract.json',
+    'transaction-signatures.txt',
+    'transaction-sources',
+    'beginTransaction',
+    'commitTransaction',
+    'rollbackTransaction',
+    'serializableReadWrite',
+    'if: always()'
+  ].forEach(marker => contains('.github/workflows/probe-ydb-sdk.yml', marker));
+  excludes('.github/workflows/probe-ydb-sdk.yml', /require\.resolve\(['"]ydb-sdk\/package\.json['"]\)/, 'YDB probe снова обращается к запрещённому package subpath');
 };
 const main = async () => {
   const server = 'cloud-functions/vi3-signaling/index.js';
