@@ -60,6 +60,29 @@ const runWithLocalLock = async ({ manual = false, task } = {}) => {
     }
   );
 };
+export const backupCoordinatorSchedulerPatch = (outcome = {}, fallbackRetryAt = Date.now() + FALLBACK_RETRY_MS) => {
+  const coordinator = outcome?.coordinator || outcome || {};
+  const block = coordinator?.block || coordinator?.accountBlock || null;
+  const retryAt = num(outcome?.retryAt || coordinator?.retryAt || block?.until) || fallbackRetryAt;
+  const deferredReason = outcome?.localBusy
+    ? 'coordinator_local_busy'
+    : outcome?.queued || coordinator?.queued
+      ? 'coordinator_queued'
+      : outcome?.blocked || coordinator?.blocked || block
+        ? 'coordinator_blocked'
+        : outcome?.reason || 'coordinator_busy';
+
+  return {
+    queue: coordinator && typeof coordinator === 'object' ? coordinator : null,
+    nextSyncAt: retryAt,
+    continuationAt: retryAt,
+    deferredReason,
+    ...(block?.reason ? {
+      blockReason: safe(block.reason),
+      blockUntil: num(block.until)
+    } : {})
+  };
+};
 
 export const getBackupCoordinatorLease = () => publicLease(activeLease);
 
@@ -302,6 +325,7 @@ window.BackupCoordinator = {
 
 export default {
   getBackupCoordinatorLease,
+  backupCoordinatorSchedulerPatch,
   getBackupResourceBusyReason,
   claimBackupCoordinator,
   renewBackupCoordinator,
