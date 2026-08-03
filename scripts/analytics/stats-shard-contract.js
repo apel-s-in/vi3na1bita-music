@@ -3,11 +3,13 @@
 // после успешной проверки hash-chain исходного range.
 import { isV7SyncEvent } from './event-contract.js';
 import { temporalPartsFromListenEvent } from './temporal-buckets.js';
-import { buildDeltaRangeKey, safeDeltaId } from './backup-delta-contract.js';
 import { buildStatsV4, emptyStatsV4, mergeStatsV4, normalizeStatsV4 } from './stats-v4-projection.js';
 
 export const STATS_SHARD_VERSION = 5;
 const safe = value => String(value == null ? '' : value).trim();
+const safeRangeId = value => safe(value).replace(/[^A-Za-z0-9._-]/g, '').slice(0, 160);
+const buildRangeKey = ({ deviceId = '', chainId = '', branchId = '', fromSeq = 0, toSeq = 0, hash = '' } = {}) =>
+  `${safeRangeId(deviceId)}:${safeRangeId(chainId || branchId)}:${Math.max(0, Math.floor(Number(fromSeq) || 0))}:${Math.max(0, Math.floor(Number(toSeq) || 0))}:${safeRangeId(hash).slice(0, 64)}`;
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const fixed = (raw, length) => Array.from({ length }, (_, index) => Math.max(0, Math.floor(num(raw?.[index]))));
 const countMap = raw => Object.fromEntries(Object.entries(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}).map(([key, value]) => [safe(key), num(value)]).filter(([key, value]) => key && value > 0));
@@ -303,13 +305,13 @@ export const normalizeStatsProjection = raw => ({
 
 export const buildStatsProjectionShard = async segment => {
   const events = (Array.isArray(segment?.events) ? segment.events : []).filter(isV7SyncEvent);
-  const branchId = safeDeltaId(segment?.branchId);
-  const deviceStableId = safeDeltaId(segment?.deviceId || segment?.deviceStableId);
+  const branchId = safeRangeId(segment?.branchId);
+  const deviceStableId = safeRangeId(segment?.deviceId || segment?.deviceStableId);
   const chainId = safe(segment?.chainId);
   const fromSeq = Math.floor(num(segment?.fromSeq));
   const toSeq = Math.floor(num(segment?.toSeq));
   const sourceHash = safe(segment?.hash);
-  const rangeKey = safe(segment?.rangeKey) || buildDeltaRangeKey({ deviceId: deviceStableId, chainId: chainId || branchId, fromSeq, toSeq, hash: sourceHash });
+  const rangeKey = safe(segment?.rangeKey) || buildRangeKey({ deviceId: deviceStableId, chainId: chainId || branchId, fromSeq, toSeq, hash: sourceHash });
   const projection = normalizeStatsProjection(buildStatsProjection(events));
   const core = { version: STATS_SHARD_VERSION, rangeKey, sourceHash, projection };
   const hash = await sha256Hex(core);
@@ -518,8 +520,12 @@ export const projectionStreak = raw => {
     previous = current;
   });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const localDateKey = timestamp => {
+    const date = new Date(timestamp);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const today = localDateKey(Date.now());
+  const yesterday = localDateKey(Date.now() - 86400000);
   const lastActiveDate = days[days.length - 1] || '';
   const current = lastActiveDate === today || lastActiveDate === yesterday ? run : 0;
 
