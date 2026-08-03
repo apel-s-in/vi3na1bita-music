@@ -703,7 +703,7 @@ async function rebuildCatalogDocument(auth, reason = 'catalog_bootstrap') {
 }
 
 async function readOrRebuildCatalog(auth) {
-  const raw = await downloadJson(auth.oauthToken, CATALOG_PATH, { maxBytes: 1024 * 1024 }).catch(() => null);
+  const raw = await downloadJson(auth.oauthToken, CATALOG_PATH, { maxBytes: 1024 * 1024 });
   if (!raw) return rebuildCatalogDocument(auth, 'catalog_missing');
 
   try {
@@ -712,7 +712,10 @@ async function readOrRebuildCatalog(auth) {
       rebuilt: false,
       reason: ''
     };
-  } catch {
+  } catch (error) {
+    if (Number(error?.status || 0) === 403 || /owner_mismatch/.test(safe(error?.message))) {
+      throw error;
+    }
     return rebuildCatalogDocument(auth, 'catalog_invalid');
   }
 }
@@ -1111,6 +1114,9 @@ function publicAuthorization(auth) {
 async function runBatchSync(auth, body) {
   if (auth.initializationRequired) {
     throw makeError('backup_device_initialization_required', 409);
+  }
+  if (CFG.catalogEnabled && !CFG.coordinatorRequired) {
+    throw makeError('backup_catalog_requires_mandatory_coordinator', 503);
   }
 
   const pushRanges = Array.isArray(body.pushRanges) ? body.pushRanges : Array.isArray(body.ranges) ? body.ranges : body.range ? [body.range] : [];
