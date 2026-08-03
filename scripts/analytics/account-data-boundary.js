@@ -271,6 +271,9 @@ export const AccountDataContext = {
 export const initAccountDataBoundary = async () => {
   if (initialized) return switchPromise;
   initialized = true;
+  try {
+    localStorage.removeItem('backup:conflict_policy:v1');
+  } catch {}
   activeOwner = getStoredOwner();
   if (!activeOwner) {
     setStoredOwner(LOCAL_OWNER);
