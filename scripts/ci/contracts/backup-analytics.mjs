@@ -184,7 +184,7 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   excludes(sync, /ranges\.flatMap\(|readCompleteEventTruth/, 'Full raw rebuild снова добавлен');
   excludes('scripts/analytics/stats-state.js', /readLocalEventLog|rebuildStatsFromEvents|migrateLocalTemporalV2/, 'Legacy stats rebuild снова добавлен');
   excludes('scripts/app.js', /migration:cleanup_duplicates:v3|cleanupWarmEventsStore|migrateLocalTemporalV2/, 'Boot снова запускает старую analytics migration');
-  excludes('service-worker.js', /sync-domains\.js|storage-merge\.js/, 'Удалённые sync facade снова добавлены в precache');
+  excludes('service-worker.js', /sync-domains\.js|storage-merge\.js|storage-merge-utils\.js|playlists-storage-merge\.js|tombstone-contract\.js|trust-state\.js|settings-conflict-section\.js/, 'Удалённый legacy helper снова добавлен в precache');
   assertNoMatch(
     listFiles('scripts/analytics'),
     /LISTEN_SKIP/g,
