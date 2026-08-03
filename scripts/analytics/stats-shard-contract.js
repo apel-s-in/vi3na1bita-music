@@ -405,10 +405,104 @@ export const projectionToStatsRows = raw => {
     lastPlayedAt: projection.lastEventAt,
     featuresUsed: { ...projection.globalFeatures },
     analyticsSchemaVersion: STATS_SHARD_VERSION,
+    statsV4: normalizeStatsV4(projection.v4),
     sparseCube: { ...projection.v4.cube },
-    repeatRuns: { ...projection.v4.repeat }
+    repeatRuns: { ...projection.v4.repeat },
+    transitions: { ...projection.transitions },
+    dimensions: structuredClone(projection.dimensions)
   });
   return rows;
+};
+const mergeCountMaps = (leftRaw, rightRaw) => {
+  const output = countMap(leftRaw);
+  Object.entries(countMap(rightRaw)).forEach(([key, amount]) => bump(output, key, amount));
+  return output;
+};
+
+const mergeFixedArrays = (leftRaw, rightRaw, length) => {
+  const left = fixed(leftRaw, length);
+  fixed(rightRaw, length).forEach((amount, index) => {
+    left[index] += amount;
+  });
+  return left;
+};
+
+export const mergeProjectedStatsRow = (leftRaw = {}, rightRaw = {}) => {
+  const uid = safe(rightRaw.uid || leftRaw.uid);
+  if (!uid) return null;
+
+  if (uid === 'global') {
+    const leftV4 = leftRaw.statsV4 || {
+      cube: leftRaw.sparseCube || {},
+      repeat: leftRaw.repeatRuns || {},
+      boundary: { chainKey: '', firstRun: null, lastRun: null, singleRun: false }
+    };
+    const rightV4 = rightRaw.statsV4 || {
+      cube: rightRaw.sparseCube || {},
+      repeat: rightRaw.repeatRuns || {},
+      boundary: { chainKey: '', firstRun: null, lastRun: null, singleRun: false }
+    };
+    const statsV4 = mergeStatsV4(leftV4, rightV4);
+    const dimensions = {};
+    const names = new Set([
+      ...Object.keys(leftRaw.dimensions || {}),
+      ...Object.keys(rightRaw.dimensions || {})
+    ]);
+    names.forEach(name => {
+      dimensions[name] = mergeCountMaps(leftRaw.dimensions?.[name], rightRaw.dimensions?.[name]);
+    });
+    return {
+      ...leftRaw,
+      ...rightRaw,
+      uid,
+      globalListenSeconds: 0,
+      globalValidListenCount: 0,
+      globalFullListenCount: 0,
+      firstPlayedAt: minPositive(leftRaw.firstPlayedAt, rightRaw.firstPlayedAt),
+      lastPlayedAt: Math.max(num(leftRaw.lastPlayedAt), num(rightRaw.lastPlayedAt)),
+      featuresUsed: mergeCountMaps(leftRaw.featuresUsed, rightRaw.featuresUsed),
+      analyticsSchemaVersion: STATS_SHARD_VERSION,
+      statsV4,
+      sparseCube: { ...statsV4.cube },
+      repeatRuns: { ...statsV4.repeat },
+      transitions: mergeCountMaps(leftRaw.transitions, rightRaw.transitions),
+      dimensions
+    };
+  }
+
+  const leftSessions = Math.floor(num(leftRaw.analysisEligibleSessions));
+  const rightSessions = Math.floor(num(rightRaw.analysisEligibleSessions));
+  const totalSessions = leftSessions + rightSessions;
+  const completionSum =
+    num(leftRaw.averageCompletionRate) * leftSessions +
+    num(rightRaw.averageCompletionRate) * rightSessions;
+
+  const byHourMs = mergeFixedArrays(leftRaw.byHourMs, rightRaw.byHourMs, 24);
+  const byWeekdayMs = mergeFixedArrays(leftRaw.byWeekdayMs, rightRaw.byWeekdayMs, 7);
+
+  return {
+    ...leftRaw,
+    ...rightRaw,
+    uid,
+    globalListenSeconds: num(leftRaw.globalListenSeconds) + num(rightRaw.globalListenSeconds),
+    uniqueCoveredSeconds: num(leftRaw.uniqueCoveredSeconds) + num(rightRaw.uniqueCoveredSeconds),
+    analysisEligibleSessions: totalSessions,
+    averageCompletionRate: totalSessions > 0 ? completionSum / totalSessions : 0,
+    microSkips: Math.floor(num(leftRaw.microSkips) + num(rightRaw.microSkips)),
+    earlySkips: Math.floor(num(leftRaw.earlySkips) + num(rightRaw.earlySkips)),
+    validSkips: Math.floor(num(leftRaw.validSkips) + num(rightRaw.validSkips)),
+    partialEnds: Math.floor(num(leftRaw.partialEnds) + num(rightRaw.partialEnds)),
+    globalValidListenCount: Math.floor(num(leftRaw.globalValidListenCount) + num(rightRaw.globalValidListenCount)),
+    globalFullListenCount: Math.floor(num(leftRaw.globalFullListenCount) + num(rightRaw.globalFullListenCount)),
+    firstPlayedAt: minPositive(leftRaw.firstPlayedAt, rightRaw.firstPlayedAt),
+    lastPlayedAt: Math.max(num(leftRaw.lastPlayedAt), num(rightRaw.lastPlayedAt)),
+    byHourMs,
+    byWeekdayMs,
+    byHour: byHourMs.map(value => value / 1000),
+    byWeekday: byWeekdayMs.map(value => value / 1000),
+    temporalSchemaVersion: 3,
+    featuresUsed: mergeCountMaps(leftRaw.featuresUsed, rightRaw.featuresUsed)
+  };
 };
 
 export const projectionStreak = raw => {
@@ -444,5 +538,6 @@ export default {
   mergeStatsProjectionInto,
   mergeStatsProjections,
   projectionToStatsRows,
+  mergeProjectedStatsRow,
   projectionStreak
 };
