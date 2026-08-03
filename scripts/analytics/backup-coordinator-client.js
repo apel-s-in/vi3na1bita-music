@@ -5,7 +5,8 @@ import { requestSocialAction } from '../core/social-session.js';
 import { getDeviceContext } from '../core/device-context.js';
 
 const RENEW_MS = 2 * 60 * 1000;
-const FALLBACK_RETRY_MS = 15000;
+const AUTOMATIC_RETRY_MS = 60 * 1000;
+const MANUAL_RETRY_MS = 15 * 1000;
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 
@@ -53,14 +54,14 @@ const runWithLocalLock = async ({ manual = false, task } = {}) => {
           ok: false,
           granted: false,
           localBusy: true,
-          retryAt: Date.now() + FALLBACK_RETRY_MS
+          retryAt: Date.now() + (manual ? MANUAL_RETRY_MS : AUTOMATIC_RETRY_MS)
         };
       }
       return task();
     }
   );
 };
-export const backupCoordinatorSchedulerPatch = (outcome = {}, fallbackRetryAt = Date.now() + FALLBACK_RETRY_MS) => {
+export const backupCoordinatorSchedulerPatch = (outcome = {}, fallbackRetryAt = Date.now() + AUTOMATIC_RETRY_MS) => {
   const coordinator = outcome?.coordinator || outcome || {};
   const block = coordinator?.block || coordinator?.accountBlock || null;
   const retryAt = num(outcome?.retryAt || coordinator?.retryAt || block?.until) || fallbackRetryAt;
@@ -114,7 +115,7 @@ export const claimBackupCoordinator = async ({
   if (!result?.granted) {
     emit(result?.blocked ? 'blocked' : result?.queued ? 'queued' : 'busy', {
       coordinator: result || null,
-      retryAt: num(result?.retryAt) || Date.now() + FALLBACK_RETRY_MS
+      retryAt: num(result?.retryAt) || Date.now() + (manual ? MANUAL_RETRY_MS : AUTOMATIC_RETRY_MS)
     });
     return result;
   }
@@ -246,7 +247,7 @@ export const withBackupCoordinatorLease = ({
         granted: false,
         deferred: true,
         reason: busyReason,
-        retryAt: Date.now() + FALLBACK_RETRY_MS
+        retryAt: Date.now() + AUTOMATIC_RETRY_MS
       };
     }
 
@@ -265,7 +266,7 @@ export const withBackupCoordinatorLease = ({
         blocked: claim?.blocked === true,
         busy: claim?.busy === true,
         coordinator: claim || null,
-        retryAt: num(claim?.retryAt) || Date.now() + FALLBACK_RETRY_MS
+        retryAt: num(claim?.retryAt) || Date.now() + (manual ? MANUAL_RETRY_MS : AUTOMATIC_RETRY_MS)
       };
     }
 
