@@ -46,7 +46,7 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
 
   [
     'scheduleLocalPack',
-    'PLAYBACK_DEFER_MS',
+    'BACKUP_PLAYBACK_DEFER_MS',
     'disk_access_unavailable',
     'disk_space_exhausted',
     'DISK_FULL_RETRY_MS',
@@ -98,6 +98,7 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
     'completeCoordinatorLease',
     'releaseCoordinatorLease',
     'publicCoordinatorState',
+    'existingTokenHash',
     'manual: 100',
     'continuation: 50',
     'initial_device: 40',
@@ -169,6 +170,7 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   contains(proxy, 'rebuildCatalogDocument');
   contains(proxy, 'updateCatalogHead');
   contains(proxy, 'catalogHeads');
+  contains(proxy, 'backup_catalog_requires_mandatory_coordinator');
 
   contains('scripts/analytics/backup-scheduler-policy.js', 'BACKUP_DAILY_MS');
   contains('scripts/analytics/backup-scheduler-policy.js', 'dirtyDomainsAfterSync');
