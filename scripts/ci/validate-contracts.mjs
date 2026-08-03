@@ -416,8 +416,8 @@ const validateCloudFunctionFiles = () => {
       const value = JSON.parse(read(packagePath));
       assert(value && typeof value === 'object' && !Array.isArray(value), `${packagePath}: корректный JSON object`);
       assert(!value.main || value.main === 'index.js', `${packagePath}: main=index.js`);
-      if (name === 'vi3-signaling') {
-        assert(!value.dependencies?.['@yandex-cloud/nodejs-sdk'], `${packagePath}: неиспользуемый @yandex-cloud/nodejs-sdk удалён`);
+      if (['vi3-signaling', 'vi3-webpush'].includes(name)) {
+        assert(value.dependencies?.['@yandex-cloud/nodejs-sdk'] === '2.6.0', `${packagePath}: установлен metadata auth SDK для ydb-sdk 5.9.0`);
       }
     } catch (error) {
       failures.push(`${packagePath}: ${error.message}`);
