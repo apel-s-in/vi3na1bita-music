@@ -1,8 +1,7 @@
 // UID.004_(Stats as cache)_(ачивки должны опираться на агрегаты/event truth, а не на UI)_(achievement engine остаётся отдельным геймификационным слоем) UID.051_(Collection state)_(подготовить future связь achievements и collectible progress)_(часть track mastery/badges позже может подмешиваться как условия/визуал) UID.052_(Track badges and completion)_(не смешивать badge truth и unlock truth)_(achievement engine отвечает за unlock/XP, collection engine — за per-track completion) UID.063_(Profile recs tab upgrade)_(позже использовать achievements как мягкий recommendation signal)_(например rediscovery/collection-driven recs, но без логики внутри engine) UID.068_(Public playlist analytics)_(подготовить future social achievements)_(playlist/share/community unlocks могут появиться additively) UID.094_(No-paralysis rule)_(ачивки не должны зависеть от intel-слоя)_(semantic/community/provider achievements только optional extensions)
 import { metaDB } from './meta-db.js';
-import { eventLogger } from './event-logger.js';
 import { AchievementDictionary } from './achievements-dict.js';
-import { normalizeAchievementUnlockMeta, normalizeAchievementUnlockMetaRow } from './achievement-state.js';
+import { normalizeAchievementUnlockMeta } from './achievement-state.js';
 import { getConfirmedListeningStats } from './confirmed-listening-stats.js';
 export class AchievementEngine {
   constructor() {
@@ -64,10 +63,6 @@ export class AchievementEngine {
     if (window.TrackRegistry?.ensurePopulated) await window.TrackRegistry.ensurePopulated();
     await this.check();
   }
-  _evalCondition(c, agg) {
-    const v = agg[c.metric] || 0;
-    return c.operator === 'gte' ? v >= c.target : v === c.target;
-  }
   _getSc(r, lvl, isXp) {
     if (isXp) {
       if (Array.isArray(r.reward?.steps)) {
@@ -96,13 +91,6 @@ export class AchievementEngine {
       return true;
     }
     return !rule?.scaling?.steps || level <= rule.scaling.steps.length;
-  }
-  _getLevelOffset(rule, level) {
-    if (!rule?.scaling?.resetEachLevel || level <= 1) return 0;
-    if (rule.scaling.cumulativeSteps) {
-      return this._getSc(rule, level - 1, false);
-    }
-    return rule.scaling.steps.slice(0, level - 1).reduce((sum, target) => sum + Number(target || 0), 0);
   }
   _requiresServerVerification() {
     return true;
@@ -258,14 +246,6 @@ export class AchievementEngine {
       }
     }
     return arr.sort((a, b) => (a.isUnlocked === b.isUnlocked ? (b.unlockedAt || 0) - (a.unlockedAt || 0) : a.isUnlocked ? -1 : 1));
-  }
-  _notifyUnlock(name, icon, id = '') {
-    const reward = this._getServerReward(id);
-    const ev = eventLogger.log('ACHIEVEMENT_UNLOCK', null, { id, name, icon, rewardCurrency: 'shards', rewardStatus: reward ? 'server_pending' : 'validator_pending' });
-    if (!this._silentNotify) {
-      window.NotificationSystem?.success(reward ? `🏆 ${icon} Открыто: ${name}. Проверяем награду ${reward.amount} ♦` : `🏆 ${icon} Открыто: ${name}`);
-    }
-    return ev;
   }
   getCompletedCount() {
     return this.achievements.reduce((count, item) => count + (item?.isUnlocked ? 1 : 0), 0);
