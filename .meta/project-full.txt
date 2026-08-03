@@ -4918,12 +4918,21 @@ export const normalizeLedgerCheckpoint = raw => ({
 export const readLedgerCheckpoint = async (db = defaultMetaDB) =>
   normalizeLedgerCheckpoint((await db.getGlobal(LEDGER_CHECKPOINT_KEY).catch(() => null))?.value || {});
 
+export const publishLedgerCheckpoint = cp => {
+  const row = normalizeLedgerCheckpoint(cp);
+  try {
+    if (row.chainId) localStorage.setItem(CHAIN_ID_KEY, row.chainId);
+  } catch {}
+  try {
+    window.dispatchEvent(new CustomEvent('event-ledger:checkpoint', { detail: row }));
+  } catch {}
+  return row;
+};
+
 export const writeLedgerCheckpoint = async (db = defaultMetaDB, cp = {}) => {
   const row = normalizeLedgerCheckpoint(cp);
   await db.setGlobal(LEDGER_CHECKPOINT_KEY, row);
-  try { if (row.chainId) localStorage.setItem(CHAIN_ID_KEY, row.chainId); } catch {}
-  try { window.dispatchEvent(new CustomEvent('event-ledger:checkpoint', { detail: row })); } catch {}
-  return row;
+  return publishLedgerCheckpoint(row);
 };
 
 export const adoptLedgerCheckpointFromEvents = async ({ db = defaultMetaDB, deviceStableId = localStorage.getItem('deviceStableId') || '', reason = 'adopt_from_events' } = {}) => {
@@ -5053,6 +5062,7 @@ export default {
   sha256Hex,
   normalizeLedgerCheckpoint,
   readLedgerCheckpoint,
+  publishLedgerCheckpoint,
   writeLedgerCheckpoint,
   hashEvent,
   buildLedgerEvents,
