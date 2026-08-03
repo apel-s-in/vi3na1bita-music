@@ -1959,7 +1959,6 @@ async function actionPlaybackTransferPrepare(event, body) {
   if (sourceDevice.revokedAt > 0) throw new Error('playback_source_device_revoked');
   if (sourceDevice.remotePauseEnabled === false) throw new Error('playback_remote_pause_disabled');
   const targetTrack = playbackTrackFromCatalog(body.trackUid || state.trackUid);
-  const targetVersion = targetTrack.trackVersion;
   const transferId = rid('transfer');
   const transferToken = base64url(crypto.randomBytes(32));
   const createdAt = now();
