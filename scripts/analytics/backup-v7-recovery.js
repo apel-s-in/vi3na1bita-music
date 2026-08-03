@@ -5,7 +5,6 @@ import { exportAccountCachePolicies, applyAccountCachePolicies } from '../offlin
 import { DEVICE_STORAGE_KEYS } from './snapshot-contract.js';
 
 const CHECKPOINT_KEY = 'latest';
-const DOMAIN_STORES = Object.freeze(['recommendation_state', 'intel_runtime']);
 const DOMAIN_STORAGE_KEYS = Object.freeze(['intel:recommendation-controls:v1', 'profile:ui-personalization:v1']);
 const safe = value => String(value == null ? '' : value).trim();
 const dynamicDomainKeys = () => {
