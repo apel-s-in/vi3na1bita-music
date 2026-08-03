@@ -191,6 +191,8 @@ const makeRoomUrl = cfg => {
       config: cfg,
       onState: st => {
         if (st?.state === 'closed_by_game') {
+          bridge?.destroy?.();
+          bridge = null;
           try {
             clearGameUrlParams();
           } catch {}
