@@ -5,13 +5,8 @@ import { getSyncStatusLine } from '../../analytics/sync-revisions.js';
 import { renderYandexConnectedBlock, renderYandexLoggedOutBlock } from './account-cloud-renderers.js';
 
 const bindYandexActions = (rt, r) => {
-  rt.querySelectorAll('[data-ya-action]').forEach(b => b.onclick = async () => {
-    const a = b.dataset.yaAction, p = rt.querySelector('#ya-restore-progress'), br = rt.querySelector('#ya-restore-bar'), s = rt.querySelector('#ya-restore-status');
-    if (a === 'restore-backup' && p) {
-      p.style.display = 'block'; b.disabled = true; let c = 0;
-      const t = setInterval(() => { c = Math.min(c + 3, 85); if (br) br.style.width = `${c}%`; if (s) s.textContent = c < 30 ? 'Подключение к Яндекс Диску...' : (c < 60 ? 'Загрузка backup...' : 'Обработка данных...'); }, 200);
-      try { await window._handleYaAction?.(a, rt, r); } finally { clearInterval(t); if (br) br.style.width = '100%'; setTimeout(() => { if (p) p.style.display = 'none'; if (br) br.style.width = '0%'; b.disabled = false; }, 500); }
-    } else await window._handleYaAction?.(a, rt, r);
+  rt.querySelectorAll('[data-ya-action]').forEach(button => {
+    button.onclick = () => window._handleYaAction?.(button.dataset.yaAction, rt, r);
   });
   const ya = window.YandexAuth, aC = rt.querySelector('#ya-auto-relogin'), aT = rt.querySelector('#ya-autosave-toggle');
   if (ya && aC) aC.onchange = e => ya.setAutoRelogin(e.target.checked);
