@@ -302,7 +302,6 @@ exports.handler = async event => {
   "private": true,
   "type": "commonjs",
   "dependencies": {
-    "@yandex-cloud/nodejs-sdk": "^2.6.0",
     "web-push": "^3.6.7",
     "ydb-sdk": "5.9.0"
   }
