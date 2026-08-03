@@ -12932,13 +12932,10 @@ export default { mountProfileCarouselFlat };
 // UID.112_(Profile command center)_(единый renderer для backup/sync/verify actions)_(профиль остаётся командным центром)
 // UID.094_(No-paralysis rule)_(cloud UI render-only)_(не влияет на playback/iOS)
 
-import { esc, renderCloudMetaBox, renderCloudCompareNotice } from './profile-render-kit.js';
+import { esc } from './profile-render-kit.js';
 
 export const renderCloudStatusHeader = ({ statusLabel = '', statusColor = '#888', profile: pr = null, hasDiskAccess = false, avatarHtml = '' } = {}) =>
   `<div class="yandex-auth-statusline"><div class="yandex-auth-statusdot" style="background:${esc(statusColor)}"></div><div class="yandex-auth-statustext">${esc(statusLabel)}</div></div>${pr ? `<div class="yandex-auth-profile">${avatarHtml}<div class="yandex-auth-profileinfo"><div class="yandex-auth-profilename">${esc(pr.displayName || pr.login || 'Пользователь')}</div><div class="yandex-auth-profilemeta">${esc(pr.login || '')}${hasDiskAccess ? ' · Диск ✓' : ''}</div></div></div>` : ''}`;
-
-export const renderCloudMetaPair = ({ cloudInfo = null, compareVm = null, restoreDone = false } = {}) =>
-  `<div class="yandex-auth-meta">${renderCloudMetaBox({ label:'Облако', value:cloudInfo ? (cloudInfo.timestamp ? new Date(Number(cloudInfo.timestamp)).toLocaleString('ru-RU') : 'есть копия') : 'копии ещё нет' })}${renderCloudMetaBox({ label:'Сравнение', value:compareVm?.label || '—' })}</div>${renderCloudCompareNotice({ compareVm, restoreDone })}`;
 
 export const renderYandexActionGrid = (items = null) => {
   const rows = items || [
@@ -12959,7 +12956,7 @@ export const renderAccountBottomActions = () => {
   return `<div class="yandex-auth-bottomactions">${rows.map(([act, text, cls = 'om-btn--ghost']) => `<button class="om-btn ${esc(cls)}" data-ya-action="${esc(act)}">${esc(text)}</button>`).join('')}</div>`;
 };
 
-export default { renderCloudStatusHeader, renderCloudMetaPair, renderYandexActionGrid, renderAccountBottomActions };
+export default { renderCloudStatusHeader, renderYandexActionGrid, renderAccountBottomActions };
 
 //=================================================
 // FILE: /scripts/app/profile/live-bindings.js
