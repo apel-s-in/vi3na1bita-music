@@ -110,7 +110,18 @@ const pruneCoordinatorState = (raw, at, { ticketMs = DEFAULT_TICKET_MS } = {}) =
   const lease = state.lease && state.lease.expiresAt > at ? state.lease : null;
   const accountBlock = state.accountBlock && state.accountBlock.until > at ? state.accountBlock : null;
   const queue = state.queue.filter(ticket => at - ticket.lastRequestedAt <= ticketMs && ticket.deviceId !== lease?.holderDeviceId);
-  return { ...state, lease, accountBlock, queue: sortQueue(queue), updatedAt: Math.max(state.updatedAt, at) };
+  const changed =
+    lease !== state.lease ||
+    accountBlock !== state.accountBlock ||
+    queue.length !== state.queue.length;
+
+  return {
+    ...state,
+    lease,
+    accountBlock,
+    queue: sortQueue(queue),
+    updatedAt: changed ? at : state.updatedAt
+  };
 };
 
 const changedState = (before, after) => JSON.stringify(normalizeCoordinatorState(before)) !== JSON.stringify(normalizeCoordinatorState(after));
@@ -162,10 +173,25 @@ const claimCoordinatorLease = (raw, input = {}, options = {}) => {
   }
 
   if (state.lease?.holderDeviceId === deviceId) {
+    const tokenMatches = !!input.tokenHash && input.tokenHash === state.lease.tokenHash;
     return {
       changed: changedState(before, state),
       state,
-      result: { granted: true, existing: true, lease: { ...state.lease }, retryAt: state.lease.expiresAt }
+      result: tokenMatches
+        ? {
+            granted: true,
+            existing: true,
+            lease: { ...state.lease },
+            retryAt: state.lease.expiresAt
+          }
+        : {
+            granted: false,
+            queued: false,
+            busy: true,
+            sameDevice: true,
+            activeLease: { ...state.lease, tokenHash: '' },
+            retryAt: state.lease.expiresAt
+          }
     };
   }
 
