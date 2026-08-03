@@ -23972,7 +23972,6 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 .profile-list-item .log-desc{font-size:11px;color:var(--secondary-color);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-list-item .rec-play-btn{flex-shrink:0}
 
-.log-time{font-size:11px;color:#888;min-width:45px}
 .log-info{flex:1}
 .log-title{font-size:13px;font-weight:bold;color:#eaf2ff}
 .log-desc{font-size:11px;color:var(--secondary-color);margin-top:2px}
