@@ -13874,15 +13874,9 @@ export default { renderConsoleSettingsSection, bindConsoleSettingsSection };
 import { renderTrashSettingsSections, readDeletedPlaylists, readDeletedFavorites } from './settings-trash-section.js';
 
 export { readDeletedPlaylists, readDeletedFavorites };
-export const bindDataSettingsSection = () => {};
 export const renderDataSettingsSection = () => `<div class="settings-content" id="set-data">${renderTrashSettingsSections()}</div>`;
 
-export default {
-  readDeletedPlaylists,
-  readDeletedFavorites,
-  renderDataSettingsSection,
-  bindDataSettingsSection
-};
+export default { readDeletedPlaylists, readDeletedFavorites, renderDataSettingsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-download-section.js
@@ -16757,7 +16751,7 @@ const validatePwaAndLegacy = () => {
   const applicationFiles = [...listFiles('scripts').filter(file => !file.startsWith('scripts/ci/') && !file.startsWith('scripts/e2e/')), ...listFiles('data')];
   assertNoMatch(applicationFiles, /socials_all_visited|socialVisitAll|social_visit_all|Подписчик всего/g, 'Удалённое социальное достижение отсутствует');
   assertNoMatch([...listFiles('scripts').filter(file => !file.startsWith('scripts/ci/')), 'service-worker.js'], /verified-achievement-state|verified-achievements-view|claim_prepare|claim_validate|claim_index|achievement_verify/g, 'Удалённый backup claim contour отсутствует');
-  assertNoMatch(['scripts/app/profile/yandex-actions.js'], /YandexDisk|BackupVault|restore-backup|backup-import-manual|backup-export-manual|delete-old-backups|check-backup|archive-maintenance|recovery-snapshot|ledger-health|trust-check/g, 'V6 actions снова подключены к account runtime');
+  assertNoMatch(['scripts/app/profile/yandex-actions.js', 'scripts/app/profile/yandex-auth-view.js', 'scripts/app/profile/account-cloud-renderers.js'], /YandexDisk|BackupVault|restore-backup|ya-restore-progress|ya-restore-bar|ya-restore-status|backup-import-manual|backup-export-manual|delete-old-backups|check-backup|archive-maintenance|recovery-snapshot|ledger-health|trust-check/g, 'V6 restore UI или actions снова подключены к account runtime');
   assertNoMatch(['service-worker.js'], /yandex-backup-disk|yandex-device-settings-disk|yandex-event-archive-disk|yandex-ledger-disk|event-archive-sync|event-archive-restore|archive-maintenance|backup-upload-runner|backup-importers|backup-vault|fresh-restore-modal|restore-backup-runner/g, 'V6 или legacy restore снова добавлены в SW precache');
 };
 const validateDataBoundaries = () => {
