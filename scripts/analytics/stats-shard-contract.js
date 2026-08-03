@@ -6,7 +6,7 @@ import { temporalPartsFromListenEvent } from './temporal-buckets.js';
 import { buildDeltaRangeKey, safeDeltaId } from './backup-delta-contract.js';
 import { buildStatsV4, emptyStatsV4, mergeStatsV4, normalizeStatsV4 } from './stats-v4-projection.js';
 
-export const STATS_SHARD_VERSION = 4;
+export const STATS_SHARD_VERSION = 5;
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const fixed = (raw, length) => Array.from({ length }, (_, index) => Math.max(0, Math.floor(num(raw?.[index]))));
