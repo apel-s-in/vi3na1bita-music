@@ -17029,7 +17029,9 @@ const validatePlaybackOwnershipFoundation = () => {
   contains(server, 'catalogReady');
   contains(server, 'rateLimitBucket');
   contains(server, 'getPlaybackCoordinationState');
-  contains(server, 'PLAYBACK_DEVICE_ACTIVE_MS');
+  contains(server, 'getActiveAccountPeerDevices');
+  contains(server, 'ACCOUNT_DEVICE_ACTIVE_MS');
+  excludes(server, /PLAYBACK_DEVICE_ACTIVE_MS/, 'Playback снова получил отдельную копию active-device window');
   excludes(server, /const prefix = `rate:\$\{cleanScope\}:\$\{actorHash\}:\$\{bucket\}:`/, 'Rate limiter снова использует row-per-hit prefix');
   contains(ownership, 'isPlaybackCoordinationRequired');
   contains('scripts/core/social-session.js', 'playbackCoordination');
