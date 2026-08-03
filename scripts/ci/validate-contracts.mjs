@@ -418,6 +418,9 @@ const validateCloudFunctionFiles = () => {
       assert(!value.main || value.main === 'index.js', `${packagePath}: main=index.js`);
       if (['vi3-signaling', 'vi3-webpush'].includes(name)) {
         assert(value.dependencies?.['@yandex-cloud/nodejs-sdk'] === '2.6.0', `${packagePath}: установлен metadata auth SDK для ydb-sdk 5.9.0`);
+        assert(source.includes('YDB_METADATA_AUTH_MODULE'), `${indexPath}: объявлен metadata auth runtime probe`);
+        assert(source.includes('ydbMetadataAuthAvailable'), `${indexPath}: metadata auth health опубликован в ping`);
+        assert(source.includes('ydb_metadata_auth_dependency_missing'), `${indexPath}: отсутствующая metadata dependency даёт понятную ошибку`);
       }
     } catch (error) {
       failures.push(`${packagePath}: ${error.message}`);
