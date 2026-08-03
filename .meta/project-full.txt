@@ -776,20 +776,103 @@ jobs:
               | head -n 500 || true
           } | tee source-api.txt
 
-      - name: Extract exact table transaction signatures
+      - name: Extract exact transaction declarations and implementation
         run: |
           set -euo pipefail
           cd /tmp/ydb-probe
-          {
-            echo "=== table-session transaction declarations ==="
-            grep -RInE \
-              "interface ITransactionMeta|interface IExistingTransaction|interface INewTransaction|type ITransactionMeta|type IExistingTransaction|type INewTransaction|beginTransaction\\(|commitTransaction\\(|rollbackTransaction\\(" \
-              node_modules/ydb-sdk/build/cjs \
-              --include='*.d.ts' \
-              -A 12 -B 4 || true
 
-            echo "=== table-session transaction implementation ==="
-            sed -n '300,390p' node_modules/ydb-sdk/build/cjs/src/table/table-session.js
+          node <<'NODE' > transaction-contract.json
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+          const root = path.dirname(require.resolve('ydb-sdk/package.json'));
+          const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+          const patterns = [
+            /beginTransaction/g,
+            /commitTransaction/g,
+            /rollbackTransaction/g,
+            /ITransactionMeta/g,
+            /IExistingTransaction/g,
+            /INewTransaction/g,
+            /txId/g,
+            /transactionId/g
+          ];
+          const files = [];
+          const stack = [root];
+
+          while (stack.length) {
+            const directory = stack.pop();
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              if (entry.name === 'node_modules') continue;
+              const absolute = path.join(directory, entry.name);
+              if (entry.isDirectory()) {
+                stack.push(absolute);
+                continue;
+              }
+              if (!/\.(?:js|d\.ts)$/.test(entry.name)) continue;
+              const source = fs.readFileSync(absolute, 'utf8');
+              if (!patterns.some(pattern => {
+                pattern.lastIndex = 0;
+                return pattern.test(source);
+              })) continue;
+
+              const lines = source.split(/\r?\n/);
+              const matches = [];
+              lines.forEach((line, index) => {
+                if (!/beginTransaction|commitTransaction|rollbackTransaction|ITransactionMeta|IExistingTransaction|INewTransaction|txId|transactionId/.test(line)) return;
+                matches.push({
+                  line: index + 1,
+                  context: lines.slice(Math.max(0, index - 4), Math.min(lines.length, index + 9))
+                });
+              });
+              files.push({
+                file: path.relative(root, absolute).replace(/\\/g, '/'),
+                sha256: crypto.createHash('sha256').update(source).digest('hex'),
+                matches
+              });
+            }
+          }
+
+          const result = {
+            package: packageJson.name,
+            version: packageJson.version,
+            packageRoot: root,
+            transactionFiles: files.sort((left, right) => left.file.localeCompare(right.file))
+          };
+          process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+          NODE
+
+          node <<'NODE' > transaction-runtime.txt
+          const sdk = require('ydb-sdk');
+          const methods = value => {
+            const output = new Set();
+            let current = value;
+            while (current && current !== Object.prototype) {
+              Object.getOwnPropertyNames(current)
+                .filter(name => name !== 'constructor')
+                .forEach(name => output.add(name));
+              current = Object.getPrototypeOf(current);
+            }
+            return [...output].sort();
+          };
+
+          for (const name of ['Driver', 'TableClient', 'Session', 'Transaction', 'TransactionSettings']) {
+            const value = sdk[name];
+            console.log(`[${name}]`);
+            console.log(value ? methods(value.prototype || value).join('\n') : 'not exported');
+            console.log('');
+          }
+          NODE
+
+          {
+            echo "=== exact package ==="
+            npm list ydb-sdk
+            echo
+            echo "=== transaction contract ==="
+            cat transaction-contract.json
+            echo
+            echo "=== runtime prototypes ==="
+            cat transaction-runtime.txt
           } | tee transaction-signatures.txt
           
       - name: Build report
@@ -797,11 +880,21 @@ jobs:
           set -euo pipefail
           cd /tmp/ydb-probe
           cat installed-version.txt runtime-api.txt source-api.txt transaction-signatures.txt > ydb-sdk-capabilities.txt
+          test -s transaction-contract.json
+          test -s transaction-runtime.txt
+          test -s ydb-sdk-capabilities.txt
 
       - uses: actions/upload-artifact@v4
         with:
           name: ydb-sdk-capabilities-${{ inputs.version }}
-          path: /tmp/ydb-probe/ydb-sdk-capabilities.txt
+          path: |
+            /tmp/ydb-probe/installed-version.txt
+            /tmp/ydb-probe/runtime-api.txt
+            /tmp/ydb-probe/source-api.txt
+            /tmp/ydb-probe/transaction-contract.json
+            /tmp/ydb-probe/transaction-runtime.txt
+            /tmp/ydb-probe/transaction-signatures.txt
+            /tmp/ydb-probe/ydb-sdk-capabilities.txt
           if-no-files-found: error
           retention-days: 14
 
