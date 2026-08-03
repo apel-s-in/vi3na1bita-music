@@ -4397,9 +4397,12 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   const authorization = validateBackupAuthorization({ result, deviceId, ownerYandexIdHash });
   if (batch?.ranges?.length) await commitUploadedBackupV7Batch(batch);
 
-  const checkpoint = await createBackupV7Checkpoint({ reason: `backup_v71_sync:${reason}` });
+  const sharedDocument = result?.shared?.current || null;
+  const needsMaterialization = pullEnabled === true || !!sharedDocument || !!result?.settings?.template;
+  const checkpoint = needsMaterialization
+    ? await createBackupV7Checkpoint({ reason: `backup_v71_sync:${reason}` })
+    : null;
   try {
-    const sharedDocument = result?.shared?.current || null;
     const sharedApplied = sharedDocument ? await applyBackupV7SharedDocument(sharedDocument) : { applied: false };
     let templateApplied = false;
 
@@ -4423,8 +4426,10 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       lastError: ''
     });
 
-    const rebuild = await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_sync' });
-    await clearBackupV7Checkpoint();
+    const rebuild = needsMaterialization
+      ? await rebuildBackupV7LocalAnalytics({ reason: 'backup_v71_sync' })
+      : { rebuilt: false, deferred: false, skipped: true, reason: 'transport_only_push' };
+    if (checkpoint) await clearBackupV7Checkpoint();
     localStorage.setItem('yandex:last_backup_local_ts', String(at));
 
     const push = {
@@ -4466,7 +4471,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       settings: result?.settings || null
     };
   } catch (error) {
-    await restoreBackupV7Checkpoint(checkpoint).catch(() => null);
+    if (checkpoint) await restoreBackupV7Checkpoint(checkpoint).catch(() => null);
     throw error;
   }
 };
