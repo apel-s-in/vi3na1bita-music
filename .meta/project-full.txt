@@ -15427,8 +15427,8 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   contains('scripts/analytics/backup-v7-recovery.js', "readRows('recommendation_state')");
   contains('scripts/analytics/backup-v7-recovery.js', "readRows('intel_runtime')");
   contains('scripts/analytics/backup-v7-recovery.js', 'domainState');
-  excludes(scheduler, /LS_PHASE|readPhase\(|setPhase\(|next-phase|phase !== 'pull'|phase !== 'push'/, 'Alternating push/pull scheduler снова добавлен');
-  excludes(scheduler, /backup:v71:next-sync-at|backup:v71:block-reason|backup:v71:block-until/, 'Scheduler снова использует не account-scoped runtime state');
+  excludes(scheduler, /LS_PHASE|readPhase\(|setPhase\(|phase !== 'pull'|phase !== 'push'/, 'Alternating push/pull scheduler снова добавлен');
+  excludes(scheduler, /localStorage\.setItem\(['"]backup:v71:(?:next-phase|next-sync-at|dirty|block-reason|block-until)['"]/, 'Scheduler снова записывает legacy localStorage runtime state');
   excludes(range, /PENDING_KEY|v71_batch|savePendingBackupV7Batch|clearPendingBackupV7Batch/, 'Одиночный pending batch снова добавлен');
   excludes(sync, /cleanupLegacyBackupV6|legacyCleanup|DELETE_LEGACY_V6|knownRangeKeys|projectedAt/, 'Legacy Backup state снова добавлен');
   excludes(meta, /createObjectStore\(\s*['"]backup_known_ranges['"]|['"]backup_pending_ranges['"]|['"]backup_mutations['"]/, 'Мёртвый Backup store снова добавлен');
