@@ -33,10 +33,13 @@ let state = normalizeCoordinatorState({});
 let step = claim(state, 'device-a', 'daily', 'hash-a');
 assert.equal(step.result.granted, true);
 assert.equal(step.state.lease.holderDeviceId, 'device-a');
+state = step.state;
+
 const duplicateWithoutToken = claimCoordinatorLease(state, {
   ticketId: 'ticket_device-a-second-tab',
   leaseId: 'lease_device-a-second-tab',
-  tokenHash: 'different-token',
+  tokenHash: 'new-token-for-unused-lease',
+  existingTokenHash: 'different-token',
   deviceId: 'device-a',
   deviceLabel: 'device-a',
   phase: 'full',
@@ -50,7 +53,8 @@ assert.equal(duplicateWithoutToken.result.sameDevice, true);
 const duplicateWithToken = claimCoordinatorLease(state, {
   ticketId: 'ticket_device-a-owner',
   leaseId: 'unused',
-  tokenHash: 'hash-a',
+  tokenHash: 'new-token-for-unused-lease',
+  existingTokenHash: 'hash-a',
   deviceId: 'device-a',
   deviceLabel: 'device-a',
   phase: 'full',
@@ -59,9 +63,20 @@ const duplicateWithToken = claimCoordinatorLease(state, {
 
 assert.equal(duplicateWithToken.result.granted, true);
 assert.equal(duplicateWithToken.result.existing, true);
+const afterExpiry = claimCoordinatorLease(state, {
+  ticketId: 'ticket_device-a-after-expiry',
+  leaseId: 'lease_device-a-after-expiry',
+  tokenHash: 'hash-a-new',
+  existingTokenHash: 'hash-a',
+  deviceId: 'device-a',
+  deviceLabel: 'device-a',
+  phase: 'full',
+  reason: 'continuation'
+}, { at: state.lease.expiresAt + 1 });
 
-state = step.state;
-
+assert.equal(afterExpiry.result.granted, true);
+assert.equal(afterExpiry.result.existing, false);
+assert.equal(afterExpiry.state.lease.tokenHash, 'hash-a-new');
 step = claim(state, 'device-b', 'daily', 'hash-b', 100);
 assert.equal(step.result.queued, true);
 assert.equal(step.result.position, 1);
