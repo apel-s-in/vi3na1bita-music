@@ -3279,13 +3279,12 @@ async function actionVoiceCallEnd(event, body) {
   const roomId = sanitizeId(body.roomId);
   const status = sanitizeId(body.status || 'ended', 40);
   const durationSec = Math.max(0, Math.min(num(body.durationSec), 86400));
-  if (roomId) {
-    await actionRoomClose(event, { ...body, roomId }).catch(() => null);
-  }
   if (!callId) return { ok: true, ended: false };
+
   const logRow = await kvGet(`voice:${voiceRoomKey}:${callId}`);
   const log = payload(logRow);
   if (!logRow) return { ok: true, ended: false };
+
   const participants = new Set([safe(log.fromPlayerId), safe(log.toPlayerId)]);
   if (!participants.has(playerId) || !participants.has(friendId)) {
     throw new Error('voice_call_forbidden');
@@ -3296,6 +3295,11 @@ async function actionVoiceCallEnd(event, body) {
   if (num(log.endedAt) > 0 || VOICE_TERMINAL_STATUSES.has(safe(log.status))) {
     return { ok: true, ended: true, duplicate: true, status: safe(log.status), endedAt: num(log.endedAt), durationSec: num(log.durationSec) };
   }
+
+  if (roomId) {
+    await actionRoomClose(event, { ...body, roomId }).catch(() => null);
+  }
+
   const endedAt = now();
   const completed = await saveVoiceLog({ callId, fromPlayerId: log.fromPlayerId, toPlayerId: log.toPlayerId, roomId: log.roomId || roomId, status, startedAt: num(log.startedAt), endedAt, durationSec });
   return { ok: true, ended: true, duplicate: false, status: completed.status, endedAt: completed.endedAt, durationSec: completed.durationSec };
@@ -7710,13 +7714,19 @@ const handleRequest = async event => {
           persistentSegmentReceipts: false,
           logicalSessionRequired: true
         },
-        accountDevices: { archiveAfterMs: ACCOUNT_DEVICE_ARCHIVE_MS },
+        accountDevices: {
+          archiveAfterMs: ACCOUNT_DEVICE_ARCHIVE_MS,
+          activeWindowMs: ACCOUNT_DEVICE_ACTIVE_MS
+        },
         backupCoordinator: {
           enabled: true,
           version: 1,
           leaseMs: BACKUP_COORDINATOR_LEASE_MS,
           actions: ['backup_sync_claim', 'backup_sync_authorize', 'backup_sync_renew', 'backup_sync_complete', 'backup_sync_release', 'backup_sync_status'],
-          accountWideDiskBlock: true
+          accountWideDiskBlock: true,
+          activePeerOnlyQueue: true,
+          automaticRetryMs: 60000,
+          manualRetryMs: 15000
         },
         webPushSubscriptions: { endpointIndex: true, leaseMs: WEB_PUSH_LEASE_MS, oneEndpointOwner: true, oneSubscriptionPerDevice: true },
         favoriteMirror: { enabled: true, rewardsShadow: CFG.favoriteRewardsShadow, catalogTracks: LISTEN_TRACK_CATALOG.size },
