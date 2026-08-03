@@ -492,6 +492,9 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
       settings: null,
       settingsTemplateDeviceId: '',
       includeDeviceCatalog: false,
+      includePull: request.includePull !== false,
+      includeShared: false,
+      includeSettingsRead: false,
       maxPullRanges: request.maxPullRanges
     };
   }
@@ -500,7 +503,7 @@ const pullBackupV7Pages = async ({ firstRequest, currentDeviceId, ownerYandexIdH
   return { pages, firstResult: pages[0]?.result || null, result, storedTotal, quarantined, exhausted: Number(result?.pull?.remaining || 0) > 0, stoppedReason: 'page_limit' };
 };
 
-const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
+const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnabled = true, pullEnabled = true, includeShared = true, settingsReadEnabled = true, maxPullRanges = 50, includeDeviceCatalog = false } = {}) => {
   if (document.hidden) throw new Error('backup_v71_foreground_required');
   if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('backup_v71_network_unavailable');
 
@@ -518,7 +521,7 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
   const batch = pushEnabled ? await buildPendingBackupV7Batch({ deviceId, ownerYandexIdHash }) : null;
   const settingsPayload = includeSettings ? await buildSettingsPayload() : null;
   const localSettingsHash = settingsPayload ? await settingsSemanticHash(settingsPayload) : '';
-  const sharedPayload = pushEnabled ? await buildBackupV7SharedDocument() : null;
+  const sharedPayload = pushEnabled && includeShared ? await buildBackupV7SharedDocument() : null;
   const settingsTemplateDeviceId = safe(localStorage.getItem(TEMPLATE_KEY));
   const sendSettings = !!settingsPayload && !settingsTemplateDeviceId && localSettingsHash !== state.settingsLocalHash;
 
@@ -532,6 +535,9 @@ const runSync = async ({ reason = 'autosync', includeSettings = true, pushEnable
       settings: sendSettings ? settingsPayload : null,
       settingsTemplateDeviceId,
       includeDeviceCatalog: includeDeviceCatalog === true,
+      includePull: pullEnabled === true,
+      includeShared: includeShared === true,
+      includeSettingsRead: settingsReadEnabled === true,
       maxPullRanges: Math.max(1, Math.min(50, Math.floor(Number(maxPullRanges) || 50)))
     },
     currentDeviceId: deviceId,
