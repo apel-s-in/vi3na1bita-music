@@ -28,7 +28,11 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
     'pullBackupV7Pages',
     'MAX_PULL_PAGES_PER_SLOT = 4',
     'no_watermark_progress',
-    'quarantinedKeys'
+    'quarantinedKeys',
+    'pullEnabled',
+    'includeShared',
+    'settingsReadEnabled',
+    'transport_only_push'
   ].forEach(marker => contains(sync, marker));
 
   [
@@ -37,7 +41,12 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
     'disk_access_unavailable',
     'disk_space_exhausted',
     'DISK_FULL_RETRY_MS',
-    'getBackupV7Availability'
+    'getBackupV7Availability',
+    'readDirtyDomains',
+    "dirtyDomains.has('playlists')",
+    "pullEnabled: phase !== 'push'",
+    "settingsReadEnabled: phase !== 'push'",
+    'local_backlog_continue'
   ].forEach(marker => contains(scheduler, marker));
 
   [
@@ -61,11 +70,20 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
     'completionsInRuns3',
     'cubeKey'
   ].forEach(marker => contains(statsV5, marker));
-
+  
+  contains('scripts/analytics/event-logger.js', "metaDB.db.transaction(['events_hot', 'global'], 'readwrite')");
+  contains('scripts/analytics/event-logger.js', 'LEDGER_CHECKPOINT_KEY');
+  contains('scripts/analytics/backup-v7-recovery.js', "readRows('events_warm')");
+  contains('scripts/analytics/backup-v7-recovery.js', 'captureStorage(DEVICE_STORAGE_KEYS)');
+  excludes('scripts/analytics/backup-v7-recovery.js', /replaceRows\(['"]backup_chain_watermarks['"]/, 'Checkpoint снова откатывает уже подтверждённые cloud watermarks');
   contains(meta, "this.dbName = 'MetaDB_v6'");
   contains(meta, "createIndex('chainSeq'");
   contains(proxy, "ALLOWED_MODES = new Set(['ping', 'v7_sync'])");
   contains(proxy, "domains: ['playlists']");
+  contains(proxy, 'body.includePull === false');
+  contains(proxy, 'body.includeShared === false');
+  contains(proxy, 'body.includeSettingsRead === false');
+  contains(proxy, 'pushWatermarks');
 
   excludes(range, /PENDING_KEY|v71_batch|savePendingBackupV7Batch|clearPendingBackupV7Batch/, 'Одиночный pending batch снова добавлен');
   excludes(sync, /cleanupLegacyBackupV6|legacyCleanup|DELETE_LEGACY_V6|knownRangeKeys|projectedAt/, 'Legacy Backup state снова добавлен');
