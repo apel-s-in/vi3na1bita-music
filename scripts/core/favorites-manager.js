@@ -1,7 +1,3 @@
-// UID.001_(Playback safety invariant)_(FavoritesManager не управляет playback)
-// UID.002_(UID-first core)_(избранное строго uid-based)
-// UID.003_(Event log truth)_(favorite tombstones для merge/restore)
-// UID.099_(Multi-device sync model)_(единый favorite-state contract)
 import { favoriteStatus, normalizeFavoriteItem, normalizeFavoriteList } from '../analytics/favorite-state-contract.js';
 const KEY = '__favorites_v2__';
 const uidOf = value => String(value || '').trim();
