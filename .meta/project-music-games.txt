@@ -143,7 +143,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/listener/] listener-profile.js
-[/scripts/intel/recs/] recommendation-engine.js, recommendation-reasons.js
+[/scripts/intel/recs/] recommendation-data-source.js, recommendation-engine.js, recommendation-reasons.js
 [/scripts/intel/shared/] bus.js, contracts.js, guards.js
 [/scripts/intel/track/] track-presentation.js, track-profiles.js, track-relations.js
 [/scripts/intel/ui/] track-profile-modal.js
@@ -435,6 +435,21 @@ jobs:
             echo "project-full.txt was truncated"
             exit 2
           fi
+
+          if grep -Eq '^// FILE: /data/track-profiles/[^/]+/[^/]+\.json$' .meta/project-full.txt; then
+            echo "Full TrackProfile contents leaked into project-full.txt"
+            exit 2
+          fi
+
+          grep -q 'track-profile.template.json' .meta/project-full.txt
+
+          while IFS= read -r profile; do
+            name="$(basename "$profile")"
+            grep -q "$name" .meta/project-full.txt || {
+              echo "TrackProfile missing from compact context tree: $profile"
+              exit 2
+            }
+          done < <(find data/track-profiles -mindepth 2 -maxdepth 2 -type f -name '*.json' | sort)
 
           for context in \
             .meta/functions/vi3-signaling.txt \
