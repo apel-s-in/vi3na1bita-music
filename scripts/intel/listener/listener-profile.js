@@ -46,6 +46,7 @@ const archetypes = ({ tracks, totalFull, totalValid, totalSeconds, lyricsUsed })
 };
 
 const state = { profile: null, lastBuiltAt: 0, timer: 0, initialized: false, rebuildPending: false };
+const authorized = () => window.YandexAuth?.getSessionStatus?.() === 'active' && window.YandexAuth?.isTokenAlive?.();
 
 export const listenerProfile = {
   async init() {
@@ -56,6 +57,15 @@ export const listenerProfile = {
     window.addEventListener('stats:updated', schedule);
     window.addEventListener('stats:rebuilt', schedule);
     window.addEventListener('favorites:updated', schedule);
+    window.addEventListener('yandex:auth:changed', event => {
+      if (event.detail?.status === 'active') this.scheduleRebuild(1200);
+      else {
+        clearTimeout(state.timer);
+        state.timer = 0;
+        state.profile = null;
+        state.rebuildPending = false;
+      }
+    });
     ['player:pause', 'player:stop', 'player:ended'].forEach(name => window.addEventListener(name, () => {
       if (state.rebuildPending) this.scheduleRebuild(1200);
     }));
@@ -63,6 +73,7 @@ export const listenerProfile = {
   },
 
   async build({ force = false } = {}) {
+    if (!authorized()) return null;
     if (!force && window.playerCore?.isPlaying?.()) {
       state.rebuildPending = true;
       return state.profile;
@@ -156,6 +167,7 @@ export const listenerProfile = {
 
   scheduleRebuild(delayMs = 2000) {
     clearTimeout(state.timer);
+    if (!authorized()) return false;
     if (window.playerCore?.isPlaying?.()) {
       state.rebuildPending = true;
       return false;
