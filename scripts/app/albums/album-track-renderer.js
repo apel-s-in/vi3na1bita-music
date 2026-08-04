@@ -1,7 +1,3 @@
-// UID.002_(UID-first core)_(строки обычного альбома адресуются по uid)_(renderer не владеет playback)
-// UID.094_(No-paralysis rule)_(renderer только создаёт DOM)_(не вызывает play/pause/stop)
-// UID.096_(Helper-first anti-duplication policy)_(HTML обычных track rows вынесен из AlbumsManager)
-
 import { injectIndicator } from '../../ui/offline-indicators.js';
 import { renderFavoriteStar } from '../../ui/icon-utils.js';
 
