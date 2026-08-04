@@ -127,7 +127,7 @@ F всегда относится к playing-context, а не к просто о
 [/news/] .gitkeep, news.json
 [/scripts/] app.js
 [/scripts/analytics/] account-data-boundary.js, achievement-engine.js, achievement-state.js, achievements-dict.js, backup-coordinator-client.js, backup-domain-state.js, backup-event-cleanup.js, backup-scheduler-policy.js, backup-sync-engine.js, backup-v7-range.js, backup-v7-recovery.js, backup-v7-sync.js, confirmed-listening-stats.js, device-registry.js, device-settings-contract.js, event-contract.js, event-integrity.js, event-logger.js, favorite-mirror.js, favorite-state-contract.js, listening-receipts.js, live-stats.js, loyalty-state.js, meta-db.js, playback-fence.js, playback-ownership.js, playback-runtime.js, playback-validity.js, session-tracker.js, share-generator.js, snapshot-contract.js, stats-aggregator.js, stats-shard-contract.js, stats-state.js, stats-v4-projection.js, sync-dirty-events.js, sync-revisions.js, temporal-buckets.js
-[/scripts/app/] albums.js, gallery-recommendation-cards.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, track-registry.js
+[/scripts/app/] albums.js, gallery-recommendation-cards.js, gallery.js, offline-ui-bootstrap.js, playback-cache-bootstrap.js, playback-return-ui.js, player-ui.js, promocode.js, pwa-install.js, recommendation-playback.js, track-registry.js
 [/scripts/app/albums/] album-carousel.js, album-icons-renderer.js, album-playback-builder.js, album-track-actions.js, album-track-renderer.js, specials.js
 [/scripts/app/friends/] friends-block.js
 [/scripts/app/games/] bridge-host.js, config.js, host.js
@@ -15102,6 +15102,55 @@ export const initPwaInstall = () => {
   }
 };
 export default { initPwaInstall };
+
+//=================================================
+// FILE: /scripts/app/recommendation-playback.js
+// Канонические пользовательские действия для рекомендаций.
+// Не создаёт playlist и не обходит Favorites Only: запуск выполняет обычная строка альбома.
+const safe = value => String(value == null ? '' : value).trim();
+
+const waitForTrackRow = async (uid, attempts = 30) => {
+  const selector = `.track[data-uid="${CSS.escape(uid)}"]`;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const row = document.querySelector(selector);
+    if (row) return row;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  return null;
+};
+
+export const openRecommendedTrack = async uid => {
+  const cleanUid = safe(uid);
+  const track = window.TrackRegistry?.getTrackByUid?.(cleanUid);
+  if (!cleanUid || !track?.sourceAlbum) return false;
+
+  await window.AlbumsManager?.loadAlbum?.(track.sourceAlbum);
+  const row = await waitForTrackRow(cleanUid);
+  row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return !!row;
+};
+
+export const playRecommendedTrack = async uid => {
+  const cleanUid = safe(uid);
+  if (!cleanUid) return false;
+
+  if (window.playerCore?.getCurrentTrackUid?.() === cleanUid) {
+    window.PlayerUI?.togglePlayPause?.();
+    return true;
+  }
+
+  const track = window.TrackRegistry?.getTrackByUid?.(cleanUid);
+  if (!track?.sourceAlbum) return false;
+
+  await window.AlbumsManager?.loadAlbum?.(track.sourceAlbum);
+  const row = await waitForTrackRow(cleanUid);
+  if (!row) return false;
+
+  row.click();
+  return true;
+};
+
+export default { openRecommendedTrack, playRecommendedTrack };
 
 //=================================================
 // FILE: /scripts/app/shards/reward-notifier.js
