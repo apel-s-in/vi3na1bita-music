@@ -19,7 +19,7 @@ const emptyApi = flags => ({
   guards: intelGuards,
   trackProfiles: null,
   trackPresentation: null,
-  trackRelations: null,
+  trackSimilarity: null,
   listenerProfile: null,
   recommendationEngine: null,
   ui: { trackProfileModal: null },
@@ -62,14 +62,14 @@ export const initIntelBootstrap = async ({ W = window, C = W.APP_CONFIG || {}, f
       const [
         { trackProfiles },
         { trackPresentation },
-        { trackRelations },
+        { trackSimilarity },
         { listenerProfile },
         { recommendationEngine },
         { trackProfileModal }
       ] = await Promise.all([
         import('./track/track-profiles.js'),
         import('./track/track-presentation.js'),
-        import('./track/track-relations.js'),
+        import('./track/track-similarity.js'),
         import('./listener/listener-profile.js'),
         import('./recs/recommendation-engine.js'),
         import('./ui/track-profile-modal.js')
@@ -78,7 +78,7 @@ export const initIntelBootstrap = async ({ W = window, C = W.APP_CONFIG || {}, f
       Object.assign(api, {
         trackProfiles,
         trackPresentation,
-        trackRelations,
+        trackSimilarity,
         listenerProfile,
         recommendationEngine,
         ui: { trackProfileModal }
@@ -87,7 +87,7 @@ export const initIntelBootstrap = async ({ W = window, C = W.APP_CONFIG || {}, f
       const initialized = await Promise.allSettled([
         trackProfiles.init(api),
         trackPresentation.init(api),
-        trackRelations.init(api),
+        trackSimilarity.init(api),
         listenerProfile.init(api),
         recommendationEngine.init(api),
         trackProfileModal.init(api)
