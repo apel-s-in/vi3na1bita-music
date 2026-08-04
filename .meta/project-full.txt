@@ -17264,6 +17264,8 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/intel/recs/recommendation-data-source.js', 'getConfirmedListeningStats');
   contains('scripts/intel/track/track-profiles.js', 'profilePath');
   contains('scripts/intel/track/track-profiles.js', 'relativePath');
+  contains('scripts/intel/track/track-similarity.js', 'scoreTrackSimilarity');
+  contains('scripts/intel/track/track-similarity.js', 'getSimilar');
   contains('scripts/app/gallery-recommendation-cards.js', 'buildGalleryRecommendationCards');
   contains('scripts/app/gallery-recommendation-cards.js', "'forgotten-hits'");
   contains('scripts/app/gallery-recommendation-cards.js', "'evening'");
@@ -17292,6 +17294,8 @@ const validateRecommendationsAndStats = () => {
   excludes('scripts/app/gallery-recommendation-cards.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist)\s*\(/, 'Gallery recommendation scorer управляет playback');
   excludes('scripts/app/gallery-recommendation-cards.js', /Играть следующей|enqueueNext|addToQueue|transientQueue/, 'Преждевременная очередь добавлена в Gallery recommendations');
   excludes('scripts/app/gallery-recommendation-cards.js', /new-year|new_year|christmas|festive|recommendation-calendar|seasonality/, 'Праздничная или сезонная рекомендация снова добавлена');
+  excludes('scripts/ci/generate-intel-test-profiles.mjs', /similar_tracks|relation_types|relations:/, 'Генератор снова записывает производные UID-связи');
+  excludes('data/track-profiles/track-profile.template.json', /"relations"|"embedding"|"updatedAt"/, 'Постоянный TrackProfile снова содержит изменяемые или model-specific поля');
   excludes('scripts/ci/generate-intel-test-profiles.mjs', /\bevents\b|\bseasonality\b/, 'Генератор снова создаёт календарные TrackProfile поля');
   assert(!fs.existsSync(path.join(root, 'data/recommendation-calendar.json')), 'Праздничный recommendation-calendar удалён');
   excludes('src/PlayerCore.js', /enqueueNext|transientQueue|playNextQueue/, 'Transient queue внедрена до отдельного безопасного этапа');
@@ -17549,7 +17553,8 @@ const validateRemovedRuntimeFiles = () => {
     'scripts/analytics/trust-state.js',
     'scripts/app/profile/settings-conflict-section.js',
     'scripts/app/profile/trust-check-modal.js',
-    'scripts/intel/recs/rediscovery.js'
+    'scripts/intel/recs/rediscovery.js',
+    'scripts/intel/track/track-relations.js'
   ].forEach(relative => {
     assert(!fs.existsSync(path.join(root, relative)), `${relative}: удалённый runtime-файл не возвращён`);
   });
