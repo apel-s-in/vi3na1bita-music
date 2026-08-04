@@ -8970,7 +8970,6 @@ export default { emptyStatsV4, buildStatsV4, normalizeStatsV4, mergeStatsV4 };
 
 //=================================================
 // FILE: /scripts/analytics/sync-dirty-events.js
-// UID.096_(Helper-first anti-duplication policy)_(единая отправка backup dirty domain events)_(убрать локальные dirtyDev/emitPlDirty копии) UID.099_(Multi-device sync model)_(domain-driven autosave)_(изменения доменов должны помечаться единообразно)
 const sS = v => String(v == null ? '' : v).trim();
 export const markBackupDomainDirty = (domain = 'generic', detail = {}) => { try { window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { ...detail, domain: sS(domain) || 'generic' } })); return true; } catch { return false; } };
 export const markDeviceSettingsDirty = detail => markBackupDomainDirty('deviceSettings', detail);
@@ -8982,7 +8981,6 @@ export default { markBackupDomainDirty, markDeviceSettingsDirty, markPlaylistsDi
 
 //=================================================
 // FILE: /scripts/analytics/sync-revisions.js
-// UID.099_(Multi-device sync model)_(локальный журнал sync revisions для отладки autosync)_(последние попытки, hash, domains, uploaded flags) UID.100_(Backup snapshot as life capsule)_(пользователь должен видеть что реально сохранялось)_(compact status в account UI)
 const KEY = 'backup:sync_revisions:v1', s = v => String(v == null ? '' : v).trim(), n = v => Number.isFinite(Number(v)) ? Number(v) : 0, jp = (r, fb = []) => { try { return JSON.parse(r || ''); } catch { return fb; } };
 export const readSyncRevisions = () => Array.isArray(jp(localStorage.getItem(KEY), [])) ? jp(localStorage.getItem(KEY), []) : [];
 export const recordSyncRevision = ({ hash='', timestamp=Date.now(), domains=[], uploadedShared=false, uploadedDevice=false, uploadedEventArchive=false, reason='autosync', ok=true, error='' } = {}) => {
@@ -17127,7 +17125,6 @@ export default window.AppActivity;
 
 //=================================================
 // FILE: /scripts/core/bootstrap.js
-// UID.005_(Soft-disable intel layer)_(не парализовать приложение при проблемах)_(делать один мягкий bootstrap с graceful fallback) UID.019_(Compact TrackProfile index)_(дать единый entrypoint semantic слоя)_(инициализировать track profile loader и связанные сервисы) UID.044_(ListenerProfile core)_(дать единый entrypoint user-intelligence слоя)_(инициализировать listener/collection/recs сервисы) UID.069_(Internal user identity)_(дать единый entrypoint provider/sync слоя)_(инициализировать identity/consents/hybrid-sync сервисы) UID.081_(Telemetry mapper)_(подготовить безопасную внешнюю аналитику)_(подключить mapper как отдельный no-op сервис) UID.092_(Incremental rollout order)_(сохранить staged внедрение)_(здесь концентрируется только wiring, а не heavy business logic) UID.093_(Roadmap markers in touched files)_(не терять вектор реализации)_(bootstrap собирает и публикует весь новый контур в window.Intel) UID.094_(No-paralysis rule)_(оставить legacy приложение главным хозяином runtime)_(bootstrap только публикует optional services, не подменяя core/app ownership) UID.095_(Ownership boundary: legacy vs intel)_(не дать intel-слою утечь в старую архитектуру)_(bootstrap собирает intel как надстройку, а не как новый app-core)
 (function(){'use strict';const W=window,D=document,fail=m=>{D.body.innerHTML=W.Utils?.profileModals?.failScreen?.(m)||`<div><h2>Ошибка запуска</h2><p>${m}</p></div>`;throw new Error(m);};
 const checkEnv=()=>{if(!W.fetch||!W.Promise||!W.localStorage)return'Ваш браузер устарел. Обновите его.';try{localStorage.setItem('_t','1');localStorage.removeItem('_t');}catch{return'Включите Cookies/Storage.';}return null;};
 const preventZoom=()=>{D.addEventListener('touchstart',e=>{if(e.touches.length>1)e.preventDefault();},{passive:false});let l=0;D.addEventListener('touchend',e=>{const n=Date.now();if(n-l<300)e.preventDefault();l=n;},{passive:false});};
@@ -18078,10 +18075,6 @@ export default{normalizeDevicePlatform,normalizeDeviceClass,detectBrowserName,de
 
 //=================================================
 // FILE: /scripts/core/favorites-manager.js
-// UID.001_(Playback safety invariant)_(FavoritesManager не управляет playback)
-// UID.002_(UID-first core)_(избранное строго uid-based)
-// UID.003_(Event log truth)_(favorite tombstones для merge/restore)
-// UID.099_(Multi-device sync model)_(единый favorite-state contract)
 import { favoriteStatus, normalizeFavoriteItem, normalizeFavoriteList } from '../analytics/favorite-state-contract.js';
 const KEY = '__favorites_v2__';
 const uidOf = value => String(value || '').trim();
