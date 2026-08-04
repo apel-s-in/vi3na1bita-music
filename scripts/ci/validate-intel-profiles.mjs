@@ -19,9 +19,12 @@ const albums = new Set((JSON.parse(fs.readFileSync('albums.json', 'utf8')).album
 const templatePath = 'data/track-profiles/track-profile.template.json';
 if (!fs.existsSync(templatePath)) fail('Отсутствует эталонный track-profile.template.json');
 const template = read(templatePath);
-if (template.uid !== '__TEMPLATE__' || template.status !== 'template' || template.version !== 'track-profile-v1') fail('Некорректный эталон TrackProfile');
+if (template.uid !== '__TEMPLATE__' || template.status !== 'template' || template.version !== 'track-profile-v2') fail('Некорректный эталон TrackProfile');
 if (fs.existsSync('data/recommendation-calendar.json')) fail('Праздничный recommendation-calendar должен быть удалён');
 if ('events' in (template.finalProfile || {}) || 'seasonality' in (template.finalProfile || {})) fail('Эталон TrackProfile содержит удалённые календарные поля');
+if ('relations' in template) fail('Эталон TrackProfile содержит производные UID-связи');
+if ('updatedAt' in template) fail('Эталон TrackProfile содержит изменяемый updatedAt');
+if (template.musicAnalysis?.embedding || template.lyricAnalysis?.embedding) fail('Эталон TrackProfile содержит model-specific embedding');
 
 const validateWeights = (uid, group, values) => {
   if (!values || typeof values !== 'object' || Array.isArray(values)) fail(`${uid}: ${group} должен быть object`);
@@ -61,7 +64,12 @@ for (const [uid, preview] of Object.entries(items)) {
   const profile = read(file);
   if (profile.uid !== uid) fail(`${uid}: full profile uid mismatch`);
   if (profile.album !== album) fail(`${uid}: album folder/profile mismatch`);
+  if (profile.version !== 'track-profile-v2') fail(`${uid}: требуется track-profile-v2`);
   if (profile.taxonomyVersion !== index.taxonomyVersion) fail(`${uid}: taxonomy version mismatch`);
+  if (profile.trackVersion !== catalogTrack?.trackVersion) fail(`${uid}: trackVersion не соответствует listening catalog`);
+  if (preview.trackVersion !== profile.trackVersion) fail(`${uid}: preview/full trackVersion mismatch`);
+  if ('relations' in profile || 'relations' in preview) fail(`${uid}: производные relations запрещены в постоянном профиле`);
+  if ('updatedAt' in profile) fail(`${uid}: постоянный профиль не должен содержать updatedAt`);
   if (index.testData === true && (profile.testData !== true || profile.status !== 'test_fixture')) fail(`${uid}: тестовый профиль не помечен явно`);
 
   const finalProfile = profile.finalProfile || {};
@@ -73,8 +81,9 @@ for (const [uid, preview] of Object.entries(items)) {
     validateWeights(uid, group, finalProfile[sourceKey] || {});
   });
 
-  const similar = profile.relations?.similar_tracks || [];
-  if (!Array.isArray(similar) || similar.some(item => !knownUids.has(String(item)))) fail(`${uid}: invalid similar_tracks`);
+  const axes = finalProfile.axes || {};
+  const requiredAxes = Object.keys(groups.axes?.items || {});
+  if (requiredAxes.some(key => !Number.isFinite(Number(axes[key])))) fail(`${uid}: заполнены не все постоянные axes`);
 }
 
 console.log(`✅ Validated ${Object.keys(items).length} TrackProfiles`);
