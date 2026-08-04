@@ -1,7 +1,9 @@
 // Контракт только активных INTEL-компонентов.
 export const INTEL_CONTRACTS = Object.freeze({
   version: 'intel-contracts-v2',
-  taxonomyVersion: 'taxonomy-v2',
+  taxonomyVersion: 'taxonomy-v3',
+  trackProfileVersion: 'track-profile-v3',
+  vocabularyVersion: 'track-profile-vocabulary-v1',
   profileIndexUrl: './data/track-profiles-index.json',
   profileDir: './data/track-profiles/',
   stores: Object.freeze({
