@@ -1,0 +1,96 @@
+{
+  "version": "track-profile-v1",
+  "taxonomyVersion": "taxonomy-v2",
+  "uid": "VS-06",
+  "title": "Monsieur Жор",
+  "album": "v-ssore",
+  "albumTitle": "В Ссоре",
+  "status": "test_fixture",
+  "testData": true,
+  "generatedAt": "2026-08-04T09:21:38.573Z",
+  "musicAnalysis": {
+    "source": "test_fixture",
+    "verified": false,
+    "bpm": null,
+    "key": null,
+    "genres": {
+      "rock": 0.85
+    },
+    "moods": {
+      "funny": 0.85,
+      "ironic": 0.7
+    },
+    "axes": {
+      "energy": 0.7,
+      "valence": 0.68,
+      "humor": 0.9,
+      "storytelling": 0.55,
+      "family_friendly": 0.72
+    }
+  },
+  "lyricAnalysis": {
+    "source": "test_fixture",
+    "verified": false,
+    "summary_ru": "Демонстрационное описание. Требуется ручная замена правдивым анализом.",
+    "themes": {
+      "humor": 0.85,
+      "satire": 0.7
+    },
+    "warnings": {}
+  },
+  "finalProfile": {
+    "genres": {
+      "rock": 0.85
+    },
+    "moods": {
+      "funny": 0.85,
+      "ironic": 0.7
+    },
+    "themes": {
+      "humor": 0.85,
+      "satire": 0.7
+    },
+    "use_cases": {
+      "background": 0.55,
+      "walking": 0.5
+    },
+    "events": {},
+    "seasonality": {},
+    "time_of_day": {},
+    "axes": {
+      "energy": 0.7,
+      "valence": 0.68,
+      "humor": 0.9,
+      "storytelling": 0.55,
+      "family_friendly": 0.72
+    },
+    "warnings": {}
+  },
+  "presentation": {
+    "tagline_ru": "Тестовый профиль: Monsieur Жор",
+    "hook_ru": "Демонстрационная semantic-карточка",
+    "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+    "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+    "hero_quote_ru": "",
+    "badges": [
+      "TEST"
+    ],
+    "chips": [
+      "rock",
+      "funny",
+      "ironic"
+    ]
+  },
+  "relations": {
+    "similar_tracks": [
+      "VS-07",
+      "VS-05"
+    ],
+    "relation_types": {
+      "semantic_preview": [
+        "VS-07",
+        "VS-05"
+      ]
+    }
+  }
+}

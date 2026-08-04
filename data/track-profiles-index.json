@@ -1,6 +1,646 @@
 {
   "version": "track-profiles-index-v1",
-  "generatedAt": null,
+  "generatedAt": "2026-08-04T09:21:38.575Z",
   "taxonomyVersion": "taxonomy-v2",
-  "items": {}
+  "testData": true,
+  "items": {
+    "VS-01": {
+      "uid": "VS-01",
+      "title": "Живой",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "rock": 0.85
+        },
+        "moods": {
+          "uplifting": 0.85,
+          "energetic": 0.7
+        },
+        "themes": {
+          "dreams_goals": 0.85,
+          "heroism": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.78,
+          "valence": 0.66,
+          "arousal": 0.72,
+          "epicness": 0.64,
+          "family_friendly": 0.82
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Живой",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "rock",
+          "uplifting",
+          "energetic"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-02",
+          "VS-10"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-02",
+            "VS-10"
+          ]
+        }
+      }
+    },
+    "VS-02": {
+      "uid": "VS-02",
+      "title": "Клаустрофобия",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "alternative_rock": 0.85
+        },
+        "moods": {
+          "anxious": 0.85,
+          "tense": 0.7
+        },
+        "themes": {
+          "mental_health": 0.85,
+          "self_reflection": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.62,
+          "valence": 0.22,
+          "arousal": 0.8,
+          "tension": 0.88,
+          "family_friendly": 0.55
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Клаустрофобия",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "alternative_rock",
+          "anxious",
+          "tense"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-03",
+          "VS-01"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-03",
+            "VS-01"
+          ]
+        }
+      }
+    },
+    "VS-03": {
+      "uid": "VS-03",
+      "title": "В ссоре",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "rock": 0.85,
+          "pop": 0.7
+        },
+        "moods": {
+          "angry": 0.85,
+          "bitter": 0.7
+        },
+        "themes": {
+          "love": 0.85,
+          "breakup": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.74,
+          "valence": 0.28,
+          "arousal": 0.76,
+          "aggressiveness": 0.58,
+          "romance_intensity": 0.66
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: В ссоре",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "rock",
+          "pop",
+          "angry",
+          "bitter"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-04",
+          "VS-02"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-04",
+            "VS-02"
+          ]
+        }
+      }
+    },
+    "VS-04": {
+      "uid": "VS-04",
+      "title": "Тише",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "ballad_pop": 0.85
+        },
+        "moods": {
+          "calm": 0.85,
+          "melancholic": 0.7
+        },
+        "themes": {
+          "self_reflection": 0.85,
+          "love": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.3,
+          "valence": 0.38,
+          "melancholy": 0.74,
+          "warmth": 0.62,
+          "family_friendly": 0.9
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Тише",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "ballad_pop",
+          "calm",
+          "melancholic"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-05",
+          "VS-03"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-05",
+            "VS-03"
+          ]
+        }
+      }
+    },
+    "VS-05": {
+      "uid": "VS-05",
+      "title": "Мирись",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "pop": 0.85,
+          "rock": 0.7
+        },
+        "moods": {
+          "hopeful": 0.85,
+          "romantic": 0.7
+        },
+        "themes": {
+          "love": 0.85,
+          "friendship": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.58,
+          "valence": 0.76,
+          "romance_intensity": 0.8,
+          "warmth": 0.84,
+          "family_friendly": 0.95
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Мирись",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "pop",
+          "rock",
+          "hopeful",
+          "romantic"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-06",
+          "VS-04"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-06",
+            "VS-04"
+          ]
+        }
+      }
+    },
+    "VS-06": {
+      "uid": "VS-06",
+      "title": "Monsieur Жор",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "rock": 0.85
+        },
+        "moods": {
+          "funny": 0.85,
+          "ironic": 0.7
+        },
+        "themes": {
+          "humor": 0.85,
+          "satire": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.7,
+          "valence": 0.68,
+          "humor": 0.9,
+          "storytelling": 0.55,
+          "family_friendly": 0.72
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Monsieur Жор",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "rock",
+          "funny",
+          "ironic"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-07",
+          "VS-05"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-07",
+            "VS-05"
+          ]
+        }
+      }
+    },
+    "VS-07": {
+      "uid": "VS-07",
+      "title": "Закатай губу",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "alternative_rock": 0.85
+        },
+        "moods": {
+          "rebellious": 0.85,
+          "sarcastic": 0.7
+        },
+        "themes": {
+          "self_reflection": 0.85,
+          "social_critique": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.82,
+          "valence": 0.42,
+          "aggressiveness": 0.72,
+          "humor": 0.55,
+          "socialness": 0.58
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Закатай губу",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "alternative_rock",
+          "rebellious",
+          "sarcastic"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-08",
+          "VS-06"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-08",
+            "VS-06"
+          ]
+        }
+      }
+    },
+    "VS-08": {
+      "uid": "VS-08",
+      "title": "Царевна",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "orchestral_pop": 0.85,
+          "rock": 0.7
+        },
+        "moods": {
+          "whimsical": 0.85,
+          "epic": 0.7
+        },
+        "themes": {
+          "magic_fantasy": 0.85,
+          "storytelling": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.64,
+          "valence": 0.62,
+          "epicness": 0.86,
+          "storytelling": 0.9,
+          "family_friendly": 0.88
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Царевна",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "orchestral_pop",
+          "rock",
+          "whimsical",
+          "epic"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-09",
+          "VS-07"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-09",
+            "VS-07"
+          ]
+        }
+      }
+    },
+    "VS-09": {
+      "uid": "VS-09",
+      "title": "Печаль",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "ballad_pop": 0.85
+        },
+        "moods": {
+          "sad": 0.85,
+          "melancholic": 0.7
+        },
+        "themes": {
+          "loss_grief": 0.85,
+          "self_reflection": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.24,
+          "valence": 0.14,
+          "melancholy": 0.94,
+          "warmth": 0.42,
+          "family_friendly": 0.85
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Печаль",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "ballad_pop",
+          "sad",
+          "melancholic"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-10",
+          "VS-08"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-10",
+            "VS-08"
+          ]
+        }
+      }
+    },
+    "VS-10": {
+      "uid": "VS-10",
+      "title": "Любовь и Ненависть",
+      "album": "v-ssore",
+      "albumTitle": "В Ссоре",
+      "status": "test_fixture",
+      "testData": true,
+      "finalProfile": {
+        "genres": {
+          "rock": 0.85,
+          "alternative_rock": 0.7
+        },
+        "moods": {
+          "heartbroken": 0.85,
+          "angry": 0.7
+        },
+        "themes": {
+          "love": 0.85,
+          "heartbreak": 0.7
+        },
+        "use_cases": {
+          "background": 0.55,
+          "walking": 0.5
+        },
+        "events": {},
+        "seasonality": {},
+        "time_of_day": {},
+        "axes": {
+          "energy": 0.76,
+          "valence": 0.2,
+          "arousal": 0.8,
+          "romance_intensity": 0.9,
+          "tension": 0.74
+        },
+        "warnings": {}
+      },
+      "presentation": {
+        "tagline_ru": "Тестовый профиль: Любовь и Ненависть",
+        "hook_ru": "Демонстрационная semantic-карточка",
+        "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+        "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+        "hero_quote_ru": "",
+        "badges": [
+          "TEST"
+        ],
+        "chips": [
+          "rock",
+          "alternative_rock",
+          "heartbroken",
+          "angry"
+        ]
+      },
+      "relations": {
+        "similar_tracks": [
+          "VS-01",
+          "VS-09"
+        ],
+        "relation_types": {
+          "semantic_preview": [
+            "VS-01",
+            "VS-09"
+          ]
+        }
+      }
+    }
+  }
 }
