@@ -1,8 +1,3 @@
-// UID.003_(Event log truth)_(формальный контракт событий для sync/restore/journal)_(event log становится общей правдой, stats остаются rebuildable cache)
-// UID.017_(Launch source stats)_(готовить source-aware события)_(все пользовательские действия получают понятный domain/source)
-// UID.099_(Multi-device sync model)_(merge по eventId)_(события должны быть idempotent и device-aware)
-// UID.104_(Trust and eligibility state)_(ledger fields additive)_(deviceSeq/prevHash/eventHash/sourceClock не ломают старые события)
-
 export const EVENT_SCHEMA_VERSION = 2;
 export const EVENT_TYPES = Object.freeze({ LISTEN_START: 'LISTEN_START', LISTEN_COMPLETE: 'LISTEN_COMPLETE', FEATURE_USED: 'FEATURE_USED', ACHIEVEMENT_UNLOCK: 'ACHIEVEMENT_UNLOCK', FAVORITE_CHANGED: 'FAVORITE_CHANGED', PLAYLIST_CHANGED: 'PLAYLIST_CHANGED', PROFILE_UPDATED: 'PROFILE_UPDATED', DEVICE_UPDATED: 'DEVICE_UPDATED', AUTH_EVENT: 'AUTH_EVENT', BACKUP_CREATED: 'BACKUP_CREATED', RESTORE_APPLIED: 'RESTORE_APPLIED', SYNC_STATE_CHANGED: 'SYNC_STATE_CHANGED', RECOMMENDATION_SHOWN: 'RECOMMENDATION_SHOWN', RECOMMENDATION_CLICKED: 'RECOMMENDATION_CLICKED', RECOMMENDATION_ACCEPTED: 'RECOMMENDATION_ACCEPTED', RECOMMENDATION_DISMISSED: 'RECOMMENDATION_DISMISSED', RECOMMENDATION_CONTROLS_CHANGED: 'RECOMMENDATION_CONTROLS_CHANGED', UI_PERSONALIZATION_CHANGED: 'UI_PERSONALIZATION_CHANGED', GAME_STATE_CHANGED: 'GAME_STATE_CHANGED' });
 const sS = v => String(v == null ? '' : v).trim(), sN = v => Number.isFinite(Number(v)) ? Number(v) : 0;
