@@ -1,7 +1,3 @@
-// UID.004_(Stats as cache)_(statistics modal читает stats-state view model)_(без дублирования расчётов)
-// UID.038_(Track profile modal)_(track modal вынесен в scripts/ui/track-statistics-modal.js)
-// UID.094_(No-paralysis rule)_(statistics modal не влияет на playback)_(только чтение MetaDB и render)
-
 import { metaDB } from '../analytics/meta-db.js';
 import { resolveListeningStatsViewModel } from '../analytics/confirmed-listening-stats.js';
 import { fmtAchTimerText } from './progress-formatters.js';
