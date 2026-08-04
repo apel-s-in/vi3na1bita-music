@@ -6,6 +6,7 @@ import { getConfirmedListeningStats } from '../analytics/confirmed-listening-sta
 import { listenerProfile } from '../intel/listener/listener-profile.js';
 import { trackProfiles } from '../intel/track/track-profiles.js';
 import { getIntelFlags } from '../intel/flags.js';
+import { recommendationMemory } from '../analytics/backup-domain-state.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -261,6 +262,27 @@ export const buildGalleryRecommendationCards = async () => {
   ];
 };
 
+const recommendationContext = card => `gallery:${safe(card?.id || 'generic')}`;
+
+export const recordGalleryRecommendationShown = card => {
+  if (!card?.items?.length) return Promise.resolve([]);
+  return Promise.allSettled(card.items.map(item => recommendationMemory.shown({
+    uid: item.uid,
+    context: recommendationContext(card),
+    reasonCode: card.reasonCode
+  })));
+};
+
+export const recordGalleryRecommendationClicked = (card, uid) => {
+  const cleanUid = safe(uid);
+  if (!cleanUid || !card) return Promise.resolve(null);
+  return recommendationMemory.clicked({
+    uid: cleanUid,
+    context: recommendationContext(card),
+    reasonCode: card.reasonCode
+  });
+};
+
 const renderTrackRows = card => card.items.map((item, index) => `
   <button type="button" class="gallery-rec-row" data-gallery-open="${esc(item.uid)}">
     <span>${index + 1}</span>
@@ -293,4 +315,4 @@ export const renderGalleryRecommendationCard = card => {
   </article>`;
 };
 
-export default { buildGalleryRecommendationCards, renderGalleryRecommendationCard };
+export default { buildGalleryRecommendationCards, renderGalleryRecommendationCard, recordGalleryRecommendationShown, recordGalleryRecommendationClicked };
