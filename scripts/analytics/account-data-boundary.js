@@ -16,9 +16,6 @@ const EXACT_STORAGE_KEYS = new Set([
   'backup:sync_revisions:v1',
   'yandex:last_backup_local_ts',
   'intel:internal-user-id',
-  'intel:provider-identity:v1',
-  'intel:provider-consents:v1',
-  'intel:hybrid-sync:v1',
   'intel:recommendation-controls:v1',
   'profile:ui-personalization:v1',
   'profile:stats-source:v1',
@@ -272,7 +269,12 @@ export const initAccountDataBoundary = async () => {
   if (initialized) return switchPromise;
   initialized = true;
   try {
-    localStorage.removeItem('backup:conflict_policy:v1');
+    [
+      'backup:conflict_policy:v1',
+      'intel:provider-identity:v1',
+      'intel:provider-consents:v1',
+      'intel:hybrid-sync:v1'
+    ].forEach(key => localStorage.removeItem(key));
   } catch {}
   activeOwner = getStoredOwner();
   if (!activeOwner) {
