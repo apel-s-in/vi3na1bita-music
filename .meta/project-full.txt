@@ -20606,10 +20606,6 @@ export const sleepTimerInstance = new SleepTimer(); window.SleepTimer = sleepTim
 
 //=================================================
 // FILE: /scripts/ui/statistics-modal.js
-// UID.004_(Stats as cache)_(statistics modal читает stats-state view model)_(без дублирования расчётов)
-// UID.038_(Track profile modal)_(track modal вынесен в scripts/ui/track-statistics-modal.js)
-// UID.094_(No-paralysis rule)_(statistics modal не влияет на playback)_(только чтение MetaDB и render)
-
 import { metaDB } from '../analytics/meta-db.js';
 import { resolveListeningStatsViewModel } from '../analytics/confirmed-listening-stats.js';
 import { fmtAchTimerText } from './progress-formatters.js';
@@ -20677,9 +20673,6 @@ export default { openStatisticsModal };
 
 //=================================================
 // FILE: /scripts/ui/track-statistics-modal.js
-// UID.038_(Track profile modal)_(track statistics вынесены из общей statistics-modal)_(statistics-modal остаётся profile renderer)
-// UID.094_(No-paralysis rule)_(track modal только читает stats)_(не влияет на playback)
-
 import { metaDB } from '../analytics/meta-db.js';
 
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
