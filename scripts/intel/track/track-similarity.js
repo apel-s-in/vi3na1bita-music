@@ -1,17 +1,24 @@
 // Производное сходство TrackProfile.
-// Не хранит UID-связи, не выполняет сеть самостоятельно и не управляет playback.
+// Сравнивает только канонические machine features и не управляет playback.
 import { trackProfiles } from './track-profiles.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const DIMENSIONS = Object.freeze({
-  genres: 0.24,
-  styles: 0.1,
-  moods: 0.2,
-  themes: 0.2,
-  use_cases: 0.1,
-  time_of_day: 0.06,
-  axes: 0.1
+  genres: 0.16,
+  styles: 0.07,
+  moods: 0.14,
+  themes: 0.13,
+  use_cases: 0.07,
+  time_of_day: 0.03,
+  axes: 0.17,
+  instrumentation: 0.07,
+  vocalRoles: 0.04,
+  vocalDelivery: 0.03,
+  arrangementTags: 0.035,
+  productionTags: 0.025,
+  bpm: 0.03,
+  tonality: 0.025
 });
 
 const vector = raw => raw && typeof raw === 'object' && !Array.isArray(raw)
@@ -22,7 +29,7 @@ const cosine = (leftRaw, rightRaw) => {
   const left = vector(leftRaw);
   const right = vector(rightRaw);
   const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
-  if (!keys.size) return null;
+  if (!keys.size || !Object.keys(left).length || !Object.keys(right).length) return null;
 
   let dot = 0;
   let leftLength = 0;
@@ -34,30 +41,65 @@ const cosine = (leftRaw, rightRaw) => {
     leftLength += a * a;
     rightLength += b * b;
   });
+  return leftLength > 0 && rightLength > 0 ? dot / Math.sqrt(leftLength * rightLength) : null;
+};
 
-  return leftLength > 0 && rightLength > 0
-    ? dot / Math.sqrt(leftLength * rightLength)
-    : null;
+const axisSimilarity = (leftRaw, rightRaw) => {
+  if (!leftRaw || !rightRaw) return null;
+  const keys = [...new Set([...Object.keys(leftRaw), ...Object.keys(rightRaw)])];
+  if (!keys.length) return null;
+  return 1 - keys.reduce((sum, key) => sum + Math.abs(num(leftRaw[key]) - num(rightRaw[key])), 0) / keys.length;
+};
+
+const bpmSimilarity = (left, right) => {
+  const a = Number(left?.musicAnalysis?.bpm);
+  const b = Number(right?.musicAnalysis?.bpm);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  const direct = Math.abs(a - b);
+  const halfTime = Math.abs(a - b * 2);
+  const doubleTime = Math.abs(a * 2 - b);
+  return Math.max(0, 1 - Math.min(direct, halfTime, doubleTime) / 45);
+};
+
+const tonalitySimilarity = (left, right) => {
+  const leftKey = safe(left?.musicAnalysis?.key);
+  const rightKey = safe(right?.musicAnalysis?.key);
+  const leftMode = safe(left?.musicAnalysis?.mode);
+  const rightMode = safe(right?.musicAnalysis?.mode);
+  if (!leftKey || !rightKey || !leftMode || !rightMode) return null;
+  if (leftKey === rightKey && leftMode === rightMode) return 1;
+  if (leftMode === rightMode) return 0.35;
+  return 0;
+};
+
+const dimensionValue = (dimension, left, right) => {
+  if (dimension === 'bpm') return bpmSimilarity(left, right);
+  if (dimension === 'tonality') return tonalitySimilarity(left, right);
+  if (dimension === 'axes') return axisSimilarity(left?.finalProfile?.axes, right?.finalProfile?.axes);
+  if (dimension in (left?.finalProfile || {}) || dimension in (right?.finalProfile || {})) {
+    return cosine(left?.finalProfile?.[dimension], right?.finalProfile?.[dimension]);
+  }
+  return cosine(left?.musicAnalysis?.[dimension], right?.musicAnalysis?.[dimension]);
 };
 
 export const scoreTrackSimilarity = (left, right) => {
-  const leftProfile = left?.finalProfile || {};
-  const rightProfile = right?.finalProfile || {};
   let score = 0;
-  let usedWeight = 0;
+  let coverage = 0;
   const breakdown = {};
 
   Object.entries(DIMENSIONS).forEach(([dimension, weight]) => {
-    const value = cosine(leftProfile[dimension], rightProfile[dimension]);
+    const value = dimensionValue(dimension, left, right);
     if (value == null) return;
     breakdown[dimension] = value;
     score += value * weight;
-    usedWeight += weight;
+    coverage += weight;
   });
 
+  const normalized = coverage > 0 ? score / coverage : 0;
   return {
-    score: usedWeight > 0 ? score / usedWeight : 0,
-    coverage: usedWeight,
+    score: normalized * (0.7 + 0.3 * coverage),
+    rawScore: normalized,
+    coverage,
     breakdown
   };
 };
@@ -77,16 +119,10 @@ export const trackSimilarity = {
       .filter(([candidateUid]) => candidateUid !== cleanUid)
       .map(([candidateUid, preview]) => {
         const similarity = scoreTrackSimilarity(source, preview);
-        return {
-          uid: candidateUid,
-          preview,
-          score: similarity.score,
-          coverage: similarity.coverage,
-          breakdown: similarity.breakdown
-        };
+        return { uid: candidateUid, preview, ...similarity };
       })
       .filter(item => item.score >= Math.max(0, Number(minScore) || 0))
-      .sort((left, right) => right.score - left.score || left.uid.localeCompare(right.uid))
+      .sort((left, right) => right.score - left.score || right.coverage - left.coverage || left.uid.localeCompare(right.uid))
       .slice(0, Math.max(1, Number(limit) || 3));
   }
 };
