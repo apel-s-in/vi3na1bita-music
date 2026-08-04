@@ -209,6 +209,9 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/intel/roadmap.js', 'Transient queue и действие «Играть следующей» не реализуются');
   contains('scripts/intel/roadmap.js', 'Никаких праздничных, календарных или сезонных подборок');
   contains('scripts/ci/validate-intel-profiles.mjs', 'track-profile.template.json');
+  contains('scripts/ci/validate-intel-profiles.mjs', 'track-profile-v3');
+  contains('scripts/ci/validate-intel-profiles.mjs', 'track-profile-vocabulary-v1');
+  contains('scripts/ci/validate-intel-profiles.mjs', 'bannedKeys');
   contains('scripts/ci/validate-intel-profiles.mjs', 'profilePath должен быть');
   excludes('scripts/app/profile/recs-view.js', /stableScore|scoreUid/, 'Recommendation ranking снова добавлен в UI renderer');
   excludes('scripts/app/profile/recs-view.js', /sort\(\s*\(\)\s*=>\s*Math\.random/, 'случайный comparator рекомендаций');
@@ -219,7 +222,16 @@ const validateRecommendationsAndStats = () => {
   excludes('scripts/app/gallery-recommendation-cards.js', /Играть следующей|enqueueNext|addToQueue|transientQueue/, 'Преждевременная очередь добавлена в Gallery recommendations');
   excludes('scripts/app/gallery-recommendation-cards.js', /new-year|new_year|christmas|festive|recommendation-calendar|seasonality/, 'Праздничная или сезонная рекомендация снова добавлена');
   excludes('scripts/ci/generate-intel-test-profiles.mjs', /similar_tracks|relation_types|relations:/, 'Генератор снова записывает производные UID-связи');
-  excludes('data/track-profiles/track-profile.template.json', /"relations"|"embedding"|"updatedAt"/, 'Постоянный TrackProfile снова содержит изменяемые или model-specific поля');
+  excludes('data/track-profiles/track-profile.template.json', /"relations"|"embedding"|"updatedAt"|"trackVersion"|"title"|"album"|"albumTitle"|"durationSec"|"source"|"analyzer"|"analyzedAt"|"provenance"|"verified"|"loudnessLufs"|"dynamicRange"/, 'TrackProfile снова содержит дублирующие, временные или model-specific поля');
+  contains('data/track-profile-vocabulary.json', 'track-profile-vocabulary-v1');
+  contains('data/track-profile-vocabulary.json', 'instrumentation');
+  contains('data/track-profile-vocabulary.json', 'vocalRoles');
+  contains('data/track-profile-vocabulary.json', 'vocalDelivery');
+  contains('data/track-profile-vocabulary.json', 'arrangementTags');
+  contains('data/track-profile-vocabulary.json', 'productionTags');
+  contains('scripts/intel/track/track-similarity.js', 'instrumentation');
+  contains('scripts/intel/track/track-similarity.js', 'vocalRoles');
+  contains('scripts/intel/track/track-similarity.js', 'arrangementTags');
   excludes('scripts/ci/generate-intel-test-profiles.mjs', /\bevents\b|\bseasonality\b/, 'Генератор снова создаёт календарные TrackProfile поля');
   assert(!fs.existsSync(path.join(root, 'data/recommendation-calendar.json')), 'Праздничный recommendation-calendar удалён');
   excludes('src/PlayerCore.js', /enqueueNext|transientQueue|playNextQueue/, 'Transient queue внедрена до отдельного безопасного этапа');
