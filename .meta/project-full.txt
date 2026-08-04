@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/intel/listener/] listener-profile.js
 [/scripts/intel/recs/] recommendation-data-source.js, recommendation-engine.js, recommendation-reasons.js
 [/scripts/intel/shared/] bus.js, contracts.js, guards.js
-[/scripts/intel/track/] track-presentation.js, track-profiles.js, track-relations.js
+[/scripts/intel/track/] track-presentation.js, track-profiles.js, track-relations.js, track-similarity.js
 [/scripts/intel/ui/] track-profile-modal.js
 [/scripts/offline/] cache-db.js, net-policy.js, offline-manager.js, track-resolver.js, update-checker.js
 [/scripts/ui/] app-modals.js, cache-progress-overlay.js, icon-utils.js, logo-pulse.js, lyrics-modal.js, modals.js, news-inline.js, notify.js, offline-indicators.js, offline-modal.js, progress-formatters.js, sleep-timer.js, statistics-modal.js, sysinfo.js, track-statistics-modal.js
@@ -16279,6 +16279,8 @@ const INDEX_PATH = path.resolve('data/track-profiles-index.json');
 const album = 'v-ssore';
 const albumTitle = 'В Ссоре';
 const OUTPUT_DIR = path.join(OUTPUT_ROOT, album);
+const catalog = JSON.parse(fs.readFileSync('data/listen-track-catalog.json', 'utf8'));
+const catalogByUid = new Map((catalog.tracks || []).map(track => [String(track.uid || ''), track]));
 
 const specs = [
   ['VS-01', 'Живой', ['rock'], ['uplifting', 'energetic'], ['dreams_goals', 'heroism'], { energy: .78, valence: .66, arousal: .72, epicness: .64, family_friendly: .82 }],
@@ -16294,10 +16296,11 @@ const specs = [
 ];
 
 const weighted = values => Object.fromEntries(values.map((value, index) => [value, Math.max(.55, .85 - index * .15)]));
-const similar = index => [specs[(index + 1) % specs.length][0], specs[(index + specs.length - 1) % specs.length][0]];
 
-const build = (spec, index) => {
+const build = spec => {
   const [uid, title, genres, moods, themes, axes] = spec;
+  const catalogTrack = catalogByUid.get(uid);
+  if (!catalogTrack?.trackVersion) throw new Error(`track_version_missing:${uid}`);
   const finalProfile = {
     genres: weighted(genres),
     moods: weighted(moods),
@@ -16317,38 +16320,60 @@ const build = (spec, index) => {
     chips: [...genres, ...moods].slice(0, 4)
   };
   return {
-    version: 'track-profile-v1',
+    version: 'track-profile-v2',
     taxonomyVersion: 'taxonomy-v2',
     uid,
+    trackVersion: catalogTrack.trackVersion,
     title,
     album,
     albumTitle,
     status: 'test_fixture',
     testData: true,
-    generatedAt: new Date().toISOString(),
+    analyzedAt: new Date().toISOString(),
     musicAnalysis: {
       source: 'test_fixture',
+      analyzer: 'generate-intel-test-profiles',
       verified: false,
+      confidence: 0,
       bpm: null,
-      key: null,
-      genres: finalProfile.genres,
-      moods: finalProfile.moods,
-      axes
+      tempoClass: '',
+      key: '',
+      mode: '',
+      timeSignature: '',
+      durationSec: catalogTrack.duration,
+      loudnessLufs: null,
+      dynamicRange: null,
+      instrumentation: [],
+      vocalPresence: null,
+      vocalType: '',
+      vocalDelivery: '',
+      arrangement: '',
+      productionCharacter: ''
     },
     lyricAnalysis: {
       source: 'test_fixture',
+      analyzer: 'generate-intel-test-profiles',
       verified: false,
-      summary_ru: 'Демонстрационное описание. Требуется ручная замена правдивым анализом.',
-      themes: finalProfile.themes,
-      warnings: {}
+      confidence: 0,
+      language: 'ru',
+      summary_ru: 'Демонстрационное описание. Требуется замена правдивым анализом.',
+      keywords: [],
+      entities: [],
+      scenes: [],
+      narrative: { type: '', perspective: '', arc: '', characters: [] },
+      sensitiveContentNotes_ru: []
     },
-    finalProfile,
-    presentation,
-    relations: {
-      similar_tracks: similar(index),
-      relation_types: {
-        semantic_preview: similar(index)
-      }
+    finalProfile: { styles: {}, time_of_day: {}, warnings: {}, ...finalProfile },
+    presentation: {
+      tagline_ru: presentation.tagline_ru,
+      one_liner_ru: presentation.one_liner_ru,
+      mini_description_ru: presentation.mini_description_ru
+    },
+    provenance: {
+      schemaVersion: 2,
+      input: { audioProvided: false, lyricsProvided: false, trackVersion: catalogTrack.trackVersion },
+      analyzer: { name: 'generate-intel-test-profiles', version: '1', analyzedAt: new Date().toISOString() },
+      editorial: { reviewed: false, reviewedAt: null, notes: 'Explicit test fixture' }
     }
   };
 };
@@ -16364,6 +16389,7 @@ profiles.forEach(profile => {
 
 const items = Object.fromEntries(profiles.map(profile => [profile.uid, {
   uid: profile.uid,
+  trackVersion: profile.trackVersion,
   title: profile.title,
   album: profile.album,
   albumTitle: profile.albumTitle,
@@ -16371,8 +16397,7 @@ const items = Object.fromEntries(profiles.map(profile => [profile.uid, {
   status: profile.status,
   testData: true,
   finalProfile: profile.finalProfile,
-  presentation: profile.presentation,
-  relations: profile.relations
+  presentation: profile.presentation
 }]));
 
 const generatedAt = new Date().toISOString();
@@ -16382,7 +16407,7 @@ const itemRows = Object.entries(items)
 
 const indexJson = [
   '{',
-  '  "version": "track-profiles-index-v1",',
+  '  "version": "track-profiles-index-v2",',
   `  "generatedAt": ${JSON.stringify(generatedAt)},`,
   '  "taxonomyVersion": "taxonomy-v2",',
   '  "testData": true,',
@@ -20627,6 +20652,103 @@ export const trackRelations = {
   async getSimilar(uid) { const r = await this.getRelations(uid); if (Array.isArray(r.similar_tracks)) return r.similar_tracks; const p = trackProfiles.getPreview(uid); return Array.isArray(p?.similar_tracks) ? p.similar_tracks : []; }
 };
 export default trackRelations;
+
+//=================================================
+// FILE: /scripts/intel/track/track-similarity.js
+// Производное сходство TrackProfile.
+// Не хранит UID-связи, не выполняет сеть самостоятельно и не управляет playback.
+import { trackProfiles } from './track-profiles.js';
+
+const safe = value => String(value == null ? '' : value).trim();
+const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+const DIMENSIONS = Object.freeze({
+  genres: 0.24,
+  styles: 0.1,
+  moods: 0.2,
+  themes: 0.2,
+  use_cases: 0.1,
+  time_of_day: 0.06,
+  axes: 0.1
+});
+
+const vector = raw => raw && typeof raw === 'object' && !Array.isArray(raw)
+  ? Object.fromEntries(Object.entries(raw).map(([key, value]) => [safe(key), num(value)]).filter(([key, value]) => key && value > 0))
+  : {};
+
+const cosine = (leftRaw, rightRaw) => {
+  const left = vector(leftRaw);
+  const right = vector(rightRaw);
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  if (!keys.size) return null;
+
+  let dot = 0;
+  let leftLength = 0;
+  let rightLength = 0;
+  keys.forEach(key => {
+    const a = num(left[key]);
+    const b = num(right[key]);
+    dot += a * b;
+    leftLength += a * a;
+    rightLength += b * b;
+  });
+
+  return leftLength > 0 && rightLength > 0
+    ? dot / Math.sqrt(leftLength * rightLength)
+    : null;
+};
+
+export const scoreTrackSimilarity = (left, right) => {
+  const leftProfile = left?.finalProfile || {};
+  const rightProfile = right?.finalProfile || {};
+  let score = 0;
+  let usedWeight = 0;
+  const breakdown = {};
+
+  Object.entries(DIMENSIONS).forEach(([dimension, weight]) => {
+    const value = cosine(leftProfile[dimension], rightProfile[dimension]);
+    if (value == null) return;
+    breakdown[dimension] = value;
+    score += value * weight;
+    usedWeight += weight;
+  });
+
+  return {
+    score: usedWeight > 0 ? score / usedWeight : 0,
+    coverage: usedWeight,
+    breakdown
+  };
+};
+
+export const trackSimilarity = {
+  async init() {
+    return true;
+  },
+
+  async getSimilar(uid, { limit = 3, index = null, minScore = 0.05 } = {}) {
+    const cleanUid = safe(uid);
+    const profileIndex = index || await trackProfiles.ensureIndex();
+    const source = profileIndex?.items?.[cleanUid];
+    if (!source) return [];
+
+    return Object.entries(profileIndex.items || {})
+      .filter(([candidateUid]) => candidateUid !== cleanUid)
+      .map(([candidateUid, preview]) => {
+        const similarity = scoreTrackSimilarity(source, preview);
+        return {
+          uid: candidateUid,
+          preview,
+          score: similarity.score,
+          coverage: similarity.coverage,
+          breakdown: similarity.breakdown
+        };
+      })
+      .filter(item => item.score >= Math.max(0, Number(minScore) || 0))
+      .sort((left, right) => right.score - left.score || left.uid.localeCompare(right.uid))
+      .slice(0, Math.max(1, Number(limit) || 3));
+  }
+};
+
+export default trackSimilarity;
 
 //=================================================
 // FILE: /scripts/intel/ui/track-profile-modal.js
