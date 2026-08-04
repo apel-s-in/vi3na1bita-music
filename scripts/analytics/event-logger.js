@@ -1,8 +1,3 @@
-// scripts/analytics/event-logger.js
-// UID.003_(Event log truth)_(оставить события источником правды)_(все долгоживущие user states должны выводиться отсюда или из кэша поверх этого слоя)
-// UID.104_(Trust and eligibility state)_(EventLogger пишет ledger fields перед сохранением)_(deviceSeq/prevHash/eventHash/checkpoint)
-// UID.094_(No-paralysis rule)_(event logging не должен влиять на playback)_(ошибка ledger только возвращает события в очередь)
-
 import { metaDB } from './meta-db.js';
 import { normalizeEventEnvelope } from './event-contract.js';
 import { buildLedgerEvents, LEDGER_CHECKPOINT_KEY, publishLedgerCheckpoint, writeLedgerCheckpoint } from './event-integrity.js';
