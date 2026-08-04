@@ -938,6 +938,7 @@ const EXCLUDE_FILES_RAW = [
   'ai-rules.txt',
   '**/ai-rules.txt',
   'data/lyrics-index-v1.json',
+  'data/track-profiles/*/*.json',
   'qwen-code-*',
   '**/qwen-code-*',
   '.aider*',
