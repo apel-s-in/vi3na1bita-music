@@ -1,7 +1,3 @@
-// UID.096_(Helper-first anti-duplication policy)_(cloud account actions/status/meta вынесены из account-cloud-renderers)_(меньше inline HTML)
-// UID.112_(Profile command center)_(единый renderer для backup/sync/verify actions)_(профиль остаётся командным центром)
-// UID.094_(No-paralysis rule)_(cloud UI render-only)_(не влияет на playback/iOS)
-
 import { esc } from './profile-render-kit.js';
 
 export const renderCloudStatusHeader = ({ statusLabel = '', statusColor = '#888', profile: pr = null, hasDiskAccess = false, avatarHtml = '' } = {}) =>
