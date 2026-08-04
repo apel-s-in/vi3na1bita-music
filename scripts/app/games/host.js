@@ -1,55 +1,21 @@
-// UID.001_(Playback safety invariant)_(Game Center host не управляет плеером)_(только preview/iframe/read-only bridge)
-// UID.006_(Lazy loading)_(iframe грузится только после клика Войти)_(не мешаем startup, iOS background и locked-screen playback)
-// UID.094_(No-paralysis rule)_(ошибка Game Center не ломает музыку)_(fallback показывает информационную карточку)
-// UID.095_(Ownership boundary)_(Game Center — отдельный micro-app)_(основное приложение остаётся владельцем auth/profile/stats/player)
-
 import { createGameBridgeHost } from './bridge-host.js';
-
 const W = window;
 const esc = s => W.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
-
-const fallbackConfig = {
-  status: 'off',
-  enterEnabled: false,
-  title: 'Зал Витрины',
-  eyebrow: 'Game Center',
-  message: 'Раздел временно недоступен.',
-  disabledReason: 'Вход закрыт.',
-  buttonText: 'Войти',
-  roomUrl: './Games/index.html',
-  revision: 'fallback',
-  bridgeVersion: 1
-};
-
-const GAME_URL_PARAMS = Object.freeze([
-  'gcGame',
-  'game',
-  'inviteFriend',
-  'join',
-  'room',
-  'key',
-  'secret'
-]);
-
-const clearGameUrlParams = ({
-  replace = true
-} = {}) => {
+const fallbackConfig = { status: 'off', enterEnabled: false, title: 'Зал Витрины', eyebrow: 'Game Center', message: 'Раздел временно недоступен.', disabledReason: 'Вход закрыт.', buttonText: 'Войти', roomUrl: './Games/index.html', revision: 'fallback', bridgeVersion: 1 };
+const GAME_URL_PARAMS = Object.freeze(['gcGame', 'game', 'inviteFriend', 'join', 'room', 'key', 'secret']);
+const clearGameUrlParams = ({ replace = true } = {}) => {
   const url = new URL(W.location.href);
   let changed = false;
-
   GAME_URL_PARAMS.forEach(key => {
     if (!url.searchParams.has(key)) return;
     url.searchParams.delete(key);
     changed = true;
   });
-
   if (changed && replace) {
     W.history.replaceState(null, '', url.toString());
   }
-
   return changed;
 };
-
 const loadConfig = async () => {
   try {
     const m = await import(`./config.js?gc-hard=${Date.now()}`);
@@ -58,36 +24,18 @@ const loadConfig = async () => {
     return fallbackConfig;
   }
 };
-
 const getInviteParams = () => {
   const params = new URLSearchParams(W.location.search);
-  const gcGame =
-    params.get('gcGame') ||
-    params.get('game') ||
-    '';
+  const gcGame = params.get('gcGame') || params.get('game') || '';
   const joinToken = params.get('join') || '';
   const inviteFriend = params.get('inviteFriend') || '';
-
-  return {
-    hasInvite:
-      gcGame === 'war_hearts' &&
-      !!joinToken,
-    isSendingInvite:
-      gcGame === 'war_hearts' &&
-      !!inviteFriend,
-    gcGame,
-    joinToken,
-    inviteFriend
-  };
+  return { hasInvite: gcGame === 'war_hearts' && !!joinToken, isSendingInvite: gcGame === 'war_hearts' && !!inviteFriend, gcGame, joinToken, inviteFriend };
 };
-
 const makeRoomUrl = cfg => {
   const url = new URL(String(cfg.roomUrl || './Games/index.html'), W.location.href);
   const invite = getInviteParams();
-
   url.searchParams.set('bridge', '1');
   url.searchParams.set('rev', cfg.revision || 'dev');
-
   if (invite.hasInvite) {
     url.searchParams.set('gcGame', invite.gcGame);
     url.searchParams.set('join', invite.joinToken);
@@ -95,19 +43,14 @@ const makeRoomUrl = cfg => {
     url.searchParams.set('gcGame', invite.gcGame);
     url.searchParams.set('inviteFriend', invite.inviteFriend);
   }
-
   return url.toString();
 };
-
-  const render = ({ cfg, mounted = false } = {}) => {
-    const canEnter = cfg.status === 'on' && cfg.enterEnabled;
-    const invite = getInviteParams();
-    const buttonText = invite.hasInvite ? 'Принять приглашение' : (invite.isSendingInvite ? 'Запустить и пригласить' : esc(cfg.buttonText));
-    const message = invite.hasInvite
-      ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.'
-      : (invite.isSendingInvite ? 'Запустите игру, чтобы отправить вызов.' : esc(cfg.message));
-
-    return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
+const render = ({ cfg, mounted = false } = {}) => {
+  const canEnter = cfg.status === 'on' && cfg.enterEnabled;
+  const invite = getInviteParams();
+  const buttonText = invite.hasInvite ? 'Принять приглашение' : invite.isSendingInvite ? 'Запустить и пригласить' : esc(cfg.buttonText);
+  const message = invite.hasInvite ? 'Вас пригласили в сетевую игру. Можно войти как гость или авторизоваться, чтобы позже сохранять прогресс.' : invite.isSendingInvite ? 'Запустите игру, чтобы отправить вызов.' : esc(cfg.message);
+  return `<section class="gc-host" data-gc-status="${esc(cfg.status)}">
       <div class="gc-panel">
         <div class="gc-panel-kicker">${esc(cfg.eyebrow)}</div>
         <div class="gc-panel-title">${esc(cfg.title)}</div>
@@ -119,54 +62,38 @@ const makeRoomUrl = cfg => {
       </div>
       <div class="gc-frame-wrap" id="gc-frame-wrap" hidden></div>
     </section>`;
-  };
-
-  export const renderGameCenterHost = async ({ container } = {}) => {
-    if (!container) return false;
-    const cfg = await loadConfig();
-
-    try {
-      const { shardWallet } = await import('../shards/wallet-service.js');
-      await shardWallet.refresh();
-    } catch {}
-
-    let bridge = null;
-    container.innerHTML = render({ cfg });
-
-    const btn = container.querySelector('[data-gc-enter]');
-    const declineBtn = container.querySelector('[data-gc-decline]');
-    const frameWrap = container.querySelector('#gc-frame-wrap');
-
-    declineBtn?.addEventListener('click', () => {
-      clearGameUrlParams();
-      renderGameCenterHost({ container });
-    });
-
-    const mountGameCenter = () => {
-      if (btn?.disabled || !frameWrap) return;
-      const host = container.querySelector('.gc-host');
-      const panel = container.querySelector('.gc-panel');
-      const invite = getInviteParams();
-
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Открываем...';
-      }
-
-      host?.classList.add('is-mounted');
-      W.__gameActivity = {
-        active: true,
-        state: 'active',
-        gameId: invite.gcGame || 'game_center',
-        updatedAt: Date.now()
-      };
-      W.dispatchEvent(new CustomEvent('game:activity', {
-        detail: { ...W.__gameActivity }
-      }));
-      if (panel) panel.hidden = true;
-
-      frameWrap.hidden = false;
-      frameWrap.innerHTML = `
+};
+export const renderGameCenterHost = async ({ container } = {}) => {
+  if (!container) return false;
+  const cfg = await loadConfig();
+  try {
+    const { shardWallet } = await import('../shards/wallet-service.js');
+    await shardWallet.refresh();
+  } catch {}
+  let bridge = null;
+  container.innerHTML = render({ cfg });
+  const btn = container.querySelector('[data-gc-enter]');
+  const declineBtn = container.querySelector('[data-gc-decline]');
+  const frameWrap = container.querySelector('#gc-frame-wrap');
+  declineBtn?.addEventListener('click', () => {
+    clearGameUrlParams();
+    renderGameCenterHost({ container });
+  });
+  const mountGameCenter = () => {
+    if (btn?.disabled || !frameWrap) return;
+    const host = container.querySelector('.gc-host');
+    const panel = container.querySelector('.gc-panel');
+    const invite = getInviteParams();
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Открываем...';
+    }
+    host?.classList.add('is-mounted');
+    W.__gameActivity = { active: true, state: 'active', gameId: invite.gcGame || 'game_center', updatedAt: Date.now() };
+    W.dispatchEvent(new CustomEvent('game:activity', { detail: { ...W.__gameActivity } }));
+    if (panel) panel.hidden = true;
+    frameWrap.hidden = false;
+    frameWrap.innerHTML = `
         <div class="gc-launch-cover">
           <div class="gc-launch-logo">💔</div>
           <b>${invite.hasInvite ? 'Подключаемся к вызову' : invite.isSendingInvite ? 'Готовим приглашение' : 'Открываем Зал Витрины'}</b>
@@ -174,18 +101,19 @@ const makeRoomUrl = cfg => {
         </div>
         <iframe class="gc-frame" title="Game Center" src="${esc(makeRoomUrl(cfg))}" sandbox="allow-scripts allow-forms allow-popups" allow="fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
       `;
-      const iframe = frameWrap.querySelector('iframe');
-
-      // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
-      if (invite.hasInvite || invite.isSendingInvite) {
-        clearGameUrlParams();
-      }
-
-      iframe?.addEventListener('load', () => {
+    const iframe = frameWrap.querySelector('iframe');
+    // Сразу стираем параметр из родительского URL, чтобы при обновлении страницы (F5) не отправить дубль-вызов
+    if (invite.hasInvite || invite.isSendingInvite) {
+      clearGameUrlParams();
+    }
+    iframe?.addEventListener(
+      'load',
+      () => {
         frameWrap.querySelector('.gc-launch-cover')?.remove();
-      }, { once: true });
-
-      bridge?.destroy?.();
+      },
+      { once: true }
+    );
+    bridge?.destroy?.();
     bridge = createGameBridgeHost({
       iframe,
       config: cfg,
@@ -196,43 +124,34 @@ const makeRoomUrl = cfg => {
           try {
             clearGameUrlParams();
           } catch {}
-
           try {
             W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_exit', revision: cfg.revision });
             W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
           } catch {}
-
-            frameWrap.hidden = true;
-            frameWrap.innerHTML = '';
-            host?.classList.remove('is-mounted');
-            if (panel) panel.hidden = false;
-            btn.disabled = false;
-            btn.textContent = getInviteParams().hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
-
-            // Если хост был перенесен в body при сворачивании, удаляем его
-            if (host && host.parentElement === document.body) {
-              host.remove();
-            }
+          frameWrap.hidden = true;
+          frameWrap.innerHTML = '';
+          host?.classList.remove('is-mounted');
+          if (panel) panel.hidden = false;
+          btn.disabled = false;
+          btn.textContent = getInviteParams().hasInvite ? 'Принять приглашение' : esc(cfg.buttonText);
+          // Если хост был перенесен в body при сворачивании, удаляем его
+          if (host && host.parentElement === document.body) {
+            host.remove();
           }
         }
+      }
     });
-
     try {
       W.eventLogger?.log?.('FEATURE_USED', 'global', { feature: 'game_center_enter', revision: cfg.revision });
       W.dispatchEvent(new CustomEvent('analytics:forceFlush'));
     } catch {}
-
     if (btn) btn.textContent = 'Комната открыта';
-    };
-
-    btn?.addEventListener('click', mountGameCenter);
-
-    const invite = getInviteParams();
-    if (invite.hasInvite || invite.isSendingInvite) {
-      setTimeout(mountGameCenter, 80);
-    }
-
+  };
+  btn?.addEventListener('click', mountGameCenter);
+  const invite = getInviteParams();
+  if (invite.hasInvite || invite.isSendingInvite) {
+    setTimeout(mountGameCenter, 80);
+  }
   return true;
 };
-
 export default { renderGameCenterHost };
