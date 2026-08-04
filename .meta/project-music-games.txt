@@ -117,7 +117,7 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/06/] 06-cover-01.jpg, 06-cover-01.png, 06-cover-01.webp, 06-cover-02.jpg, 06-cover-02.png, 06-cover-02.webp, 06-cover-03.jpg, 06-cover-03.png, 06-cover-03.webp, 06-cover-04.jpg, 06-cover-04.png, 06-cover-04.webp, index.json
 [/audio/] silence.mp3
 [/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.function-env.json, listen-track-catalog.json, taxonomy.json, track-profiles-index.json
-[/data/track-profiles/] _stub.profile.json, README.txt
+[/data/track-profiles/] README.txt, track-profile.template.json, VS-01.json, VS-02.json, VS-03.json, VS-04.json, VS-05.json, VS-06.json, VS-07.json, VS-08.json, VS-09.json, VS-10.json
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
 [/img/] .gitkeep, bg-in.webp, Fav_logo.png, icon_game.png, logo.png, vitrina-crack-01.svg
 [/img/desktop/] logo@1x.png, logo@2x.png, logo@3x.png
