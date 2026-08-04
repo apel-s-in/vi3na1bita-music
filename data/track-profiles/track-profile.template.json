@@ -1,0 +1,133 @@
+{
+  "version": "track-profile-v1",
+  "taxonomyVersion": "taxonomy-v2",
+  "uid": "__TEMPLATE__",
+  "title": "",
+  "album": "__album_key__",
+  "albumTitle": "",
+  "status": "template",
+  "testData": false,
+  "generatedAt": null,
+  "updatedAt": null,
+  "musicAnalysis": {
+    "source": "",
+    "verified": false,
+    "confidence": 0,
+    "bpm": null,
+    "tempoClass": "",
+    "key": "",
+    "mode": "",
+    "timeSignature": "",
+    "durationSec": null,
+    "loudnessLufs": null,
+    "dynamicRange": null,
+    "genres": {},
+    "styles": {},
+    "moods": {},
+    "axes": {
+      "energy": 0,
+      "valence": 0,
+      "arousal": 0,
+      "danceability": 0,
+      "acousticness": 0,
+      "instrumentalness": 0,
+      "aggressiveness": 0,
+      "melancholy": 0,
+      "romance_intensity": 0,
+      "humor": 0,
+      "socialness": 0,
+      "epicness": 0,
+      "warmth": 0,
+      "brightness": 0,
+      "tension": 0,
+      "storytelling": 0,
+      "spookiness": 0,
+      "family_friendly": 0
+    },
+    "audioFeatures": {
+      "spectralCentroid": null,
+      "spectralRolloff": null,
+      "spectralContrast": null,
+      "zeroCrossingRate": null,
+      "rhythmicStability": null,
+      "vocalPresence": null
+    },
+    "embedding": {
+      "version": "",
+      "dimensions": 0,
+      "values": []
+    }
+  },
+  "lyricAnalysis": {
+    "source": "",
+    "verified": false,
+    "confidence": 0,
+    "language": "ru",
+    "summary_ru": "",
+    "themes": {},
+    "moods": {},
+    "entities": [],
+    "keywords": [],
+    "scenes": [],
+    "narrative": {
+      "type": "",
+      "perspective": "",
+      "arc": "",
+      "characters": []
+    },
+    "warnings": {},
+    "embedding": {
+      "version": "",
+      "dimensions": 0,
+      "values": []
+    }
+  },
+  "finalProfile": {
+    "genres": {},
+    "styles": {},
+    "moods": {},
+    "themes": {},
+    "use_cases": {},
+    "events": {},
+    "seasonality": {},
+    "time_of_day": {},
+    "axes": {},
+    "warnings": {}
+  },
+  "presentation": {
+    "tagline_ru": "",
+    "hook_ru": "",
+    "one_liner_ru": "",
+    "mini_description_ru": "",
+    "hero_quote_ru": "",
+    "badges": [],
+    "chips": []
+  },
+  "relations": {
+    "similar_tracks": [],
+    "relation_types": {
+      "audio_similarity": [],
+      "lyric_similarity": [],
+      "mood_similarity": [],
+      "transition_fit": []
+    }
+  },
+  "provenance": {
+    "schemaVersion": 1,
+    "audioAnalyzer": {
+      "name": "",
+      "version": "",
+      "analyzedAt": null
+    },
+    "lyricAnalyzer": {
+      "name": "",
+      "version": "",
+      "analyzedAt": null
+    },
+    "editorial": {
+      "reviewed": false,
+      "reviewedAt": null,
+      "notes": ""
+    }
+  }
+}
