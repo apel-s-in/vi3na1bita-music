@@ -15660,10 +15660,11 @@ export default { validateBackupAnalytics };
 import fs from 'node:fs';
 import path from 'node:path';
 
-const OUTPUT_DIR = path.resolve('data/track-profiles');
+const OUTPUT_ROOT = path.resolve('data/track-profiles');
 const INDEX_PATH = path.resolve('data/track-profiles-index.json');
 const album = 'v-ssore';
 const albumTitle = 'В Ссоре';
+const OUTPUT_DIR = path.join(OUTPUT_ROOT, album);
 
 const specs = [
   ['VS-01', 'Живой', ['rock'], ['uplifting', 'energetic'], ['dreams_goals', 'heroism'], { energy: .78, valence: .66, arousal: .72, epicness: .64, family_friendly: .82 }],
@@ -15742,7 +15743,10 @@ const build = (spec, index) => {
 
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 const profiles = specs.map(build);
+
 profiles.forEach(profile => {
+  const legacyPath = path.join(OUTPUT_ROOT, `${profile.uid}.json`);
+  if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
   fs.writeFileSync(path.join(OUTPUT_DIR, `${profile.uid}.json`), `${JSON.stringify(profile, null, 2)}\n`, 'utf8');
 });
 
@@ -15751,6 +15755,7 @@ const items = Object.fromEntries(profiles.map(profile => [profile.uid, {
   title: profile.title,
   album: profile.album,
   albumTitle: profile.albumTitle,
+  profilePath: `${profile.album}/${profile.uid}.json`,
   status: profile.status,
   testData: true,
   finalProfile: profile.finalProfile,
