@@ -105,12 +105,24 @@ const items = Object.fromEntries(profiles.map(profile => [profile.uid, {
   relations: profile.relations
 }]));
 
-fs.writeFileSync(INDEX_PATH, `${JSON.stringify({
-  version: 'track-profiles-index-v1',
-  generatedAt: new Date().toISOString(),
-  taxonomyVersion: 'taxonomy-v2',
-  testData: true,
-  items
-}, null, 2)}\n`, 'utf8');
+const generatedAt = new Date().toISOString();
+const itemRows = Object.entries(items)
+  .sort(([left], [right]) => left.localeCompare(right))
+  .map(([uid, item], index, rows) => `    ${JSON.stringify(uid)}: ${JSON.stringify(item)}${index < rows.length - 1 ? ',' : ''}`);
+
+const indexJson = [
+  '{',
+  '  "version": "track-profiles-index-v1",',
+  `  "generatedAt": ${JSON.stringify(generatedAt)},`,
+  '  "taxonomyVersion": "taxonomy-v2",',
+  '  "testData": true,',
+  '  "items": {',
+  ...itemRows,
+  '  }',
+  '}',
+  ''
+].join('\n');
+
+fs.writeFileSync(INDEX_PATH, indexJson, 'utf8');
 
 console.log(`Generated ${profiles.length} explicit test TrackProfiles`);
