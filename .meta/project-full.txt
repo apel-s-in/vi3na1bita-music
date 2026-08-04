@@ -20423,7 +20423,7 @@ export const recommendationEngine = {
     const stats = await metaDB.getAllStats().catch(() => []);
     const source = resolveRecommendationDataSource(stats);
     const index = await trackProfiles.ensureIndex().catch(() => ({
-      version: 'track-profiles-index-v1',
+      version: 'track-profiles-index-v3',
       testData: false,
       items: {}
     }));
@@ -20615,7 +20615,9 @@ export default intelBus;
 // Контракт только активных INTEL-компонентов.
 export const INTEL_CONTRACTS = Object.freeze({
   version: 'intel-contracts-v2',
-  taxonomyVersion: 'taxonomy-v2',
+  taxonomyVersion: 'taxonomy-v3',
+  trackProfileVersion: 'track-profile-v3',
+  vocabularyVersion: 'track-profile-vocabulary-v1',
   profileIndexUrl: './data/track-profiles-index.json',
   profileDir: './data/track-profiles/',
   stores: Object.freeze({
@@ -20656,11 +20658,25 @@ export default intelGuards;
 //=================================================
 // FILE: /scripts/intel/track/track-presentation.js
 import { trackProfiles } from './track-profiles.js';
-const norm = (s = {}) => ({ hook_ru: s.hook_ru || '', tagline_ru: s.tagline_ru || s.tagline || '', one_liner_ru: s.one_liner_ru || '', short_ru: s.short_ru || '', hero_quote_ru: s.hero_quote_ru || '', badges: Array.isArray(s.badges) ? s.badges : [], chips: Array.isArray(s.chips) ? s.chips : [] });
+
+const norm = source => ({
+  tagline_ru: source?.tagline_ru || '',
+  one_liner_ru: source?.one_liner_ru || '',
+  mini_description_ru: source?.mini_description_ru || ''
+});
+
 export const trackPresentation = {
-  async init() { return true; },
-  async getPresentation(uid) { const f = await trackProfiles.getProfile(uid); if (f?.presentation) return norm(f.presentation); if (f?.summary || f?.card) return norm({ hook_ru: f.summary?.hook_ru || '', tagline_ru: f.card?.tagline_ru || '', one_liner_ru: f.summary?.one_liner_ru || '', short_ru: f.summary?.short_ru || '' }); const p = trackProfiles.getPreview(uid); return norm(p?.presentation || p || {}); }
+  async init() {
+    return true;
+  },
+
+  async getPresentation(uid) {
+    const profile = await trackProfiles.getProfile(uid);
+    if (profile?.presentation) return norm(profile.presentation);
+    return norm(trackProfiles.getPreview(uid)?.presentation);
+  }
 };
+
 export default trackPresentation;
 
 //=================================================
@@ -20729,19 +20745,26 @@ export default trackProfiles;
 //=================================================
 // FILE: /scripts/intel/track/track-similarity.js
 // Производное сходство TrackProfile.
-// Не хранит UID-связи, не выполняет сеть самостоятельно и не управляет playback.
+// Сравнивает только канонические machine features и не управляет playback.
 import { trackProfiles } from './track-profiles.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const DIMENSIONS = Object.freeze({
-  genres: 0.24,
-  styles: 0.1,
-  moods: 0.2,
-  themes: 0.2,
-  use_cases: 0.1,
-  time_of_day: 0.06,
-  axes: 0.1
+  genres: 0.16,
+  styles: 0.07,
+  moods: 0.14,
+  themes: 0.13,
+  use_cases: 0.07,
+  time_of_day: 0.03,
+  axes: 0.17,
+  instrumentation: 0.07,
+  vocalRoles: 0.04,
+  vocalDelivery: 0.03,
+  arrangementTags: 0.035,
+  productionTags: 0.025,
+  bpm: 0.03,
+  tonality: 0.025
 });
 
 const vector = raw => raw && typeof raw === 'object' && !Array.isArray(raw)
@@ -20752,7 +20775,7 @@ const cosine = (leftRaw, rightRaw) => {
   const left = vector(leftRaw);
   const right = vector(rightRaw);
   const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
-  if (!keys.size) return null;
+  if (!keys.size || !Object.keys(left).length || !Object.keys(right).length) return null;
 
   let dot = 0;
   let leftLength = 0;
@@ -20764,30 +20787,65 @@ const cosine = (leftRaw, rightRaw) => {
     leftLength += a * a;
     rightLength += b * b;
   });
+  return leftLength > 0 && rightLength > 0 ? dot / Math.sqrt(leftLength * rightLength) : null;
+};
 
-  return leftLength > 0 && rightLength > 0
-    ? dot / Math.sqrt(leftLength * rightLength)
-    : null;
+const axisSimilarity = (leftRaw, rightRaw) => {
+  if (!leftRaw || !rightRaw) return null;
+  const keys = [...new Set([...Object.keys(leftRaw), ...Object.keys(rightRaw)])];
+  if (!keys.length) return null;
+  return 1 - keys.reduce((sum, key) => sum + Math.abs(num(leftRaw[key]) - num(rightRaw[key])), 0) / keys.length;
+};
+
+const bpmSimilarity = (left, right) => {
+  const a = Number(left?.musicAnalysis?.bpm);
+  const b = Number(right?.musicAnalysis?.bpm);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  const direct = Math.abs(a - b);
+  const halfTime = Math.abs(a - b * 2);
+  const doubleTime = Math.abs(a * 2 - b);
+  return Math.max(0, 1 - Math.min(direct, halfTime, doubleTime) / 45);
+};
+
+const tonalitySimilarity = (left, right) => {
+  const leftKey = safe(left?.musicAnalysis?.key);
+  const rightKey = safe(right?.musicAnalysis?.key);
+  const leftMode = safe(left?.musicAnalysis?.mode);
+  const rightMode = safe(right?.musicAnalysis?.mode);
+  if (!leftKey || !rightKey || !leftMode || !rightMode) return null;
+  if (leftKey === rightKey && leftMode === rightMode) return 1;
+  if (leftMode === rightMode) return 0.35;
+  return 0;
+};
+
+const dimensionValue = (dimension, left, right) => {
+  if (dimension === 'bpm') return bpmSimilarity(left, right);
+  if (dimension === 'tonality') return tonalitySimilarity(left, right);
+  if (dimension === 'axes') return axisSimilarity(left?.finalProfile?.axes, right?.finalProfile?.axes);
+  if (dimension in (left?.finalProfile || {}) || dimension in (right?.finalProfile || {})) {
+    return cosine(left?.finalProfile?.[dimension], right?.finalProfile?.[dimension]);
+  }
+  return cosine(left?.musicAnalysis?.[dimension], right?.musicAnalysis?.[dimension]);
 };
 
 export const scoreTrackSimilarity = (left, right) => {
-  const leftProfile = left?.finalProfile || {};
-  const rightProfile = right?.finalProfile || {};
   let score = 0;
-  let usedWeight = 0;
+  let coverage = 0;
   const breakdown = {};
 
   Object.entries(DIMENSIONS).forEach(([dimension, weight]) => {
-    const value = cosine(leftProfile[dimension], rightProfile[dimension]);
+    const value = dimensionValue(dimension, left, right);
     if (value == null) return;
     breakdown[dimension] = value;
     score += value * weight;
-    usedWeight += weight;
+    coverage += weight;
   });
 
+  const normalized = coverage > 0 ? score / coverage : 0;
   return {
-    score: usedWeight > 0 ? score / usedWeight : 0,
-    coverage: usedWeight,
+    score: normalized * (0.7 + 0.3 * coverage),
+    rawScore: normalized,
+    coverage,
     breakdown
   };
 };
@@ -20807,16 +20865,10 @@ export const trackSimilarity = {
       .filter(([candidateUid]) => candidateUid !== cleanUid)
       .map(([candidateUid, preview]) => {
         const similarity = scoreTrackSimilarity(source, preview);
-        return {
-          uid: candidateUid,
-          preview,
-          score: similarity.score,
-          coverage: similarity.coverage,
-          breakdown: similarity.breakdown
-        };
+        return { uid: candidateUid, preview, ...similarity };
       })
       .filter(item => item.score >= Math.max(0, Number(minScore) || 0))
-      .sort((left, right) => right.score - left.score || left.uid.localeCompare(right.uid))
+      .sort((left, right) => right.score - left.score || right.coverage - left.coverage || left.uid.localeCompare(right.uid))
       .slice(0, Math.max(1, Number(limit) || 3));
   }
 };
@@ -20832,14 +20884,27 @@ const safe = value => String(value == null ? '' : value).trim();
 const esc = value => window.Utils?.escapeHtml?.(safe(value)) || safe(value);
 const percent = value => `${Math.round(Math.max(0, Math.min(1, Number(value) || 0)) * 100)}%`;
 
-const renderWeights = (title, values, limit = 8) => {
+const renderWeights = (title, values, limit = 10) => {
   const rows = Object.entries(values && typeof values === 'object' && !Array.isArray(values) ? values : {})
     .filter(([key, value]) => safe(key) && Number(value) > 0)
     .sort((left, right) => Number(right[1]) - Number(left[1]) || left[0].localeCompare(right[0]))
     .slice(0, limit);
-
   if (!rows.length) return '';
   return `<div class="stat-card"><div class="stat-title">${esc(title)}</div><ul class="stat-list">${rows.map(([key, value]) => `<li><span>${esc(key)}</span><span>${esc(percent(value))}</span></li>`).join('')}</ul></div>`;
+};
+
+const renderTechnical = music => {
+  const rows = [
+    ['BPM', music?.bpm],
+    ['Темп', music?.tempoClass],
+    ['Тональность', music?.key && music?.mode ? `${music.key} · ${music.mode}` : null],
+    ['Размер', music?.timeSignature],
+    ['Вокал', music?.vocalPresence == null ? null : percent(music.vocalPresence)]
+  ].filter(([, value]) => value != null && value !== '');
+
+  return rows.length
+    ? `<div class="stat-card"><div class="stat-title">Музыкальные характеристики</div><ul class="stat-list">${rows.map(([label, value]) => `<li><span>${esc(label)}</span><span>${esc(value)}</span></li>`).join('')}</ul></div>`
+    : '';
 };
 
 export const trackProfileModal = {
@@ -20857,6 +20922,8 @@ export const trackProfileModal = {
     const presentation = await trackPresentation.getPresentation(cleanUid);
     const track = window.TrackRegistry?.getTrackByUid?.(cleanUid);
     const testData = profile.testData === true || profile.status === 'test_fixture';
+    const music = profile.musicAnalysis || {};
+    const lyrics = profile.lyricAnalysis || {};
     const finalProfile = profile.finalProfile || {};
 
     window.Modals.open({
@@ -20864,23 +20931,28 @@ export const trackProfileModal = {
       maxWidth: 460,
       bodyHtml: `
         <div class="sm-center sm-mb20">
-          <h3 class="sm-title">${esc(track?.title || profile.title || cleanUid)}</h3>
-          <div class="sm-sub">${esc(profile.albumTitle || track?.album || '')}</div>
-          <div class="sm-note">${esc(presentation.one_liner_ru || presentation.short_ru || presentation.tagline_ru || 'Semantic profile loaded')}</div>
+          <h3 class="sm-title">${esc(track?.title || cleanUid)}</h3>
+          <div class="sm-sub">${esc(track?.album || window.TrackRegistry?.getAlbumTitle?.(track?.sourceAlbum) || '')}</div>
+          <div class="sm-note">${esc(presentation.one_liner_ru || presentation.tagline_ru || 'Смысловой профиль загружен')}</div>
         </div>
-        ${testData ? '<div class="stat-card"><div class="stat-sub">Демонстрационные данные для проверки INTEL. Не являются фактическим анализом трека.</div></div>' : ''}
+        ${testData ? '<div class="stat-card"><div class="stat-sub">Демонстрационные данные. Не являются фактическим анализом трека.</div></div>' : ''}
+        ${renderTechnical(music)}
+        ${renderWeights('Инструменты', music.instrumentation)}
+        ${renderWeights('Вокальные роли', music.vocalRoles)}
+        ${renderWeights('Подача вокала', music.vocalDelivery)}
+        ${renderWeights('Аранжировка', music.arrangementTags)}
+        ${renderWeights('Продакшн', music.productionTags)}
+        ${music.arrangementDescription_ru ? `<div class="stat-card"><div class="stat-title">Аранжировка</div><div class="stat-sub">${esc(music.arrangementDescription_ru)}</div></div>` : ''}
+        ${music.productionDescription_ru ? `<div class="stat-card"><div class="stat-title">Звучание</div><div class="stat-sub">${esc(music.productionDescription_ru)}</div></div>` : ''}
+        ${lyrics.summary_ru ? `<div class="stat-card"><div class="stat-title">Смысл текста</div><div class="stat-sub">${esc(lyrics.summary_ru)}</div></div>` : ''}
         ${renderWeights('Жанры', finalProfile.genres)}
+        ${renderWeights('Стили', finalProfile.styles)}
         ${renderWeights('Настроения', finalProfile.moods)}
         ${renderWeights('Темы', finalProfile.themes)}
         ${renderWeights('Сценарии', finalProfile.use_cases)}
         ${renderWeights('Время суток', finalProfile.time_of_day)}
-        ${renderWeights('Смысловые оси', finalProfile.axes, 12)}
+        ${renderWeights('Смысловые оси', finalProfile.axes, 18)}
         ${renderWeights('Предупреждения', finalProfile.warnings)}
-        <div class="stat-card">
-          <div class="stat-title">Источник</div>
-          <div class="stat-sub">Music: ${esc(profile.musicAnalysis?.source || '—')} · verified: ${profile.musicAnalysis?.verified === true ? 'да' : 'нет'}</div>
-          <div class="stat-sub">Lyrics: ${esc(profile.lyricAnalysis?.source || '—')} · verified: ${profile.lyricAnalysis?.verified === true ? 'да' : 'нет'}</div>
-        </div>
       `
     });
     return true;
