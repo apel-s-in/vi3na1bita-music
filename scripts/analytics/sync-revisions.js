@@ -1,4 +1,3 @@
-// UID.099_(Multi-device sync model)_(локальный журнал sync revisions для отладки autosync)_(последние попытки, hash, domains, uploaded flags) UID.100_(Backup snapshot as life capsule)_(пользователь должен видеть что реально сохранялось)_(compact status в account UI)
 const KEY = 'backup:sync_revisions:v1', s = v => String(v == null ? '' : v).trim(), n = v => Number.isFinite(Number(v)) ? Number(v) : 0, jp = (r, fb = []) => { try { return JSON.parse(r || ''); } catch { return fb; } };
 export const readSyncRevisions = () => Array.isArray(jp(localStorage.getItem(KEY), [])) ? jp(localStorage.getItem(KEY), []) : [];
 export const recordSyncRevision = ({ hash='', timestamp=Date.now(), domains=[], uploadedShared=false, uploadedDevice=false, uploadedEventArchive=false, reason='autosync', ok=true, error='' } = {}) => {
