@@ -174,6 +174,7 @@ export const recommendationEngine = {
       authority: source.authority,
       fullIntel: source.fullIntel,
       serverAvailable: source.serverAvailable,
+      serverCorrected: source.serverCorrected === true,
       testData: index?.testData === true,
       items
     };
