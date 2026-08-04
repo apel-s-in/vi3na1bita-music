@@ -75,6 +75,21 @@ jobs:
             exit 2
           fi
 
+          if grep -Eq '^// FILE: /data/track-profiles/[^/]+/[^/]+\.json$' .meta/project-full.txt; then
+            echo "Full TrackProfile contents leaked into project-full.txt"
+            exit 2
+          fi
+
+          grep -q 'track-profile.template.json' .meta/project-full.txt
+
+          while IFS= read -r profile; do
+            name="$(basename "$profile")"
+            grep -q "$name" .meta/project-full.txt || {
+              echo "TrackProfile missing from compact context tree: $profile"
+              exit 2
+            }
+          done < <(find data/track-profiles -mindepth 2 -maxdepth 2 -type f -name '*.json' | sort)
+
           for context in \
             .meta/functions/vi3-signaling.txt \
             .meta/functions/vi3-webpush.txt \
