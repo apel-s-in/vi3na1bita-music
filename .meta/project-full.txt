@@ -16987,7 +16987,12 @@ const taxonomy = read('data/taxonomy.json');
 const catalog = read('data/listen-track-catalog.json');
 const knownUids = new Set((catalog.tracks || []).map(item => String(item.uid || '')));
 const groups = taxonomy.groups || {};
-const semanticGroups = ['genres', 'moods', 'themes', 'use_cases', 'events', 'seasonality', 'time_of_day', 'axes', 'content_warnings'];
+const semanticGroups = ['genres', 'styles', 'moods', 'themes', 'use_cases', 'events', 'seasonality', 'time_of_day', 'axes', 'content_warnings'];
+const albums = new Set((JSON.parse(fs.readFileSync('albums.json', 'utf8')).albums || []).map(item => String(item.key || '')).filter(Boolean));
+const templatePath = 'data/track-profiles/track-profile.template.json';
+if (!fs.existsSync(templatePath)) fail('Отсутствует эталонный track-profile.template.json');
+const template = read(templatePath);
+if (template.uid !== '__TEMPLATE__' || template.status !== 'template' || template.version !== 'track-profile-v1') fail('Некорректный эталон TrackProfile');
 
 const validateWeights = (uid, group, values) => {
   if (!values || typeof values !== 'object' || Array.isArray(values)) fail(`${uid}: ${group} должен быть object`);
@@ -17007,10 +17012,23 @@ if (!Object.keys(items).length) {
 for (const [uid, preview] of Object.entries(items)) {
   if (!knownUids.has(uid)) fail(`${uid}: отсутствует в listening catalog`);
   if (preview.uid !== uid) fail(`${uid}: preview uid mismatch`);
-  const file = path.join('data/track-profiles', `${uid}.json`);
-  if (!fs.existsSync(file)) fail(`${uid}: отсутствует full profile`);
+
+  const catalogTrack = (catalog.tracks || []).find(item => String(item.uid || '') === uid);
+  const album = String(preview.album || catalogTrack?.album || '');
+  const profilePath = String(preview.profilePath || '');
+
+  if (!albums.has(album)) fail(`${uid}: неизвестный album key ${album}`);
+  if (profilePath !== `${album}/${uid}.json`) fail(`${uid}: profilePath должен быть ${album}/${uid}.json`);
+
+  const file = path.join('data/track-profiles', profilePath);
+  if (!fs.existsSync(file)) fail(`${uid}: отсутствует full profile ${profilePath}`);
+
+  const rootLegacyFile = path.join('data/track-profiles', `${uid}.json`);
+  if (fs.existsSync(rootLegacyFile)) fail(`${uid}: full profile остался в корне track-profiles`);
+
   const profile = read(file);
   if (profile.uid !== uid) fail(`${uid}: full profile uid mismatch`);
+  if (profile.album !== album) fail(`${uid}: album folder/profile mismatch`);
   if (profile.taxonomyVersion !== index.taxonomyVersion) fail(`${uid}: taxonomy version mismatch`);
   if (index.testData === true && (profile.testData !== true || profile.status !== 'test_fixture')) fail(`${uid}: тестовый профиль не помечен явно`);
 
