@@ -15237,8 +15237,15 @@ export const openShowcaseSharedPlaylistConfirm = ({ raw: r, trk: t, esc, createP
   } catch { n?.error?.('Ошибка чтения ссылки'); }
 };
 export const openShowcaseSearchSettingsModal = ({ modalApi: mA }) => {
-  const m = mA?.open?.({ title: 'Настройки поиска', maxWidth: 400, bodyHtml: `<div class="sm-note" style="margin-bottom:18px;text-align:left;color:#9db7dd">Настройте параметры умного поиска. Продвинутые семантические алгоритмы в разработке.</div><div class="sleep-custom-card" style="margin-bottom:20px;display:flex;flex-direction:column;gap:14px"><label class="sleep-check"><input type="checkbox" checked><span>Поиск по тексту песен (Lyrics)</span></label><label class="sleep-check"><input type="checkbox" checked><span>Учитывать жанры и настроения</span></label><label class="sleep-check"><input type="checkbox"><span>Искать только в Избранном</span></label><label class="sleep-check"><input type="checkbox"><span>Строгое совпадение фразы</span></label></div><div class="om-actions"><button class="modal-action-btn" data-act="cancel">Сбросить</button><button class="modal-action-btn online" data-act="apply">Применить</button></div>` });
-  if (m) m.addEventListener('click', e => { if (e.target.closest('.modal-action-btn')) m.remove(); }); return m;
+  const m = mA?.open?.({
+    title: 'Поиск',
+    maxWidth: 400,
+    bodyHtml: `<div class="sm-note" style="text-align:left;color:#9db7dd">Сейчас поиск проверяет название трека, название альбома и индекс текста песен.<br><br>Смысловые фильтры появятся после замены тестовых TrackProfile правдивыми данными.</div><div class="om-actions"><button class="modal-action-btn online" data-act="close">Понятно</button></div>`
+  });
+  m?.addEventListener('click', event => {
+    if (event.target.closest('[data-act="close"]')) m.remove();
+  });
+  return m;
 };
 export const openShowcasePaletteModal = ({ title: t, items: i, value: v, resetText: r, onPick: o, modalHelper: m }) => m?.({ title: t, items: i, value: v, resetText: r, onPick: o }) || null;
 export default { openShowcaseSheetModal, openShowcaseAddToPlaylistModal, openShowcaseSettingsModal, openShowcaseSharedPlaylistConfirm, openShowcaseSearchSettingsModal, openShowcasePaletteModal };
