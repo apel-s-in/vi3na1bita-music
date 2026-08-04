@@ -16265,8 +16265,6 @@ const build = (spec, index) => {
     moods: weighted(moods),
     themes: weighted(themes),
     use_cases: { background: .55, walking: .5 },
-    events: {},
-    seasonality: {},
     time_of_day: {},
     axes,
     warnings: {}
