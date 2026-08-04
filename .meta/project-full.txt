@@ -13149,6 +13149,7 @@ export default { createTrashActionHandlers };
 import { createTrashActionHandlers } from './actions-trash.js';
 import { handleLoyaltyControl } from './loyalty-card.js';
 import { bindTabStripPhysics } from './tab-strip-physics.js';
+import { playRecommendedTrack } from '../recommendation-playback.js';
 
 export const bindProfileActions = ({ ctx, container: c, achView: aV, reloadProfile: rP }) => {
   if (!c) return;
@@ -13162,7 +13163,11 @@ export const bindProfileActions = ({ ctx, container: c, achView: aV, reloadProfi
     { sel: '.ach-more, .ach-main', run: ({ el }) => { const id = el.closest('.ach-item')?.dataset.ach; if (id) ctx._profileAchievementsView?.toggleDetails?.(id); } },
     { sel: '.chart-title', run: ({ el }) => { const box = c.querySelector('#' + el.dataset.tg); if (!box) return; const vis = box.style.display !== 'none'; box.style.display = vis ? 'none' : ''; localStorage.setItem(el.dataset.ls, vis ? '0' : '1'); } },
     { sel: '[data-src]', run: ({ el }) => { const src = el.dataset.src; if (!['yandex', 'github'].includes(src)) return; localStorage.setItem('sourcePref', src); window.dispatchEvent(new CustomEvent('backup:domain-dirty', { detail: { domain: 'deviceSettings' } })); window.TrackRegistry?.resetSourceCache?.(); window.TrackRegistry?.ensurePopulated?.().catch(()=>{}); window.NotificationSystem?.success(`Приоритет: ${src}`); rP?.(); } },
-    { sel: '.rec-play-btn', run: ({ el }) => { window.ShowcaseManager?.playContext?.(el.dataset.playuid); window.NotificationSystem?.info('Запуск рекомендации'); } },
+    { sel: '.rec-play-btn', run: async ({ el }) => {
+      const played = await playRecommendedTrack(el.dataset.playuid);
+      if (played) window.NotificationSystem?.info('Запуск рекомендации');
+      else window.NotificationSystem?.warning('Трек рекомендации недоступен');
+    } },
     ...createTrashActionHandlers({ reloadProfile: rP })
   ];
 
