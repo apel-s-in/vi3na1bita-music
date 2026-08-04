@@ -1,0 +1,99 @@
+{
+  "version": "track-profile-v1",
+  "taxonomyVersion": "taxonomy-v2",
+  "uid": "VS-05",
+  "title": "Мирись",
+  "album": "v-ssore",
+  "albumTitle": "В Ссоре",
+  "status": "test_fixture",
+  "testData": true,
+  "generatedAt": "2026-08-04T10:43:16.561Z",
+  "musicAnalysis": {
+    "source": "test_fixture",
+    "verified": false,
+    "bpm": null,
+    "key": null,
+    "genres": {
+      "pop": 0.85,
+      "rock": 0.7
+    },
+    "moods": {
+      "hopeful": 0.85,
+      "romantic": 0.7
+    },
+    "axes": {
+      "energy": 0.58,
+      "valence": 0.76,
+      "romance_intensity": 0.8,
+      "warmth": 0.84,
+      "family_friendly": 0.95
+    }
+  },
+  "lyricAnalysis": {
+    "source": "test_fixture",
+    "verified": false,
+    "summary_ru": "Демонстрационное описание. Требуется ручная замена правдивым анализом.",
+    "themes": {
+      "love": 0.85,
+      "friendship": 0.7
+    },
+    "warnings": {}
+  },
+  "finalProfile": {
+    "genres": {
+      "pop": 0.85,
+      "rock": 0.7
+    },
+    "moods": {
+      "hopeful": 0.85,
+      "romantic": 0.7
+    },
+    "themes": {
+      "love": 0.85,
+      "friendship": 0.7
+    },
+    "use_cases": {
+      "background": 0.55,
+      "walking": 0.5
+    },
+    "events": {},
+    "seasonality": {},
+    "time_of_day": {},
+    "axes": {
+      "energy": 0.58,
+      "valence": 0.76,
+      "romance_intensity": 0.8,
+      "warmth": 0.84,
+      "family_friendly": 0.95
+    },
+    "warnings": {}
+  },
+  "presentation": {
+    "tagline_ru": "Тестовый профиль: Мирись",
+    "hook_ru": "Демонстрационная semantic-карточка",
+    "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
+    "mini_description_ru": "Не является правдивым анализом музыки или текста.",
+    "hero_quote_ru": "",
+    "badges": [
+      "TEST"
+    ],
+    "chips": [
+      "pop",
+      "rock",
+      "hopeful",
+      "romantic"
+    ]
+  },
+  "relations": {
+    "similar_tracks": [
+      "VS-06",
+      "VS-04"
+    ],
+    "relation_types": {
+      "semantic_preview": [
+        "VS-06",
+        "VS-04"
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "version": "track-profiles-index-v1",
-  "generatedAt": "2026-08-04T09:21:38.575Z",
+  "generatedAt": "2026-08-04T10:43:16.563Z",
   "taxonomyVersion": "taxonomy-v2",
   "testData": true,
   "items": {
@@ -9,6 +9,7 @@
       "title": "Живой",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-01.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -72,6 +73,7 @@
       "title": "Клаустрофобия",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-02.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -135,6 +137,7 @@
       "title": "В ссоре",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-03.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -200,6 +203,7 @@
       "title": "Тише",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-04.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -263,6 +267,7 @@
       "title": "Мирись",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-05.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -328,6 +333,7 @@
       "title": "Monsieur Жор",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-06.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -391,6 +397,7 @@
       "title": "Закатай губу",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-07.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -454,6 +461,7 @@
       "title": "Царевна",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-08.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -519,6 +527,7 @@
       "title": "Печаль",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-09.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
@@ -582,6 +591,7 @@
       "title": "Любовь и Ненависть",
       "album": "v-ssore",
       "albumTitle": "В Ссоре",
+      "profilePath": "v-ssore/VS-10.json",
       "status": "test_fixture",
       "testData": true,
       "finalProfile": {
