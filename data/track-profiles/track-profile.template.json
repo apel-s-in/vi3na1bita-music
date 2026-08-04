@@ -1,16 +1,17 @@
 {
-  "version": "track-profile-v1",
+  "version": "track-profile-v2",
   "taxonomyVersion": "taxonomy-v2",
   "uid": "__TEMPLATE__",
+  "trackVersion": "__TRACK_VERSION__",
   "title": "",
   "album": "__album_key__",
   "albumTitle": "",
   "status": "template",
   "testData": false,
-  "generatedAt": null,
-  "updatedAt": null,
+  "analyzedAt": null,
   "musicAnalysis": {
     "source": "",
+    "analyzer": "",
     "verified": false,
     "confidence": 0,
     "bpm": null,
@@ -21,9 +22,38 @@
     "durationSec": null,
     "loudnessLufs": null,
     "dynamicRange": null,
+    "instrumentation": [],
+    "vocalPresence": null,
+    "vocalType": "",
+    "vocalDelivery": "",
+    "arrangement": "",
+    "productionCharacter": ""
+  },
+  "lyricAnalysis": {
+    "source": "",
+    "analyzer": "",
+    "verified": false,
+    "confidence": 0,
+    "language": "",
+    "summary_ru": "",
+    "keywords": [],
+    "entities": [],
+    "scenes": [],
+    "narrative": {
+      "type": "",
+      "perspective": "",
+      "arc": "",
+      "characters": []
+    },
+    "sensitiveContentNotes_ru": []
+  },
+  "finalProfile": {
     "genres": {},
     "styles": {},
     "moods": {},
+    "themes": {},
+    "use_cases": {},
+    "time_of_day": {},
     "axes": {
       "energy": 0,
       "valence": 0,
@@ -44,80 +74,21 @@
       "spookiness": 0,
       "family_friendly": 0
     },
-    "audioFeatures": {
-      "spectralCentroid": null,
-      "spectralRolloff": null,
-      "spectralContrast": null,
-      "zeroCrossingRate": null,
-      "rhythmicStability": null,
-      "vocalPresence": null
-    },
-    "embedding": {
-      "version": "",
-      "dimensions": 0,
-      "values": []
-    }
-  },
-  "lyricAnalysis": {
-    "source": "",
-    "verified": false,
-    "confidence": 0,
-    "language": "ru",
-    "summary_ru": "",
-    "themes": {},
-    "moods": {},
-    "entities": [],
-    "keywords": [],
-    "scenes": [],
-    "narrative": {
-      "type": "",
-      "perspective": "",
-      "arc": "",
-      "characters": []
-    },
-    "warnings": {},
-    "embedding": {
-      "version": "",
-      "dimensions": 0,
-      "values": []
-    }
-  },
-  "finalProfile": {
-    "genres": {},
-    "styles": {},
-    "moods": {},
-    "themes": {},
-    "use_cases": {},
-    "time_of_day": {},
-    "axes": {},
     "warnings": {}
   },
   "presentation": {
     "tagline_ru": "",
-    "hook_ru": "",
     "one_liner_ru": "",
-    "mini_description_ru": "",
-    "hero_quote_ru": "",
-    "badges": [],
-    "chips": []
-  },
-  "relations": {
-    "similar_tracks": [],
-    "relation_types": {
-      "audio_similarity": [],
-      "lyric_similarity": [],
-      "mood_similarity": [],
-      "transition_fit": []
-    }
+    "mini_description_ru": ""
   },
   "provenance": {
-    "schemaVersion": 1,
-    "audioAnalyzer": {
-      "name": "",
-      "version": "",
-      "analyzedAt": null
+    "schemaVersion": 2,
+    "input": {
+      "audioProvided": false,
+      "lyricsProvided": false,
+      "trackVersion": "__TRACK_VERSION__"
     },
-    "lyricAnalyzer": {
+    "analyzer": {
       "name": "",
       "version": "",
       "analyzedAt": null
