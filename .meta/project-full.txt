@@ -9347,7 +9347,6 @@ export default {
 
 //=================================================
 // FILE: /scripts/app.js
-// UID.092_(Incremental rollout order)_(держать staged boot как главный механизм безопасного развития)_(legacy app boot и intel boot должны быть отделены по фазам и soft-fallback) UID.094_(No-paralysis rule)_(оставить всё приложение работоспособным при отказе любого нового слоя)_(legacy/offline/analytics/ui boot не должны зависеть от intel success) UID.095_(Ownership boundary: legacy vs intel)_(жёстко развести bootstrap ownership)_(scripts/app.js остаётся хозяином legacy runtime orchestration, а intel bootstrap подключается только как optional надстройка после core слоёв) UID.096_(Helper-first anti-duplication policy)_(сразу закрепить курс на унификацию повторяющегося кода)_(повторяющиеся init/no-op/state/storage/emitter patterns в intel слое должны выноситься в shared helpers, а не копироваться по модулям)
 (function (W, D) {
   'use strict';
   const $ = id => D.getElementById(id),
@@ -22660,7 +22659,6 @@ export default { initIosAudioKeeper, startKeeper, stopKeeper };
 
 //=================================================
 // FILE: /src/player-core/media-session.js
-// UID.001_(Playback safety invariant)_(не допустить обходного управления воспроизведением)_(Media Session может вызывать только безопасные handlers PlayerCore, но не владеть playback truth) UID.008_(No playback mutation by intel)_(не допустить второго центра управления плеером)_(intel/provider/ui слой не должен подменять Media Session handlers своей логикой) UID.012_(Quality dimension)_(не смешивать качество и системные media controls)_(Media Session управляет transport controls, а не quality/source logic) UID.050_(Session profile)_(оставить Media Session только источником transport actions)_(session intelligence может читать эффекты play/pause/seek, но не внедряться сюда) UID.079_(VK social/media actions)_(не смешивать внешние provider media actions и OS media controls)_(provider bridge не должен переписывать Media Session ownership) UID.094_(No-paralysis rule)_(даже при сбоях расширенных слоёв системные media controls должны работать)_(этот bridge остаётся тонким адаптером между ОС и PlayerCore)
 export function ensureMediaSession(h = {}) {
   const ms = navigator.mediaSession;
   if (!ms) return null;
@@ -22719,8 +22717,6 @@ import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-
 import { initIosAudioKeeper } from './player-core/ios-audio-keeper.js';
 import { markDeviceSettingsDirty } from '../scripts/analytics/sync-dirty-events.js';
 import { getDeviceId } from '../scripts/core/device-context.js';
-
-// UID.001_(Playback safety invariant)_(защитить священное правило проигрывания)_(никакие intel/recs/providers/telemetry не имеют права стопать/сбрасывать playback кроме уже разрешённых сценариев) UID.008_(No playback mutation by intel)_(развести ядро плеера и интеллектуальный слой)_(PlayerCore остаётся единственным владельцем playback state, intel только читает и рекомендует) UID.011_(Media variants registry)_(подготовить future playback для richer variants)_(PlayerCore должен оставаться тонким исполнителем, а выбор variant/source — вне его) UID.012_(Quality dimension)_(сохранить quality-aware playback как часть ядра)_(Hi/Lo/Lossless логика должна заходить в PlayerCore только через безопасные resolver/registry bridges) UID.050_(Session profile)_(дать future session-aware recommendations корректный источник контекста)_(события play/pause/tick/trackChanged отсюда питают session/intel слой, но не наоборот) UID.060_(Session-aware next-track strategy)_(подготовить безопасную стыковку next-track intelligence)_(любые future next suggestions могут предлагаться intel-слоем, но применять их может только PlayerCore по явному действию/разрешённому autoplay) UID.062_(Recommendation memory and feedback)_(готовить reaction signals без влияния на playback)_(recs telemetry может читать player transitions, но не должна вмешиваться в них) UID.079_(VK social/media actions)_(не смешивать external provider actions с ядром аудио)_(PlayerCore не должен знать о VK/Yandex/Google actions beyond already resolved media URLs) UID.094_(No-paralysis rule)_(оставить плеер работоспособным при любых сбоях нового слоя)_(если intel/providers/telemetry недоступны, PlayerCore работает полностью автономно)
 
 (function () {
   'use strict';
