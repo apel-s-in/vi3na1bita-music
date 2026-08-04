@@ -19775,6 +19775,13 @@ const st = { idx: null, idxLoadedAt: 0, cache: new Map(), api: null };
 const getUrl = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_INDEX_URL || './data/track-profiles-index.json');
 const getDir = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_DIR || './data/track-profiles/').replace(/\/+$/, '') + '/';
 const fetchJ = async (u, k) => { const cU = `${u}?cb=${Date.now()}`, fc = window.Utils?.fetchCache; if (fc?.getJson) return fc.getJson({ key: k, url: cU, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'no-cache' } }); const r = await (window.NetPolicy?.fetchWithTraffic?.(cU, { cache: 'no-cache' }) || fetch(cU, { cache: 'no-cache' })); if (!r.ok) throw 1; return r.json(); };
+const profilePath = (uid, preview = null) => {
+  const cleanUid = String(uid || '').trim();
+  const raw = String(preview?.profilePath || `${cleanUid}.json`).trim().replace(/^\/+/, '');
+  const parts = raw.split('/').filter(Boolean);
+  if (!cleanUid || !parts.length || parts.some(part => !/^[A-Za-z0-9._-]+$/.test(part)) || parts.at(-1) !== `${cleanUid}.json`) return '';
+  return parts.map(encodeURIComponent).join('/');
+};
 export const trackProfiles = {
   async init(api = {}) { st.api = api; return true; },
   async ensureIndex() {
@@ -19795,7 +19802,31 @@ export const trackProfiles = {
   async reloadIndex() { st.idx = null; st.idxLoadedAt = 0; return this.ensureIndex(); },
   async hasPreview(uid) { return !!this.getPreview(uid) || !!(await this.ensureIndex()).items?.[String(uid || '').trim()]; },
   getPreview: u => { const k = String(u || '').trim(); return k && st.idx?.items ? st.idx.items[k] || null : null; },
-  async getProfile(uid) { const k = String(uid || '').trim(); if (!k) return null; if (st.cache.has(k)) return st.cache.get(k); try { const cU = `${getDir()}${encodeURIComponent(k)}.json?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`, d = await window.Utils.fetchCache.getJson({ key: `intel:profile:${k}`, url: cU, ttlMs: 2592000000, store: 'local', fetchInit: { cache: 'force-cache' } }); if (d) st.cache.set(k, d); return d || null; } catch { return null; } },
+  async getProfile(uid) {
+    const key = String(uid || '').trim();
+    if (!key) return null;
+    if (st.cache.has(key)) return st.cache.get(key);
+
+    try {
+      const index = await this.ensureIndex();
+      const preview = index?.items?.[key] || null;
+      const relativePath = profilePath(key, preview);
+      if (!relativePath) return null;
+      const url = `${getDir()}${relativePath}?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`;
+      const profile = await window.Utils.fetchCache.getJson({
+        key: `intel:profile:${key}:${relativePath}`,
+        url,
+        ttlMs: 2592000000,
+        store: 'local',
+        fetchInit: { cache: 'force-cache' }
+      });
+      if (profile?.uid !== key) return null;
+      st.cache.set(key, profile);
+      return profile;
+    } catch {
+      return null;
+    }
+  },
   dropProfile: u => st.cache.delete(String(u || '').trim()),
   getState: () => ({ indexLoaded: !!st.idx, indexLoadedAt: st.idxLoadedAt, cachedProfiles: st.cache.size })
 };
