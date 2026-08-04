@@ -1,5 +1,3 @@
-// UID.096_(Helper-first anti-duplication policy)_(actions.js должен быть router-слоем)_(reset/trash вынесены в отдельные modules) UID.094_(No-paralysis rule)_(profile actions не должны влиять на playback)_(клики профиля не стопают и не сбрасывают плеер)
-
 import { createTrashActionHandlers } from './actions-trash.js';
 import { handleLoyaltyControl } from './loyalty-card.js';
 import { bindTabStripPhysics } from './tab-strip-physics.js';
