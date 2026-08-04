@@ -22,4 +22,4 @@ data/track-profiles/mezhdu-zlom-i-dobrom/MZD-01.json
 5. data/track-profiles-index.json хранит компактный preview и profilePath.
 6. Неизвестные характеристики нельзя придумывать.
 7. testData=true допускается только для явно обозначенных test fixtures.
-8. Погода, текущая дата, праздник и другие изменяемые условия не входят в TrackProfile. Они относятся к RecommendationContext.
+8. Календарные праздники, даты и сезонные подборки сейчас не входят в INTEL и не должны добавляться в TrackProfile.
