@@ -5,6 +5,7 @@ import { metaDB } from '../analytics/meta-db.js';
 import { getConfirmedListeningStats } from '../analytics/confirmed-listening-stats.js';
 import { listenerProfile } from '../intel/listener/listener-profile.js';
 import { trackProfiles } from '../intel/track/track-profiles.js';
+import { trackSimilarity } from '../intel/track/track-similarity.js';
 import { getIntelFlags } from '../intel/flags.js';
 import { recommendationMemory } from '../analytics/backup-domain-state.js';
 
@@ -139,7 +140,6 @@ export const buildGalleryRecommendationCards = async () => {
   const source = canonicalStats(localRows);
   const previews = previewItems(index);
   const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
-  const currentPreview = index?.items?.[currentUid] || null;
 
   const forgotten = [...source.local.entries()]
     .map(([uid, row]) => ({ uid, preview: index?.items?.[uid] || null, row }))
@@ -177,12 +177,9 @@ export const buildGalleryRecommendationCards = async () => {
     .map(item => ({ ...item, score: axisDistance(item.axes, centroid) }))
     .sort((left, right) => right.score - left.score || left.uid.localeCompare(right.uid));
 
-  const similarUids = Array.isArray(currentPreview?.relations?.similar_tracks)
-    ? currentPreview.relations.similar_tracks
+  const similar = currentUid
+    ? await trackSimilarity.getSimilar(currentUid, { limit: 3, index }).catch(() => [])
     : [];
-  const similar = similarUids
-    .map((uid, index) => ({ uid: safe(uid), preview: index?.items?.[uid] || trackProfiles.getPreview(uid), score: similarUids.length - index }))
-    .filter(item => item.uid && track(item.uid));
 
   const weeklyAlbum = albumOfWeek(source);
 
