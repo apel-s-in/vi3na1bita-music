@@ -1,10 +1,8 @@
 export const INTEL_ROADMAP_VERSION = '2026-08-04';
-
 export const INTEL_ROADMAP_TEXT = String.raw`
 INTEL — опциональная локальная интеллектуальная надстройка.
 
 АРХИТЕКТУРНЫЕ ГАРАНТИИ
-
 - PlayerCore остаётся единственным владельцем playback.
 - INTEL не вызывает play, pause, stop, seek, next, prev, setVolume или setMuted.
 - Рекомендации не изменяют очередь без явного действия пользователя.
@@ -17,7 +15,6 @@ INTEL — опциональная локальная интеллектуаль
 - TrackProfile и ListenerProfile являются производными данными, а не источником playback truth.
 
 СЕЙЧАС
-
 1. Сохранить отключаемый INTEL bootstrap.
 2. Проверить TrackProfile на десяти явно помеченных test fixtures альбома «В Ссоре».
 3. Проверить цепочку TrackProfile → ListenerProfile → Recommendation Engine.
@@ -26,7 +23,6 @@ INTEL — опциональная локальная интеллектуаль
 6. Не выполнять ListenerProfile rebuild во время воспроизведения.
 
 СЛЕДУЮЩИЙ ЭТАП
-
 1. Заменить тестовые профили VS-01–VS-10 правдивыми данными.
 2. Создать TrackProfile для остальных UID.
 3. Добавить CI-проверку taxonomy, весов, relations и presentation.
@@ -39,7 +35,6 @@ INTEL — опциональная локальная интеллектуаль
 10. Сохранить дневной deterministic fallback для треков без профиля.
 
 ОСКОЛКИ
-
 Рабочий серверный магазин сохраняется:
 - кошелёк Осколков;
 - награды за достижения и Преданность;
@@ -48,7 +43,6 @@ INTEL — опциональная локальная интеллектуаль
 - отображение купленных аватаров в профиле.
 
 ДАЛЬНИЙ BACKLOG — НЕ АКТИВНЫЙ RUNTIME
-
 - Privacy-safe Community aggregates после появления достаточной аудитории.
 - Google mirror только при появлении реального transport adapter.
 - VK provider actions только при появлении реального API и consent UI.
