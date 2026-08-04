@@ -6,6 +6,7 @@ import { getIntelFlags } from '../flags.js';
 import { listenerProfile } from '../listener/listener-profile.js';
 import { trackProfiles } from '../track/track-profiles.js';
 import { getRecommendationReasonText } from './recommendation-reasons.js';
+import { resolveRecommendationDataSource } from './recommendation-data-source.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -103,13 +104,17 @@ export const recommendationEngine = {
       return state.lastResult;
     }
 
-    const index = await trackProfiles.ensureIndex().catch(() => ({ items: {} }));
-    const [stats, listener] = await Promise.all([
-      metaDB.getAllStats().catch(() => []),
-      listenerProfile.get().catch(() => null)
-    ]);
-    const statsByUid = new Map(stats.filter(row => row?.uid && row.uid !== 'global').map(row => [safe(row.uid), row]));
-    const fullyPlayed = new Set(stats.filter(row => num(row?.globalFullListenCount) > 0).map(row => safe(row.uid)));
+    const stats = await metaDB.getAllStats().catch(() => []);
+    const source = resolveRecommendationDataSource(stats);
+    const index = source.fullIntel
+      ? await trackProfiles.ensureIndex().catch(() => ({ items: {} }))
+      : { version: 'track-profiles-index-v1', testData: false, items: {} };
+    const listener = source.fullIntel ? await listenerProfile.get().catch(() => null) : null;
+    const fullyPlayed = new Set(
+      [...source.canonicalByUid.values()]
+        .filter(row => num(row?.globalFullListenCount) > 0)
+        .map(row => safe(row.uid))
+    );
     const controls = getRecommendationControls();
     const seed = new Date().toISOString().slice(0, 10);
 
@@ -121,11 +126,15 @@ export const recommendationEngine = {
         const preview = index?.items?.[uid] || trackProfiles.getPreview(uid);
         if (preview && blockedByControls(preview, controls)) return null;
         const semantic = semanticScore(preview, listener);
-        const stat = statsByUid.get(uid) || {};
-        const completion = Math.min(1, num(stat.averageCompletionRate));
-        const skipPenalty = Math.min(1, (num(stat.microSkips) + num(stat.earlySkips)) / Math.max(1, num(stat.analysisEligibleSessions)));
+        const canonical = source.canonicalByUid.get(uid) || {};
+        const local = source.localByUid.get(uid) || {};
+        const completion = Math.min(1, num(local.averageCompletionRate));
+        const skipPenalty = Math.min(1, (num(local.microSkips) + num(local.earlySkips)) / Math.max(1, num(local.analysisEligibleSessions)));
+        const confirmedAffinity = source.serverAvailable
+          ? Math.min(1, (num(canonical.globalValidListenCount) + num(canonical.globalListenSeconds) / 1800) / 8)
+          : 0;
         const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
-        const score = semantic.total * 100 + completion * 8 - skipPenalty * 10 + deterministicTie;
+        const score = semantic.total * 100 + confirmedAffinity * 5 + completion * 4 - skipPenalty * 8 + deterministicTie;
         const reasonCode = semantic.total >= 0.12 ? 'taste_fit' : preview ? 'semantic_preview' : 'discovery_unplayed';
         return {
           uid,
@@ -133,8 +142,10 @@ export const recommendationEngine = {
           reasonCode,
           breakdown: {
             semantic: semantic.total,
+            confirmedAffinity,
             completion,
             skipPenalty,
+            authority: source.authority,
             ...semantic.breakdown
           },
           testProfile: preview?.testData === true || preview?.status === 'test_fixture'
@@ -155,6 +166,10 @@ export const recommendationEngine = {
       context: cleanContext,
       generatedAt: Date.now(),
       disabled: false,
+      mode: source.mode,
+      authority: source.authority,
+      fullIntel: source.fullIntel,
+      serverAvailable: source.serverAvailable,
       testData: index?.testData === true,
       items
     };
