@@ -20772,9 +20772,6 @@ export const trackProfileModal = {
     const track = window.TrackRegistry?.getTrackByUid?.(cleanUid);
     const testData = profile.testData === true || profile.status === 'test_fixture';
     const finalProfile = profile.finalProfile || {};
-    const similar = Array.isArray(profile.relations?.similar_tracks)
-      ? profile.relations.similar_tracks
-      : [];
 
     window.Modals.open({
       title: `Паспорт трека${testData ? ' · TEST' : ''}`,
@@ -20797,10 +20794,6 @@ export const trackProfileModal = {
           <div class="stat-title">Источник</div>
           <div class="stat-sub">Music: ${esc(profile.musicAnalysis?.source || '—')} · verified: ${profile.musicAnalysis?.verified === true ? 'да' : 'нет'}</div>
           <div class="stat-sub">Lyrics: ${esc(profile.lyricAnalysis?.source || '—')} · verified: ${profile.lyricAnalysis?.verified === true ? 'да' : 'нет'}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-title">Похожие UID</div>
-          <div class="stat-sub">${similar.length ? esc(similar.join(' · ')) : 'Проверенные связи пока отсутствуют'}</div>
         </div>
       `
     });
