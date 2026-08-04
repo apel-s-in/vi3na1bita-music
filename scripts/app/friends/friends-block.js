@@ -1,7 +1,3 @@
-// scripts/app/friends/friends-block.js
-// UID.069/070 (Linked providers identity)_(Друзья получают identity сверху, без OAuth-токена)
-// UID.094 (No-paralysis rule)_(сбой Друзей не влияет на плеер/Game Center)
-// Тонкий адаптер: основное приложение -> внешний модуль /Friends/
 import { getSocialServerBackoffState, getSocialSession, invalidateSocialSession } from '../../core/social-session.js';
 const W = window;
 const D = document;
@@ -316,9 +312,12 @@ const startPresenceHeartbeat = () => {
   _heartbeatTimer = 0;
   if (D.hidden || !isFriendsRuntimeActive() || !_core?.isReady?.() || _heartbeatBusy) return;
   _heartbeatBusy = true;
-  _core.heartbeat({ gameId: '', roomId: '' }).catch(() => null).finally(() => {
-    _heartbeatBusy = false;
-  });
+  _core
+    .heartbeat({ gameId: '', roomId: '' })
+    .catch(() => null)
+    .finally(() => {
+      _heartbeatBusy = false;
+    });
 };
 const syncWebPushIfAllowed = async () => {
   if (!_core?.isReady?.() || !('Notification' in W) || W.Notification.permission !== 'granted') return;
@@ -534,17 +533,10 @@ export const getFriendsCoreService = async () => {
   return _core;
 };
 const publishVoiceActivity = detail => {
-  const state = {
-    active: detail?.active === true,
-    state: String(detail?.state || ''),
-    friendId: String(detail?.friendId || ''),
-    callId: String(detail?.callId || ''),
-    updatedAt: Number(detail?.updatedAt || Date.now())
-  };
+  const state = { active: detail?.active === true, state: String(detail?.state || ''), friendId: String(detail?.friendId || ''), callId: String(detail?.callId || ''), updatedAt: Number(detail?.updatedAt || Date.now()) };
   W.__friendsVoiceActive = state.active;
   W.dispatchEvent(new CustomEvent('friends:voice-activity', { detail: state }));
 };
-
 export const mountFriendsBlock = async ({ container } = {}) => {
   if (!container) return false;
   _container = container;
