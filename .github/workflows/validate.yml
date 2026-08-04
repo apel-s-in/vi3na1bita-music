@@ -36,7 +36,9 @@ jobs:
         run: node scripts/ci/lint-sw.mjs
 
       - name: Validate local content indexes
-        run: node scripts/ci/validate-content.mjs
+        run: |
+          node scripts/ci/validate-content.mjs
+          node scripts/ci/validate-intel-profiles.mjs
 
       - name: Validate first-party JavaScript syntax
         run: |
