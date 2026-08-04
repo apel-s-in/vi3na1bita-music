@@ -141,7 +141,7 @@ class GalleryManager {
     }
 
     slot.dataset.galleryType = 'image';
-    if (slot.children.length < 2 || slot.querySelector('.gallery-rec-card, iframe')) {
+    if (slot.children.length < 2 || slot.querySelector('.gallery-rec-card')) {
       slot.innerHTML = `<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .3s ease-out;opacity:0" alt="Cover" draggable="false">`.repeat(2);
       this.flip = 0;
     }
