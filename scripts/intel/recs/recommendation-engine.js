@@ -137,8 +137,9 @@ export const recommendationEngine = {
         const confirmedAffinity = source.serverAvailable
           ? Math.min(1, (num(canonical.globalValidListenCount) + num(canonical.globalListenSeconds) / 1800) / 8)
           : 0;
+        const profileCoverage = preview ? 1 : 0;
         const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
-        const score = semantic.total * 100 + confirmedAffinity * 5 + completion * 4 - skipPenalty * 8 + deterministicTie;
+        const score = semantic.total * 100 + profileCoverage * 2 + confirmedAffinity * 5 + completion * 4 - skipPenalty * 8 + deterministicTie;
         const reasonCode = semantic.total >= 0.12 ? 'taste_fit' : preview ? 'semantic_preview' : 'discovery_unplayed';
         return {
           uid,
@@ -146,6 +147,7 @@ export const recommendationEngine = {
           reasonCode,
           breakdown: {
             semantic: semantic.total,
+            profileCoverage,
             confirmedAffinity,
             completion,
             skipPenalty,
