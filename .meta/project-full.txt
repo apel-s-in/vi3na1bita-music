@@ -17670,86 +17670,158 @@ const fail = message => {
   process.exit(2);
 };
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
+const object = value => !!value && typeof value === 'object' && !Array.isArray(value);
+const safe = value => String(value == null ? '' : value).trim();
+const keys = value => new Set(Object.keys(value || {}));
 const indexPath = 'data/track-profiles-index.json';
+const templatePath = 'data/track-profiles/track-profile.template.json';
+const vocabularyPath = 'data/track-profile-vocabulary.json';
 const indexSource = fs.readFileSync(indexPath, 'utf8');
 const index = read(indexPath);
+const template = read(templatePath);
+const vocabulary = read(vocabularyPath);
 const taxonomy = read('data/taxonomy.json');
 const catalog = read('data/listen-track-catalog.json');
-const knownUids = new Set((catalog.tracks || []).map(item => String(item.uid || '')));
-const groups = taxonomy.groups || {};
-const semanticGroups = ['genres', 'styles', 'moods', 'themes', 'use_cases', 'time_of_day', 'axes', 'content_warnings'];
-const albums = new Set((JSON.parse(fs.readFileSync('albums.json', 'utf8')).albums || []).map(item => String(item.key || '')).filter(Boolean));
-const templatePath = 'data/track-profiles/track-profile.template.json';
-if (!fs.existsSync(templatePath)) fail('Отсутствует эталонный track-profile.template.json');
-const template = read(templatePath);
-if (template.uid !== '__TEMPLATE__' || template.status !== 'template' || template.version !== 'track-profile-v2') fail('Некорректный эталон TrackProfile');
-if (fs.existsSync('data/recommendation-calendar.json')) fail('Праздничный recommendation-calendar должен быть удалён');
-if ('events' in (template.finalProfile || {}) || 'seasonality' in (template.finalProfile || {})) fail('Эталон TrackProfile содержит удалённые календарные поля');
-if ('relations' in template) fail('Эталон TrackProfile содержит производные UID-связи');
-if ('updatedAt' in template) fail('Эталон TrackProfile содержит изменяемый updatedAt');
-if (template.musicAnalysis?.embedding || template.lyricAnalysis?.embedding) fail('Эталон TrackProfile содержит model-specific embedding');
+const catalogByUid = new Map((catalog.tracks || []).map(track => [safe(track.uid), track]));
+const threshold = Number(taxonomy.defaults?.threshold_store || 0.05);
+const semanticGroups = ['genres', 'styles', 'moods', 'themes', 'use_cases', 'time_of_day'];
+const bannedKeys = new Set(['trackVersion', 'title', 'album', 'albumTitle', 'durationSec', 'source', 'analyzer', 'analyzedAt', 'generatedAt', 'updatedAt', 'provenance', 'verified', 'loudnessLufs', 'dynamicRange', 'dynamicRangeLra', 'relations', 'embedding']);
+const machinePattern = /^[a-z][a-z0-9_]*$/;
+const allowedTopKeys = new Set(['version', 'taxonomyVersion', 'vocabularyVersion', 'uid', 'status', 'testData', 'musicAnalysis', 'lyricAnalysis', 'finalProfile', 'presentation']);
 
-const validateWeights = (uid, group, values) => {
-  if (!values || typeof values !== 'object' || Array.isArray(values)) fail(`${uid}: ${group} должен быть object`);
-  const known = new Set(Object.keys(groups[group]?.items || {}));
-  Object.entries(values).forEach(([key, weight]) => {
-    if (!known.has(key)) fail(`${uid}: неизвестный ${group}.${key}`);
-    if (!Number.isFinite(Number(weight)) || Number(weight) < 0 || Number(weight) > 1) fail(`${uid}: некорректный вес ${group}.${key}`);
+if (template.version !== 'track-profile-v3' || template.uid !== '__TEMPLATE__' || template.status !== 'template') fail('Некорректный TrackProfile template v3');
+if (taxonomy.taxonomyVersion !== 'taxonomy-v3') fail('Требуется taxonomy-v3');
+if (vocabulary.version !== 'track-profile-vocabulary-v1') fail('Некорректный audio vocabulary');
+if (index.version !== 'track-profiles-index-v3') fail('Требуется track-profiles-index-v3');
+if (index.taxonomyVersion !== taxonomy.taxonomyVersion) fail('Index taxonomy version mismatch');
+if (index.vocabularyVersion !== vocabulary.version) fail('Index vocabulary version mismatch');
+
+const walkBanned = (uid, value, prefix = '') => {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => walkBanned(uid, item, `${prefix}[${index}]`));
+    return;
+  }
+  if (!object(value)) return;
+  Object.entries(value).forEach(([key, item]) => {
+    if (bannedKeys.has(key)) fail(`${uid}: запрещённое поле ${prefix ? `${prefix}.` : ''}${key}`);
+    walkBanned(uid, item, prefix ? `${prefix}.${key}` : key);
   });
 };
 
+const validateMachineMap = (uid, name, values, vocabularyValues) => {
+  if (!object(values)) fail(`${uid}: ${name} должен быть object`);
+  const allowed = keys(vocabularyValues);
+  Object.entries(values).forEach(([key, weight]) => {
+    if (!machinePattern.test(key)) fail(`${uid}: ${name}.${key} не является canonical snake_case ID`);
+    if (!allowed.has(key)) fail(`${uid}: неизвестный ${name}.${key}`);
+    if (!Number.isFinite(Number(weight)) || Number(weight) < threshold || Number(weight) > 1) fail(`${uid}: некорректный вес ${name}.${key}`);
+  });
+};
+
+const validateTaxonomyMap = (uid, group, values) => {
+  if (!object(values)) fail(`${uid}: ${group} должен быть object`);
+  const allowed = keys(taxonomy.groups?.[group]?.items);
+  Object.entries(values).forEach(([key, weight]) => {
+    if (!allowed.has(key)) fail(`${uid}: неизвестный ${group}.${key}`);
+    if (!Number.isFinite(Number(weight)) || Number(weight) < threshold || Number(weight) > 1) fail(`${uid}: некорректный вес ${group}.${key}`);
+  });
+};
+
+const validateRussianText = (uid, name, value) => {
+  if (typeof value !== 'string') fail(`${uid}: ${name} должен быть string`);
+  if (/[A-Za-z]/.test(value)) fail(`${uid}: ${name} содержит английский текст`);
+};
+
+const validateRussianArray = (uid, name, values) => {
+  if (!Array.isArray(values)) fail(`${uid}: ${name} должен быть array`);
+  values.forEach((value, index) => validateRussianText(uid, `${name}[${index}]`, value));
+};
+
+const validateNullableEnum = (uid, name, value, allowed) => {
+  if (value == null) return;
+  if (!allowed.has(String(value))) fail(`${uid}: неизвестное значение ${name}=${value}`);
+};
+
 const items = index.items || {};
-if (!Object.keys(items).length) {
-  console.log('INTEL TrackProfile index is empty');
-  process.exit(0);
-}
+if (!Object.keys(items).length) fail('TrackProfile index пуст');
 
 for (const [uid, preview] of Object.entries(items)) {
-  const escapedUid = uid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const itemLine = new RegExp(`^    "${escapedUid}": \\{.*\\},?$`, 'm');
-  if (!itemLine.test(indexSource)) fail(`${uid}: preview должен занимать одну строку index`);
-  if (!knownUids.has(uid)) fail(`${uid}: отсутствует в listening catalog`);
+  if (!catalogByUid.has(uid)) fail(`${uid}: отсутствует в listening catalog`);
   if (preview.uid !== uid) fail(`${uid}: preview uid mismatch`);
 
-  const catalogTrack = (catalog.tracks || []).find(item => String(item.uid || '') === uid);
-  const album = String(preview.album || catalogTrack?.album || '');
-  const profilePath = String(preview.profilePath || '');
+  const escapedUid = uid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!new RegExp(`^    "${escapedUid}": \\{.*\\},?$`, 'm').test(indexSource)) fail(`${uid}: preview должен занимать одну строку`);
 
-  if (!albums.has(album)) fail(`${uid}: неизвестный album key ${album}`);
-  if (profilePath !== `${album}/${uid}.json`) fail(`${uid}: profilePath должен быть ${album}/${uid}.json`);
+  const album = safe(catalogByUid.get(uid)?.album);
+  const expectedPath = `${album}/${uid}.json`;
+  if (preview.profilePath !== expectedPath) fail(`${uid}: profilePath должен быть ${expectedPath}`);
 
-  const file = path.join('data/track-profiles', profilePath);
-  if (!fs.existsSync(file)) fail(`${uid}: отсутствует full profile ${profilePath}`);
-
-  const rootLegacyFile = path.join('data/track-profiles', `${uid}.json`);
-  if (fs.existsSync(rootLegacyFile)) fail(`${uid}: full profile остался в корне track-profiles`);
-
+  const file = path.join('data/track-profiles', expectedPath);
+  if (!fs.existsSync(file)) fail(`${uid}: отсутствует ${file}`);
   const profile = read(file);
-  if (profile.uid !== uid) fail(`${uid}: full profile uid mismatch`);
-  if (profile.album !== album) fail(`${uid}: album folder/profile mismatch`);
-  if (profile.version !== 'track-profile-v2') fail(`${uid}: требуется track-profile-v2`);
-  if (profile.taxonomyVersion !== index.taxonomyVersion) fail(`${uid}: taxonomy version mismatch`);
-  if (profile.trackVersion !== catalogTrack?.trackVersion) fail(`${uid}: trackVersion не соответствует listening catalog`);
-  if (preview.trackVersion !== profile.trackVersion) fail(`${uid}: preview/full trackVersion mismatch`);
-  if ('relations' in profile || 'relations' in preview) fail(`${uid}: производные relations запрещены в постоянном профиле`);
-  if ('updatedAt' in profile) fail(`${uid}: постоянный профиль не должен содержать updatedAt`);
-  if (index.testData === true && (profile.testData !== true || profile.status !== 'test_fixture')) fail(`${uid}: тестовый профиль не помечен явно`);
 
-  const finalProfile = profile.finalProfile || {};
-  const previewProfile = preview.finalProfile || {};
-  if ('events' in finalProfile || 'seasonality' in finalProfile) fail(`${uid}: full profile содержит удалённые календарные поля`);
-  if ('events' in previewProfile || 'seasonality' in previewProfile) fail(`${uid}: preview содержит удалённые календарные поля`);
-  semanticGroups.forEach(group => {
-    const sourceKey = group === 'content_warnings' ? 'warnings' : group;
-    validateWeights(uid, group, finalProfile[sourceKey] || {});
+  if (profile.uid !== uid) fail(`${uid}: full profile uid mismatch`);
+  if (profile.version !== 'track-profile-v3') fail(`${uid}: требуется track-profile-v3`);
+  if (profile.taxonomyVersion !== taxonomy.taxonomyVersion) fail(`${uid}: taxonomy version mismatch`);
+  if (profile.vocabularyVersion !== vocabulary.version) fail(`${uid}: vocabulary version mismatch`);
+  if (![...allowedTopKeys].every(key => key in profile) || Object.keys(profile).some(key => !allowedTopKeys.has(key))) fail(`${uid}: top-level структура не совпадает с v3`);
+  if (!['analyzed', 'test_fixture'].includes(profile.status)) fail(`${uid}: недопустимый status`);
+  if (profile.status === 'test_fixture' && profile.testData !== true) fail(`${uid}: fixture должен иметь testData=true`);
+  if (profile.status === 'analyzed' && profile.testData !== false) fail(`${uid}: analyzed должен иметь testData=false`);
+
+  walkBanned(uid, profile);
+
+  const music = profile.musicAnalysis;
+  const lyrics = profile.lyricAnalysis;
+  const finalProfile = profile.finalProfile;
+  if (!object(music) || !object(lyrics) || !object(finalProfile)) fail(`${uid}: отсутствуют обязательные analysis sections`);
+
+  if (!Number.isFinite(Number(music.confidence)) || Number(music.confidence) < 0 || Number(music.confidence) > 1) fail(`${uid}: music confidence вне 0..1`);
+  if (music.bpm != null && (!Number.isFinite(Number(music.bpm)) || Number(music.bpm) < 30 || Number(music.bpm) > 260)) fail(`${uid}: BPM вне допустимого диапазона`);
+  validateNullableEnum(uid, 'tempoClass', music.tempoClass, keys(vocabulary.tempoClasses));
+  validateNullableEnum(uid, 'key', music.key, keys(vocabulary.keys));
+  validateNullableEnum(uid, 'mode', music.mode, keys(vocabulary.modes));
+  validateNullableEnum(uid, 'timeSignature', music.timeSignature, keys(vocabulary.timeSignatures));
+
+  validateMachineMap(uid, 'instrumentation', music.instrumentation, vocabulary.instrumentation);
+  validateMachineMap(uid, 'vocalRoles', music.vocalRoles, vocabulary.vocalRoles);
+  validateMachineMap(uid, 'vocalDelivery', music.vocalDelivery, vocabulary.vocalDelivery);
+  validateMachineMap(uid, 'arrangementTags', music.arrangementTags, vocabulary.arrangementTags);
+  validateMachineMap(uid, 'productionTags', music.productionTags, vocabulary.productionTags);
+
+  if (music.vocalPresence != null && (!Number.isFinite(Number(music.vocalPresence)) || Number(music.vocalPresence) < 0 || Number(music.vocalPresence) > 1)) fail(`${uid}: vocalPresence вне 0..1`);
+  validateRussianText(uid, 'arrangementDescription_ru', music.arrangementDescription_ru);
+  validateRussianText(uid, 'productionDescription_ru', music.productionDescription_ru);
+
+  if (!Number.isFinite(Number(lyrics.confidence)) || Number(lyrics.confidence) < 0 || Number(lyrics.confidence) > 1) fail(`${uid}: lyric confidence вне 0..1`);
+  validateNullableEnum(uid, 'language', lyrics.language, keys(vocabulary.languages));
+  validateRussianText(uid, 'summary_ru', lyrics.summary_ru);
+  validateRussianArray(uid, 'keywords_ru', lyrics.keywords_ru);
+  validateRussianArray(uid, 'entities_ru', lyrics.entities_ru);
+  validateRussianArray(uid, 'scenes_ru', lyrics.scenes_ru);
+  validateRussianArray(uid, 'sensitiveContentNotes_ru', lyrics.sensitiveContentNotes_ru);
+
+  validateNullableEnum(uid, 'narrative.type', lyrics.narrative?.type, keys(vocabulary.narrativeTypes));
+  validateNullableEnum(uid, 'narrative.perspective', lyrics.narrative?.perspective, keys(vocabulary.narrativePerspectives));
+  validateRussianText(uid, 'narrative.arc_ru', lyrics.narrative?.arc_ru);
+  validateRussianArray(uid, 'narrative.characters_ru', lyrics.narrative?.characters_ru);
+
+  semanticGroups.forEach(group => validateTaxonomyMap(uid, group, finalProfile[group]));
+  validateTaxonomyMap(uid, 'content_warnings', finalProfile.warnings);
+
+  const axisKeys = Object.keys(taxonomy.groups?.axes?.items || {});
+  if (!object(finalProfile.axes) || Object.keys(finalProfile.axes).length !== axisKeys.length) fail(`${uid}: axes должны содержать все канонические оси`);
+  axisKeys.forEach(key => {
+    const value = Number(finalProfile.axes[key]);
+    if (!Number.isFinite(value) || value < 0 || value > 1) fail(`${uid}: axis ${key} вне 0..1`);
   });
 
-  const axes = finalProfile.axes || {};
-  const requiredAxes = Object.keys(groups.axes?.items || {});
-  if (requiredAxes.some(key => !Number.isFinite(Number(axes[key])))) fail(`${uid}: заполнены не все постоянные axes`);
+  validateRussianText(uid, 'presentation.tagline_ru', profile.presentation?.tagline_ru);
+  validateRussianText(uid, 'presentation.one_liner_ru', profile.presentation?.one_liner_ru);
+  validateRussianText(uid, 'presentation.mini_description_ru', profile.presentation?.mini_description_ru);
 }
 
-console.log(`✅ Validated ${Object.keys(items).length} TrackProfiles`);
+console.log(`✅ Validated ${Object.keys(items).length} TrackProfiles v3`);
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
