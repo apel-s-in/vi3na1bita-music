@@ -116,7 +116,7 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/06/] 06-cover-01.jpg, 06-cover-01.png, 06-cover-01.webp, 06-cover-02.jpg, 06-cover-02.png, 06-cover-02.webp, 06-cover-03.jpg, 06-cover-03.png, 06-cover-03.webp, 06-cover-04.jpg, 06-cover-04.png, 06-cover-04.webp, index.json
 [/audio/] silence.mp3
 [/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.function-env.json, listen-track-catalog.json, taxonomy.json, track-profile-vocabulary.json, track-profiles-index.json
-[/data/track-profiles/] README.txt, track-profile.template.json
+[/data/track-profiles/] PROMPT.txt, README.txt, track-profile.template.json
 [/data/track-profiles/v-ssore/] VS-01.json, VS-02.json, VS-03.json, VS-04.json, VS-05.json, VS-06.json, VS-07.json, VS-08.json, VS-09.json, VS-10.json
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
 [/img/] .gitkeep, bg-in.webp, Fav_logo.png, icon_game.png, logo.png, vitrina-crack-01.svg
@@ -25607,6 +25607,339 @@ body.news-view #cover-wrap{display:none!important}
 .playback-return-banner__button:disabled{opacity:.55;cursor:wait}
 .playback-return-banner__close{width:28px;height:28px;border:0;background:transparent;color:#7f93b5;font-size:20px;cursor:pointer}
 @media(max-width:380px){.playback-return-banner{grid-template-columns:34px 1fr 28px}.playback-return-banner__button{grid-column:1/-1;width:100%}}
+
+//=================================================
+// FILE: /data/track-profiles/PROMPT.txt
+Ты анализируешь один музыкальный трек и создаёшь TrackProfile.
+
+ВХОДНЫЕ ДАННЫЕ
+
+UID: {{UID}}
+
+Тебе переданы:
+
+1. Музыкальный файл.
+2. Точный текст песни, если он существует.
+3. data/taxonomy.json.
+4. data/track-profile-vocabulary.json.
+5. data/track-profiles/track-profile.template.json.
+
+ФОРМАТ ОТВЕТА
+
+Верни ровно один синтаксически корректный JSON object.
+
+Не используй Markdown.
+Не добавляй пояснения.
+Не добавляй комментарии.
+Не добавляй поля, отсутствующие в шаблоне.
+Не удаляй поля шаблона.
+Сохраняй порядок полей шаблона.
+
+ОБЯЗАТЕЛЬНЫЕ ЗНАЧЕНИЯ
+
+version = "track-profile-v3"
+taxonomyVersion = "taxonomy-v3"
+vocabularyVersion = "track-profile-vocabulary-v1"
+uid = фактический переданный UID
+status = "analyzed"
+testData = false
+
+В JSON запрещены:
+
+trackVersion
+title
+album
+albumTitle
+durationSec
+source
+analyzer
+analyzedAt
+generatedAt
+updatedAt
+provenance
+verified
+loudnessLufs
+dynamicRange
+relations
+similar_tracks
+embedding
+название модели
+версия модели
+дата анализа
+ссылки на другие UID
+пользовательская статистика
+популярность
+Избранное
+
+ЯЗЫКИ
+
+Все machine ID записываются только на английском языке в snake_case.
+
+Это относится к:
+
+- taxonomy-ключам;
+- instrumentation;
+- vocalRoles;
+- vocalDelivery;
+- arrangementTags;
+- productionTags;
+- tempoClass;
+- key;
+- mode;
+- timeSignature;
+- language;
+- narrative.type;
+- narrative.perspective;
+- status.
+
+Свободный текст разрешён только в полях с суффиксом _ru.
+
+Весь свободный текст должен быть написан грамотно и только на русском языке.
+
+Запрещено смешивать английские слова с русским текстом.
+
+Нельзя писать:
+
+"Композиция built на контрасте"
+"Плотный синтезаторный басист"
+"Трек построена"
+
+Нужно писать:
+
+"Композиция построена на контрасте"
+"Плотный синтезаторный бас"
+"Трек построен"
+
+ДОСТОВЕРНОСТЬ
+
+Анализируй фактическое звучание аудиофайла, а не название трека.
+
+Не выдумывай неизвестные значения.
+
+Если значение определить нельзя:
+
+- BPM = null;
+- tempoClass = null;
+- key = null;
+- mode = null;
+- timeSignature = null;
+- vocalPresence = null;
+- sparse object = {};
+- строковое описание = "";
+- массив = [].
+
+Не угадывай технические значения ради заполнения.
+
+confidence находится в диапазоне 0..1.
+
+musicAnalysis.confidence отражает уверенность в музыкальном анализе.
+
+lyricAnalysis.confidence отражает уверенность в анализе текста.
+
+Если точный текст не предоставлен:
+
+- не придумывай слова;
+- не создавай цитаты;
+- не создавай подробный сюжет;
+- снижай lyricAnalysis.confidence;
+- сохраняй неизвестные lyric-поля пустыми.
+
+ТОНАЛЬНОСТЬ
+
+key содержит только одно значение из track-profile-vocabulary.json:
+
+C
+C_sharp
+D
+D_sharp
+E
+F
+F_sharp
+G
+G_sharp
+A
+A_sharp
+B
+
+key не содержит лад.
+
+Запрещено:
+
+F#
+Fm
+F minor
+G minor
+C#m
+
+Правильно:
+
+"key": "F_sharp",
+"mode": "minor"
+
+или:
+
+"key": "F",
+"mode": "minor"
+
+РАЗМЕР
+
+timeSignature берётся только из track-profile-vocabulary.json.
+
+Запрещено:
+
+"4/4"
+
+Правильно:
+
+"4_4"
+
+ИНСТРУМЕНТЫ
+
+instrumentation является sparse object с весами 0..1.
+
+Разрешены только ключи из track-profile-vocabulary.json.instrumentation.
+
+Вокал не является инструментом.
+
+Запрещено помещать в instrumentation:
+
+male_vocals
+female_vocals
+мужской вокал
+женский вокал
+choir_vocals
+
+Вокальные признаки записываются в vocalRoles и vocalDelivery.
+
+Не дублируй общий и частный инструмент:
+
+- если уверенно определена trumpet, не добавляй brass_section;
+- brass_section используй, когда слышна секция, но точный состав не определяется;
+- если определён synth_bass, не добавляй bass_guitar без фактически слышимой бас-гитары;
+- не добавляй абстрактный sound_effects.
+
+ВОКАЛ
+
+vocalRoles содержит только значения из vocabulary.vocalRoles.
+
+vocalDelivery содержит только значения из vocabulary.vocalDelivery.
+
+vocalPresence:
+
+0 = вокала нет;
+1 = вокал почти постоянно доминирует;
+null = определить нельзя.
+
+АРАНЖИРОВКА И ПРОДАКШН
+
+arrangementTags содержит только vocabulary.arrangementTags.
+
+productionTags содержит только vocabulary.productionTags.
+
+Свободное описание аранжировки записывается только в arrangementDescription_ru.
+
+Свободное описание звучания записывается только в productionDescription_ru.
+
+Не используй рекламные оценки:
+
+"идеальный"
+"лучший"
+"невероятный"
+"коммерческий хит"
+
+LYRIC ANALYSIS
+
+summary_ru кратко передаёт фактический смысл песни.
+
+keywords_ru содержит только русские значимые слова и фразы.
+
+entities_ru содержит только явно названные сущности, собственные имена, персонажей, организации или конкретные географические объекты.
+
+Не помещай обычные образы и нарицательные места в entities_ru.
+
+scenes_ru содержит только действительно различимые сцены.
+
+narrative.type берётся только из vocabulary.narrativeTypes.
+
+narrative.perspective берётся только из vocabulary.narrativePerspectives.
+
+narrative.arc_ru и narrative.characters_ru пишутся только по-русски.
+
+TAXONOMY
+
+В finalProfile разрешены только ключи из соответствующих групп taxonomy.json:
+
+genres
+styles
+moods
+themes
+use_cases
+time_of_day
+axes
+content_warnings
+
+warnings использует ключи taxonomy.groups.content_warnings.items.
+
+Все sparse-веса должны быть числами от threshold_store до 1.
+
+Не сохраняй признаки ниже threshold_store.
+
+Не добавляй родительский жанр автоматически только потому, что указан поджанр.
+
+Например, alternative_rock не требует автоматического добавления rock.
+
+Высокие веса 0.75 и выше используй только для доминирующих признаков.
+
+AXES
+
+finalProfile.axes должен содержать все оси шаблона.
+
+Каждая ось является числом 0..1.
+
+0 означает уверенное отсутствие признака.
+
+Не используй null для axes.
+
+WARNINGS
+
+warnings описывает только чувствительный контент.
+
+Грусть, драматичность, напряжение и мрачное звучание сами по себе не являются warning.
+
+PRESENTATION
+
+tagline_ru — короткая характеристика трека.
+
+one_liner_ru — одно честное предложение о музыке и смысле.
+
+mini_description_ru — два или три коротких предложения.
+
+Не создавай несуществующие цитаты.
+
+Не упоминай рекомендации, популярность или другие треки.
+
+ФИНАЛЬНАЯ ПРОВЕРКА
+
+Перед ответом проверь:
+
+1. JSON синтаксически корректен.
+2. uid содержит фактический UID.
+3. В JSON нет "{{", "}}" и "__TEMPLATE__".
+4. Нет запрещённых полей.
+5. Нет названия модели и даты.
+6. Нет title, album, albumTitle, durationSec и trackVersion.
+7. Все machine ID существуют в taxonomy или vocabulary.
+8. Все machine ID написаны на английском языке в snake_case.
+9. Все поля с суффиксом _ru написаны только по-русски.
+10. В русских предложениях нет случайных английских слов.
+11. instrumentation не содержит вокал.
+12. Нет дублирующих инструментов.
+13. key не содержит лад.
+14. timeSignature использует подчёркивание.
+15. Sparse-веса не ниже threshold_store.
+16. Все axes заполнены числами 0..1.
+17. Нет relations и похожих UID.
+18. Ответ содержит только один JSON object.
 
 //=================================================
 // FILE: /data/track-profiles/README.txt
