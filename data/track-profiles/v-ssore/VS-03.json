@@ -1,99 +1,85 @@
 {
-  "version": "track-profile-v1",
-  "taxonomyVersion": "taxonomy-v2",
+  "version": "track-profile-v3",
+  "taxonomyVersion": "taxonomy-v3",
+  "vocabularyVersion": "track-profile-vocabulary-v1",
   "uid": "VS-03",
-  "title": "В ссоре",
-  "album": "v-ssore",
-  "albumTitle": "В Ссоре",
   "status": "test_fixture",
   "testData": true,
-  "generatedAt": "2026-08-04T14:07:19.908Z",
   "musicAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
+    "confidence": 0,
     "bpm": null,
+    "tempoClass": null,
     "key": null,
-    "genres": {
-      "rock": 0.85,
-      "pop": 0.7
-    },
-    "moods": {
-      "angry": 0.85,
-      "bitter": 0.7
-    },
-    "axes": {
-      "energy": 0.74,
-      "valence": 0.28,
-      "arousal": 0.76,
-      "aggressiveness": 0.58,
-      "romance_intensity": 0.66
-    }
+    "mode": null,
+    "timeSignature": null,
+    "instrumentation": {},
+    "vocalPresence": null,
+    "vocalRoles": {},
+    "vocalDelivery": {},
+    "arrangementTags": {},
+    "productionTags": {},
+    "arrangementDescription_ru": "",
+    "productionDescription_ru": ""
   },
   "lyricAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
-    "summary_ru": "Демонстрационное описание. Требуется ручная замена правдивым анализом.",
-    "themes": {
-      "love": 0.85,
-      "breakup": 0.7
+    "confidence": 0,
+    "language": "unknown",
+    "summary_ru": "Демонстрационный профиль без фактического анализа.",
+    "keywords_ru": [],
+    "entities_ru": [],
+    "scenes_ru": [],
+    "narrative": {
+      "type": "none",
+      "perspective": "unspecified",
+      "arc_ru": "",
+      "characters_ru": []
     },
-    "warnings": {}
+    "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
       "rock": 0.85,
       "pop": 0.7
     },
+    "styles": {},
     "moods": {
       "angry": 0.85,
       "bitter": 0.7
     },
     "themes": {
-      "love": 0.85,
-      "breakup": 0.7
+      "conflict": 0.85,
+      "communication": 0.7
     },
     "use_cases": {
       "background": 0.55,
       "walking": 0.5
     },
-    "events": {},
-    "seasonality": {},
     "time_of_day": {},
     "axes": {
       "energy": 0.74,
       "valence": 0.28,
       "arousal": 0.76,
+      "danceability": 0,
+      "acousticness": 0,
+      "instrumentalness": 0,
       "aggressiveness": 0.58,
-      "romance_intensity": 0.66
+      "melancholy": 0,
+      "romance_intensity": 0.42,
+      "humor": 0,
+      "socialness": 0,
+      "epicness": 0,
+      "warmth": 0,
+      "brightness": 0,
+      "tension": 0,
+      "storytelling": 0,
+      "spookiness": 0,
+      "family_friendly": 0
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Тестовый профиль: В ссоре",
-    "hook_ru": "Демонстрационная semantic-карточка",
-    "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
-    "mini_description_ru": "Не является правдивым анализом музыки или текста.",
-    "hero_quote_ru": "",
-    "badges": [
-      "TEST"
-    ],
-    "chips": [
-      "rock",
-      "pop",
-      "angry",
-      "bitter"
-    ]
-  },
-  "relations": {
-    "similar_tracks": [
-      "VS-04",
-      "VS-02"
-    ],
-    "relation_types": {
-      "semantic_preview": [
-        "VS-04",
-        "VS-02"
-      ]
-    }
+    "tagline_ru": "Временный демонстрационный профиль.",
+    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
+    "mini_description_ru": "Не является фактическим анализом музыки или текста."
   }
 }

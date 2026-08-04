@@ -1,47 +1,46 @@
 {
-  "version": "track-profile-v1",
-  "taxonomyVersion": "taxonomy-v2",
+  "version": "track-profile-v3",
+  "taxonomyVersion": "taxonomy-v3",
+  "vocabularyVersion": "track-profile-vocabulary-v1",
   "uid": "VS-02",
-  "title": "Клаустрофобия",
-  "album": "v-ssore",
-  "albumTitle": "В Ссоре",
   "status": "test_fixture",
   "testData": true,
-  "generatedAt": "2026-08-04T14:07:19.908Z",
   "musicAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
+    "confidence": 0,
     "bpm": null,
+    "tempoClass": null,
     "key": null,
-    "genres": {
-      "alternative_rock": 0.85
-    },
-    "moods": {
-      "anxious": 0.85,
-      "tense": 0.7
-    },
-    "axes": {
-      "energy": 0.62,
-      "valence": 0.22,
-      "arousal": 0.8,
-      "tension": 0.88,
-      "family_friendly": 0.55
-    }
+    "mode": null,
+    "timeSignature": null,
+    "instrumentation": {},
+    "vocalPresence": null,
+    "vocalRoles": {},
+    "vocalDelivery": {},
+    "arrangementTags": {},
+    "productionTags": {},
+    "arrangementDescription_ru": "",
+    "productionDescription_ru": ""
   },
   "lyricAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
-    "summary_ru": "Демонстрационное описание. Требуется ручная замена правдивым анализом.",
-    "themes": {
-      "mental_health": 0.85,
-      "self_reflection": 0.7
+    "confidence": 0,
+    "language": "unknown",
+    "summary_ru": "Демонстрационный профиль без фактического анализа.",
+    "keywords_ru": [],
+    "entities_ru": [],
+    "scenes_ru": [],
+    "narrative": {
+      "type": "none",
+      "perspective": "unspecified",
+      "arc_ru": "",
+      "characters_ru": []
     },
-    "warnings": {}
+    "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
       "alternative_rock": 0.85
     },
+    "styles": {},
     "moods": {
       "anxious": 0.85,
       "tense": 0.7
@@ -54,43 +53,32 @@
       "background": 0.55,
       "walking": 0.5
     },
-    "events": {},
-    "seasonality": {},
     "time_of_day": {},
     "axes": {
       "energy": 0.62,
       "valence": 0.22,
       "arousal": 0.8,
+      "danceability": 0,
+      "acousticness": 0,
+      "instrumentalness": 0,
+      "aggressiveness": 0,
+      "melancholy": 0,
+      "romance_intensity": 0,
+      "humor": 0,
+      "socialness": 0,
+      "epicness": 0,
+      "warmth": 0,
+      "brightness": 0,
       "tension": 0.88,
+      "storytelling": 0,
+      "spookiness": 0,
       "family_friendly": 0.55
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Тестовый профиль: Клаустрофобия",
-    "hook_ru": "Демонстрационная semantic-карточка",
-    "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
-    "mini_description_ru": "Не является правдивым анализом музыки или текста.",
-    "hero_quote_ru": "",
-    "badges": [
-      "TEST"
-    ],
-    "chips": [
-      "alternative_rock",
-      "anxious",
-      "tense"
-    ]
-  },
-  "relations": {
-    "similar_tracks": [
-      "VS-03",
-      "VS-01"
-    ],
-    "relation_types": {
-      "semantic_preview": [
-        "VS-03",
-        "VS-01"
-      ]
-    }
+    "tagline_ru": "Временный демонстрационный профиль.",
+    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
+    "mini_description_ru": "Не является фактическим анализом музыки или текста."
   }
 }

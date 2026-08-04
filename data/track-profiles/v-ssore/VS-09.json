@@ -1,47 +1,46 @@
 {
-  "version": "track-profile-v1",
-  "taxonomyVersion": "taxonomy-v2",
+  "version": "track-profile-v3",
+  "taxonomyVersion": "taxonomy-v3",
+  "vocabularyVersion": "track-profile-vocabulary-v1",
   "uid": "VS-09",
-  "title": "Печаль",
-  "album": "v-ssore",
-  "albumTitle": "В Ссоре",
   "status": "test_fixture",
   "testData": true,
-  "generatedAt": "2026-08-04T14:07:19.909Z",
   "musicAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
+    "confidence": 0,
     "bpm": null,
+    "tempoClass": null,
     "key": null,
-    "genres": {
-      "ballad_pop": 0.85
-    },
-    "moods": {
-      "sad": 0.85,
-      "melancholic": 0.7
-    },
-    "axes": {
-      "energy": 0.24,
-      "valence": 0.14,
-      "melancholy": 0.94,
-      "warmth": 0.42,
-      "family_friendly": 0.85
-    }
+    "mode": null,
+    "timeSignature": null,
+    "instrumentation": {},
+    "vocalPresence": null,
+    "vocalRoles": {},
+    "vocalDelivery": {},
+    "arrangementTags": {},
+    "productionTags": {},
+    "arrangementDescription_ru": "",
+    "productionDescription_ru": ""
   },
   "lyricAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
-    "summary_ru": "Демонстрационное описание. Требуется ручная замена правдивым анализом.",
-    "themes": {
-      "loss_grief": 0.85,
-      "self_reflection": 0.7
+    "confidence": 0,
+    "language": "unknown",
+    "summary_ru": "Демонстрационный профиль без фактического анализа.",
+    "keywords_ru": [],
+    "entities_ru": [],
+    "scenes_ru": [],
+    "narrative": {
+      "type": "none",
+      "perspective": "unspecified",
+      "arc_ru": "",
+      "characters_ru": []
     },
-    "warnings": {}
+    "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
       "ballad_pop": 0.85
     },
+    "styles": {},
     "moods": {
       "sad": 0.85,
       "melancholic": 0.7
@@ -54,43 +53,32 @@
       "background": 0.55,
       "walking": 0.5
     },
-    "events": {},
-    "seasonality": {},
     "time_of_day": {},
     "axes": {
       "energy": 0.24,
       "valence": 0.14,
+      "arousal": 0,
+      "danceability": 0,
+      "acousticness": 0,
+      "instrumentalness": 0,
+      "aggressiveness": 0,
       "melancholy": 0.94,
+      "romance_intensity": 0,
+      "humor": 0,
+      "socialness": 0,
+      "epicness": 0,
       "warmth": 0.42,
+      "brightness": 0,
+      "tension": 0,
+      "storytelling": 0,
+      "spookiness": 0,
       "family_friendly": 0.85
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Тестовый профиль: Печаль",
-    "hook_ru": "Демонстрационная semantic-карточка",
-    "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
-    "mini_description_ru": "Не является правдивым анализом музыки или текста.",
-    "hero_quote_ru": "",
-    "badges": [
-      "TEST"
-    ],
-    "chips": [
-      "ballad_pop",
-      "sad",
-      "melancholic"
-    ]
-  },
-  "relations": {
-    "similar_tracks": [
-      "VS-10",
-      "VS-08"
-    ],
-    "relation_types": {
-      "semantic_preview": [
-        "VS-10",
-        "VS-08"
-      ]
-    }
+    "tagline_ru": "Временный демонстрационный профиль.",
+    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
+    "mini_description_ru": "Не является фактическим анализом музыки или текста."
   }
 }

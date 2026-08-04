@@ -1,49 +1,47 @@
 {
-  "version": "track-profile-v1",
-  "taxonomyVersion": "taxonomy-v2",
+  "version": "track-profile-v3",
+  "taxonomyVersion": "taxonomy-v3",
+  "vocabularyVersion": "track-profile-vocabulary-v1",
   "uid": "VS-05",
-  "title": "Мирись",
-  "album": "v-ssore",
-  "albumTitle": "В Ссоре",
   "status": "test_fixture",
   "testData": true,
-  "generatedAt": "2026-08-04T14:07:19.909Z",
   "musicAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
+    "confidence": 0,
     "bpm": null,
+    "tempoClass": null,
     "key": null,
-    "genres": {
-      "pop": 0.85,
-      "rock": 0.7
-    },
-    "moods": {
-      "hopeful": 0.85,
-      "romantic": 0.7
-    },
-    "axes": {
-      "energy": 0.58,
-      "valence": 0.76,
-      "romance_intensity": 0.8,
-      "warmth": 0.84,
-      "family_friendly": 0.95
-    }
+    "mode": null,
+    "timeSignature": null,
+    "instrumentation": {},
+    "vocalPresence": null,
+    "vocalRoles": {},
+    "vocalDelivery": {},
+    "arrangementTags": {},
+    "productionTags": {},
+    "arrangementDescription_ru": "",
+    "productionDescription_ru": ""
   },
   "lyricAnalysis": {
-    "source": "test_fixture",
-    "verified": false,
-    "summary_ru": "Демонстрационное описание. Требуется ручная замена правдивым анализом.",
-    "themes": {
-      "love": 0.85,
-      "friendship": 0.7
+    "confidence": 0,
+    "language": "unknown",
+    "summary_ru": "Демонстрационный профиль без фактического анализа.",
+    "keywords_ru": [],
+    "entities_ru": [],
+    "scenes_ru": [],
+    "narrative": {
+      "type": "none",
+      "perspective": "unspecified",
+      "arc_ru": "",
+      "characters_ru": []
     },
-    "warnings": {}
+    "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
       "pop": 0.85,
       "rock": 0.7
     },
+    "styles": {},
     "moods": {
       "hopeful": 0.85,
       "romantic": 0.7
@@ -56,44 +54,32 @@
       "background": 0.55,
       "walking": 0.5
     },
-    "events": {},
-    "seasonality": {},
     "time_of_day": {},
     "axes": {
       "energy": 0.58,
       "valence": 0.76,
+      "arousal": 0,
+      "danceability": 0,
+      "acousticness": 0,
+      "instrumentalness": 0,
+      "aggressiveness": 0,
+      "melancholy": 0,
       "romance_intensity": 0.8,
+      "humor": 0,
+      "socialness": 0,
+      "epicness": 0,
       "warmth": 0.84,
+      "brightness": 0,
+      "tension": 0,
+      "storytelling": 0,
+      "spookiness": 0,
       "family_friendly": 0.95
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Тестовый профиль: Мирись",
-    "hook_ru": "Демонстрационная semantic-карточка",
-    "one_liner_ru": "Произвольные данные для проверки технической работы INTEL.",
-    "mini_description_ru": "Не является правдивым анализом музыки или текста.",
-    "hero_quote_ru": "",
-    "badges": [
-      "TEST"
-    ],
-    "chips": [
-      "pop",
-      "rock",
-      "hopeful",
-      "romantic"
-    ]
-  },
-  "relations": {
-    "similar_tracks": [
-      "VS-06",
-      "VS-04"
-    ],
-    "relation_types": {
-      "semantic_preview": [
-        "VS-06",
-        "VS-04"
-      ]
-    }
+    "tagline_ru": "Временный демонстрационный профиль.",
+    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
+    "mini_description_ru": "Не является фактическим анализом музыки или текста."
   }
 }
