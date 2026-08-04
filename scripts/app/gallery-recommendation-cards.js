@@ -158,13 +158,6 @@ export const buildGalleryRecommendationCards = async () => {
     return num(useCases.walking) * 10 + num(axes.energy) * 1.5 + num(axes.valence);
   });
 
-  const newYear = sortCandidates(previews, item => {
-    const events = section(item.preview, 'events');
-    const seasonality = section(item.preview, 'seasonality');
-    const moods = section(item.preview, 'moods');
-    return num(events.new_year) * 12 + num(events.christmas) * 8 + num(seasonality.winter) * 3 + num(moods.festive) * 5;
-  });
-
   const mood = dominantMood(listener);
   const favoriteMood = mood ? sortCandidates(previews, item => num(section(item.preview, 'moods')[mood]) * 10) : [];
 
@@ -219,15 +212,6 @@ export const buildGalleryRecommendationCards = async () => {
       reasonCode: 'walking_fit',
       items: cardItems(walking),
       emptyText: 'Подборка для прогулки пока не сформирована'
-    }),
-    makeCard({
-      id: 'new-year',
-      title: 'Новогодняя подборка',
-      icon: '🎄',
-      subtitle: 'Зимние и праздничные смысловые признаки',
-      reasonCode: 'new_year_fit',
-      items: cardItems(newYear),
-      emptyText: 'Новогодние треки появятся после правдивой разметки событий'
     }),
     makeCard({
       id: 'favorite-mood',
