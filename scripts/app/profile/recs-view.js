@@ -22,9 +22,9 @@ export const renderProfileRecs = async ({ container } = {}) => {
     const result = await recommendationEngine.recommend({ limit: 4, context: CONTEXT });
 
     const sourceNote = result.mode === 'account_server_pending'
-      ? '<div class="stat-card"><div class="stat-sub">Подтверждённая статистика загружается. Пока используется совместимый локальный подбор.</div></div>'
+      ? '<div class="stat-card"><div class="stat-sub">Подтверждённая статистика загружается. Пока используется локальная semantic-модель.</div></div>'
       : result.mode === 'local_compatible'
-        ? '<div class="stat-card"><div class="stat-sub">Минимальный локальный подбор. Умные рекомендации доступны после входа через Яндекс.</div></div>'
+        ? '<div class="stat-card"><div class="stat-sub">Локальная semantic-модель. После входа серверная статистика сможет уточнить результат.</div></div>'
         : '';
     root.innerHTML = `${sourceNote}${result.testData ? '<div class="stat-card"><div class="stat-sub">Тестовый режим: смысловые профили пока демонстрационные.</div></div>' : ''}${
       result.items.length
