@@ -7,6 +7,8 @@ const INDEX_PATH = path.resolve('data/track-profiles-index.json');
 const album = 'v-ssore';
 const albumTitle = 'В Ссоре';
 const OUTPUT_DIR = path.join(OUTPUT_ROOT, album);
+const catalog = JSON.parse(fs.readFileSync('data/listen-track-catalog.json', 'utf8'));
+const catalogByUid = new Map((catalog.tracks || []).map(track => [String(track.uid || ''), track]));
 
 const specs = [
   ['VS-01', 'Живой', ['rock'], ['uplifting', 'energetic'], ['dreams_goals', 'heroism'], { energy: .78, valence: .66, arousal: .72, epicness: .64, family_friendly: .82 }],
@@ -22,10 +24,11 @@ const specs = [
 ];
 
 const weighted = values => Object.fromEntries(values.map((value, index) => [value, Math.max(.55, .85 - index * .15)]));
-const similar = index => [specs[(index + 1) % specs.length][0], specs[(index + specs.length - 1) % specs.length][0]];
 
-const build = (spec, index) => {
+const build = spec => {
   const [uid, title, genres, moods, themes, axes] = spec;
+  const catalogTrack = catalogByUid.get(uid);
+  if (!catalogTrack?.trackVersion) throw new Error(`track_version_missing:${uid}`);
   const finalProfile = {
     genres: weighted(genres),
     moods: weighted(moods),
@@ -45,38 +48,60 @@ const build = (spec, index) => {
     chips: [...genres, ...moods].slice(0, 4)
   };
   return {
-    version: 'track-profile-v1',
+    version: 'track-profile-v2',
     taxonomyVersion: 'taxonomy-v2',
     uid,
+    trackVersion: catalogTrack.trackVersion,
     title,
     album,
     albumTitle,
     status: 'test_fixture',
     testData: true,
-    generatedAt: new Date().toISOString(),
+    analyzedAt: new Date().toISOString(),
     musicAnalysis: {
       source: 'test_fixture',
+      analyzer: 'generate-intel-test-profiles',
       verified: false,
+      confidence: 0,
       bpm: null,
-      key: null,
-      genres: finalProfile.genres,
-      moods: finalProfile.moods,
-      axes
+      tempoClass: '',
+      key: '',
+      mode: '',
+      timeSignature: '',
+      durationSec: catalogTrack.duration,
+      loudnessLufs: null,
+      dynamicRange: null,
+      instrumentation: [],
+      vocalPresence: null,
+      vocalType: '',
+      vocalDelivery: '',
+      arrangement: '',
+      productionCharacter: ''
     },
     lyricAnalysis: {
       source: 'test_fixture',
+      analyzer: 'generate-intel-test-profiles',
       verified: false,
-      summary_ru: 'Демонстрационное описание. Требуется ручная замена правдивым анализом.',
-      themes: finalProfile.themes,
-      warnings: {}
+      confidence: 0,
+      language: 'ru',
+      summary_ru: 'Демонстрационное описание. Требуется замена правдивым анализом.',
+      keywords: [],
+      entities: [],
+      scenes: [],
+      narrative: { type: '', perspective: '', arc: '', characters: [] },
+      sensitiveContentNotes_ru: []
     },
-    finalProfile,
-    presentation,
-    relations: {
-      similar_tracks: similar(index),
-      relation_types: {
-        semantic_preview: similar(index)
-      }
+    finalProfile: { styles: {}, time_of_day: {}, warnings: {}, ...finalProfile },
+    presentation: {
+      tagline_ru: presentation.tagline_ru,
+      one_liner_ru: presentation.one_liner_ru,
+      mini_description_ru: presentation.mini_description_ru
+    },
+    provenance: {
+      schemaVersion: 2,
+      input: { audioProvided: false, lyricsProvided: false, trackVersion: catalogTrack.trackVersion },
+      analyzer: { name: 'generate-intel-test-profiles', version: '1', analyzedAt: new Date().toISOString() },
+      editorial: { reviewed: false, reviewedAt: null, notes: 'Explicit test fixture' }
     }
   };
 };
@@ -92,6 +117,7 @@ profiles.forEach(profile => {
 
 const items = Object.fromEntries(profiles.map(profile => [profile.uid, {
   uid: profile.uid,
+  trackVersion: profile.trackVersion,
   title: profile.title,
   album: profile.album,
   albumTitle: profile.albumTitle,
@@ -99,8 +125,7 @@ const items = Object.fromEntries(profiles.map(profile => [profile.uid, {
   status: profile.status,
   testData: true,
   finalProfile: profile.finalProfile,
-  presentation: profile.presentation,
-  relations: profile.relations
+  presentation: profile.presentation
 }]));
 
 const generatedAt = new Date().toISOString();
@@ -110,7 +135,7 @@ const itemRows = Object.entries(items)
 
 const indexJson = [
   '{',
-  '  "version": "track-profiles-index-v1",',
+  '  "version": "track-profiles-index-v2",',
   `  "generatedAt": ${JSON.stringify(generatedAt)},`,
   '  "taxonomyVersion": "taxonomy-v2",',
   '  "testData": true,',
