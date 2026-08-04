@@ -1,4 +1,5 @@
-import { buildGalleryRecommendationCards, renderGalleryRecommendationCard } from './gallery-recommendation-cards.js';
+import { buildGalleryRecommendationCards, recordGalleryRecommendationClicked, recordGalleryRecommendationShown, renderGalleryRecommendationCard } from './gallery-recommendation-cards.js';
+import { openRecommendedTrack, playRecommendedTrack } from './recommendation-playback.js';
 
 const W = window;
 const D = document;
@@ -50,12 +51,16 @@ class GalleryManager {
       const playUid = event.target.closest('[data-gallery-play]')?.dataset.galleryPlay;
       const openUid = event.target.closest('[data-gallery-open]')?.dataset.galleryOpen;
       const albumKey = event.target.closest('[data-gallery-album]')?.dataset.galleryAlbum;
+      const card = this.it[this.idx]?.type === 'recommendation' ? this.it[this.idx] : null;
+
       if (playUid) {
         event.preventDefault();
-        this._playUid(playUid);
+        recordGalleryRecommendationClicked(card, playUid).catch(() => null);
+        playRecommendedTrack(playUid).catch(() => null);
       } else if (openUid) {
         event.preventDefault();
-        this._openUid(openUid);
+        recordGalleryRecommendationClicked(card, openUid).catch(() => null);
+        openRecommendedTrack(openUid).catch(() => null);
       } else if (albumKey) {
         event.preventDefault();
         W.AlbumsManager?.loadAlbum?.(albumKey);
@@ -130,6 +135,7 @@ class GalleryManager {
     if (item.type === 'recommendation') {
       slot.innerHTML = renderGalleryRecommendationCard(item);
       slot.dataset.galleryType = 'recommendation';
+      recordGalleryRecommendationShown(item).catch(() => null);
       this._pre();
       return;
     }
@@ -181,34 +187,6 @@ class GalleryManager {
   stop() {
     clearTimeout(this.tm);
     this.tm = null;
-  }
-
-  async _openUid(uid) {
-    const row = W.TrackRegistry?.getTrackByUid?.(uid);
-    if (!row?.sourceAlbum) return false;
-    await W.AlbumsManager?.loadAlbum?.(row.sourceAlbum);
-    setTimeout(() => {
-      D.querySelector(`.track[data-uid="${CSS.escape(uid)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
-    return true;
-  }
-
-  async _playUid(uid) {
-    const cleanUid = String(uid || '').trim();
-    if (!cleanUid) return false;
-
-    if (W.playerCore?.getCurrentTrackUid?.() === cleanUid) {
-      W.PlayerUI?.togglePlayPause?.();
-      return true;
-    }
-
-    const row = W.TrackRegistry?.getTrackByUid?.(cleanUid);
-    if (!row?.sourceAlbum) return false;
-    await W.AlbumsManager?.loadAlbum?.(row.sourceAlbum);
-    const trackRow = D.querySelector(`.track[data-uid="${CSS.escape(cleanUid)}"]`);
-    if (!trackRow) return false;
-    trackRow.click();
-    return true;
   }
 
   clear() {
