@@ -24165,5 +24165,5 @@ body.news-view #cover-wrap{display:none!important}
 
 //=================================================
 // FILE: /data/track-profiles/README.txt
-UID.088_(директория полных TrackProfile JSON)_(хранить детальные паспорта треков отдельно от легкого индекса)_(складывать сюда файлы вида UID.json и грузить их лениво через scripts/intel/track/track-profiles.js)
+(Директория полных TrackProfile JSON)_(хранить детальные паспорта треков отдельно от легкого индекса)_(складывать сюда файлы вида UID.json и грузить их лениво через scripts/intel/track/track-profiles.js)
 
