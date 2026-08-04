@@ -20535,7 +20535,7 @@ export default { getRecommendationReasonText };
 
 //=================================================
 // FILE: /scripts/intel/roadmap.js
-export const INTEL_ROADMAP_VERSION = '2026-08-04.2';
+export const INTEL_ROADMAP_VERSION = '2026-08-04.3';
 
 export const INTEL_ROADMAP_TEXT = String.raw`
 INTEL — опциональная локальная интеллектуальная надстройка.
@@ -20571,13 +20571,14 @@ INTEL — опциональная локальная интеллектуаль
 
 1. Заменить VS-01–VS-10 правдивыми профилями.
 2. Создать TrackProfile для остальных UID.
-3. Добавить проверенные audio characteristics.
+3. Добавить проверенные канонические audio features.
 4. Добавить проверенный lyric analysis.
 5. Заполнить genres, styles, moods, themes, use_cases, time_of_day, axes и warnings.
-6. Создать проверенные similar_tracks.
-7. Убрать testData после редакторской проверки.
-8. Включить semantic filters только после заполнения всего каталога.
-9. Добавить versioned semantic projection для долгосрочного rebuild.
+6. Заполнить instrumentation, vocalRoles, vocalDelivery, arrangementTags и productionTags.
+7. Проверять производное сходство по всему каталогу без хранения UID-связей.
+8. Убрать testData после редакторской проверки.
+9. Включить semantic filters только после заполнения всего каталога.
+10. Добавить versioned semantic projection для долгосрочного rebuild.
 
 ОСКОЛКИ
 
