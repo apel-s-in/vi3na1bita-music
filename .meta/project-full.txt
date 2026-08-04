@@ -12218,9 +12218,6 @@ export default { bindProfileAccount };
 
 //=================================================
 // FILE: /scripts/app/profile/account-cloud-renderers.js
-// UID.096_(Helper-first anti-duplication policy)_(Yandex account HTML вынесен из yandex-auth-view)_(connected/loggedOut/sync/actions)
-// UID.112_(Profile command center)_(account cloud UI остаётся единым центром backup/sync/claim)_(меньше риска сломать bindings)
-
 import { esc } from './profile-render-kit.js';
 import { renderAccountDevicesBlock } from './account-devices-view.js';
 import { renderAccountTimezoneBlock } from './account-timezone-view.js';
