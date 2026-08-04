@@ -1,6 +1,3 @@
-// UID.038_(Track profile modal)_(track statistics вынесены из общей statistics-modal)_(statistics-modal остаётся profile renderer)
-// UID.094_(No-paralysis rule)_(track modal только читает stats)_(не влияет на playback)
-
 import { metaDB } from '../analytics/meta-db.js';
 
 const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
