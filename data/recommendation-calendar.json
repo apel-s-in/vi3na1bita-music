@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "fixed": [
+    {
+      "id": "new_year",
+      "month": 1,
+      "day": 1,
+      "windowBeforeDays": 14,
+      "windowAfterDays": 7
+    },
+    {
+      "id": "valentines_day",
+      "month": 2,
+      "day": 14,
+      "windowBeforeDays": 5,
+      "windowAfterDays": 1
+    },
+    {
+      "id": "womens_day_8march",
+      "month": 3,
+      "day": 8,
+      "windowBeforeDays": 5,
+      "windowAfterDays": 1
+    },
+    {
+      "id": "victory_day_9may",
+      "month": 5,
+      "day": 9,
+      "windowBeforeDays": 5,
+      "windowAfterDays": 2
+    }
+  ]
+}
