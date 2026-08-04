@@ -16630,8 +16630,21 @@ const validateDataBoundaries = () => {
 const validateRecommendationsAndStats = () => {
   const aggregator = 'scripts/analytics/stats-aggregator.js';
   contains('scripts/intel/recs/recommendation-engine.js', 'scoreUid');
+  contains('scripts/intel/recs/recommendation-engine.js', 'resolveRecommendationDataSource');
+  contains('scripts/intel/recs/recommendation-engine.js', 'confirmedAffinity');
+  contains('scripts/intel/recs/recommendation-engine.js', 'source.canonicalByUid');
+  contains('scripts/intel/recs/recommendation-data-source.js', "'account_hybrid'");
+  contains('scripts/intel/recs/recommendation-data-source.js', "'local_compatible'");
+  contains('scripts/intel/recs/recommendation-data-source.js', "'account_server_pending'");
+  contains('scripts/intel/recs/recommendation-data-source.js', 'getConfirmedListeningStats');
+  contains('scripts/intel/track/track-profiles.js', 'profilePath');
+  contains('scripts/intel/track/track-profiles.js', 'relativePath');
+  contains('scripts/ci/validate-intel-profiles.mjs', 'track-profile.template.json');
+  contains('scripts/ci/validate-intel-profiles.mjs', 'profilePath должен быть');
   excludes('scripts/app/profile/recs-view.js', /stableScore|scoreUid/, 'Recommendation ranking снова добавлен в UI renderer');
   excludes('scripts/app/profile/recs-view.js', /sort\(\s*\(\)\s*=>\s*Math\.random/, 'случайный comparator рекомендаций');
+  excludes('scripts/intel/recs/recommendation-data-source.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Recommendation data source управляет playback');
+  excludes('scripts/intel/recs/recommendation-engine.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Recommendation Engine управляет playback');
   excludes('scripts/app/profile/carousel-flat.js', /oldTabs/, 'legacy oldTabs');
   ['buildStatsProjection', 'mergeProjectedStatsRow', 'projectionToStatsRows', 'commitDelta', "'events_hot'", "'events_warm'", 'schemaVersion: 5'].forEach(marker => contains(aggregator, marker));
   contains(aggregator, "metaDB.db.transaction(['stats', 'global', 'events_hot', 'events_warm'], 'readwrite')");
