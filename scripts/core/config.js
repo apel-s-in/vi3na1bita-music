@@ -32,11 +32,12 @@ export const APP_CONFIG = {
   OFFLINE_UPDATE_CHECKER_ENABLED: false,
   OFFLINE_RECACHE_ENABLED: false,
   INTEL_LAYER_ENABLED: true,
+  INTEL_RECOMMENDATIONS_ENABLED: true,
+  INTEL_TEST_PROFILES_ENABLED: true,
   INTEL_LAYER_BOOT_MODE: 'soft',
   INTEL_LAYER_PROFILE_INDEX_URL: './data/track-profiles-index.json',
   INTEL_LAYER_PROFILE_DIR: './data/track-profiles/',
-  INTEL_LAYER_STORAGE_DISABLE_KEY: 'intel:disable',
-  INTEL_LAYER_STORAGE_DEV_KEY: 'intel:dev'
+  INTEL_LAYER_STORAGE_DISABLE_KEY: 'intel:disable'
 };
 if (typeof window !== 'undefined') {
   window.APP_CONFIG = APP_CONFIG;
