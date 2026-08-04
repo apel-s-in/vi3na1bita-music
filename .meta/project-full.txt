@@ -115,7 +115,7 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/05/] 05-cover-01.jpg, 05-cover-01.png, 05-cover-01.webp, 05-cover-02.jpg, 05-cover-02.png, 05-cover-02.webp, 05-cover-03.jpg, 05-cover-03.png, 05-cover-03.webp, 05-cover-04.jpg, 05-cover-04.png, 05-cover-04.webp, index.json
 [/albums/gallery/06/] 06-cover-01.jpg, 06-cover-01.png, 06-cover-01.webp, 06-cover-02.jpg, 06-cover-02.png, 06-cover-02.webp, 06-cover-03.jpg, 06-cover-03.png, 06-cover-03.webp, 06-cover-04.jpg, 06-cover-04.png, 06-cover-04.webp, index.json
 [/audio/] silence.mp3
-[/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.function-env.json, listen-track-catalog.json, taxonomy.json, track-profiles-index.json
+[/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.function-env.json, listen-track-catalog.json, taxonomy.json, track-profile-vocabulary.json, track-profiles-index.json
 [/data/track-profiles/] README.txt, track-profile.template.json
 [/data/track-profiles/v-ssore/] VS-01.json, VS-02.json, VS-03.json, VS-04.json, VS-05.json, VS-06.json, VS-07.json, VS-08.json, VS-09.json, VS-10.json
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
@@ -22259,6 +22259,213 @@ export default { openTrackStatisticsModal };
       "themes": 12,
       "use_cases": 10
     }
+  }
+}
+
+//=================================================
+// FILE: /data/track-profile-vocabulary.json
+{
+  "version": "track-profile-vocabulary-v1",
+  "machineLanguage": "en",
+  "tempoClasses": {
+    "slow": "Медленный темп",
+    "moderate": "Умеренный темп",
+    "fast": "Быстрый темп"
+  },
+  "keys": {
+    "C": "До",
+    "C_sharp": "До-диез",
+    "D": "Ре",
+    "D_sharp": "Ре-диез",
+    "E": "Ми",
+    "F": "Фа",
+    "F_sharp": "Фа-диез",
+    "G": "Соль",
+    "G_sharp": "Соль-диез",
+    "A": "Ля",
+    "A_sharp": "Ля-диез",
+    "B": "Си"
+  },
+  "modes": {
+    "major": "Мажор",
+    "minor": "Минор"
+  },
+  "timeSignatures": {
+    "2_4": "2/4",
+    "3_4": "3/4",
+    "4_4": "4/4",
+    "5_4": "5/4",
+    "6_8": "6/8",
+    "7_8": "7/8",
+    "9_8": "9/8",
+    "12_8": "12/8"
+  },
+  "instrumentation": {
+    "acoustic_guitar": "Акустическая гитара",
+    "electric_guitar": "Электрогитара",
+    "distorted_guitar": "Перегруженная электрогитара",
+    "clean_electric_guitar": "Чистая электрогитара",
+    "lead_guitar": "Соло-гитара",
+    "rhythm_guitar": "Ритм-гитара",
+    "bass_guitar": "Бас-гитара",
+    "upright_bass": "Контрабас",
+    "drum_kit": "Ударная установка",
+    "electronic_drums": "Электронные ударные",
+    "percussion": "Перкуссия",
+    "handclaps": "Хлопки",
+    "piano": "Фортепиано",
+    "electric_piano": "Электропиано",
+    "organ": "Орган",
+    "accordion": "Аккордеон",
+    "harmonica": "Губная гармоника",
+    "synthesizer": "Синтезатор",
+    "synth_pad": "Синтезаторный пэд",
+    "synth_lead": "Лид-синтезатор",
+    "synth_bass": "Синтезаторный бас",
+    "electronic_bass": "Электронный бас",
+    "sampler": "Сэмплер",
+    "turntable": "Тёрнтейбл",
+    "strings": "Струнная секция",
+    "violin": "Скрипка",
+    "viola": "Альт",
+    "cello": "Виолончель",
+    "brass_section": "Духовая медная секция",
+    "woodwind_section": "Деревянная духовая секция",
+    "trumpet": "Труба",
+    "trombone": "Тромбон",
+    "french_horn": "Валторна",
+    "tuba": "Туба",
+    "saxophone": "Саксофон",
+    "clarinet": "Кларнет",
+    "flute": "Флейта",
+    "oboe": "Гобой",
+    "choir": "Хор",
+    "orchestra": "Оркестр",
+    "bells": "Колокольчики",
+    "glockenspiel": "Глокеншпиль",
+    "xylophone": "Ксилофон",
+    "harp": "Арфа",
+    "mandolin": "Мандолина",
+    "balalaika": "Балалайка",
+    "ukulele": "Укулеле",
+    "banjo": "Банджо"
+  },
+  "vocalRoles": {
+    "male_lead": "Основной мужской вокал",
+    "female_lead": "Основной женский вокал",
+    "male_backing": "Мужской бэк-вокал",
+    "female_backing": "Женский бэк-вокал",
+    "mixed_duet": "Смешанный дуэт",
+    "male_duet": "Мужской дуэт",
+    "female_duet": "Женский дуэт",
+    "group_vocals": "Групповой вокал",
+    "choir_vocals": "Хоровой вокал",
+    "spoken_word": "Разговорная партия",
+    "rap_vocals": "Речитатив",
+    "character_vocals": "Вокал от лица персонажей"
+  },
+  "vocalDelivery": {
+    "clean": "Чистая подача",
+    "soft": "Мягкая подача",
+    "restrained": "Сдержанная подача",
+    "intimate": "Интимная подача",
+    "breathy": "Воздушная подача",
+    "expressive": "Экспрессивная подача",
+    "emotional": "Эмоциональная подача",
+    "dramatic": "Драматическая подача",
+    "theatrical": "Театральная подача",
+    "conversational": "Диалоговая подача",
+    "narrative": "Повествовательная подача",
+    "confident": "Уверенная подача",
+    "aggressive": "Агрессивная подача",
+    "shouted": "Скандирование",
+    "screamed": "Крик",
+    "growled": "Гроулинг",
+    "whispered": "Шёпот",
+    "melismatic": "Мелизматическая подача",
+    "nasal": "Назальная подача",
+    "raspy": "Хриплая подача"
+  },
+  "arrangementTags": {
+    "verse_chorus": "Куплетно-припевная форма",
+    "through_composed": "Сквозная форма",
+    "repetitive_form": "Повторяющаяся форма",
+    "intro_build": "Нарастающее вступление",
+    "gradual_build": "Постепенное нарастание",
+    "dynamic_contrast": "Выраженный динамический контраст",
+    "acoustic_verse": "Акустический куплет",
+    "electronic_verse": "Электронный куплет",
+    "heavy_chorus": "Тяжёлый припев",
+    "anthemic_chorus": "Гимновый припев",
+    "quiet_bridge": "Тихий бридж",
+    "dramatic_bridge": "Драматический бридж",
+    "breakdown": "Брейкдаун",
+    "instrumental_break": "Инструментальная вставка",
+    "call_and_response": "Вопросно-ответная структура",
+    "vocal_dialogue": "Вокальный диалог",
+    "key_change": "Смена тональности",
+    "tempo_change": "Смена темпа",
+    "climactic_ending": "Кульминационная развязка",
+    "fade_out": "Плавное затухание",
+    "abrupt_ending": "Резкое завершение",
+    "solo_section": "Сольная инструментальная секция"
+  },
+  "productionTags": {
+    "raw": "Сырое звучание",
+    "polished": "Чистое и выверенное звучание",
+    "dense": "Плотное звучание",
+    "spacious": "Пространственное звучание",
+    "compressed": "Сильно компрессированное звучание",
+    "dynamic": "Широкая субъективная динамика",
+    "guitar_driven": "Гитарно-ориентированное звучание",
+    "synth_driven": "Синтезаторно-ориентированное звучание",
+    "bass_heavy": "Выраженный басовый фундамент",
+    "drum_forward": "Выведенные вперёд ударные",
+    "vocal_forward": "Выведенный вперёд вокал",
+    "brass_forward": "Выведенная вперёд духовая секция",
+    "orchestral": "Оркестровый характер",
+    "acoustic": "Акустический характер",
+    "electronic": "Электронный характер",
+    "distorted": "Выраженные искажения",
+    "clean": "Чистый характер",
+    "dark_timbre": "Тёмный тембральный баланс",
+    "bright_timbre": "Яркий тембральный баланс",
+    "retro": "Ретро-характер",
+    "modern": "Современный характер",
+    "lofi": "Лоу-фай характер",
+    "live_feel": "Ощущение живого исполнения"
+  },
+  "narrativeTypes": {
+    "none": "Выраженного повествования нет",
+    "monologue": "Монолог",
+    "dialogue": "Диалог",
+    "story": "Последовательная история",
+    "character_story": "История персонажа",
+    "confession": "Исповедь",
+    "reflection": "Размышление",
+    "address": "Обращение",
+    "manifesto": "Манифест",
+    "satire": "Сатирическое повествование",
+    "parable": "Притча",
+    "fairytale": "Сказочное повествование",
+    "fragmented": "Фрагментарное повествование"
+  },
+  "narrativePerspectives": {
+    "first_person": "Первое лицо",
+    "second_person": "Второе лицо",
+    "third_person": "Третье лицо",
+    "dual": "Две чередующиеся перспективы",
+    "multiple": "Несколько перспектив",
+    "observer": "Внешний наблюдатель",
+    "collective": "Коллективное мы",
+    "unspecified": "Перспектива не определяется"
+  },
+  "languages": {
+    "ru": "Русский",
+    "en": "Английский",
+    "mixed": "Смешанный язык",
+    "instrumental": "Инструментальный трек",
+    "unknown": "Не определено"
   }
 }
 
