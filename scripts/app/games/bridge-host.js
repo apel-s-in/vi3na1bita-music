@@ -1,7 +1,3 @@
-// UID.001_(Playback safety invariant)_(bridge не принимает playback-команды)_(Game iframe не может pause/stop/mute/seek/next/prev)
-// UID.082_(Local truth vs external telemetry split)_(iframe получает только safe snapshot)_(OAuth token/raw event log/localStorage не передаются)
-// UID.094_(No-paralysis rule)_(ошибка iframe не ломает приложение)_(bridge можно уничтожить без влияния на музыку)
-// UID.095_(Ownership boundary)_(parent остаётся владельцем профиля/stat/auth/backup/player)_(game-app только читает snapshot)
 import { requestSocialAction } from '../../core/social-session.js';
 import { getConfirmedListeningStats } from '../../analytics/confirmed-listening-stats.js';
 import { getLoyaltyState } from '../../analytics/loyalty-state.js';
