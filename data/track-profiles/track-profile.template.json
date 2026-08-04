@@ -1,49 +1,38 @@
 {
-  "version": "track-profile-v2",
-  "taxonomyVersion": "taxonomy-v2",
+  "version": "track-profile-v3",
+  "taxonomyVersion": "taxonomy-v3",
+  "vocabularyVersion": "track-profile-vocabulary-v1",
   "uid": "__TEMPLATE__",
-  "trackVersion": "__TRACK_VERSION__",
-  "title": "",
-  "album": "__album_key__",
-  "albumTitle": "",
   "status": "template",
   "testData": false,
-  "analyzedAt": null,
   "musicAnalysis": {
-    "source": "",
-    "analyzer": "",
-    "verified": false,
     "confidence": 0,
     "bpm": null,
-    "tempoClass": "",
-    "key": "",
-    "mode": "",
-    "timeSignature": "",
-    "durationSec": null,
-    "loudnessLufs": null,
-    "dynamicRange": null,
-    "instrumentation": [],
+    "tempoClass": null,
+    "key": null,
+    "mode": null,
+    "timeSignature": null,
+    "instrumentation": {},
     "vocalPresence": null,
-    "vocalType": "",
-    "vocalDelivery": "",
-    "arrangement": "",
-    "productionCharacter": ""
+    "vocalRoles": {},
+    "vocalDelivery": {},
+    "arrangementTags": {},
+    "productionTags": {},
+    "arrangementDescription_ru": "",
+    "productionDescription_ru": ""
   },
   "lyricAnalysis": {
-    "source": "",
-    "analyzer": "",
-    "verified": false,
     "confidence": 0,
-    "language": "",
+    "language": "unknown",
     "summary_ru": "",
-    "keywords": [],
-    "entities": [],
-    "scenes": [],
+    "keywords_ru": [],
+    "entities_ru": [],
+    "scenes_ru": [],
     "narrative": {
-      "type": "",
-      "perspective": "",
-      "arc": "",
-      "characters": []
+      "type": "none",
+      "perspective": "unspecified",
+      "arc_ru": "",
+      "characters_ru": []
     },
     "sensitiveContentNotes_ru": []
   },
@@ -80,23 +69,5 @@
     "tagline_ru": "",
     "one_liner_ru": "",
     "mini_description_ru": ""
-  },
-  "provenance": {
-    "schemaVersion": 2,
-    "input": {
-      "audioProvided": false,
-      "lyricsProvided": false,
-      "trackVersion": "__TRACK_VERSION__"
-    },
-    "analyzer": {
-      "name": "",
-      "version": "",
-      "analyzedAt": null
-    },
-    "editorial": {
-      "reviewed": false,
-      "reviewedAt": null,
-      "notes": ""
-    }
   }
 }
