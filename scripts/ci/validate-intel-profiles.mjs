@@ -7,7 +7,9 @@ const fail = message => {
   process.exit(2);
 };
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
-const index = read('data/track-profiles-index.json');
+const indexPath = 'data/track-profiles-index.json';
+const indexSource = fs.readFileSync(indexPath, 'utf8');
+const index = read(indexPath);
 const taxonomy = read('data/taxonomy.json');
 const catalog = read('data/listen-track-catalog.json');
 const knownUids = new Set((catalog.tracks || []).map(item => String(item.uid || '')));
@@ -35,6 +37,9 @@ if (!Object.keys(items).length) {
 }
 
 for (const [uid, preview] of Object.entries(items)) {
+  const escapedUid = uid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const itemLine = new RegExp(`^    "${escapedUid}": \\{.*\\},?$`, 'm');
+  if (!itemLine.test(indexSource)) fail(`${uid}: preview должен занимать одну строку index`);
   if (!knownUids.has(uid)) fail(`${uid}: отсутствует в listening catalog`);
   if (preview.uid !== uid) fail(`${uid}: preview uid mismatch`);
 
