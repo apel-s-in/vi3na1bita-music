@@ -1,7 +1,3 @@
-// UID.001_(Playback safety invariant)_(builder только формирует playlist data)_(не запускает и не останавливает звук)
-// UID.002_(UID-first core)_(playback tracks сохраняют uid/sourceAlbum)_(единая сборка для AlbumsManager и PlaybackContextSource)
-// UID.096_(Helper-first anti-duplication policy)_(устраняет повторный mapping album tracks)
-
 export const buildAlbumPlaybackTracks = ({ albumKey, album, cover = '', logo = 'img/logo.png' } = {}) =>
   (album?.tracks || []).filter(t => t?.src).map(t => ({ ...t, artist: album?.artist, album: album?.title, cover: cover || logo, sourceAlbum: albumKey }));
 
