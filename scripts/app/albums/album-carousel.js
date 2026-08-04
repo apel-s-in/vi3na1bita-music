@@ -1,7 +1,3 @@
-// UID.001_(Playback safety invariant)_(карусель не управляет playback)_(только выбирает экран альбома)
-// UID.094_(No-paralysis rule)_(ошибка карусели не ломает AlbumsManager)_(загрузка остаётся во внешнем callback)
-// UID.096_(Helper-first anti-duplication policy)_(pointer/wheel/keyboard/settle физика живёт в одном модуле)
-
 const STORAGE_KEY = 'albumCarouselCenter:v1';
 const SETTLE_MS = 520;
 const SWIPE_DISTANCE = 34;
