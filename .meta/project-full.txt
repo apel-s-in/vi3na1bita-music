@@ -17604,12 +17604,14 @@ const taxonomy = read('data/taxonomy.json');
 const catalog = read('data/listen-track-catalog.json');
 const knownUids = new Set((catalog.tracks || []).map(item => String(item.uid || '')));
 const groups = taxonomy.groups || {};
-const semanticGroups = ['genres', 'styles', 'moods', 'themes', 'use_cases', 'events', 'seasonality', 'time_of_day', 'axes', 'content_warnings'];
+const semanticGroups = ['genres', 'styles', 'moods', 'themes', 'use_cases', 'time_of_day', 'axes', 'content_warnings'];
 const albums = new Set((JSON.parse(fs.readFileSync('albums.json', 'utf8')).albums || []).map(item => String(item.key || '')).filter(Boolean));
 const templatePath = 'data/track-profiles/track-profile.template.json';
 if (!fs.existsSync(templatePath)) fail('Отсутствует эталонный track-profile.template.json');
 const template = read(templatePath);
 if (template.uid !== '__TEMPLATE__' || template.status !== 'template' || template.version !== 'track-profile-v1') fail('Некорректный эталон TrackProfile');
+if (fs.existsSync('data/recommendation-calendar.json')) fail('Праздничный recommendation-calendar должен быть удалён');
+if ('events' in (template.finalProfile || {}) || 'seasonality' in (template.finalProfile || {})) fail('Эталон TrackProfile содержит удалённые календарные поля');
 
 const validateWeights = (uid, group, values) => {
   if (!values || typeof values !== 'object' || Array.isArray(values)) fail(`${uid}: ${group} должен быть object`);
@@ -17653,6 +17655,9 @@ for (const [uid, preview] of Object.entries(items)) {
   if (index.testData === true && (profile.testData !== true || profile.status !== 'test_fixture')) fail(`${uid}: тестовый профиль не помечен явно`);
 
   const finalProfile = profile.finalProfile || {};
+  const previewProfile = preview.finalProfile || {};
+  if ('events' in finalProfile || 'seasonality' in finalProfile) fail(`${uid}: full profile содержит удалённые календарные поля`);
+  if ('events' in previewProfile || 'seasonality' in previewProfile) fail(`${uid}: preview содержит удалённые календарные поля`);
   semanticGroups.forEach(group => {
     const sourceKey = group === 'content_warnings' ? 'warnings' : group;
     validateWeights(uid, group, finalProfile[sourceKey] || {});
