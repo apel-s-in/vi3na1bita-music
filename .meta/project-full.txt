@@ -19682,10 +19682,14 @@ export const recommendationEngine = {
 
     const stats = await metaDB.getAllStats().catch(() => []);
     const source = resolveRecommendationDataSource(stats);
-    const index = source.fullIntel
-      ? await trackProfiles.ensureIndex().catch(() => ({ items: {} }))
-      : { version: 'track-profiles-index-v1', testData: false, items: {} };
-    const listener = source.fullIntel ? await listenerProfile.get().catch(() => null) : null;
+    const index = await trackProfiles.ensureIndex().catch(() => ({
+      version: 'track-profiles-index-v1',
+      testData: false,
+      items: {}
+    }));
+    const listener = source.fullIntel
+      ? await listenerProfile.get().catch(() => null)
+      : null;
     const fullyPlayed = new Set(
       [...source.canonicalByUid.values()]
         .filter(row => num(row?.globalFullListenCount) > 0)
