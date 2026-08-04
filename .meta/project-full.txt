@@ -19709,7 +19709,6 @@ export default {
 
 //=================================================
 // FILE: /scripts/intel/shared/bus.js
-// UID.009_(GitHub-first additive rollout)_(подключать слой без тяжёлого рефакторинга)_(использовать window events как мягкую шину) UID.081_(Telemetry mapper)_(иметь чистые доменные события для future mapping)_(эмитить intel:* events централизованно) UID.094_(No-paralysis rule)_(падение intel-слоя не должно ломать плеер)_(шина обязана быть максимально безопасной и без throw)
 const PREFIX = 'intel:';
 export const intelBus = {
   on: (n, h, o) => { const e = `${PREFIX}${n}`; window.addEventListener(e, h, o); return () => { try { window.removeEventListener(e, h, o); } catch {} }; },
@@ -19749,7 +19748,6 @@ export default INTEL_CONTRACTS;
 
 //=================================================
 // FILE: /scripts/intel/shared/guards.js
-// UID.001_(Playback safety invariant)_(защитить ядро плеера)_(все intel-модули обязаны помнить что playback не трогается) UID.008_(No playback mutation by intel)_(не ломать playing playlist и позицию)_(использовать guard helpers вместо прямого вмешательства) UID.091_(No-op stubs before full implementation)_(оставить слой безопасным до реализации логики)_(делать safeCall/safeAsync и мягкие fallback) UID.095_(Ownership boundary: legacy vs intel)_(не дать future коду проломить архитектурные границы)_(guards — это policy layer, запрещающий intel считать себя владельцем playback/core truth)
 export const intelGuards = {
   getCurrentUid: () => { try { return String(window.playerCore?.getCurrentTrackUid?.() || '').trim() || null; } catch { return null; } },
   isPlaybackActive: () => { try { return !!window.playerCore?.isPlaying?.(); } catch { return false; } },
@@ -19763,7 +19761,6 @@ export default intelGuards;
 
 //=================================================
 // FILE: /scripts/intel/track/track-presentation.js
-// UID.036_(Track presentation layer)_(отделить карточную подачу от сырых данных)_(читать presentation/card fields из preview/full profile) UID.037_(Card overrides)_(разрешить ручную правку карточки)_(держать слой overrides отдельным от raw/final analysis) UID.039_(Share cards from profile)_(использовать умную подачу в UI и share)_(отдавать safe presentation snapshot для других модулей) UID.095_(Ownership boundary: legacy vs intel)_(не смешивать presentation и raw semantic truth)_(этот модуль только собирает UI-ready snapshot, но не меняет TrackProfile и не владеет карточным UI host)
 import { trackProfiles } from './track-profiles.js';
 const norm = (s = {}) => ({ hook_ru: s.hook_ru || '', tagline_ru: s.tagline_ru || s.tagline || '', one_liner_ru: s.one_liner_ru || '', short_ru: s.short_ru || '', hero_quote_ru: s.hero_quote_ru || '', badges: Array.isArray(s.badges) ? s.badges : [], chips: Array.isArray(s.chips) ? s.chips : [] });
 export const trackPresentation = {
@@ -19806,7 +19803,6 @@ export default trackProfiles;
 
 //=================================================
 // FILE: /scripts/intel/track/track-relations.js
-// UID.034_(Track relations graph)_(не ограничиваться одним similar_tracks)_(подготовить единый доступ к связям между треками) UID.035_(Similar tracks)_(дать быстрый блок похожих песен)_(читать related/similar из preview/full profile) UID.041_(Showcase semantic filters)_(готовить витрину к умным связям)_(отдавать relation sets как data-layer без UI логики) UID.095_(Ownership boundary: legacy vs intel)_(не делать relations слоем orchestration)_(track-relations только читает graph data, а не решает playback/order/navigation самостоятельно)
 import { trackProfiles } from './track-profiles.js';
 export const trackRelations = {
   async init() { return true; },
