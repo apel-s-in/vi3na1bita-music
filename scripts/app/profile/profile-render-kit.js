@@ -1,6 +1,4 @@
-// UID.096_(Helper-first anti-duplication policy)_(единый renderer-kit для profile/cloud UI)_(row/warn/score helpers без копипасты)
-// UID.112_(Profile command center)_(backup/sync/recovery/ledger/trust UI в одном визуальном стиле)_(карточки, meta rows, actions, sync log)
-
+// Общие безопасные render helpers профиля.
 const safeNum = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 export const esc = s => window.Utils?.escapeHtml?.(String(s || '')) || String(s || '');
@@ -68,10 +66,7 @@ export const renderSmallListRow = ({ icon = '', title = '', desc = '', attrs = '
 export const renderInlineActions = actions =>
   `<div class="modal-choice-actions profile-inline-actions">${(actions || []).map(x => `<button type="button" class="modal-action-btn ${x.primary ? 'online' : ''}" ${x.attrs || ''}>${esc(x.text || 'OK')}</button>`).join('')}</div>`;
 
-export const renderCloudStatPair = ({ localSummary: l, cloudSummary: c } = {}) =>
-  `<div style="display:flex;gap:10px;margin:10px 0;text-align:center"><div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 8px"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💾 На устройстве</div><div style="font-size:18px;font-weight:900;color:#fff">🏆 ${safeNum(l?.achievementsCount || 0)}</div><div style="font-size:11px;color:#eaf2ff">⭐ ${safeNum(l?.favoritesCount || 0)} · событий: ${safeNum(l?.eventCount || 0)}</div></div><div style="flex:1;background:rgba(77,170,255,.08);border:1px solid rgba(77,170,255,.25);border-radius:12px;padding:10px 8px"><div style="font-size:10px;color:#8ab8fd;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">☁️ В облаке</div><div style="font-size:18px;font-weight:900;color:#fff">🏆 ${safeNum(c?.achievementsCount || 0)}</div><div style="font-size:11px;color:#eaf2ff">⭐ ${safeNum(c?.favoritesCount || 0)} · событий: ${safeNum(c?.eventCount || 0)}</div></div></div>`;
-
 export const renderSyncLogRow = r =>
   `<div class="profile-list-item sync-log-row"><div style="font-size:20px">${r?.ok ? '✅' : '⚠️'}</div><div class="log-info"><div class="log-title">${esc(fmtDateTime(r?.timestamp))} · ${esc(r?.reason || 'sync')}</div><div class="log-desc">${esc(r?.ok ? 'успешно' : `ошибка: ${r?.error || 'unknown'}`)}</div><div class="log-desc">hash: ${esc(r?.hash || '—')} · domains: ${esc((r?.domains || []).join(', ') || '—')}</div><div class="log-desc">shared: ${r?.uploadedShared ? 'да' : 'нет'} · archive: ${r?.uploadedEventArchive ? 'да' : 'нет'} · device: ${r?.uploadedDevice ? 'да' : 'нет'}</div></div></div>`;
 
-export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderStatusPill, renderDeviceTitle, renderModalNote, renderActionGrid, renderSmallListRow, renderInlineActions, renderCloudStatPair, renderSyncLogRow };
+export default { esc, fmtDateTime, fmtTime, renderMetaBox, renderSectionCard, renderCloudSectionCard, renderKeyValueRow, renderWarnList, renderScoreBar, renderStatusPill, renderDeviceTitle, renderModalNote, renderActionGrid, renderSmallListRow, renderInlineActions, renderSyncLogRow };
