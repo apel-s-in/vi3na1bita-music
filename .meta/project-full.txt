@@ -136,7 +136,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
@@ -16197,6 +16197,120 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
 export default { validateBackupAnalytics };
 
 //=================================================
+// FILE: /scripts/ci/generate-intel-test-profiles.mjs
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+
+const OUTPUT_DIR = path.resolve('data/track-profiles');
+const INDEX_PATH = path.resolve('data/track-profiles-index.json');
+const album = 'v-ssore';
+const albumTitle = 'В Ссоре';
+
+const specs = [
+  ['VS-01', 'Живой', ['rock'], ['uplifting', 'energetic'], ['dreams_goals', 'heroism'], { energy: .78, valence: .66, arousal: .72, epicness: .64, family_friendly: .82 }],
+  ['VS-02', 'Клаустрофобия', ['alternative_rock'], ['anxious', 'tense'], ['mental_health', 'self_reflection'], { energy: .62, valence: .22, arousal: .8, tension: .88, family_friendly: .55 }],
+  ['VS-03', 'В ссоре', ['rock', 'pop'], ['angry', 'bitter'], ['love', 'breakup'], { energy: .74, valence: .28, arousal: .76, aggressiveness: .58, romance_intensity: .66 }],
+  ['VS-04', 'Тише', ['ballad_pop'], ['calm', 'melancholic'], ['self_reflection', 'love'], { energy: .3, valence: .38, melancholy: .74, warmth: .62, family_friendly: .9 }],
+  ['VS-05', 'Мирись', ['pop', 'rock'], ['hopeful', 'romantic'], ['love', 'friendship'], { energy: .58, valence: .76, romance_intensity: .8, warmth: .84, family_friendly: .95 }],
+  ['VS-06', 'Monsieur Жор', ['rock'], ['funny', 'ironic'], ['humor', 'satire'], { energy: .7, valence: .68, humor: .9, storytelling: .55, family_friendly: .72 }],
+  ['VS-07', 'Закатай губу', ['alternative_rock'], ['rebellious', 'sarcastic'], ['self_reflection', 'social_critique'], { energy: .82, valence: .42, aggressiveness: .72, humor: .55, socialness: .58 }],
+  ['VS-08', 'Царевна', ['orchestral_pop', 'rock'], ['whimsical', 'epic'], ['magic_fantasy', 'storytelling'], { energy: .64, valence: .62, epicness: .86, storytelling: .9, family_friendly: .88 }],
+  ['VS-09', 'Печаль', ['ballad_pop'], ['sad', 'melancholic'], ['loss_grief', 'self_reflection'], { energy: .24, valence: .14, melancholy: .94, warmth: .42, family_friendly: .85 }],
+  ['VS-10', 'Любовь и Ненависть', ['rock', 'alternative_rock'], ['heartbroken', 'angry'], ['love', 'heartbreak'], { energy: .76, valence: .2, arousal: .8, romance_intensity: .9, tension: .74 }]
+];
+
+const weighted = values => Object.fromEntries(values.map((value, index) => [value, Math.max(.55, .85 - index * .15)]));
+const similar = index => [specs[(index + 1) % specs.length][0], specs[(index + specs.length - 1) % specs.length][0]];
+
+const build = (spec, index) => {
+  const [uid, title, genres, moods, themes, axes] = spec;
+  const finalProfile = {
+    genres: weighted(genres),
+    moods: weighted(moods),
+    themes: weighted(themes),
+    use_cases: { background: .55, walking: .5 },
+    events: {},
+    seasonality: {},
+    time_of_day: {},
+    axes,
+    warnings: {}
+  };
+  const presentation = {
+    tagline_ru: `Тестовый профиль: ${title}`,
+    hook_ru: 'Демонстрационная semantic-карточка',
+    one_liner_ru: 'Произвольные данные для проверки технической работы INTEL.',
+    mini_description_ru: 'Не является правдивым анализом музыки или текста.',
+    hero_quote_ru: '',
+    badges: ['TEST'],
+    chips: [...genres, ...moods].slice(0, 4)
+  };
+  return {
+    version: 'track-profile-v1',
+    taxonomyVersion: 'taxonomy-v2',
+    uid,
+    title,
+    album,
+    albumTitle,
+    status: 'test_fixture',
+    testData: true,
+    generatedAt: new Date().toISOString(),
+    musicAnalysis: {
+      source: 'test_fixture',
+      verified: false,
+      bpm: null,
+      key: null,
+      genres: finalProfile.genres,
+      moods: finalProfile.moods,
+      axes
+    },
+    lyricAnalysis: {
+      source: 'test_fixture',
+      verified: false,
+      summary_ru: 'Демонстрационное описание. Требуется ручная замена правдивым анализом.',
+      themes: finalProfile.themes,
+      warnings: {}
+    },
+    finalProfile,
+    presentation,
+    relations: {
+      similar_tracks: similar(index),
+      relation_types: {
+        semantic_preview: similar(index)
+      }
+    }
+  };
+};
+
+fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+const profiles = specs.map(build);
+profiles.forEach(profile => {
+  fs.writeFileSync(path.join(OUTPUT_DIR, `${profile.uid}.json`), `${JSON.stringify(profile, null, 2)}\n`, 'utf8');
+});
+
+const items = Object.fromEntries(profiles.map(profile => [profile.uid, {
+  uid: profile.uid,
+  title: profile.title,
+  album: profile.album,
+  albumTitle: profile.albumTitle,
+  status: profile.status,
+  testData: true,
+  finalProfile: profile.finalProfile,
+  presentation: profile.presentation,
+  relations: profile.relations
+}]));
+
+fs.writeFileSync(INDEX_PATH, `${JSON.stringify({
+  version: 'track-profiles-index-v1',
+  generatedAt: new Date().toISOString(),
+  taxonomyVersion: 'taxonomy-v2',
+  testData: true,
+  items
+}, null, 2)}\n`, 'utf8');
+
+console.log(`Generated ${profiles.length} explicit test TrackProfiles`);
+
+//=================================================
 // FILE: /scripts/ci/generate-listen-catalog.mjs
 #!/usr/bin/env node
 
@@ -20537,14 +20651,27 @@ export default trackPresentation;
 
 //=================================================
 // FILE: /scripts/intel/track/track-profiles.js
-// UID.019_(Compact TrackProfile index)_(быстро фильтровать и рекомендовать каталог)_(загружать и кэшировать легкий index отдельно от full profiles) UID.020_(Full TrackProfile per uid)_(открывать детальную карточку трека)_(лениво загружать файлы data/track-profiles/UID.json) UID.021_(musicAnalysis block)_(подготовить аудио-паспорт трека)_(читать этот блок из full profile когда он появится) UID.022_(lyricAnalysis block)_(подготовить текстовый паспорт трека)_(читать этот блок из full profile когда он появится) UID.023_(finalProfile block)_(иметь fused truth для рекомендаций)_(отдавать finalProfile из full JSON без влияния на playback) UID.088_(Profiles data layout)_(сохранить лёгкий startup)_(держать индекс отдельно и полные профили грузить по uid) UID.095_(Ownership boundary: legacy vs intel)_(не превращать semantic profiles в новый source-of-truth для playback/content)_(track-profiles слой только читает static semantic data и не владеет media/state logic)
 const st = { idx: null, idxLoadedAt: 0, cache: new Map(), api: null };
 const getUrl = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_INDEX_URL || './data/track-profiles-index.json');
 const getDir = () => String(window.APP_CONFIG?.INTEL_LAYER_PROFILE_DIR || './data/track-profiles/').replace(/\/+$/, '') + '/';
 const fetchJ = async (u, k) => { const cU = `${u}?cb=${Date.now()}`, fc = window.Utils?.fetchCache; if (fc?.getJson) return fc.getJson({ key: k, url: cU, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'no-cache' } }); const r = await (window.NetPolicy?.fetchWithTraffic?.(cU, { cache: 'no-cache' }) || fetch(cU, { cache: 'no-cache' })); if (!r.ok) throw 1; return r.json(); };
 export const trackProfiles = {
   async init(api = {}) { st.api = api; return true; },
-  async ensureIndex() { if (st.idx) return st.idx; try { const d = await fetchJ(getUrl(), 'intel:track-profiles-index:v1'); st.idx = d && typeof d === 'object' ? d : { items: {} }; st.idxLoadedAt = Date.now(); window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(st.idx.items || {}).length } })); return st.idx; } catch { return st.idx = { version: 'track-profiles-index-v1', items: {} }; } },
+  async ensureIndex() {
+    if (st.idx) return st.idx;
+    try {
+      const loaded = await fetchJ(getUrl(), 'intel:track-profiles-index:v1');
+      const value = loaded && typeof loaded === 'object' ? loaded : { items: {} };
+      st.idx = value.testData === true && window.APP_CONFIG?.INTEL_TEST_PROFILES_ENABLED !== true
+        ? { version: value.version || 'track-profiles-index-v1', taxonomyVersion: value.taxonomyVersion || 'taxonomy-v2', testData: false, items: {} }
+        : value;
+      st.idxLoadedAt = Date.now();
+      window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(st.idx.items || {}).length, testData: st.idx.testData === true } }));
+      return st.idx;
+    } catch {
+      return st.idx = { version: 'track-profiles-index-v1', testData: false, items: {} };
+    }
+  },
   async reloadIndex() { st.idx = null; st.idxLoadedAt = 0; return this.ensureIndex(); },
   async hasPreview(uid) { return !!this.getPreview(uid) || !!(await this.ensureIndex()).items?.[String(uid || '').trim()]; },
   getPreview: u => { const k = String(u || '').trim(); return k && st.idx?.items ? st.idx.items[k] || null : null; },
