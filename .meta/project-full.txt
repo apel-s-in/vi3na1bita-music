@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/intel/listener/] listener-profile.js
 [/scripts/intel/recs/] recommendation-data-source.js, recommendation-engine.js, recommendation-reasons.js
 [/scripts/intel/shared/] bus.js, contracts.js, guards.js
-[/scripts/intel/track/] track-presentation.js, track-profiles.js, track-relations.js, track-similarity.js
+[/scripts/intel/track/] track-presentation.js, track-profiles.js, track-similarity.js
 [/scripts/intel/ui/] track-profile-modal.js
 [/scripts/offline/] cache-db.js, net-policy.js, offline-manager.js, track-resolver.js, update-checker.js
 [/scripts/ui/] app-modals.js, cache-progress-overlay.js, icon-utils.js, logo-pulse.js, lyrics-modal.js, modals.js, news-inline.js, notify.js, offline-indicators.js, offline-modal.js, progress-formatters.js, sleep-timer.js, statistics-modal.js, sysinfo.js, track-statistics-modal.js
@@ -19851,7 +19851,7 @@ const emptyApi = flags => ({
   guards: intelGuards,
   trackProfiles: null,
   trackPresentation: null,
-  trackRelations: null,
+  trackSimilarity: null,
   listenerProfile: null,
   recommendationEngine: null,
   ui: { trackProfileModal: null },
@@ -19894,14 +19894,14 @@ export const initIntelBootstrap = async ({ W = window, C = W.APP_CONFIG || {}, f
       const [
         { trackProfiles },
         { trackPresentation },
-        { trackRelations },
+        { trackSimilarity },
         { listenerProfile },
         { recommendationEngine },
         { trackProfileModal }
       ] = await Promise.all([
         import('./track/track-profiles.js'),
         import('./track/track-presentation.js'),
-        import('./track/track-relations.js'),
+        import('./track/track-similarity.js'),
         import('./listener/listener-profile.js'),
         import('./recs/recommendation-engine.js'),
         import('./ui/track-profile-modal.js')
@@ -19910,7 +19910,7 @@ export const initIntelBootstrap = async ({ W = window, C = W.APP_CONFIG || {}, f
       Object.assign(api, {
         trackProfiles,
         trackPresentation,
-        trackRelations,
+        trackSimilarity,
         listenerProfile,
         recommendationEngine,
         ui: { trackProfileModal }
@@ -19919,7 +19919,7 @@ export const initIntelBootstrap = async ({ W = window, C = W.APP_CONFIG || {}, f
       const initialized = await Promise.allSettled([
         trackProfiles.init(api),
         trackPresentation.init(api),
-        trackRelations.init(api),
+        trackSimilarity.init(api),
         listenerProfile.init(api),
         recommendationEngine.init(api),
         trackProfileModal.init(api)
@@ -20642,16 +20642,6 @@ export const trackProfiles = {
   getState: () => ({ indexLoaded: !!st.idx, indexLoadedAt: st.idxLoadedAt, cachedProfiles: st.cache.size })
 };
 export default trackProfiles;
-
-//=================================================
-// FILE: /scripts/intel/track/track-relations.js
-import { trackProfiles } from './track-profiles.js';
-export const trackRelations = {
-  async init() { return true; },
-  async getRelations(uid) { const f = await trackProfiles.getProfile(uid); if (f?.relations && typeof f.relations === 'object') return f.relations; return trackProfiles.getPreview(uid)?.relations || {}; },
-  async getSimilar(uid) { const r = await this.getRelations(uid); if (Array.isArray(r.similar_tracks)) return r.similar_tracks; const p = trackProfiles.getPreview(uid); return Array.isArray(p?.similar_tracks) ? p.similar_tracks : []; }
-};
-export default trackRelations;
 
 //=================================================
 // FILE: /scripts/intel/track/track-similarity.js
