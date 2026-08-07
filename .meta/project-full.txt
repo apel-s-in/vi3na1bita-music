@@ -17408,8 +17408,9 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/intel/track/track-similarity.js', 'technicalConfidence');
   contains('scripts/ci/generate-track-profiles-index.mjs', 'track-profiles-index-v4');
   contains('scripts/ci/normalize-track-profile.mjs', 'resolveAlias');
-  contains('scripts/ci/generate-track-profile-review-context.mjs', 'run-3.json');
   contains('data/track-profiles/FINALIZE-PROMPT.txt', 'ПРИОРИТЕТ ИСТОЧНИКОВ');
+  assert(!fs.existsSync(path.join(root, 'scripts/ci/generate-track-profile-review-context.mjs')), 'Review-context generator удалён');
+  assert(!fs.existsSync(path.join(root, '.github/workflows/generate-track-profile-review.yml')), 'Review-context workflow удалён');
   excludes('scripts/core/config.js', /INTEL_TEST_PROFILES_ENABLED/, 'Тестовый TrackProfile flag снова добавлен');
   excludes('scripts/intel/flags.js', /testProfilesEnabled|INTEL_TEST_PROFILES_ENABLED/, 'INTEL flags снова поддерживают фиктивные профили');
   assert(!fs.existsSync(path.join(root, 'data/recommendation-calendar.json')), 'Праздничный recommendation-calendar удалён');
