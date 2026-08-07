@@ -129,7 +129,7 @@ export const buildGalleryRecommendationCards = async () => {
 
   await window.TrackRegistry?.ensurePopulated?.();
   const [index, localRows, listener] = await Promise.all([
-    trackProfiles.ensureIndex().catch(() => ({ items: {}, testData: false })),
+    trackProfiles.ensureIndex().catch(() => ({ items: {} })),
     metaDB.getAllStats().catch(() => []),
     listenerProfile.get().catch(() => null)
   ]);
