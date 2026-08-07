@@ -20792,8 +20792,8 @@ export default intelBus;
 export const INTEL_CONTRACTS = Object.freeze({
   version: 'intel-contracts-v2',
   taxonomyVersion: 'taxonomy-v3',
-  trackProfileVersion: 'track-profile-v3',
-  vocabularyVersion: 'track-profile-vocabulary-v1',
+  trackProfileVersion: 'track-profile-v4',
+  vocabularyVersion: 'track-profile-vocabulary-v2',
   profileIndexUrl: './data/track-profiles-index.json',
   profileDir: './data/track-profiles/',
   stores: Object.freeze({
