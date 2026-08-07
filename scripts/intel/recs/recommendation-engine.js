@@ -8,6 +8,7 @@ import { trackProfiles } from '../track/track-profiles.js';
 import { scoreTrackSimilarity } from '../track/track-similarity.js';
 import { getRecommendationReasonText } from './recommendation-reasons.js';
 import { resolveRecommendationDataSource } from './recommendation-data-source.js';
+import { composeRecommendationScore, getRecommendationBehaviorSignals } from './recommendation-score.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -67,16 +68,20 @@ const blockedByControls = (preview, controls) => {
   return false;
 };
 
-const semanticScore = (preview, listener) => {
-  if (!preview) return { total: 0, breakdown: {} };
+const buildListenerVectors = listener => {
   const preferences = listener?.preferences || {};
+  return Object.fromEntries(['genres', 'styles', 'moods', 'themes', 'use_cases', 'axes'].map(key => [key, preferenceVector(preferences[key])]));
+};
+
+const semanticScore = (preview, preferences) => {
+  if (!preview) return { total: 0, breakdown: {} };
   const breakdown = {
-    genres: similarity(preferenceVector(preferences.genres), vector(profileSection(preview, 'genres'))),
-    styles: similarity(preferenceVector(preferences.styles), vector(profileSection(preview, 'styles'))),
-    moods: similarity(preferenceVector(preferences.moods), vector(profileSection(preview, 'moods'))),
-    themes: similarity(preferenceVector(preferences.themes), vector(profileSection(preview, 'themes'))),
-    use_cases: similarity(preferenceVector(preferences.use_cases), vector(profileSection(preview, 'use_cases'))),
-    axes: similarity(preferenceVector(preferences.axes), vector(profileSection(preview, 'axes')))
+    genres: similarity(preferences.genres, vector(profileSection(preview, 'genres'))),
+    styles: similarity(preferences.styles, vector(profileSection(preview, 'styles'))),
+    moods: similarity(preferences.moods, vector(profileSection(preview, 'moods'))),
+    themes: similarity(preferences.themes, vector(profileSection(preview, 'themes'))),
+    use_cases: similarity(preferences.use_cases, vector(profileSection(preview, 'use_cases'))),
+    axes: similarity(preferences.axes, vector(profileSection(preview, 'axes')))
   };
   return {
     total: breakdown.genres * 0.2 + breakdown.styles * 0.08 + breakdown.moods * 0.25 + breakdown.themes * 0.2 + breakdown.use_cases * 0.12 + breakdown.axes * 0.15,
@@ -124,34 +129,21 @@ export const recommendationEngine = {
     const listener = source.fullIntel
       ? await listenerProfile.get().catch(() => null)
       : null;
+    const listenerVectors = buildListenerVectors(listener);
     const controls = getRecommendationControls();
     const seed = new Date().toISOString().slice(0, 10);
     const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
     const currentPreview = currentUid ? index?.items?.[currentUid] || trackProfiles.getPreview(currentUid) : null;
 
-    const candidates = (window.TrackRegistry?.getAllUids?.() || [])
-      .map(safe)
-      .filter(Boolean)
-      .filter(uid => uid !== currentUid)
-      .map(uid => {
-        const preview = index?.items?.[uid] || trackProfiles.getPreview(uid);
-        if (!preview || blockedByControls(preview, controls)) return null;
-        const semantic = semanticScore(preview, listener);
+    const candidates = Object.entries(index?.items || {})
+      .filter(([uid]) => safe(uid) && uid !== currentUid)
+      .map(([uid, preview]) => {
+        if (blockedByControls(preview, controls)) return null;
+        const semantic = semanticScore(preview, listenerVectors);
         const canonical = source.canonicalByUid.get(uid) || {};
         const local = source.localByUid.get(uid) || {};
-        const completion = Math.min(1, num(local.averageCompletionRate));
-        const skipPenalty = Math.min(1, (num(local.microSkips) + num(local.earlySkips)) / Math.max(1, num(local.analysisEligibleSessions)));
-        const confirmedAffinity = source.serverAvailable
-          ? Math.min(1, (num(canonical.globalValidListenCount) + num(canonical.globalListenSeconds) / 1800) / 8)
-          : 0;
-        const fullListens = num(canonical.globalFullListenCount);
-        const discovery = fullListens === 0 ? 1 : 0;
-        const favoriteAffinity = window.FavoritesManager?.isLiked?.(uid) ? 1 : 0;
-        const saturationPenalty = Math.min(1, Math.max(0, fullListens - 5) / 20);
-        const sessionSimilarity = currentPreview ? scoreTrackSimilarity(currentPreview, preview) : null;
-        const sessionAffinity = sessionSimilarity?.coverage >= 0.5 ? num(sessionSimilarity.score) : 0;
-        const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
-        const score = semantic.total * 100 + sessionAffinity * 10 + confirmedAffinity * 4 + favoriteAffinity * 4 + discovery * 2 + completion * 2 - skipPenalty * 8 - saturationPenalty * 6 + deterministicTie;
+            ...behavior,
+            authority: source.authority,
         const reasonCode = sessionAffinity >= 0.72
           ? 'session_next'
           : semantic.total >= 0.12
@@ -167,12 +159,7 @@ export const recommendationEngine = {
             semantic: semantic.total,
             sessionAffinity,
             sessionCoverage: num(sessionSimilarity?.coverage),
-            confirmedAffinity,
-            favoriteAffinity,
-            discovery,
-            saturationPenalty,
-            completion,
-            skipPenalty,
+            ...behavior,
             authority: source.authority,
             ...semantic.breakdown
           }
