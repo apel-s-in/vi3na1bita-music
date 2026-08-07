@@ -23070,7 +23070,7 @@ export default { openTrackStatisticsModal };
   },
   "languages": {
     "ru": "Русский",
-    "rf": "Французский",
+    "fr": "Французский",
     "en": "Английский",
     "mixed": "Смешанный язык",
     "instrumental": "Инструментальный трек",
