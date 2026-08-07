@@ -101,6 +101,18 @@ self.addEventListener('fetch', e => {
 
   if (isAirplaneMode) return e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
 
+  if (url.origin === self.location.origin && url.pathname.endsWith('/data/track-profiles-index.json')) return e.respondWith((async () => {
+    const cache = await caches.open(CORE_CACHE);
+    const key = new Request(norm(url.href));
+    try {
+      const response = await fetch(new Request(req, { cache: 'no-cache' }));
+      if (response.ok && !response.redirected) await cache.put(key, response.clone());
+      return response;
+    } catch {
+      return await cache.match(key) || new Response(null, { status: 503 });
+    }
+  })());
+
   if (STATIC_SET.has(norm(url.href))) return e.respondWith((async () => {
     const c = await caches.open(CORE_CACHE), key = new Request(norm(url.href)), cached = await c.match(key);
     if (cached) return cached;
