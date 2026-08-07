@@ -135,6 +135,9 @@ jobs:
       - name: Validate TrackProfile similarity
         run: node scripts/ci/test-track-similarity.mjs
 
+      - name: Validate Recommendation scoring
+        run: node scripts/ci/test-recommendation-score.mjs
+
       - name: Validate pure Backup scheduler contract
         run: node scripts/ci/test-backup-scheduler.mjs
 
