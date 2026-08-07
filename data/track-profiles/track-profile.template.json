@@ -1,7 +1,7 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "__TEMPLATE__",
   "status": "template",
   "testData": false,
@@ -12,6 +12,14 @@
     "key": null,
     "mode": null,
     "timeSignature": null,
+    "loudnessLufs": null,
+    "dynamicRange": null,
+    "technicalConfidence": {
+      "bpm": 0,
+      "key": 0,
+      "loudnessLufs": 0,
+      "dynamicRange": 0
+    },
     "instrumentation": {},
     "vocalPresence": null,
     "vocalRoles": {},
