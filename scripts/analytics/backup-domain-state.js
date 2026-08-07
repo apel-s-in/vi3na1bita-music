@@ -199,7 +199,7 @@ const logAndApply = async (type, uid, data) => {
   return event;
 };
 
-let pendingAcceptance = null;
+const pendingAcceptances = new Map();
 let initialized = false;
 
 export const recommendationMemory = {
@@ -208,9 +208,10 @@ export const recommendationMemory = {
     initialized = true;
     window.addEventListener('player:play', event => {
       const uid = safe(event.detail?.uid);
-      const pending = pendingAcceptance;
-      if (!pending || pending.uid !== uid || Date.now() - pending.at > ACCEPT_WINDOW_MS) return;
-      pendingAcceptance = null;
+      const pending = pendingAcceptances.get(uid);
+      if (!pending) return;
+      pendingAcceptances.delete(uid);
+      if (Date.now() - pending.at > ACCEPT_WINDOW_MS) return;
       this.record('accepted', pending).catch(() => null);
     });
     return true;
@@ -230,7 +231,13 @@ export const recommendationMemory = {
     if (kind === 'shown' && Date.now() - row.lastShownAt < SHOWN_DEDUP_MS) return null;
     const type = `RECOMMENDATION_${kind.toUpperCase()}`;
     const event = await logAndApply(type, cleanUid, { uid: cleanUid, context: cleanContext, reasonCode: safe(reasonCode), cooldownUntil: num(cooldownUntil) });
-    if (kind === 'clicked') pendingAcceptance = { uid: cleanUid, context: cleanContext, reasonCode: safe(reasonCode), at: Date.now() };
+    if (kind === 'clicked') {
+      const at = Date.now();
+      pendingAcceptances.forEach((pending, pendingUid) => {
+        if (at - pending.at > ACCEPT_WINDOW_MS) pendingAcceptances.delete(pendingUid);
+      });
+      pendingAcceptances.set(cleanUid, { uid: cleanUid, context: cleanContext, reasonCode: safe(reasonCode), at });
+    }
     return event;
   },
   shown(options) {
