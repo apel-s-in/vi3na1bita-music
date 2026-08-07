@@ -20927,11 +20927,11 @@ import { trackProfiles } from './track-profiles.js';
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const DIMENSIONS = Object.freeze({
-  genres: 0.16,
-  styles: 0.07,
-  moods: 0.14,
-  themes: 0.13,
-  use_cases: 0.07,
+  genres: 0.15,
+  styles: 0.06,
+  moods: 0.13,
+  themes: 0.12,
+  use_cases: 0.06,
   time_of_day: 0.03,
   axes: 0.17,
   instrumentation: 0.07,
@@ -20939,8 +20939,10 @@ const DIMENSIONS = Object.freeze({
   vocalDelivery: 0.03,
   arrangementTags: 0.035,
   productionTags: 0.025,
-  bpm: 0.03,
-  tonality: 0.025
+  bpm: 0.025,
+  tonality: 0.02,
+  loudnessLufs: 0.01,
+  dynamicRange: 0.01
 });
 
 const vector = raw => raw && typeof raw === 'object' && !Array.isArray(raw)
@@ -20982,6 +20984,14 @@ const bpmSimilarity = (left, right) => {
   const doubleTime = Math.abs(a * 2 - b);
   return Math.max(0, 1 - Math.min(direct, halfTime, doubleTime) / 45);
 };
+const technicalSimilarity = (left, right, field, span) => {
+  const a = Number(left?.musicAnalysis?.[field]);
+  const b = Number(right?.musicAnalysis?.[field]);
+  const confidenceA = num(left?.musicAnalysis?.technicalConfidence?.[field]);
+  const confidenceB = num(right?.musicAnalysis?.technicalConfidence?.[field]);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || confidenceA < 0.6 || confidenceB < 0.6) return null;
+  return Math.max(0, 1 - Math.abs(a - b) / span);
+};
 
 const tonalitySimilarity = (left, right) => {
   const leftKey = safe(left?.musicAnalysis?.key);
@@ -20997,6 +21007,8 @@ const tonalitySimilarity = (left, right) => {
 const dimensionValue = (dimension, left, right) => {
   if (dimension === 'bpm') return bpmSimilarity(left, right);
   if (dimension === 'tonality') return tonalitySimilarity(left, right);
+  if (dimension === 'loudnessLufs') return technicalSimilarity(left, right, 'loudnessLufs', 12);
+  if (dimension === 'dynamicRange') return technicalSimilarity(left, right, 'dynamicRange', 15);
   if (dimension === 'axes') return axisSimilarity(left?.finalProfile?.axes, right?.finalProfile?.axes);
   if (dimension in (left?.finalProfile || {}) || dimension in (right?.finalProfile || {})) {
     return cosine(left?.finalProfile?.[dimension], right?.finalProfile?.[dimension]);
