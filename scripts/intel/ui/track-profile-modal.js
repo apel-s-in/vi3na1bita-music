@@ -1,5 +1,4 @@
 import { trackProfiles } from '../track/track-profiles.js';
-import { trackPresentation } from '../track/track-presentation.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const esc = value => window.Utils?.escapeHtml?.(safe(value)) || safe(value);
@@ -47,7 +46,7 @@ export const trackProfileModal = {
     const profile = await trackProfiles.getProfile(cleanUid);
     if (!profile) return false;
 
-    const presentation = await trackPresentation.getPresentation(cleanUid);
+    const presentation = profile.presentation || {};
     const track = window.TrackRegistry?.getTrackByUid?.(cleanUid);
     const music = profile.musicAnalysis || {};
     const lyrics = profile.lyricAnalysis || {};
