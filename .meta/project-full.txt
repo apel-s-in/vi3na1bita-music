@@ -145,7 +145,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/intel/listener/] listener-profile.js
 [/scripts/intel/recs/] recommendation-data-source.js, recommendation-engine.js, recommendation-reasons.js
 [/scripts/intel/shared/] bus.js, contracts.js, guards.js
-[/scripts/intel/track/] track-presentation.js, track-profiles.js, track-similarity.js
+[/scripts/intel/track/] track-profiles.js, track-similarity.js
 [/scripts/intel/ui/] track-profile-modal.js
 [/scripts/offline/] cache-db.js, net-policy.js, offline-manager.js, track-resolver.js, update-checker.js
 [/scripts/ui/] app-modals.js, cache-progress-overlay.js, icon-utils.js, logo-pulse.js, lyrics-modal.js, modals.js, news-inline.js, notify.js, offline-indicators.js, offline-modal.js, progress-formatters.js, sleep-timer.js, statistics-modal.js, sysinfo.js, track-statistics-modal.js
@@ -3415,7 +3415,7 @@ const logAndApply = async (type, uid, data) => {
   return event;
 };
 
-let pendingAcceptance = null;
+const pendingAcceptances = new Map();
 let initialized = false;
 
 export const recommendationMemory = {
@@ -3424,9 +3424,10 @@ export const recommendationMemory = {
     initialized = true;
     window.addEventListener('player:play', event => {
       const uid = safe(event.detail?.uid);
-      const pending = pendingAcceptance;
-      if (!pending || pending.uid !== uid || Date.now() - pending.at > ACCEPT_WINDOW_MS) return;
-      pendingAcceptance = null;
+      const pending = pendingAcceptances.get(uid);
+      if (!pending) return;
+      pendingAcceptances.delete(uid);
+      if (Date.now() - pending.at > ACCEPT_WINDOW_MS) return;
       this.record('accepted', pending).catch(() => null);
     });
     return true;
@@ -3446,7 +3447,13 @@ export const recommendationMemory = {
     if (kind === 'shown' && Date.now() - row.lastShownAt < SHOWN_DEDUP_MS) return null;
     const type = `RECOMMENDATION_${kind.toUpperCase()}`;
     const event = await logAndApply(type, cleanUid, { uid: cleanUid, context: cleanContext, reasonCode: safe(reasonCode), cooldownUntil: num(cooldownUntil) });
-    if (kind === 'clicked') pendingAcceptance = { uid: cleanUid, context: cleanContext, reasonCode: safe(reasonCode), at: Date.now() };
+    if (kind === 'clicked') {
+      const at = Date.now();
+      pendingAcceptances.forEach((pending, pendingUid) => {
+        if (at - pending.at > ACCEPT_WINDOW_MS) pendingAcceptances.delete(pendingUid);
+      });
+      pendingAcceptances.set(cleanUid, { uid: cleanUid, context: cleanContext, reasonCode: safe(reasonCode), at });
+    }
     return event;
   },
   shown(options) {
@@ -20839,30 +20846,6 @@ export const intelGuards = {
   isPlainObject: v => !!v && typeof v === 'object' && !Array.isArray(v)
 };
 export default intelGuards;
-
-//=================================================
-// FILE: /scripts/intel/track/track-presentation.js
-import { trackProfiles } from './track-profiles.js';
-
-const norm = source => ({
-  tagline_ru: source?.tagline_ru || '',
-  one_liner_ru: source?.one_liner_ru || '',
-  mini_description_ru: source?.mini_description_ru || ''
-});
-
-export const trackPresentation = {
-  async init() {
-    return true;
-  },
-
-  async getPresentation(uid) {
-    const profile = await trackProfiles.getProfile(uid);
-    if (profile?.presentation) return norm(profile.presentation);
-    return norm(trackProfiles.getPreview(uid)?.presentation);
-  }
-};
-
-export default trackPresentation;
 
 //=================================================
 // FILE: /scripts/intel/track/track-profiles.js

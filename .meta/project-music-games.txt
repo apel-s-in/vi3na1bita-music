@@ -146,7 +146,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/intel/listener/] listener-profile.js
 [/scripts/intel/recs/] recommendation-data-source.js, recommendation-engine.js, recommendation-reasons.js
 [/scripts/intel/shared/] bus.js, contracts.js, guards.js
-[/scripts/intel/track/] track-presentation.js, track-profiles.js, track-similarity.js
+[/scripts/intel/track/] track-profiles.js, track-similarity.js
 [/scripts/intel/ui/] track-profile-modal.js
 [/scripts/offline/] cache-db.js, net-policy.js, offline-manager.js, track-resolver.js, update-checker.js
 [/scripts/ui/] app-modals.js, cache-progress-overlay.js, icon-utils.js, logo-pulse.js, lyrics-modal.js, modals.js, news-inline.js, notify.js, offline-indicators.js, offline-modal.js, progress-formatters.js, sleep-timer.js, statistics-modal.js, sysinfo.js, track-statistics-modal.js
