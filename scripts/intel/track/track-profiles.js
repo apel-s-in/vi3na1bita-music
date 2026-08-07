@@ -14,16 +14,16 @@ export const trackProfiles = {
   async ensureIndex() {
     if (st.idx) return st.idx;
     try {
-      const loaded = await fetchJ(getUrl(), 'intel:track-profiles-index:v3');
+      const loaded = await fetchJ(getUrl(), 'intel:track-profiles-index:v4');
       const value = loaded && typeof loaded === 'object' ? loaded : { items: {} };
       st.idx = value.testData === true && window.APP_CONFIG?.INTEL_TEST_PROFILES_ENABLED !== true
-        ? { version: value.version || 'track-profiles-index-v3', taxonomyVersion: value.taxonomyVersion || 'taxonomy-v3', vocabularyVersion: value.vocabularyVersion || 'track-profile-vocabulary-v1', testData: false, items: {} }
+        ? { version: value.version || 'track-profiles-index-v4', taxonomyVersion: value.taxonomyVersion || 'taxonomy-v3', vocabularyVersion: value.vocabularyVersion || 'track-profile-vocabulary-v2', testData: false, items: {} }
         : value;
       st.idxLoadedAt = Date.now();
       window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(st.idx.items || {}).length, testData: st.idx.testData === true } }));
       return st.idx;
     } catch {
-      return st.idx = { version: 'track-profiles-index-v3', taxonomyVersion: 'taxonomy-v3', vocabularyVersion: 'track-profile-vocabulary-v1', testData: false, items: {} };
+      return st.idx = { version: 'track-profiles-index-v4', taxonomyVersion: 'taxonomy-v3', vocabularyVersion: 'track-profile-vocabulary-v2', testData: false, items: {} };
     }
   },
   async reloadIndex() { st.idx = null; st.idxLoadedAt = 0; return this.ensureIndex(); },
