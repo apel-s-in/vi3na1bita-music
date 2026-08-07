@@ -20926,7 +20926,7 @@ const DIMENSIONS = Object.freeze({
   themes: 0.12,
   use_cases: 0.06,
   time_of_day: 0.03,
-  axes: 0.17,
+  axes: 0.185,
   instrumentation: 0.07,
   vocalRoles: 0.04,
   vocalDelivery: 0.03,
@@ -20971,7 +20971,9 @@ const axisSimilarity = (leftRaw, rightRaw) => {
 const bpmSimilarity = (left, right) => {
   const a = Number(left?.musicAnalysis?.bpm);
   const b = Number(right?.musicAnalysis?.bpm);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  const confidenceA = num(left?.musicAnalysis?.technicalConfidence?.bpm);
+  const confidenceB = num(right?.musicAnalysis?.technicalConfidence?.bpm);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || confidenceA < 0.6 || confidenceB < 0.6) return null;
   const direct = Math.abs(a - b);
   const halfTime = Math.abs(a - b * 2);
   const doubleTime = Math.abs(a * 2 - b);
@@ -20991,7 +20993,9 @@ const tonalitySimilarity = (left, right) => {
   const rightKey = safe(right?.musicAnalysis?.key);
   const leftMode = safe(left?.musicAnalysis?.mode);
   const rightMode = safe(right?.musicAnalysis?.mode);
-  if (!leftKey || !rightKey || !leftMode || !rightMode) return null;
+  const confidenceA = num(left?.musicAnalysis?.technicalConfidence?.key);
+  const confidenceB = num(right?.musicAnalysis?.technicalConfidence?.key);
+  if (!leftKey || !rightKey || !leftMode || !rightMode || confidenceA < 0.6 || confidenceB < 0.6) return null;
   if (leftKey === rightKey && leftMode === rightMode) return 1;
   if (leftMode === rightMode) return 0.35;
   return 0;
