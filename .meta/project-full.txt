@@ -10795,6 +10795,13 @@ const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value))
 const esc = value => window.Utils?.escapeHtml?.(safe(value)) || safe(value);
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FORGOTTEN_AFTER_MS = 21 * DAY_MS;
+const CARD_CACHE_MS = 60 * 1000;
+let cardCache = null;
+
+const invalidateCardCache = () => {
+  cardCache = null;
+};
+['stats:updated', 'stats:rebuilt', 'favorites:updated', 'intel:listener-profile:updated', 'intel:track-profiles:index-ready', 'account:data-switching'].forEach(name => window.addEventListener(name, invalidateCardCache));
 
 const hash32 = value => {
   const text = safe(value);
@@ -10887,6 +10894,9 @@ export const buildGalleryRecommendationCards = async () => {
   const flags = getIntelFlags();
   if (!flags.recommendationsEnabled || window.APP_CONFIG?.INTEL_GALLERY_CARDS_ENABLED === false) return [];
 
+  const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
+  if (cardCache && cardCache.currentUid === currentUid && Date.now() - cardCache.builtAt < CARD_CACHE_MS) return cardCache.cards;
+
   await window.TrackRegistry?.ensurePopulated?.();
   const [index, localRows, listener] = await Promise.all([
     trackProfiles.ensureIndex().catch(() => ({ items: {} })),
@@ -10896,7 +10906,6 @@ export const buildGalleryRecommendationCards = async () => {
 
   const source = resolveRecommendationDataSource(localRows);
   const previews = previewItems(index);
-  const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
 
   const forgotten = [...source.localByUid.entries()]
     .map(([uid, row]) => ({ uid, preview: index?.items?.[uid] || null, row }))
