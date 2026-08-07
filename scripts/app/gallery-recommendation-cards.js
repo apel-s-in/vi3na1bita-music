@@ -67,7 +67,7 @@ const cardItems = (items, limit = 3) => items.slice(0, limit).map(item => {
   };
 });
 
-const makeCard = ({ id, title, icon, subtitle, reasonCode, items = [], album = null, emptyText = 'Недостаточно данных для этой подборки' }) => ({
+const makeCard = ({ id, title, icon, subtitle, reasonCode, items = [], album = null }) => ({
   type: 'recommendation',
   id,
   title,
@@ -75,8 +75,7 @@ const makeCard = ({ id, title, icon, subtitle, reasonCode, items = [], album = n
   subtitle,
   reasonCode,
   items,
-  album,
-  emptyText
+  album
 });
 
 const dominantMood = listener => safe(listener?.preferences?.moods?.[0]?.key);
@@ -168,15 +167,14 @@ export const buildGalleryRecommendationCards = async () => {
 
   const weeklyAlbum = albumOfWeek(source);
 
-  return [
+  const cards = [
     makeCard({
       id: 'forgotten-hits',
       title: 'Забытые хиты',
       icon: '🕰️',
       subtitle: 'Треки, к которым вы давно не возвращались',
       reasonCode: 'rediscovery',
-      items: cardItems(forgotten),
-      emptyText: 'Забытые хиты появятся после накопления истории прослушиваний'
+      items: cardItems(forgotten)
     }),
     makeCard({
       id: 'evening',
@@ -184,8 +182,7 @@ export const buildGalleryRecommendationCards = async () => {
       icon: '🌆',
       subtitle: 'Спокойный подбор по смысловым признакам',
       reasonCode: 'evening_fit',
-      items: cardItems(evening),
-      emptyText: 'Вечерняя подборка появится после заполнения TrackProfile'
+      items: cardItems(evening)
     }),
     makeCard({
       id: 'walking',
@@ -193,17 +190,15 @@ export const buildGalleryRecommendationCards = async () => {
       icon: '🚶',
       subtitle: 'Ритм и настроение для движения',
       reasonCode: 'walking_fit',
-      items: cardItems(walking),
-      emptyText: 'Подборка для прогулки пока не сформирована'
+      items: cardItems(walking)
     }),
     makeCard({
       id: 'favorite-mood',
       title: 'Любимое настроение',
       icon: '💙',
-      subtitle: mood ? `Ваш ведущий mood: ${mood}` : 'Определяется по фактическому времени прослушивания',
+      subtitle: mood ? `Ваше ведущее настроение: ${mood}` : 'Определяется по фактическому времени прослушивания',
       reasonCode: 'mood_fit',
-      items: cardItems(favoriteMood),
-      emptyText: 'Любимое настроение появится после накопления статистики'
+      items: cardItems(favoriteMood)
     }),
     makeCard({
       id: 'unfinished',
@@ -211,17 +206,15 @@ export const buildGalleryRecommendationCards = async () => {
       icon: '◔',
       subtitle: 'Треки с реальными незавершёнными сессиями',
       reasonCode: 'unfinished',
-      items: cardItems(unfinished),
-      emptyText: 'Сейчас нет честно определённых незавершённых треков'
+      items: cardItems(unfinished)
     }),
     makeCard({
       id: 'unusual',
       title: 'Самый необычный трек',
       icon: '✦',
-      subtitle: 'Наибольшее отличие от центра доступных TrackProfile',
+      subtitle: 'Наибольшее отличие от центра доступных смысловых профилей',
       reasonCode: 'unusual_semantic',
-      items: cardItems(unusual, 1),
-      emptyText: 'Необычный трек появится после заполнения смысловых профилей'
+      items: cardItems(unusual, 1)
     }),
     makeCard({
       id: 'similar-current',
@@ -229,8 +222,7 @@ export const buildGalleryRecommendationCards = async () => {
       icon: '≈',
       subtitle: currentUid ? `Основа: ${track(currentUid)?.title || currentUid}` : 'Сначала включите любой трек',
       reasonCode: 'current_track_similarity',
-      items: cardItems(similar),
-      emptyText: currentUid ? 'Для текущего трека ещё нет проверенных связей' : 'Включите трек, чтобы увидеть похожие'
+      items: cardItems(similar)
     }),
     makeCard({
       id: 'album-week',
@@ -238,10 +230,12 @@ export const buildGalleryRecommendationCards = async () => {
       icon: '💿',
       subtitle: weeklyAlbum?.subtitle || 'Еженедельная подборка',
       reasonCode: 'album_week',
-      album: weeklyAlbum,
-      emptyText: 'Альбом недели пока недоступен'
+      album: weeklyAlbum
     })
   ].filter(card => card.album || card.items.length);
+
+  cardCache = { currentUid, builtAt: Date.now(), cards };
+  return cards;
 };
 
 const recommendationContext = card => `gallery:${safe(card?.id || 'generic')}`;
@@ -282,17 +276,15 @@ export const renderGalleryRecommendationCard = card => {
   return `<article class="gallery-rec-card" data-gallery-card="${esc(card.id)}" aria-label="${esc(card.title)}">
     <div class="gallery-rec-card__head"><span>${esc(card.icon)}</span><b>${esc(card.title)}</b></div>
     <div class="gallery-rec-card__subtitle">${esc(card.subtitle)}</div>
-    ${primary || album ? `
-      <div class="gallery-rec-card__hero">
-        <img src="${esc(cover)}" alt="" draggable="false">
-        <div><strong>${esc(mainTitle)}</strong><small>${esc(mainMeta)}</small></div>
-      </div>
-      ${card.items.length > 1 ? `<div class="gallery-rec-card__list">${renderTrackRows(card)}</div>` : ''}
-      <div class="gallery-rec-card__actions">
-        ${primary ? `<button type="button" data-gallery-play="${esc(primary.uid)}">▶ Воспроизвести</button><button type="button" data-gallery-open="${esc(primary.uid)}">Открыть трек</button>` : ''}
-        ${album ? `<button type="button" data-gallery-album="${esc(album.key)}">Открыть альбом</button>` : ''}
-      </div>
-    ` : `<div class="gallery-rec-card__empty">${esc(card.emptyText)}</div>`}
+    <div class="gallery-rec-card__hero">
+      <img src="${esc(cover)}" alt="" draggable="false">
+      <div><strong>${esc(mainTitle)}</strong><small>${esc(mainMeta)}</small></div>
+    </div>
+    ${card.items.length > 1 ? `<div class="gallery-rec-card__list">${renderTrackRows(card)}</div>` : ''}
+    <div class="gallery-rec-card__actions">
+      ${primary ? `<button type="button" data-gallery-play="${esc(primary.uid)}">▶ Воспроизвести</button><button type="button" data-gallery-open="${esc(primary.uid)}">Открыть трек</button>` : ''}
+      ${album ? `<button type="button" data-gallery-album="${esc(album.key)}">Открыть альбом</button>` : ''}
+    </div>
     <div class="gallery-rec-card__foot">Локальный расчёт · без нового серверного запроса</div>
   </article>`;
 };
