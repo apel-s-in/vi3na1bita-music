@@ -205,7 +205,7 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/app/gallery.js', 'getItemsSnapshot');
   contains('scripts/app/recommendation-playback.js', 'playRecommendedTrack');
   contains('scripts/app/recommendation-playback.js', 'openRecommendedTrack');
-  contains('scripts/intel/recs/recommendation-engine.js', 'profileCoverage');
+  excludes('scripts/intel/recs/recommendation-engine.js', /profileCoverage|testProfile|test_fixture/, 'Recommendation Engine снова использует тестовые TrackProfile');
   contains('scripts/intel/roadmap.js', 'Transient queue и действие «Играть следующей» не реализуются');
   contains('scripts/intel/roadmap.js', 'Никаких праздничных, календарных или сезонных подборок');
   contains('scripts/ci/validate-intel-profiles.mjs', 'track-profile.template.json');
@@ -221,7 +221,8 @@ const validateRecommendationsAndStats = () => {
   excludes('scripts/app/gallery-recommendation-cards.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted|load|setPlaylist)\s*\(/, 'Gallery recommendation scorer управляет playback');
   excludes('scripts/app/gallery-recommendation-cards.js', /Играть следующей|enqueueNext|addToQueue|transientQueue/, 'Преждевременная очередь добавлена в Gallery recommendations');
   excludes('scripts/app/gallery-recommendation-cards.js', /new-year|new_year|christmas|festive|recommendation-calendar|seasonality/, 'Праздничная или сезонная рекомендация снова добавлена');
-  excludes('scripts/ci/generate-intel-test-profiles.mjs', /similar_tracks|relation_types|relations:/, 'Генератор снова записывает производные UID-связи');
+  assert(!fs.existsSync(path.join(root, 'scripts/ci/generate-intel-test-profiles.mjs')), 'Генератор фиктивных TrackProfile удалён');
+  assert(!fs.existsSync(path.join(root, '.github/workflows/generate-intel-test-profiles.yml')), 'Workflow фиктивных TrackProfile удалён');
   excludes('data/track-profiles/track-profile.template.json', /"relations"|"embedding"|"updatedAt"|"trackVersion"|"title"|"album"|"albumTitle"|"durationSec"|"source"|"analyzer"|"analyzedAt"|"provenance"|"verified"/, 'TrackProfile снова содержит дублирующие, временные или model-specific поля');
   contains('data/track-profiles/track-profile.template.json', '"loudnessLufs"');
   contains('data/track-profiles/track-profile.template.json', '"dynamicRange"');
@@ -243,7 +244,8 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/ci/normalize-track-profile.mjs', 'resolveAlias');
   contains('scripts/ci/generate-track-profile-review-context.mjs', 'run-3.json');
   contains('data/track-profiles/FINALIZE-PROMPT.txt', 'ПРИОРИТЕТ ИСТОЧНИКОВ');
-  excludes('scripts/ci/generate-intel-test-profiles.mjs', /\bevents\b|\bseasonality\b/, 'Генератор снова создаёт календарные TrackProfile поля');
+  excludes('scripts/core/config.js', /INTEL_TEST_PROFILES_ENABLED/, 'Тестовый TrackProfile flag снова добавлен');
+  excludes('scripts/intel/flags.js', /testProfilesEnabled|INTEL_TEST_PROFILES_ENABLED/, 'INTEL flags снова поддерживают фиктивные профили');
   assert(!fs.existsSync(path.join(root, 'data/recommendation-calendar.json')), 'Праздничный recommendation-calendar удалён');
   excludes('src/PlayerCore.js', /enqueueNext|transientQueue|playNextQueue/, 'Transient queue внедрена до отдельного безопасного этапа');
   excludes('scripts/app/profile/carousel-flat.js', /oldTabs/, 'legacy oldTabs');
