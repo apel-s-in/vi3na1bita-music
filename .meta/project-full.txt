@@ -137,7 +137,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
@@ -16489,6 +16489,73 @@ const R=process.cwd(),AF=path.resolve(R,'albums.json'),OF=path.resolve(R,'data/l
 const nS=s=>String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}\s]+/gu,' ').replace(/\s+/g,' ').trim(),tok=s=>nS(s).split(' ').filter(w=>w.length>1);
 async function main(){if(!fs.existsSync(AF))process.exit(2);const albs=JSON.parse(fs.readFileSync(AF,'utf8'))?.albums||[],meta={},idx={},errs=[];let tT=0,tTx=0;for(const a of albs){const aK=String(a?.key||'').trim(),aT=String(a?.title||'').trim(),b=String(a?.yandex_base||a?.github_base||a?.base||'').trim();if(!aK||!b)continue;try{const bU=b.endsWith('/')?b:`${b}/`,cfg=await(await fetch(`${bU}config.json`)).json(),trks=cfg?.tracks||[];tT+=trks.length;for(let i=0;i<trks.length;i++){const u=String(trks[i].uid||'').trim();if(!u)continue;meta[u]={t:trks[i].title||`Трек ${i+1}`,a:aT||String(cfg?.albumName||''),k:aK,n:i+1};if(!trks[i].fulltext)continue;const txt=await(await fetch(new URL(trks[i].fulltext,bU).toString())).text();tTx++;[...tok(txt),...tok(meta[u].t),...tok(meta[u].a)].forEach(k=>(idx[k]=idx[k]||new Set()).add(u));}}catch(e){errs.push(`${aK}: ${e.message}`);}}const iO=Object.fromEntries(Object.entries(idx).map(([k,v])=>[k,[...v].sort()]));fs.mkdirSync(path.dirname(OF),{recursive:true});const semantic={v:1,meta,idx:iO};let previous=null;try{previous=JSON.parse(fs.readFileSync(OF,'utf8'));}catch{}const previousSemantic=previous?{v:previous.v,meta:previous.meta,idx:previous.idx}:null;if(JSON.stringify(previousSemantic)!==JSON.stringify(semantic)){fs.writeFileSync(OF,JSON.stringify({...semantic,buildTs:Date.now()}),'utf8');console.log('Lyrics index updated');}else console.log('Lyrics index unchanged');if(errs.length)console.warn('Warnings:',errs.slice(0,50));}
 main().catch(()=>process.exit(2));
+
+//=================================================
+// FILE: /scripts/ci/generate-track-profiles-index.mjs
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve('data/track-profiles');
+const OUTPUT = path.resolve('data/track-profiles-index.json');
+const catalog = JSON.parse(fs.readFileSync('data/listen-track-catalog.json', 'utf8'));
+const catalogByUid = new Map((catalog.tracks || []).map(track => [String(track.uid || '').trim(), track]));
+const files = [];
+
+for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
+  if (!entry.isDirectory()) continue;
+  const directory = path.join(ROOT, entry.name);
+  for (const file of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (!file.isFile() || !file.name.endsWith('.json')) continue;
+    files.push({
+      album: entry.name,
+      absolute: path.join(directory, file.name),
+      relative: `${entry.name}/${file.name}`
+    });
+  }
+}
+
+const items = {};
+files.sort((left, right) => left.relative.localeCompare(right.relative)).forEach(({ album, absolute, relative }) => {
+  const profile = JSON.parse(fs.readFileSync(absolute, 'utf8'));
+  const uid = String(profile?.uid || '').trim();
+  const catalogTrack = catalogByUid.get(uid);
+
+  if (!uid || path.basename(absolute) !== `${uid}.json`) throw new Error(`profile_uid_path_mismatch:${relative}`);
+  if (!catalogTrack) throw new Error(`profile_uid_not_in_catalog:${uid}`);
+  if (String(catalogTrack.album || '') !== album) throw new Error(`profile_album_mismatch:${uid}`);
+  if (items[uid]) throw new Error(`duplicate_profile_uid:${uid}`);
+
+  items[uid] = {
+    uid,
+    profilePath: relative,
+    status: String(profile.status || ''),
+    testData: profile.testData === true,
+    musicAnalysis: profile.musicAnalysis || {},
+    finalProfile: profile.finalProfile || {},
+    presentation: profile.presentation || {}
+  };
+});
+
+const rows = Object.entries(items).map(([uid, item], index, all) =>
+  `    ${JSON.stringify(uid)}: ${JSON.stringify(item)}${index < all.length - 1 ? ',' : ''}`
+);
+
+const output = [
+  '{',
+  '  "version": "track-profiles-index-v4",',
+  '  "taxonomyVersion": "taxonomy-v3",',
+  '  "vocabularyVersion": "track-profile-vocabulary-v2",',
+  `  "testData": ${Object.values(items).some(item => item.testData)},`,
+  '  "items": {',
+  ...rows,
+  '  }',
+  '}',
+  ''
+].join('\n');
+
+fs.writeFileSync(OUTPUT, output, 'utf8');
+console.log(`Generated ${OUTPUT} for ${Object.keys(items).length} TrackProfiles`);
 
 //=================================================
 // FILE: /scripts/ci/lint-sw.mjs

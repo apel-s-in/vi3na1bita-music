@@ -138,7 +138,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, lint-sw.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
