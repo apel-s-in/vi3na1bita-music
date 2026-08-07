@@ -137,7 +137,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profile-review-context.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profile-review-context.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, test-track-similarity.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
@@ -17376,6 +17376,59 @@ const brokenAcrossBoundary = mergeStatsV4(first, leadingBreak);
 assert.equal(brokenAcrossBoundary.repeat['GD-01']?.runs3 || 0, 0);
 
 console.log('✅ Stats v5 full-repeat boundary and sparse cube contract passed');
+
+//=================================================
+// FILE: /scripts/ci/test-track-similarity.mjs
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import { scoreTrackSimilarity } from '../intel/track/track-similarity.js';
+
+const profile = ({ loudnessLufs, dynamicRange, confidence }) => ({
+  musicAnalysis: {
+    bpm: 128,
+    key: 'F_sharp',
+    mode: 'minor',
+    loudnessLufs,
+    dynamicRange,
+    technicalConfidence: {
+      bpm: 0.9,
+      key: 0.9,
+      loudnessLufs: confidence,
+      dynamicRange: confidence
+    },
+    instrumentation: { electric_guitar: 0.8 },
+    vocalRoles: { mixed_duet: 0.8 },
+    vocalDelivery: { expressive: 0.8 },
+    arrangementTags: { dynamic_contrast: 0.8 },
+    productionTags: { dense: 0.8 }
+  },
+  finalProfile: {
+    genres: { alternative_rock: 0.8 },
+    styles: { anthemic: 0.7 },
+    moods: { energetic: 0.8 },
+    themes: { conflict: 0.7 },
+    use_cases: { driving: 0.7 },
+    time_of_day: { evening: 0.6 },
+    axes: { energy: 0.8, valence: 0.3 }
+  }
+});
+
+const trusted = scoreTrackSimilarity(
+  profile({ loudnessLufs: -6.5, dynamicRange: 6, confidence: 0.8 }),
+  profile({ loudnessLufs: -7, dynamicRange: 7, confidence: 0.8 })
+);
+assert.equal(typeof trusted.breakdown.loudnessLufs, 'number');
+assert.equal(typeof trusted.breakdown.dynamicRange, 'number');
+
+const uncertain = scoreTrackSimilarity(
+  profile({ loudnessLufs: -6.5, dynamicRange: 6, confidence: 0.4 }),
+  profile({ loudnessLufs: -7, dynamicRange: 7, confidence: 0.8 })
+);
+assert.equal('loudnessLufs' in uncertain.breakdown, false);
+assert.equal('dynamicRange' in uncertain.breakdown, false);
+assert.ok(trusted.coverage > uncertain.coverage);
+
+console.log('✅ Technical TrackProfile similarity confidence gate passed');
 
 //=================================================
 // FILE: /scripts/ci/validate-content.mjs
