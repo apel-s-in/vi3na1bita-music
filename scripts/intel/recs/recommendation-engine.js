@@ -98,7 +98,6 @@ export const recommendationEngine = {
         generatedAt: Date.now(),
         disabled: true,
         reason: flags.reason,
-        testData: false,
         items: []
       };
       return state.lastResult;
