@@ -17104,7 +17104,7 @@ console.log('✅ Stats v5 full-repeat boundary and sparse cube contract passed')
 import assert from 'node:assert/strict';
 import { scoreTrackSimilarity } from '../intel/track/track-similarity.js';
 
-const profile = ({ loudnessLufs, dynamicRange, confidence }) => ({
+const profile = ({ loudnessLufs, dynamicRange, confidence, bpmConfidence = 0.9, keyConfidence = 0.9 }) => ({
   musicAnalysis: {
     bpm: 128,
     key: 'F_sharp',
@@ -17112,8 +17112,8 @@ const profile = ({ loudnessLufs, dynamicRange, confidence }) => ({
     loudnessLufs,
     dynamicRange,
     technicalConfidence: {
-      bpm: 0.9,
-      key: 0.9,
+      bpm: bpmConfidence,
+      key: keyConfidence,
       loudnessLufs: confidence,
       dynamicRange: confidence
     },
@@ -17148,6 +17148,14 @@ const uncertain = scoreTrackSimilarity(
 assert.equal('loudnessLufs' in uncertain.breakdown, false);
 assert.equal('dynamicRange' in uncertain.breakdown, false);
 assert.ok(trusted.coverage > uncertain.coverage);
+
+const uncertainTempo = scoreTrackSimilarity(
+  profile({ loudnessLufs: -6.5, dynamicRange: 6, confidence: 0.8, bpmConfidence: 0.4, keyConfidence: 0.4 }),
+  profile({ loudnessLufs: -7, dynamicRange: 7, confidence: 0.8 })
+);
+assert.equal('bpm' in uncertainTempo.breakdown, false);
+assert.equal('tonality' in uncertainTempo.breakdown, false);
+assert.ok(trusted.coverage > uncertainTempo.coverage);
 
 console.log('✅ Technical TrackProfile similarity confidence gate passed');
 
