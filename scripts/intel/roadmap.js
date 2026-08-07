@@ -1,4 +1,4 @@
-export const INTEL_ROADMAP_VERSION = '2026-08-07.1';
+export const INTEL_ROADMAP_VERSION = '2026-08-07.2';
 
 export const INTEL_ROADMAP_TEXT = String.raw`
 INTEL — опциональная локальная интеллектуальная надстройка.
@@ -31,13 +31,13 @@ INTEL — опциональная локальная интеллектуаль
 - Recommendation shown, clicked, accepted и dismissed.
 - Профиль рекомендаций.
 - Паспорт трека.
-- Восемь общих рекомендательных карточек галереи.
+- Галерея показывает только непустые рекомендательные карточки, подтверждённые доступными профилями или реальной статистикой.
 - Никаких праздничных, календарных или сезонных подборок.
 
 ДАЛЬНЕЙШЕЕ ЗАПОЛНЕНИЕ
 
 1. Последовательно заполнить production TrackProfile альбома «В Ссоре».
-2. После каждого нового профиля пересобирать производный индекс.
+2. После завершения согласованной серии профилей пересобрать производный индекс.
 3. Проверять канонические audio features и lyric analysis.
 4. Проверять genres, styles, moods, themes, use_cases, time_of_day, axes и warnings.
 5. Проверять instrumentation, vocalRoles, vocalDelivery, arrangementTags и productionTags.
