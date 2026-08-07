@@ -1,85 +1,171 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-03",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
-    "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "confidence": 0.93,
+    "bpm": 130,
+    "tempoClass": "fast",
+    "key": "E",
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -9.5,
+    "dynamicRange": 8,
+    "technicalConfidence": {
+      "bpm": 0.82,
+      "key": 0.8,
+      "loudnessLufs": 0.78,
+      "dynamicRange": 0.82
+    },
+    "instrumentation": {
+      "acoustic_guitar": 0.75,
+      "electric_guitar": 0.8,
+      "bass_guitar": 0.7,
+      "drum_kit": 0.8,
+      "synthesizer": 0.5
+    },
+    "vocalPresence": 0.87,
+    "vocalRoles": {
+      "male_lead": 0.95,
+      "female_lead": 0.95,
+      "mixed_duet": 0.95,
+      "character_vocals": 0.95
+    },
+    "vocalDelivery": {
+      "melodic": 0.85,
+      "emotional": 0.9,
+      "dramatic": 0.88,
+      "conversational": 0.9,
+      "belting": 0.75,
+      "shouted": 0.55
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.9,
+      "acoustic_verse": 0.78,
+      "heavy_chorus": 0.85,
+      "dynamic_contrast": 0.88,
+      "vocal_dialogue": 0.95,
+      "call_and_response": 0.82,
+      "gradual_build": 0.8,
+      "solo_section": 0.68,
+      "climactic_ending": 0.82,
+      "layered_arrangement": 0.8
+    },
+    "productionTags": {
+      "modern": 0.85,
+      "polished": 0.8,
+      "dense": 0.82,
+      "compressed": 0.78,
+      "punchy": 0.82,
+      "guitar_driven": 0.88,
+      "vocal_forward": 0.8,
+      "wide_stereo": 0.75
+    },
+    "arrangementDescription_ru": "Композиция построена как внутренний диалог Героя и его Души. Акустические гитарные куплеты сменяются плотными роковыми припевами, где перегруженные электрогитары, мощная ритм-секция и контрастные вокальные партии усиливают столкновение гнева и совести. Постепенное нарастание приводит к гитарному соло и финальной кульминации, в которой Герой начинает слышать Душу.",
+    "productionDescription_ru": "Плотное современное рок-звучание сочетает ясный гитарный напор, упругие ударные и широкий вокальный план. Мужская и женская партии отчётливо разделены, но сохраняют ощущение единого внутреннего разговора, а умеренная пространственная обработка подчёркивает драматический масштаб композиции."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.99,
+    "language": "ru",
+    "summary_ru": "Герой спорит с собственной Душой, пытаясь оправдать гнев, жестокость и желание разрушить всё вокруг необходимостью защищаться от враждебного мира. Душа признаёт его боль, но напоминает о совести, удерживает от мести и убеждает, что настоящая сила не требует отравлять других. К финалу Герой просит прощения, начинает слышать её и признаёт, что без Души не сможет жить, хотя их внутренний конфликт ещё не завершён.",
+    "keywords_ru": [
+      "ссора",
+      "душа",
+      "совесть",
+      "гнев",
+      "обида",
+      "месть",
+      "правда",
+      "самосохранение",
+      "прощение",
+      "нравственный выбор"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "Душа обращается к уставшему Герою и пытается убедить его не убегать от себя",
+      "Герой оправдывает жестокость необходимостью выживать во враждебном мире",
+      "Душа просит не сжигать всё вокруг и не мстить другим за собственные обиды",
+      "Герой признаёт, что ему проще сгореть, чем снова терпеть боль",
+      "Душа предлагает оставаться сильным без злобы и разрушения",
+      "Герой просит прощения, начинает слышать Душу и признаёт, что без неё не прожить"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "Внутреннее противостояние начинается с попытки Души поддержать Героя, переходит в спор о жестокости, совести и праве выплеснуть боль на окружающих, а завершается частичным признанием её правоты. Ссора ещё продолжается, но Герой уже слышит Душу и принимает её как необходимую часть себя.",
+      "characters_ru": [
+        "Герой — мужской голос, уставший от боли и несправедливости, склонный отвечать миру гневом и разрушением",
+        "Душа Героя — женский голос, понимающий его боль, но удерживающий от мести, жестокости и потери человечности"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "rock": 0.85,
-      "pop": 0.7
+      "indie_rock": 0.9,
+      "alternative_rock": 0.82,
+      "rock": 0.75
     },
-    "styles": {},
+    "styles": {
+      "story_song": 0.85,
+      "anthemic": 0.72
+    },
     "moods": {
-      "angry": 0.85,
-      "bitter": 0.7
+      "dramatic": 0.9,
+      "tense": 0.82,
+      "energetic": 0.8,
+      "angry": 0.65,
+      "bitter": 0.58,
+      "compassionate": 0.65,
+      "bittersweet": 0.55,
+      "confident": 0.5
     },
     "themes": {
-      "conflict": 0.85,
-      "communication": 0.7
+      "conflict": 0.95,
+      "communication": 0.88,
+      "self_reflection": 0.92,
+      "forgiveness": 0.72,
+      "kindness_morality": 0.9,
+      "storytelling": 0.82
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "driving": 0.7,
+      "walking": 0.58,
+      "karaoke": 0.75,
+      "training_motivation": 0.55
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "evening": 0.7,
+      "night": 0.68
+    },
     "axes": {
-      "energy": 0.74,
-      "valence": 0.28,
-      "arousal": 0.76,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0.58,
-      "melancholy": 0,
-      "romance_intensity": 0.42,
+      "energy": 0.8,
+      "valence": 0.35,
+      "arousal": 0.8,
+      "danceability": 0.45,
+      "acousticness": 0.35,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.55,
+      "melancholy": 0.6,
+      "romance_intensity": 0.05,
       "humor": 0,
-      "socialness": 0,
-      "epicness": 0,
-      "warmth": 0,
-      "brightness": 0,
-      "tension": 0,
-      "storytelling": 0,
+      "socialness": 0.15,
+      "epicness": 0.68,
+      "warmth": 0.4,
+      "brightness": 0.5,
+      "tension": 0.8,
+      "storytelling": 0.78,
       "spookiness": 0,
-      "family_friendly": 0
+      "family_friendly": 0.85
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Заглавный рок-диалог Героя с Душой о гневе, совести и возвращении к себе.",
+    "one_liner_ru": "Мужской голос Героя и женский голос его Души превращают внутренний нравственный конфликт в напряжённый инди-роковый диалог с мощной гитарной кульминацией.",
+    "mini_description_ru": "Герой пытается оправдать гнев и желание разрушать жестокостью окружающего мира, а Душа удерживает его от мести и потери человечности. Контраст акустических куплетов и плотных роковых припевов подчёркивает спор боли и совести. В финале ссора ещё не окончена, но Герой уже слышит Душу и признаёт, что без неё не прожить."
   }
 }
