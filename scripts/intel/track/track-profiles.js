@@ -16,17 +16,20 @@ export const trackProfiles = {
     try {
       const loaded = await fetchJ(getUrl(), 'intel:track-profiles-index:v4');
       const value = loaded && typeof loaded === 'object' ? loaded : { items: {} };
-      st.idx = value.testData === true && window.APP_CONFIG?.INTEL_TEST_PROFILES_ENABLED !== true
-        ? { version: value.version || 'track-profiles-index-v4', taxonomyVersion: value.taxonomyVersion || 'taxonomy-v3', vocabularyVersion: value.vocabularyVersion || 'track-profile-vocabulary-v2', testData: false, items: {} }
-        : value;
+      st.idx = {
+        version: value.version || 'track-profiles-index-v4',
+        taxonomyVersion: value.taxonomyVersion || 'taxonomy-v3',
+        vocabularyVersion: value.vocabularyVersion || 'track-profile-vocabulary-v2',
+        items: value.items && typeof value.items === 'object' ? value.items : {}
+      };
       st.idxLoadedAt = Date.now();
-      window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(st.idx.items || {}).length, testData: st.idx.testData === true } }));
+      window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(st.idx.items).length } }));
       return st.idx;
     } catch {
-      return st.idx = { version: 'track-profiles-index-v4', taxonomyVersion: 'taxonomy-v3', vocabularyVersion: 'track-profile-vocabulary-v2', testData: false, items: {} };
+      return st.idx = { version: 'track-profiles-index-v4', taxonomyVersion: 'taxonomy-v3', vocabularyVersion: 'track-profile-vocabulary-v2', items: {} };
     }
   },
-  async reloadIndex() { st.idx = null; st.idxLoadedAt = 0; return this.ensureIndex(); },
+  async reloadIndex() { st.idx = null; st.idxLoadedAt = 0; st.cache.clear(); return this.ensureIndex(); },
   async hasPreview(uid) { return !!this.getPreview(uid) || !!(await this.ensureIndex()).items?.[String(uid || '').trim()]; },
   getPreview: u => { const k = String(u || '').trim(); return k && st.idx?.items ? st.idx.items[k] || null : null; },
   async getProfile(uid) {
@@ -39,9 +42,10 @@ export const trackProfiles = {
       const preview = index?.items?.[key] || null;
       const relativePath = profilePath(key, preview);
       if (!relativePath) return null;
-      const url = `${getDir()}${relativePath}?cb=${window.APP_CONFIG?.APP_VERSION || Date.now()}`;
+      const profileHash = String(preview?.profileHash || window.APP_CONFIG?.APP_VERSION || Date.now());
+      const url = `${getDir()}${relativePath}?cb=${encodeURIComponent(profileHash)}`;
       const profile = await window.Utils.fetchCache.getJson({
-        key: `intel:profile:${key}:${relativePath}`,
+        key: `intel:profile:${key}:${relativePath}:${profileHash}`,
         url,
         ttlMs: 2592000000,
         store: 'local',
