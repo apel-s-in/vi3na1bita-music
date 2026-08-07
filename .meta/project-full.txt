@@ -26313,9 +26313,9 @@ UID: {{UID}}
 
 ОБЯЗАТЕЛЬНЫЕ ЗНАЧЕНИЯ
 
-version = "track-profile-v3"
+version = "track-profile-v4"
 taxonomyVersion = "taxonomy-v3"
-vocabularyVersion = "track-profile-vocabulary-v1"
+vocabularyVersion = "track-profile-vocabulary-v2"
 uid = фактический переданный UID
 status = "analyzed"
 testData = false
@@ -26334,8 +26334,6 @@ generatedAt
 updatedAt
 provenance
 verified
-loudnessLufs
-dynamicRange
 relations
 similar_tracks
 embedding
@@ -26399,6 +26397,9 @@ embedding
 - key = null;
 - mode = null;
 - timeSignature = null;
+- loudnessLufs = null;
+- dynamicRange = null;
+- соответствующий technicalConfidence = 0;
 - vocalPresence = null;
 - sparse object = {};
 - строковое описание = "";
@@ -26456,6 +26457,44 @@ C#m
 
 "key": "F",
 "mode": "minor"
+
+ТЕХНИЧЕСКИЕ ОЦЕНКИ
+
+loudnessLufs и dynamicRange разрешено оценивать по аудиофайлу.
+
+loudnessLufs:
+
+- оценка интегральной громкости в LUFS;
+- допустимый диапазон -40..0;
+- не выдавай оценку за лабораторное измерение;
+- если надёжная оценка невозможна, используй null.
+
+dynamicRange:
+
+- оценка динамического диапазона в децибелах;
+- допустимый диапазон 0..30;
+- если надёжная оценка невозможна, используй null.
+
+technicalConfidence содержит:
+
+- bpm;
+- key;
+- loudnessLufs;
+- dynamicRange.
+
+Каждое значение technicalConfidence находится в диапазоне 0..1.
+
+Интерпретация:
+
+0 = значение неизвестно;
+0.25 = слабая предположительная оценка;
+0.5 = правдоподобная, но непроверенная оценка;
+0.75 = высокая уверенность;
+1 = практически однозначно.
+
+Если техническое значение равно null, его technicalConfidence обязательно равно 0.
+
+Не завышай technicalConfidence только потому, что поле заполнено.
 
 РАЗМЕР
 
@@ -26614,8 +26653,12 @@ mini_description_ru — два или три коротких предложен
 14. timeSignature использует подчёркивание.
 15. Sparse-веса не ниже threshold_store.
 16. Все axes заполнены числами 0..1.
-17. Нет relations и похожих UID.
-18. Ответ содержит только один JSON object.
+17. loudnessLufs равен null или находится в диапазоне -40..0.
+18. dynamicRange равен null или находится в диапазоне 0..30.
+19. technicalConfidence содержит bpm, key, loudnessLufs и dynamicRange.
+20. Для null технического значения соответствующая confidence равна 0.
+21. Нет relations и похожих UID.
+22. Ответ содержит только один JSON object.
 
 //=================================================
 // FILE: /data/track-profiles/README.txt
