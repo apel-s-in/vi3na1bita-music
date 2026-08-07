@@ -6,7 +6,7 @@ import { getRecommendationControls } from '../../analytics/backup-domain-state.j
 import { trackProfiles } from '../track/track-profiles.js';
 
 const PROFILE_KEY = 'current';
-const VERSION = 'listener-profile-v2';
+const VERSION = 'listener-profile-v3';
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const weighted = () => new Map();
@@ -51,7 +51,9 @@ export const listenerProfile = {
   async init() {
     if (state.initialized) return true;
     state.initialized = true;
-    state.profile = (await metaDB.getStoreValue('listener_profile', PROFILE_KEY).catch(() => null))?.value || null;
+    const stored = (await metaDB.getStoreValue('listener_profile', PROFILE_KEY).catch(() => null))?.value || null;
+    state.profile = stored?.version === VERSION ? stored : null;
+    if (!state.profile) this.scheduleRebuild(800);
     const schedule = () => this.scheduleRebuild();
     window.addEventListener('stats:updated', schedule);
     window.addEventListener('stats:rebuilt', schedule);
@@ -63,7 +65,8 @@ export const listenerProfile = {
       state.rebuildPending = false;
     });
     window.addEventListener('account:data-switched', async () => {
-      state.profile = (await metaDB.getStoreValue('listener_profile', PROFILE_KEY).catch(() => null))?.value || null;
+      const stored = (await metaDB.getStoreValue('listener_profile', PROFILE_KEY).catch(() => null))?.value || null;
+      state.profile = stored?.version === VERSION ? stored : null;
       this.scheduleRebuild(1200);
     });
     ['player:pause', 'player:stop', 'player:ended'].forEach(name => window.addEventListener(name, () => {
@@ -84,8 +87,10 @@ export const listenerProfile = {
     const tracks = stats.filter(row => row?.uid && row.uid !== 'global');
     const global = stats.find(row => row?.uid === 'global') || {};
     const genres = weighted();
+    const styles = weighted();
     const moods = weighted();
     const themes = weighted();
+    const useCases = weighted();
     const axesSum = weighted();
     const axesWeight = weighted();
     const byHour = Array(24).fill(0);
@@ -109,8 +114,10 @@ export const listenerProfile = {
         if (index < 7) byWeekday[index] += num(value);
       });
       rowsOfMap(profileMap(preview, 'genres')).forEach(([key, value]) => add(genres, key, num(value) * weight));
+      rowsOfMap(profileMap(preview, 'styles')).forEach(([key, value]) => add(styles, key, num(value) * weight));
       rowsOfMap(profileMap(preview, 'moods')).forEach(([key, value]) => add(moods, key, num(value) * weight));
       rowsOfMap(profileMap(preview, 'themes')).forEach(([key, value]) => add(themes, key, num(value) * weight));
+      rowsOfMap(profileMap(preview, 'use_cases')).forEach(([key, value]) => add(useCases, key, num(value) * weight));
       rowsOfMap(profileMap(preview, 'axes')).forEach(([key, value]) => {
         add(axesSum, key, num(value) * weight);
         add(axesWeight, key, weight);
@@ -132,8 +139,10 @@ export const listenerProfile = {
       },
       preferences: {
         genres: top(genres),
+        styles: top(styles),
         moods: top(moods),
         themes: top(themes),
+        use_cases: top(useCases),
         axes: top(axes)
       },
       behavior: {
