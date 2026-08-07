@@ -1,4 +1,4 @@
-// Listener Profile v2 — rebuildable interpretation поверх локальных stats.
+// Listener Profile v3 — rebuildable interpretation поверх локальных stats.
 // Не является source-of-truth, не управляет playback и не перестраивается во время музыки.
 import { metaDB } from '../../analytics/meta-db.js';
 import { sha256Hex, stableStringify } from '../../analytics/event-integrity.js';
