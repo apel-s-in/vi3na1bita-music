@@ -137,7 +137,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-intel-test-profiles.mjs, generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profile-review-context.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-stats-v5.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
@@ -16532,6 +16532,84 @@ const R=process.cwd(),AF=path.resolve(R,'albums.json'),OF=path.resolve(R,'data/l
 const nS=s=>String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}\s]+/gu,' ').replace(/\s+/g,' ').trim(),tok=s=>nS(s).split(' ').filter(w=>w.length>1);
 async function main(){if(!fs.existsSync(AF))process.exit(2);const albs=JSON.parse(fs.readFileSync(AF,'utf8'))?.albums||[],meta={},idx={},errs=[];let tT=0,tTx=0;for(const a of albs){const aK=String(a?.key||'').trim(),aT=String(a?.title||'').trim(),b=String(a?.yandex_base||a?.github_base||a?.base||'').trim();if(!aK||!b)continue;try{const bU=b.endsWith('/')?b:`${b}/`,cfg=await(await fetch(`${bU}config.json`)).json(),trks=cfg?.tracks||[];tT+=trks.length;for(let i=0;i<trks.length;i++){const u=String(trks[i].uid||'').trim();if(!u)continue;meta[u]={t:trks[i].title||`Трек ${i+1}`,a:aT||String(cfg?.albumName||''),k:aK,n:i+1};if(!trks[i].fulltext)continue;const txt=await(await fetch(new URL(trks[i].fulltext,bU).toString())).text();tTx++;[...tok(txt),...tok(meta[u].t),...tok(meta[u].a)].forEach(k=>(idx[k]=idx[k]||new Set()).add(u));}}catch(e){errs.push(`${aK}: ${e.message}`);}}const iO=Object.fromEntries(Object.entries(idx).map(([k,v])=>[k,[...v].sort()]));fs.mkdirSync(path.dirname(OF),{recursive:true});const semantic={v:1,meta,idx:iO};let previous=null;try{previous=JSON.parse(fs.readFileSync(OF,'utf8'));}catch{}const previousSemantic=previous?{v:previous.v,meta:previous.meta,idx:previous.idx}:null;if(JSON.stringify(previousSemantic)!==JSON.stringify(semantic)){fs.writeFileSync(OF,JSON.stringify({...semantic,buildTs:Date.now()}),'utf8');console.log('Lyrics index updated');}else console.log('Lyrics index unchanged');if(errs.length)console.warn('Warnings:',errs.slice(0,50));}
 main().catch(()=>process.exit(2));
+
+//=================================================
+// FILE: /scripts/ci/generate-track-profile-review-context.mjs
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+
+const args = Object.fromEntries(process.argv.slice(2).map(argument => {
+  const [key, ...rest] = argument.replace(/^--/, '').split('=');
+  return [key, rest.length ? rest.join('=') : true];
+}));
+
+const uid = String(args.uid || '').trim();
+if (!/^[A-Za-z0-9._-]+$/.test(uid)) throw new Error('Usage: node scripts/ci/generate-track-profile-review-context.mjs --uid=VS-01');
+
+const catalog = JSON.parse(fs.readFileSync('data/listen-track-catalog.json', 'utf8'));
+const track = (catalog.tracks || []).find(item => String(item.uid || '').trim() === uid);
+if (!track) throw new Error(`track_not_found:${uid}`);
+
+const inputDir = path.resolve('.analysis/track-profiles', uid);
+const outputDir = path.resolve('.meta/track-profile-review');
+const outputFile = path.join(outputDir, `${uid}.txt`);
+const requiredInputs = ['run-1.json', 'run-2.json', 'run-3.json', 'lyrics.txt'];
+const frameworkFiles = [
+  'data/taxonomy.json',
+  'data/track-profile-vocabulary.json',
+  'data/track-profiles/track-profile.template.json',
+  'data/track-profiles/PROMPT.txt',
+  'data/track-profiles/FINALIZE-PROMPT.txt',
+  'data/track-profiles/README.txt',
+  'scripts/ci/normalize-track-profile.mjs',
+  'scripts/ci/validate-intel-profiles.mjs',
+  'scripts/ci/generate-track-profiles-index.mjs',
+  'scripts/intel/track/track-similarity.js',
+  'scripts/intel/recs/recommendation-engine.js'
+];
+
+requiredInputs.forEach(name => {
+  const file = path.join(inputDir, name);
+  if (!fs.existsSync(file)) throw new Error(`analysis_input_missing:${uid}:${name}`);
+});
+
+const block = (label, source) => `//=================================================\n// FILE: /${label}\n${source.trimEnd()}\n\n`;
+let context = `TRACKPROFILE TRIPLE-ANALYSIS REVIEW CONTEXT\n\n`;
+context += `Цель: подготовить один финальный production TrackProfile из трёх независимых анализов, точного текста и авторских уточнений.\n\n`;
+context += `КАНОНИЧЕСКИЕ МЕТАДАННЫЕ ТРЕКА\n\n`;
+context += `${JSON.stringify({
+  uid: track.uid,
+  title: track.title,
+  album: track.album,
+  albumTitle: track.albumTitle,
+  duration: track.duration,
+  trackVersion: track.trackVersion
+}, null, 2)}\n\n`;
+context += `ВАЖНО: title, album, albumTitle, duration и trackVersion нужны только для проверки контекста и не записываются в TrackProfile.\n\n`;
+
+frameworkFiles.forEach(relative => {
+  if (!fs.existsSync(relative)) throw new Error(`framework_file_missing:${relative}`);
+  context += block(relative, fs.readFileSync(relative, 'utf8'));
+});
+
+requiredInputs.forEach(name => {
+  context += block(`.analysis/track-profiles/${uid}/${name}`, fs.readFileSync(path.join(inputDir, name), 'utf8'));
+});
+
+const notes = path.join(inputDir, 'notes.txt');
+context += block(`.analysis/track-profiles/${uid}/notes.txt`, fs.existsSync(notes)
+  ? fs.readFileSync(notes, 'utf8')
+  : 'Авторские уточнения не предоставлены.');
+
+const currentProfile = path.join('data/track-profiles', track.album, `${uid}.json`);
+if (fs.existsSync(currentProfile)) {
+  context += block(`data/track-profiles/${track.album}/${uid}.json`, fs.readFileSync(currentProfile, 'utf8'));
+}
+
+fs.mkdirSync(outputDir, { recursive: true });
+fs.writeFileSync(outputFile, context, 'utf8');
+console.log(`Generated ${outputFile}`);
 
 //=================================================
 // FILE: /scripts/ci/generate-track-profiles-index.mjs
