@@ -27,9 +27,9 @@ const fullAxes = values => Object.fromEntries(axes.map(key => [key, Number(value
 const buildFixture = spec => {
   const [uid, genres, moods, themes, values] = spec;
   return {
-    version: 'track-profile-v3',
+    version: 'track-profile-v4',
     taxonomyVersion: 'taxonomy-v3',
-    vocabularyVersion: 'track-profile-vocabulary-v1',
+    vocabularyVersion: 'track-profile-vocabulary-v2',
     uid,
     status: 'test_fixture',
     testData: true,
@@ -40,6 +40,9 @@ const buildFixture = spec => {
       key: null,
       mode: null,
       timeSignature: null,
+      loudnessLufs: null,
+      dynamicRange: null,
+      technicalConfidence: { bpm: 0, key: 0, loudnessLufs: 0, dynamicRange: 0 },
       instrumentation: {},
       vocalPresence: null,
       vocalRoles: {},
@@ -97,55 +100,4 @@ specs.forEach(spec => {
   writeJson(file, buildFixture(spec));
   console.log(`FIXTURE ${spec[0]}`);
 });
-
-const profileFiles = [];
-for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
-  if (!entry.isDirectory()) continue;
-  const directory = path.join(ROOT, entry.name);
-  fs.readdirSync(directory, { withFileTypes: true })
-    .filter(file => file.isFile() && file.name.endsWith('.json'))
-    .forEach(file => profileFiles.push({
-      album: entry.name,
-      file: path.join(directory, file.name),
-      relativePath: `${entry.name}/${file.name}`
-    }));
-}
-
-const items = {};
-profileFiles
-  .sort((left, right) => left.relativePath.localeCompare(right.relativePath))
-  .forEach(({ file, relativePath }) => {
-    const profile = readJson(file);
-    const uid = String(profile?.uid || '').trim();
-    if (!uid || path.basename(file) !== `${uid}.json`) throw new Error(`profile_uid_path_mismatch:${relativePath}`);
-
-    items[uid] = {
-      uid,
-      profilePath: relativePath,
-      status: String(profile.status || ''),
-      testData: profile.testData === true,
-      musicAnalysis: profile.musicAnalysis || {},
-      finalProfile: profile.finalProfile || {},
-      presentation: profile.presentation || {}
-    };
-  });
-
-const rows = Object.entries(items).map(([uid, item], index, all) =>
-  `    ${JSON.stringify(uid)}: ${JSON.stringify(item)}${index < all.length - 1 ? ',' : ''}`
-);
-
-const indexJson = [
-  '{',
-  '  "version": "track-profiles-index-v3",',
-  '  "taxonomyVersion": "taxonomy-v3",',
-  '  "vocabularyVersion": "track-profile-vocabulary-v1",',
-  `  "testData": ${Object.values(items).some(item => item.testData)},`,
-  '  "items": {',
-  ...rows,
-  '  }',
-  '}',
-  ''
-].join('\n');
-
-fs.writeFileSync(INDEX_PATH, indexJson, 'utf8');
-console.log(`Generated index for ${Object.keys(items).length} TrackProfiles`);
+console.log('Fixtures updated. Run generate-track-profiles-index.mjs to rebuild the shared index.');
