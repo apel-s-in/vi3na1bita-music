@@ -1,85 +1,191 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-05",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
-    "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "confidence": 0.96,
+    "bpm": 132,
+    "tempoClass": "fast",
+    "key": "B",
+    "mode": "major",
+    "timeSignature": "4_4",
+    "loudnessLufs": -9.5,
+    "dynamicRange": 7.2,
+    "technicalConfidence": {
+      "bpm": 0.9,
+      "key": 0.95,
+      "loudnessLufs": 0.82,
+      "dynamicRange": 0.88
+    },
+    "instrumentation": {
+      "acoustic_guitar": 0.75,
+      "electric_guitar": 0.62,
+      "bass_guitar": 0.75,
+      "drum_kit": 0.8,
+      "percussion": 0.5,
+      "brass_section": 0.68
+    },
+    "vocalPresence": 0.88,
+    "vocalRoles": {
+      "male_lead": 0.95,
+      "female_lead": 0.95,
+      "mixed_duet": 0.98,
+      "choir_vocals": 0.88,
+      "backing_vocals": 0.82,
+      "spoken_word": 0.35
+    },
+    "vocalDelivery": {
+      "clean": 0.95,
+      "melodic": 0.9,
+      "expressive": 0.82,
+      "conversational": 0.85,
+      "playful": 0.9,
+      "spoken": 0.35,
+      "shouted": 0.42
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.9,
+      "repetitive_form": 0.72,
+      "vocal_dialogue": 0.95,
+      "call_and_response": 0.88,
+      "gradual_build": 0.72,
+      "dynamic_contrast": 0.75,
+      "anthemic_chorus": 0.82,
+      "layered_arrangement": 0.78
+    },
+    "productionTags": {
+      "live_feel": 0.95,
+      "organic": 0.8,
+      "polished": 0.72,
+      "punchy": 0.8,
+      "guitar_driven": 0.72,
+      "vocal_forward": 0.82,
+      "brass_forward": 0.65,
+      "bright_timbre": 0.88,
+      "compressed": 0.68,
+      "dynamic": 0.55
+    },
+    "arrangementDescription_ru": "Лёгкая концертная инди-роковая аранжировка построена на равноправном диалоге мужского и женского вокала. Акустическая и электрическая гитары, упругая ритм-секция и духовые акценты поддерживают бодрую считалочную интонацию. В припеве к дуэту присоединяется детский хор, превращая мирилку в общий концертный рефрен.",
+    "productionDescription_ru": "Яркое концертное звучание сохраняет разборчивость двух ведущих голосов и естественную энергию живого исполнения. Упругие ударные, тёплый бас, гитары и выдвинутые вперёд духовые создают лёгкий позитивный роковый характер, а детский хор расширяет припев."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.99,
+    "language": "ru",
+    "summary_ru": "Мужчина и женщина после бытовой ссоры остаются наедине с обидами и тяжёлым молчанием. Поняв бессмысленность гордости, они вспоминают детскую мирилку, сцепляют мизинцы, отказываются возводить стены и возвращаются к доверию, близости и совместной жизни.",
+    "keywords_ru": [
+      "ссора",
+      "примирение",
+      "гордость",
+      "обиды",
+      "мизинцы",
+      "мирилка",
+      "понимание",
+      "доверие",
+      "объятие",
+      "совместная жизнь"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "После ссоры один человек сидит в углу, а другой молча смотрит в окно",
+      "В комнате сохраняется тяжёлая тишина, пока оба размышляют о вине и обидах",
+      "Пара решает отбросить гордость и оставить конфликт позади",
+      "Мужчина и женщина сцепляют мизинцы и повторяют детскую мирилку",
+      "Робкий смех и улыбки сменяют напряжение и внутреннюю защиту",
+      "В финале оба отказываются копить обиды и выбирают жить дружно"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "Бытовая ссора и молчаливое отчуждение постепенно сменяются осознанием бессмысленности гордости. Через знакомую с детства мирилку мужчина и женщина снимают эмоциональную защиту, возвращают взаимопонимание и приходят к открытому примирению.",
+      "characters_ru": [
+        "Мужчина — равноправный участник пары, переживающий последствия ссоры и готовый сделать шаг к примирению",
+        "Женщина — равноправная участница пары, вместе с мужчиной отказывающаяся от обид и восстанавливающая близость"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "pop": 0.85,
-      "rock": 0.7
+      "indie_rock": 0.9,
+      "rock": 0.78,
+      "pop": 0.62,
+      "indie_pop": 0.48,
+      "ska_punk": 0.2
     },
-    "styles": {},
+    "styles": {
+      "live": 0.95,
+      "kids_style": 0.72,
+      "anthemic": 0.75,
+      "story_song": 0.68,
+      "acoustic": 0.42
+    },
     "moods": {
-      "hopeful": 0.85,
-      "romantic": 0.7
+      "playful": 0.92,
+      "happy": 0.85,
+      "joyful": 0.82,
+      "uplifting": 0.85,
+      "hopeful": 0.8,
+      "energetic": 0.8,
+      "romantic": 0.58,
+      "tender": 0.55,
+      "funny": 0.45,
+      "compassionate": 0.55
     },
     "themes": {
-      "love": 0.85,
-      "friendship": 0.7
+      "forgiveness": 0.95,
+      "communication": 0.92,
+      "conflict": 0.72,
+      "love": 0.68,
+      "romance": 0.55,
+      "childhood": 0.42,
+      "humor": 0.4,
+      "anthem_chant": 0.62,
+      "storytelling": 0.6,
+      "kindness_morality": 0.72
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "karaoke": 0.88,
+      "family_evening": 0.85,
+      "kids_time": 0.72,
+      "party": 0.7,
+      "walking": 0.78,
+      "driving": 0.72,
+      "dance_floor": 0.55,
+      "date_night": 0.48
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "morning": 0.62,
+      "day": 0.85,
+      "evening": 0.58
+    },
     "axes": {
-      "energy": 0.58,
-      "valence": 0.76,
-      "arousal": 0,
-      "danceability": 0,
-      "acousticness": 0,
+      "energy": 0.8,
+      "valence": 0.9,
+      "arousal": 0.75,
+      "danceability": 0.8,
+      "acousticness": 0.42,
       "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0,
-      "romance_intensity": 0.8,
-      "humor": 0,
-      "socialness": 0,
-      "epicness": 0,
-      "warmth": 0.84,
-      "brightness": 0,
-      "tension": 0,
-      "storytelling": 0,
+      "aggressiveness": 0.1,
+      "melancholy": 0.1,
+      "romance_intensity": 0.55,
+      "humor": 0.65,
+      "socialness": 0.2,
+      "epicness": 0.3,
+      "warmth": 0.88,
+      "brightness": 0.88,
+      "tension": 0.2,
+      "storytelling": 0.72,
       "spookiness": 0,
-      "family_friendly": 0.95
+      "family_friendly": 1
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Лёгкий концертный инди-рок о примирении через знакомую с детства мирилку.",
+    "one_liner_ru": "Равноправный мужской и женский дуэт при поддержке детского хора превращает бытовую ссору в тёплый, живой и немного шутливый праздник примирения.",
+    "mini_description_ru": "Мужчина и женщина отбрасывают гордость, сцепляют мизинцы и возвращаются друг к другу через знакомую детскую мирилку. Лёгкий инди-рок, поп-мелодика, духовые акценты и концертный детский хор делают примирение общим светлым рефреном."
   }
 }
