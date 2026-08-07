@@ -1,5 +1,5 @@
 {
-  "version": "track-profile-vocabulary-v1",
+  "version": "track-profile-vocabulary-v2",
   "machineLanguage": "en",
   "tempoClasses": {
     "slow": "Медленный темп",
@@ -96,7 +96,9 @@
     "choir_vocals": "Хоровой вокал",
     "spoken_word": "Разговорная партия",
     "rap_vocals": "Речитатив",
-    "character_vocals": "Вокал от лица персонажей"
+    "character_vocals": "Вокал от лица персонажей",
+    "lead_vocals": "Основной вокал без уверенно определённого пола",
+    "backing_vocals": "Бэк-вокал без уверенно определённого пола"
   },
   "vocalDelivery": {
     "clean": "Чистая подача",
@@ -118,7 +120,11 @@
     "whispered": "Шёпот",
     "melismatic": "Мелизматическая подача",
     "nasal": "Назальная подача",
-    "raspy": "Хриплая подача"
+    "raspy": "Хриплая подача",
+    "singing": "Певческая подача",
+    "melodic": "Мелодичная подача",
+    "belting": "Мощная вокальная подача с опорой",
+    "spoken": "Разговорная вокальная подача"
   },
   "arrangementTags": {
     "verse_chorus": "Куплетно-припевная форма",
@@ -142,7 +148,12 @@
     "climactic_ending": "Кульминационная развязка",
     "fade_out": "Плавное затухание",
     "abrupt_ending": "Резкое завершение",
-    "solo_section": "Сольная инструментальная секция"
+    "solo_section": "Сольная инструментальная секция",
+    "acoustic_intro": "Акустическое вступление",
+    "brass_lead": "Ведущая роль духовой секции",
+    "explosive_chorus": "Резко раскрывающийся мощный припев",
+    "heavy_riffs": "Тяжёлые гитарные риффы",
+    "layered_arrangement": "Плотная многослойная аранжировка"
   },
   "productionTags": {
     "raw": "Сырое звучание",
@@ -167,7 +178,11 @@
     "retro": "Ретро-характер",
     "modern": "Современный характер",
     "lofi": "Лоу-фай характер",
-    "live_feel": "Ощущение живого исполнения"
+    "live_feel": "Ощущение живого исполнения",
+    "punchy": "Выраженная ударная атака и плотный импульс",
+    "organic": "Преимущественно естественный характер тембров",
+    "wide_stereo": "Широкая стереобаза",
+    "modern_clean": "Современное чистое сведение"
   },
   "narrativeTypes": {
     "none": "Выраженного повествования нет",
@@ -196,9 +211,98 @@
   },
   "languages": {
     "ru": "Русский",
+    "rf": "Французский",
     "en": "Английский",
     "mixed": "Смешанный язык",
     "instrumental": "Инструментальный трек",
     "unknown": "Не определено"
+  },
+  "aliases": {
+    "instrumentation": {
+      "drums": "drum_kit",
+      "drum_set": "drum_kit",
+      "electric guitar": "electric_guitar",
+      "acoustic guitar": "acoustic_guitar",
+      "bass guitar": "bass_guitar",
+      "bass synth": "synth_bass",
+      "synthesizers": "synthesizer",
+      "brass": "brass_section",
+      "horn_section": "brass_section",
+      "акустическая гитара": "acoustic_guitar",
+      "электрогитара": "electric_guitar",
+      "бас-гитара": "bass_guitar",
+      "ударные": "drum_kit",
+      "духовые": "brass_section",
+      "труба": "trumpet",
+      "перкуссия": "percussion",
+      "синтезаторы": "synthesizer"
+    },
+    "vocalRoles": {
+      "lead_male": "male_lead",
+      "lead_female": "female_lead",
+      "lead_singer": "lead_vocals",
+      "lead_vocal": "lead_vocals",
+      "duet": "mixed_duet",
+      "backing_vocal": "backing_vocals",
+      "backing_vocals": "backing_vocals",
+      "male vocals": "male_lead",
+      "female vocals": "female_lead",
+      "мужской вокал": "male_lead",
+      "женский вокал": "female_lead"
+    },
+    "vocalDelivery": {
+      "shouting": "shouted",
+      "screaming": "screamed",
+      "screaming_shouting": "screamed",
+      "whispering": "whispered",
+      "spoken_word": "spoken"
+    },
+    "arrangementTags": {
+      "dynamic_shifts": "dynamic_contrast",
+      "dynamic_contrasts": "dynamic_contrast",
+      "build_up": "gradual_build",
+      "climax": "climactic_ending",
+      "horn_section_lead": "brass_lead",
+      "duet_dialogue": "vocal_dialogue",
+      "dense": "layered_arrangement"
+    },
+    "productionTags": {
+      "bright": "bright_timbre",
+      "clear_mix": "polished",
+      "modern_clean_mix": "modern_clean",
+      "wide_stereo": "wide_stereo",
+      "stereo_wide": "wide_stereo"
+    },
+    "keys": {
+      "C#": "C_sharp",
+      "Db": "C_sharp",
+      "D#": "D_sharp",
+      "Eb": "D_sharp",
+      "F#": "F_sharp",
+      "Gb": "F_sharp",
+      "G#": "G_sharp",
+      "Ab": "G_sharp",
+      "A#": "A_sharp",
+      "Bb": "A_sharp"
+    },
+    "timeSignatures": {
+      "2/4": "2_4",
+      "3/4": "3_4",
+      "4/4": "4_4",
+      "5/4": "5_4",
+      "6/8": "6_8",
+      "7/8": "7_8",
+      "9/8": "9_8",
+      "12/8": "12_8"
+    },
+    "languages": {
+      "russian": "ru",
+      "french": "fr",
+      "english": "en"
+    },
+    "narrativePerspectives": {
+      "multiple_first_person": "multiple",
+      "alternating_first_person": "dual"
+    }
   }
 }
