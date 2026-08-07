@@ -17,12 +17,11 @@ export async function openTrackStatisticsModal(uid) {
   await trackProfiles.ensureIndex().catch(() => null);
   const profilePreview = trackProfiles.getPreview(safeUid);
   const hasProfile = !!profilePreview;
-  const testProfile = profilePreview?.testData === true || profilePreview?.status === 'test_fixture';
 
   const m = window.Modals?.open?.({
     title: 'Статистика трека',
     maxWidth: 340,
-    bodyHtml: `<div class="sm-center sm-mb20"><div class="sm-cover"><img src="${esc(t?.cover || 'img/logo.png')}"></div><h3 class="sm-title">${esc(t?.title || 'Без названия')}</h3><div class="sm-sub">${esc(t?.album || '')}</div></div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${plays}</b><span>Дослушано</span></div><div class="stat-box"><b>${skips}</b><span>Пропущено</span></div><div class="stat-box"><b>${time}м</b><span>Время</span></div><div class="stat-box"><b>${lyricsUsed}</b><span>Текст (раз)</span></div></div>${hasProfile ? `<button class="om-btn om-btn--outline sm-fullw sm-mb20" id="open-track-profile">🧠 Паспорт трека${testProfile ? ' · TEST' : ''}</button>` : ''}<button class="om-btn om-btn--primary sm-fullw" id="share-track-stat">📸 Создать карточку трека</button>`
+    bodyHtml: `<div class="sm-center sm-mb20"><div class="sm-cover"><img src="${esc(t?.cover || 'img/logo.png')}"></div><h3 class="sm-title">${esc(t?.title || 'Без названия')}</h3><div class="sm-sub">${esc(t?.album || '')}</div></div><div class="stats-grid-compact sm-mb20"><div class="stat-box"><b>${plays}</b><span>Дослушано</span></div><div class="stat-box"><b>${skips}</b><span>Пропущено</span></div><div class="stat-box"><b>${time}м</b><span>Время</span></div><div class="stat-box"><b>${lyricsUsed}</b><span>Текст (раз)</span></div></div>${hasProfile ? '<button class="om-btn om-btn--outline sm-fullw sm-mb20" id="open-track-profile">🧠 Паспорт трека</button>' : ''}<button class="om-btn om-btn--primary sm-fullw" id="share-track-stat">📸 Создать карточку трека</button>`
   });
 
   m?.querySelector('#open-track-profile')?.addEventListener('click', async () => {
