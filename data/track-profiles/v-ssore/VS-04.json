@@ -1,84 +1,183 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-04",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
-    "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "confidence": 0.94,
+    "bpm": 120,
+    "tempoClass": "moderate",
+    "key": "G",
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -9.5,
+    "dynamicRange": 8.5,
+    "technicalConfidence": {
+      "bpm": 0.45,
+      "key": 1,
+      "loudnessLufs": 0.82,
+      "dynamicRange": 0.88
+    },
+    "instrumentation": {
+      "acoustic_guitar": 0.85,
+      "electric_guitar": 0.73,
+      "bass_guitar": 0.75,
+      "drum_kit": 0.8,
+      "strings": 0.65
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.9,
+      "female_lead": 0.95,
+      "mixed_duet": 0.95,
+      "character_vocals": 0.95
+    },
+    "vocalDelivery": {
+      "clean": 0.9,
+      "melodic": 0.87,
+      "emotional": 0.88,
+      "dramatic": 0.78,
+      "conversational": 0.88,
+      "intimate": 0.65,
+      "whispered": 0.4
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.85,
+      "acoustic_intro": 0.85,
+      "acoustic_verse": 0.72,
+      "vocal_dialogue": 0.95,
+      "call_and_response": 0.82,
+      "gradual_build": 0.8,
+      "dynamic_contrast": 0.82,
+      "anthemic_chorus": 0.75,
+      "climactic_ending": 0.8,
+      "layered_arrangement": 0.78
+    },
+    "productionTags": {
+      "polished": 0.85,
+      "modern_clean": 0.85,
+      "spacious": 0.72,
+      "organic": 0.7,
+      "guitar_driven": 0.72,
+      "vocal_forward": 0.78,
+      "wide_stereo": 0.78,
+      "dynamic": 0.65
+    },
+    "arrangementDescription_ru": "Композиция продолжает внутренний диалог Героя и его Души. Камерное акустическое вступление и тихая женская партия постепенно раскрываются в полноценный вокальный дуэт с басом, ударными, электрогитарами и струнными. Нарастание приводит к светлой роковой кульминации, где Герой уже не спорит с Душой, а принимает её поддержку.",
+    "productionDescription_ru": "Современное чистое рок-звучание сохраняет теплоту акустических инструментов и постепенно расширяет пространство аранжировки. Мужская и женская партии отчётливо разделены, струнные усиливают духовный подъём, а плотная ритм-секция придаёт финалу масштаб без чрезмерной жёсткости."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.99,
+    "language": "ru",
+    "summary_ru": "После тяжёлой внутренней ссоры Герой постепенно освобождается от гнева и начинает слышать собственную Душу. Они вспоминают жестокие правила прошлого, научившие его не доверять, мстить и скрывать слабость, но Душа напоминает, что нельзя запрещать в себе человека. В финале Герой принимает её постоянное присутствие и поддержку, делая первый настоящий шаг к примирению с собой.",
+    "keywords_ru": [
+      "душа",
+      "примирение",
+      "прощение",
+      "гнев",
+      "прошлое",
+      "тревога",
+      "поддержка",
+      "человечность",
+      "спасение",
+      "духовный подъём"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "Душа успокаивает Героя после пережитого внутреннего конфликта и предлагает начать всё с нуля",
+      "Герой пытается понять, когда обычная речь превратилась в агрессию и как не сломать себя",
+      "Душа объясняет, что он воевал прежде всего с собственным отражением",
+      "Герой и Душа вспоминают двор, где слабость высмеивали, а жестокость считали защитой",
+      "Душа напоминает Герою, что нельзя запрещать в себе человека",
+      "На краю нового срыва Герой спрашивает, останется ли Душа рядом",
+      "В финале Герой принимает её присутствие и впервые отвечает, что она действительно здесь"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "История начинается после внутренней ссоры, когда гнев Героя уже ослабевает. Через воспоминания о страхе, унижении и привычке отвечать жестокостью он постепенно понимает причины своего поведения. Душа не осуждает его, но возвращает к человечности, и к финалу противостояние сменяется доверием, принятием и началом примирения с собой.",
+      "characters_ru": [
+        "Герой — мужской голос, переживший внутренний срыв и пытающийся освободиться от гнева, страха и усвоенной жестокости",
+        "Душа Героя — женский голос, который остаётся рядом, понимает его боль и помогает сохранить человечность"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "ballad_pop": 0.85
+      "indie_rock": 0.9,
+      "rock": 0.8,
+      "alternative_rock": 0.65
     },
-    "styles": {},
+    "styles": {
+      "ballad": 0.92,
+      "story_song": 0.82,
+      "anthemic": 0.75,
+      "cinematic": 0.62,
+      "orchestral": 0.55,
+      "acoustic": 0.5
+    },
     "moods": {
-      "calm": 0.85,
-      "melancholic": 0.7
+      "dramatic": 0.82,
+      "compassionate": 0.9,
+      "hopeful": 0.85,
+      "uplifting": 0.78,
+      "inspirational": 0.82,
+      "tender": 0.75,
+      "bittersweet": 0.68,
+      "melancholic": 0.58,
+      "calm": 0.45
     },
     "themes": {
-      "self_reflection": 0.85,
-      "love": 0.7
+      "self_reflection": 0.95,
+      "communication": 0.9,
+      "forgiveness": 0.88,
+      "conflict": 0.68,
+      "kindness_morality": 0.92,
+      "mental_health": 0.65,
+      "growing_up": 0.6,
+      "faith_spirituality": 0.55,
+      "storytelling": 0.82
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "karaoke": 0.72,
+      "walking": 0.62,
+      "driving": 0.62,
+      "memorial_reflection": 0.58,
+      "crying": 0.45,
+      "relax": 0.42
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "evening": 0.8,
+      "night": 0.68
+    },
     "axes": {
-      "energy": 0.3,
-      "valence": 0.38,
-      "arousal": 0,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0.74,
-      "romance_intensity": 0,
+      "energy": 0.65,
+      "valence": 0.55,
+      "arousal": 0.65,
+      "danceability": 0.35,
+      "acousticness": 0.55,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.28,
+      "melancholy": 0.62,
+      "romance_intensity": 0.08,
       "humor": 0,
-      "socialness": 0,
-      "epicness": 0,
-      "warmth": 0.62,
-      "brightness": 0,
-      "tension": 0,
-      "storytelling": 0,
+      "socialness": 0.25,
+      "epicness": 0.72,
+      "warmth": 0.78,
+      "brightness": 0.58,
+      "tension": 0.52,
+      "storytelling": 0.78,
       "spookiness": 0,
       "family_friendly": 0.9
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Инди-роковая баллада о примирении Героя с собственной Душой.",
+    "one_liner_ru": "Мужской голос Героя и женский голос его Души проходят путь от последствий внутренней ссоры к прощению, доверию и духовному подъёму.",
+    "mini_description_ru": "После тяжёлого внутреннего конфликта Герой постепенно освобождается от гнева и начинает слышать Душу. Камерная акустика перерастает в масштабную роковую кульминацию, подчёркивая переход от боли и страха к принятию. Финал не стирает прошлое, но открывает путь к настоящему примирению с собой."
   }
 }
