@@ -1,0 +1,38 @@
+name: Generate TrackProfile index
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-track-profiles-index-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Generate derived index
+        run: node scripts/ci/generate-track-profiles-index.mjs
+
+      - name: Validate profiles
+        run: node scripts/ci/validate-intel-profiles.mjs
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Intel: rebuild TrackProfile index"
+          branch: ${{ github.ref_name }}
+          file_pattern: "data/track-profiles-index.json"
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
