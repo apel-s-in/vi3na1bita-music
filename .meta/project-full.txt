@@ -17403,8 +17403,12 @@ const validateRecommendationsAndStats = () => {
   const aggregator = 'scripts/analytics/stats-aggregator.js';
   contains('scripts/intel/recs/recommendation-engine.js', 'scoreUid');
   contains('scripts/intel/recs/recommendation-engine.js', 'resolveRecommendationDataSource');
-  contains('scripts/intel/recs/recommendation-engine.js', 'confirmedAffinity');
+  contains('scripts/intel/recs/recommendation-engine.js', 'getRecommendationBehaviorSignals');
+  contains('scripts/intel/recs/recommendation-engine.js', 'composeRecommendationScore');
   contains('scripts/intel/recs/recommendation-engine.js', 'source.canonicalByUid');
+  contains('scripts/intel/recs/recommendation-score.js', 'confirmedAffinity');
+  contains('scripts/intel/recs/recommendation-score.js', 'saturationPenalty');
+  contains('scripts/intel/recs/recommendation-score.js', 'RECOMMENDATION_SCORE_WEIGHTS');
   contains('scripts/intel/recs/recommendation-data-source.js', "'account_hybrid'");
   contains('scripts/intel/recs/recommendation-data-source.js', "'local_compatible'");
   contains('scripts/intel/recs/recommendation-data-source.js', "'account_server_pending'");
@@ -17423,6 +17427,8 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/app/gallery-recommendation-cards.js', "'similar-current'");
   contains('scripts/app/gallery-recommendation-cards.js', "'album-week'");
   contains('scripts/app/gallery-recommendation-cards.js', '.filter(card => card.album || card.items.length)');
+  contains('scripts/app/gallery-recommendation-cards.js', 'cardCache = { currentUid, builtAt: Date.now(), cards }');
+  excludes('scripts/app/gallery-recommendation-cards.js', /emptyText|gallery-rec-card__empty/, 'Недостижимая пустая карточка Gallery снова добавлена');
   excludes('scripts/intel/recs/recommendation-reasons.js', /audio_similarity/, 'Неиспользуемая причина audio_similarity снова добавлена');
   excludes('styles/showcase.css', /\.gallery-rec-card__head>i\{/, 'Старая TEST-метка рекомендательной карточки снова добавлена');
   contains('scripts/app/gallery.js', 'renderGalleryRecommendationCard');
