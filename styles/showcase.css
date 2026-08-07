@@ -36,7 +36,6 @@ body.news-view #cover-wrap{display:none!important}
 .gallery-rec-card__actions button{min-width:0;min-height:38px;flex:1;padding:7px 8px;border-radius:10px;border:1px solid rgba(77,170,255,.28);background:rgba(77,170,255,.13);color:#dcecff;font-size:9.5px;font-weight:900;cursor:pointer}
 .gallery-rec-card__actions button:first-child{background:linear-gradient(135deg,rgba(77,170,255,.8),rgba(124,77,255,.78));border-color:transparent;color:#fff}
 .gallery-rec-card__actions button:active{transform:scale(.97)}
-.gallery-rec-card__empty{display:grid;place-items:center;flex:1;padding:22px;border-radius:16px;border:1px dashed rgba(77,170,255,.24);background:rgba(0,0,0,.12);color:#8299bc;font-size:12px;line-height:1.5;text-align:center}
 .gallery-rec-card__foot{margin-top:auto;color:#526987;font-size:8.5px;text-align:center;text-transform:uppercase;letter-spacing:.06em}
 @media(max-width:360px){
 .gallery-rec-card{padding:14px 16px 11px;gap:6px}
