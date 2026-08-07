@@ -24,20 +24,21 @@ for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
 
 const items = {};
 files.sort((left, right) => left.relative.localeCompare(right.relative)).forEach(({ album, absolute, relative }) => {
-  const profile = JSON.parse(fs.readFileSync(absolute, 'utf8'));
+  const source = fs.readFileSync(absolute, 'utf8');
+  const profile = JSON.parse(source);
   const uid = String(profile?.uid || '').trim();
   const catalogTrack = catalogByUid.get(uid);
 
   if (!uid || path.basename(absolute) !== `${uid}.json`) throw new Error(`profile_uid_path_mismatch:${relative}`);
   if (!catalogTrack) throw new Error(`profile_uid_not_in_catalog:${uid}`);
   if (String(catalogTrack.album || '') !== album) throw new Error(`profile_album_mismatch:${uid}`);
+  if (profile.status !== 'analyzed' || profile.testData !== false) throw new Error(`production_profile_required:${uid}`);
   if (items[uid]) throw new Error(`duplicate_profile_uid:${uid}`);
 
   items[uid] = {
     uid,
     profilePath: relative,
-    status: String(profile.status || ''),
-    testData: profile.testData === true,
+    profileHash: crypto.createHash('sha256').update(source).digest('hex').slice(0, 16),
     musicAnalysis: profile.musicAnalysis || {},
     finalProfile: profile.finalProfile || {},
     presentation: profile.presentation || {}
@@ -53,7 +54,6 @@ const output = [
   '  "version": "track-profiles-index-v4",',
   '  "taxonomyVersion": "taxonomy-v3",',
   '  "vocabularyVersion": "track-profile-vocabulary-v2",',
-  `  "testData": ${Object.values(items).some(item => item.testData)},`,
   '  "items": {',
   ...rows,
   '  }',
