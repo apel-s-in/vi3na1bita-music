@@ -1450,6 +1450,9 @@ jobs:
       - name: Validate pure Stats v5 contract
         run: node scripts/ci/test-stats-v5.mjs
 
+      - name: Validate TrackProfile similarity
+        run: node scripts/ci/test-track-similarity.mjs
+
       - name: Validate pure Backup scheduler contract
         run: node scripts/ci/test-backup-scheduler.mjs
 
