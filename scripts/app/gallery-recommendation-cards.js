@@ -77,8 +77,7 @@ const cardItems = (items, limit = 3) => items.slice(0, limit).map(item => {
     albumKey: row?.sourceAlbum || item.preview?.album || '',
     albumTitle: albumTitle(row?.sourceAlbum || item.preview?.album || ''),
     cover: trackCover(item.uid),
-    score: num(item.score),
-    testData: item.preview?.testData === true || item.preview?.status === 'test_fixture'
+    score: num(item.score)
   };
 });
 
@@ -91,8 +90,7 @@ const makeCard = ({ id, title, icon, subtitle, reasonCode, items = [], album = n
   reasonCode,
   items,
   album,
-  emptyText,
-  testData: items.some(item => item.testData) || album?.testData === true
+  emptyText
 });
 
 const dominantMood = listener => safe(listener?.preferences?.moods?.[0]?.key);
@@ -121,8 +119,7 @@ const albumOfWeek = source => {
     cover: window.AlbumsManager?.covers?.get?.(selected.key)
       || window.APP_CONFIG?.ICON_ALBUMS_ORDER?.find(item => item.key === selected.key)?.icon
       || 'img/logo.png',
-    subtitle: active.length ? 'Один из ваших самых активных альбомов' : 'Еженедельная ротация каталога',
-    testData: false
+    subtitle: active.length ? 'Один из ваших самых активных альбомов' : 'Еженедельная ротация каталога'
   };
 };
 
@@ -295,7 +292,7 @@ export const renderGalleryRecommendationCard = card => {
   const mainMeta = primary?.albumTitle || (album ? 'Открыть альбом' : '');
 
   return `<article class="gallery-rec-card" data-gallery-card="${esc(card.id)}" aria-label="${esc(card.title)}">
-    <div class="gallery-rec-card__head"><span>${esc(card.icon)}</span><b>${esc(card.title)}</b>${card.testData ? '<i>TEST</i>' : ''}</div>
+    <div class="gallery-rec-card__head"><span>${esc(card.icon)}</span><b>${esc(card.title)}</b></div>
     <div class="gallery-rec-card__subtitle">${esc(card.subtitle)}</div>
     ${primary || album ? `
       <div class="gallery-rec-card__hero">
