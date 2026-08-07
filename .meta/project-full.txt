@@ -17373,6 +17373,9 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/app/gallery-recommendation-cards.js', "'unusual'");
   contains('scripts/app/gallery-recommendation-cards.js', "'similar-current'");
   contains('scripts/app/gallery-recommendation-cards.js', "'album-week'");
+  contains('scripts/app/gallery-recommendation-cards.js', '.filter(card => card.album || card.items.length)');
+  excludes('scripts/intel/recs/recommendation-reasons.js', /audio_similarity/, 'Неиспользуемая причина audio_similarity снова добавлена');
+  excludes('styles/showcase.css', /\.gallery-rec-card__head>i\{/, 'Старая TEST-метка рекомендательной карточки снова добавлена');
   contains('scripts/app/gallery.js', 'renderGalleryRecommendationCard');
   contains('scripts/app/gallery.js', 'recordGalleryRecommendationShown');
   contains('scripts/app/gallery.js', 'recordGalleryRecommendationClicked');
