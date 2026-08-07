@@ -20598,7 +20598,7 @@ export const recommendationEngine = {
     const stats = await metaDB.getAllStats().catch(() => []);
     const source = resolveRecommendationDataSource(stats);
     const index = await trackProfiles.ensureIndex().catch(() => ({
-      version: 'track-profiles-index-v3',
+      version: 'track-profiles-index-v4',
       testData: false,
       items: {}
     }));
