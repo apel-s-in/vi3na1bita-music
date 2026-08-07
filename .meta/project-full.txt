@@ -21082,11 +21082,18 @@ const renderWeights = (title, values, limit = 10) => {
 };
 
 const renderTechnical = music => {
+  const confidence = music?.technicalConfidence || {};
+  const valueWithConfidence = (value, field, suffix = '') => value == null || value === ''
+    ? null
+    : `${value}${suffix} · ${Math.round(Number(confidence[field] || 0) * 100)}%`;
+
   const rows = [
-    ['BPM', music?.bpm],
+    ['BPM', valueWithConfidence(music?.bpm, 'bpm')],
     ['Темп', music?.tempoClass],
-    ['Тональность', music?.key && music?.mode ? `${music.key} · ${music.mode}` : null],
+    ['Тональность', music?.key && music?.mode ? `${music.key} · ${music.mode} · ${Math.round(Number(confidence.key || 0) * 100)}%` : null],
     ['Размер', music?.timeSignature],
+    ['Громкость', valueWithConfidence(music?.loudnessLufs, 'loudnessLufs', ' LUFS')],
+    ['Динамический диапазон', valueWithConfidence(music?.dynamicRange, 'dynamicRange', ' дБ')],
     ['Вокал', music?.vocalPresence == null ? null : percent(music.vocalPresence)]
   ].filter(([, value]) => value != null && value !== '');
 
