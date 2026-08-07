@@ -28,8 +28,9 @@ export const playRecommendedTrack = async uid => {
   if (!cleanUid) return false;
 
   if (window.playerCore?.getCurrentTrackUid?.() === cleanUid) {
-    window.PlayerUI?.togglePlayPause?.();
-    return true;
+    if (window.playerCore?.isPlaying?.()) return true;
+    const result = await window.playerCore?.play?.();
+    return result !== false && window.playerCore?.isPlaying?.();
   }
 
   const track = window.TrackRegistry?.getTrackByUid?.(cleanUid);
