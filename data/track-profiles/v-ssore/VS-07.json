@@ -1,84 +1,193 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-07",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
-    "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "confidence": 0.94,
+    "bpm": 138,
+    "tempoClass": "fast",
+    "key": "G",
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -9.5,
+    "dynamicRange": 7.2,
+    "technicalConfidence": {
+      "bpm": 0.45,
+      "key": 0,
+      "loudnessLufs": 0.72,
+      "dynamicRange": 0.85
+    },
+    "instrumentation": {
+      "electric_guitar": 0.85,
+      "bass_guitar": 0.75,
+      "drum_kit": 0.8,
+      "synthesizer": 0.6,
+      "violin": 0.68,
+      "accordion": 0.45
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.95,
+      "female_lead": 0.95,
+      "mixed_duet": 0.92,
+      "character_vocals": 0.95,
+      "backing_vocals": 0.55,
+      "spoken_word": 0.45
+    },
+    "vocalDelivery": {
+      "clean": 0.82,
+      "melodic": 0.82,
+      "theatrical": 0.88,
+      "conversational": 0.92,
+      "dramatic": 0.82,
+      "aggressive": 0.7,
+      "screamed": 0.5,
+      "shouted": 0.55,
+      "spoken": 0.45
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.9,
+      "vocal_dialogue": 0.95,
+      "call_and_response": 0.9,
+      "dynamic_contrast": 0.82,
+      "heavy_chorus": 0.78,
+      "heavy_riffs": 0.8,
+      "solo_section": 0.75,
+      "layered_arrangement": 0.78,
+      "climactic_ending": 0.72
+    },
+    "productionTags": {
+      "modern_clean": 0.82,
+      "modern": 0.8,
+      "dense": 0.78,
+      "punchy": 0.82,
+      "compressed": 0.7,
+      "distorted": 0.58,
+      "bright_timbre": 0.78,
+      "guitar_driven": 0.82,
+      "synth_driven": 0.55,
+      "vocal_forward": 0.85,
+      "wide_stereo": 0.72
+    },
+    "arrangementDescription_ru": "Энергичная инди-роковая аранжировка построена как внутренний диалог Героя с персонифицированным желанием тратить деньги. Игривые женские реплики с синтезаторными, скрипичными и аккордеонными оттенками контрастируют с жёсткими мужскими ответами, перегруженными гитарами и плотной ритм-секцией. Вокальный спор развивается через вопросно-ответные фрагменты, тяжёлые припевы и выразительную сольную секцию.",
+    "productionDescription_ru": "Современное плотное звучание соединяет яркие электронные и эстрадные краски с гитарным напором. Мужской и женский голоса выдвинуты вперёд и отчётливо разделены как две стороны внутреннего конфликта, а упругие ударные, перегруженные гитары и широкая стереобаза усиливают сатирическую напряжённость."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.99,
+    "language": "ru",
+    "summary_ru": "Герой спорит с собственным желанием купить очередной товар и потратить накопленные деньги. Женский голос соблазна давит скидками, подписками, доставкой, комфортом и страхом упустить удовольствие, а Герой пытается сохранить верность мечте, на которую копит. Постоянные непредвиденные траты и хотелки снова отдаляют цель, но в финале Герой оставляет покупку в корзине и отказывается поддаваться знакомой манипуляции.",
+    "keywords_ru": [
+      "скидка",
+      "покупка",
+      "желание",
+      "мечта",
+      "сбережения",
+      "подписка",
+      "доставка",
+      "комфорт",
+      "корзина",
+      "самоконтроль"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "Внутреннее желание показывает Герою скидку и убеждает немедленно купить товар",
+      "Герой вспоминает о мечте и отказывается снова оставаться без накоплений",
+      "Соблазн предлагает подписку, доставку и дополнительный комфорт",
+      "Герой отвергает давление жить напоказ и тратить деньги как все",
+      "В коротком споре желание несколько раз требует купить и взять товар, но получает решительный отказ",
+      "Женский голос обвиняет Героя в холодности и чрезмерных запретах",
+      "Герой признаёт, что раньше постоянно кормил хотелки, а теперь стремится к своей цели",
+      "В финале товар остаётся в корзине, а Герой обещает удалить его и не поддаться при следующем возвращении соблазна"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "Игривое предложение воспользоваться скидкой постепенно превращается в напряжённый внутренний спор о деньгах, комфорте и будущем. Персонифицированное желание использует страх упущенной выгоды, насмешки и давление окружающих, а Герой всё увереннее защищает свою мечту. Финал приносит временную победу самоконтроля, хотя соблазн предупреждает, что ещё вернётся.",
+      "characters_ru": [
+        "Герой — мужчина, который копит на важную мечту и пытается противостоять постоянным непредвиденным тратам и собственным хотелкам",
+        "Внутреннее желание Героя — персонифицированный женский голос покупок, скидок, подписок и немедленного комфорта"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "alternative_rock": 0.85
+      "indie_rock": 0.92,
+      "rock": 0.82,
+      "alternative_rock": 0.72,
+      "punk_rock": 0.4,
+      "ska_punk": 0.3,
+      "pop": 0.42
     },
-    "styles": {},
+    "styles": {
+      "story_song": 0.9,
+      "anthemic": 0.68
+    },
     "moods": {
-      "rebellious": 0.85,
-      "sarcastic": 0.7
+      "ironic": 0.9,
+      "playful": 0.82,
+      "energetic": 0.85,
+      "rebellious": 0.8,
+      "confident": 0.82,
+      "funny": 0.75,
+      "sarcastic": 0.82,
+      "dramatic": 0.75,
+      "angry": 0.52
     },
     "themes": {
-      "self_reflection": 0.85,
-      "social_critique": 0.7
+      "consumerism": 0.95,
+      "self_reflection": 0.88,
+      "conflict": 0.9,
+      "communication": 0.78,
+      "dreams_goals": 0.85,
+      "humor": 0.82,
+      "satire": 0.85,
+      "storytelling": 0.88,
+      "social_critique": 0.58,
+      "success_money": 0.62
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "driving": 0.75,
+      "gym": 0.7,
+      "running": 0.68,
+      "training_motivation": 0.72,
+      "party": 0.62,
+      "karaoke": 0.78,
+      "work_productivity": 0.58,
+      "walking": 0.6
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "day": 0.8,
+      "evening": 0.68
+    },
     "axes": {
-      "energy": 0.82,
-      "valence": 0.42,
-      "arousal": 0,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0.72,
-      "melancholy": 0,
-      "romance_intensity": 0,
-      "humor": 0.55,
-      "socialness": 0.58,
-      "epicness": 0,
-      "warmth": 0,
-      "brightness": 0,
-      "tension": 0,
-      "storytelling": 0,
+      "energy": 0.85,
+      "valence": 0.6,
+      "arousal": 0.8,
+      "danceability": 0.65,
+      "acousticness": 0.15,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.65,
+      "melancholy": 0.1,
+      "romance_intensity": 0.05,
+      "humor": 0.85,
+      "socialness": 0.55,
+      "epicness": 0.5,
+      "warmth": 0.3,
+      "brightness": 0.8,
+      "tension": 0.6,
+      "storytelling": 0.85,
       "spookiness": 0,
-      "family_friendly": 0
+      "family_friendly": 0.85
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Ироничный инди-роковый спор Героя с собственным желанием тратить.",
+    "one_liner_ru": "Мужской голос Героя и женский голос персонифицированного соблазна превращают борьбу между мечтой и импульсивными покупками в энергичный внутренний рок-диалог.",
+    "mini_description_ru": "Скидки, подписки и обещания комфорта снова пытаются увести накопления Героя от его мечты. Женская партия воплощает внутреннее желание купить и потратиться, а мужская всё увереннее отвечает отказом. В финале товар остаётся в корзине, но соблазн обещает вернуться."
   }
 }
