@@ -1,84 +1,168 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-01",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
-    "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "confidence": 0.92,
+    "bpm": 128,
+    "tempoClass": "fast",
+    "key": "D",
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -9.5,
+    "dynamicRange": 8,
+    "technicalConfidence": {
+      "bpm": 0.78,
+      "key": 0.75,
+      "loudnessLufs": 0.8,
+      "dynamicRange": 0.8
+    },
+    "instrumentation": {
+      "acoustic_guitar": 0.75,
+      "electric_guitar": 0.85,
+      "bass_guitar": 0.8,
+      "drum_kit": 0.85,
+      "brass_section": 0.68
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.95,
+      "female_backing": 0.75
+    },
+    "vocalDelivery": {
+      "clean": 0.88,
+      "emotional": 0.85,
+      "belting": 0.83,
+      "shouted": 0.63
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.88,
+      "gradual_build": 0.78,
+      "dynamic_contrast": 0.8,
+      "anthemic_chorus": 0.85,
+      "acoustic_verse": 0.7,
+      "brass_lead": 0.65,
+      "layered_arrangement": 0.8
+    },
+    "productionTags": {
+      "modern": 0.8,
+      "dense": 0.8,
+      "punchy": 0.83,
+      "compressed": 0.75,
+      "bright_timbre": 0.75,
+      "wide_stereo": 0.75,
+      "guitar_driven": 0.85
+    },
+    "arrangementDescription_ru": "Акустические гитарные куплеты постепенно раскрываются в плотные роковые припевы с перегруженными гитарами, упругой ритм-секцией и яркими духовыми акцентами. Мужской ведущий вокал поддерживает женский внутренний голос, усиливая переход от усталости к решимости.",
+    "productionDescription_ru": "Плотное современное звучание держится на чётких ударных, упругом басе и ярком гитарном напоре. Широкая панорама и выразительные духовые акценты сохраняют живую, энергичную подачу."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.98,
+    "language": "ru",
+    "summary_ru": "Изматывающая работа, пустые карманы и давление чужих оценок не лишают героя главного — достоинства, человечности и воли остаться собой.",
+    "keywords_ru": [
+      "рассвет",
+      "работа",
+      "зарплата",
+      "рутина",
+      "метро",
+      "достоинство",
+      "свобода",
+      "стойкость",
+      "человечность",
+      "верность себе"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "Рассвет, пустые карманы и дорога на тяжёлую работу",
+      "Подработки, насмешки в метро и ощущение безличной толпы",
+      "Отказ продавать себя и решимость остаться человеком",
+      "Внутренний женский голос, поддерживающий героя перед финальным подъёмом"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "reflection",
+      "perspective": "first_person",
+      "arc_ru": "Усталость и чувство безысходности сменяются внутренним сопротивлением, нравственным выбором и уверенным возвращением к себе.",
+      "characters_ru": [
+        "Лирический герой, уставший от бедности и тяжёлой рутины",
+        "Внутренний женский голос, поддерживающий его решимость не сломаться"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "rock": 0.85
+      "indie_rock": 0.9,
+      "rock": 0.8,
+      "punk_rock": 0.4,
+      "ska_punk": 0.35
     },
-    "styles": {},
+    "styles": {
+      "anthemic": 0.85,
+      "story_song": 0.7,
+      "live": 0.6
+    },
     "moods": {
-      "uplifting": 0.85,
-      "energetic": 0.7
+      "energetic": 0.9,
+      "rebellious": 0.8,
+      "confident": 0.82,
+      "motivational": 0.85,
+      "uplifting": 0.75,
+      "hopeful": 0.7,
+      "dramatic": 0.65,
+      "bittersweet": 0.45
     },
     "themes": {
-      "dreams_goals": 0.85,
-      "heroism": 0.7
+      "work_routine": 0.85,
+      "self_reflection": 0.8,
+      "dreams_goals": 0.72,
+      "social_critique": 0.68,
+      "inequality": 0.45,
+      "kindness_morality": 0.75,
+      "time_fate": 0.55,
+      "anthem_chant": 0.7,
+      "storytelling": 0.65
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "driving": 0.8,
+      "gym": 0.8,
+      "running": 0.82,
+      "training_motivation": 0.85,
+      "walking": 0.7,
+      "karaoke": 0.75
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "morning": 0.65,
+      "day": 0.8
+    },
     "axes": {
-      "energy": 0.78,
-      "valence": 0.66,
-      "arousal": 0.72,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0,
-      "romance_intensity": 0,
-      "humor": 0,
-      "socialness": 0,
-      "epicness": 0.64,
-      "warmth": 0,
-      "brightness": 0,
-      "tension": 0,
-      "storytelling": 0,
+      "energy": 0.85,
+      "valence": 0.62,
+      "arousal": 0.8,
+      "danceability": 0.7,
+      "acousticness": 0.35,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.6,
+      "melancholy": 0.35,
+      "romance_intensity": 0.1,
+      "humor": 0.2,
+      "socialness": 0.65,
+      "epicness": 0.7,
+      "warmth": 0.55,
+      "brightness": 0.75,
+      "tension": 0.55,
+      "storytelling": 0.75,
       "spookiness": 0,
-      "family_friendly": 0.82
+      "family_friendly": 0.85
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Инди-роковый гимн внутренней стойкости и верности себе.",
+    "one_liner_ru": "Гитарный напор, яркие духовые акценты и мужской вокал с женским внутренним голосом превращают тяжёлую повседневность в решительный призыв не ломаться.",
+    "mini_description_ru": "Пустые карманы, изматывающая работа и равнодушие толпы сталкиваются с упрямым желанием жить по совести. От сдержанных акустических куплетов композиция поднимается к мощному припеву, где стойкость звучит громче усталости."
   }
 }
