@@ -34,8 +34,10 @@ data/track-profiles/mezhdu-zlom-i-dobrom/MZD-01.json
 14. Нулевое значение axis означает подтверждённое отсутствие признака, а не неизвестное значение.
 15. Полный профиль загружается лениво.
 16. data/track-profiles-index.json создаётся автоматически из всех полных профилей.
-17. status=test_fixture и testData=true допускаются только для временных тестовых профилей.
-18. Production-профиль имеет status=analyzed и testData=false.
+17. Фиктивные и автоматически создаваемые TrackProfile запрещены.
+18. Каждый сохранённый профиль имеет status=analyzed и testData=false.
+19. Каталог может быть заполнен частично: в индекс входят только существующие production-профили.
+20. Отсутствие TrackProfile для других UID не блокирует уже заполненные профили.
 
 
 Production workflow:
