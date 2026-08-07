@@ -45,7 +45,7 @@ export const openShowcaseSearchSettingsModal = ({ modalApi: mA }) => {
   const m = mA?.open?.({
     title: 'Поиск',
     maxWidth: 400,
-    bodyHtml: `<div class="sm-note" style="text-align:left;color:#9db7dd">Сейчас поиск проверяет название трека, название альбома и индекс текста песен.<br><br>Смысловые фильтры появятся после замены тестовых TrackProfile правдивыми данными.</div><div class="om-actions"><button class="modal-action-btn online" data-act="close">Понятно</button></div>`
+    bodyHtml: `<div class="sm-note" style="text-align:left;color:#9db7dd">Сейчас поиск проверяет название трека, название альбома и индекс текста песен.<br><br>Смысловые фильтры будут расширяться по мере заполнения проверенных TrackProfile.</div><div class="om-actions"><button class="modal-action-btn online" data-act="close">Понятно</button></div>`
   });
   m?.addEventListener('click', event => {
     if (event.target.closest('[data-act="close"]')) m.remove();
