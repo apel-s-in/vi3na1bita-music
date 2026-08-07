@@ -142,13 +142,26 @@ export const recommendationEngine = {
         const semantic = semanticScore(preview, listenerVectors);
         const canonical = source.canonicalByUid.get(uid) || {};
         const local = source.localByUid.get(uid) || {};
-            ...behavior,
-            authority: source.authority,
+        const behavior = getRecommendationBehaviorSignals({
+          fullListens: canonical.globalFullListenCount,
+          validListens: canonical.globalValidListenCount,
+          listenSeconds: canonical.globalListenSeconds,
+          averageCompletionRate: local.averageCompletionRate,
+          microSkips: local.microSkips,
+          earlySkips: local.earlySkips,
+          analysisEligibleSessions: local.analysisEligibleSessions,
+          favorite: window.FavoritesManager?.isLiked?.(uid),
+          serverAvailable: source.serverAvailable
+        });
+        const sessionSimilarity = currentPreview ? scoreTrackSimilarity(currentPreview, preview) : null;
+        const sessionAffinity = sessionSimilarity?.coverage >= 0.5 ? num(sessionSimilarity.score) : 0;
+        const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
+        const score = composeRecommendationScore({ semantic: semantic.total, sessionAffinity, ...behavior, deterministicTie });
         const reasonCode = sessionAffinity >= 0.72
           ? 'session_next'
           : semantic.total >= 0.12
             ? semanticReason(semantic.breakdown)
-            : discovery
+            : behavior.discovery
               ? 'discovery_unplayed'
               : 'semantic_preview';
         return {
