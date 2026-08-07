@@ -20601,6 +20601,15 @@ const semanticScore = (preview, listener) => {
   };
 };
 
+const semanticReason = breakdown => {
+  const ranked = [
+    ['lyric_theme_similarity', num(breakdown?.themes)],
+    ['mood_fit', num(breakdown?.moods)],
+    ['use_case_fit', num(breakdown?.use_cases)]
+  ].sort((left, right) => right[1] - left[1]);
+  return ranked[0][1] >= 0.25 ? ranked[0][0] : 'taste_fit';
+};
+
 export const recommendationEngine = {
   async init() {
     await recommendationMemory.init();
@@ -20632,11 +20641,6 @@ export const recommendationEngine = {
     const listener = source.fullIntel
       ? await listenerProfile.get().catch(() => null)
       : null;
-    const fullyPlayed = new Set(
-      [...source.canonicalByUid.values()]
-        .filter(row => num(row?.globalFullListenCount) > 0)
-        .map(row => safe(row.uid))
-    );
     const controls = getRecommendationControls();
     const seed = new Date().toISOString().slice(0, 10);
     const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
@@ -20645,7 +20649,7 @@ export const recommendationEngine = {
     const candidates = (window.TrackRegistry?.getAllUids?.() || [])
       .map(safe)
       .filter(Boolean)
-      .filter(uid => uid !== currentUid && !fullyPlayed.has(uid))
+      .filter(uid => uid !== currentUid)
       .map(uid => {
         const preview = index?.items?.[uid] || trackProfiles.getPreview(uid);
         if (!preview || blockedByControls(preview, controls)) return null;
@@ -20657,11 +20661,21 @@ export const recommendationEngine = {
         const confirmedAffinity = source.serverAvailable
           ? Math.min(1, (num(canonical.globalValidListenCount) + num(canonical.globalListenSeconds) / 1800) / 8)
           : 0;
+        const fullListens = num(canonical.globalFullListenCount);
+        const discovery = fullListens === 0 ? 1 : 0;
+        const favoriteAffinity = window.FavoritesManager?.isLiked?.(uid) ? 1 : 0;
+        const saturationPenalty = Math.min(1, Math.max(0, fullListens - 5) / 20);
         const sessionSimilarity = currentPreview ? scoreTrackSimilarity(currentPreview, preview) : null;
         const sessionAffinity = sessionSimilarity?.coverage >= 0.5 ? num(sessionSimilarity.score) : 0;
         const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
-        const score = semantic.total * 100 + sessionAffinity * 10 + confirmedAffinity * 5 + completion * 4 - skipPenalty * 8 + deterministicTie;
-        const reasonCode = sessionAffinity >= 0.72 ? 'session_next' : semantic.total >= 0.12 ? 'taste_fit' : 'semantic_preview';
+        const score = semantic.total * 100 + sessionAffinity * 10 + confirmedAffinity * 4 + favoriteAffinity * 4 + discovery * 2 + completion * 2 - skipPenalty * 8 - saturationPenalty * 6 + deterministicTie;
+        const reasonCode = sessionAffinity >= 0.72
+          ? 'session_next'
+          : semantic.total >= 0.12
+            ? semanticReason(semantic.breakdown)
+            : discovery
+              ? 'discovery_unplayed'
+              : 'semantic_preview';
         return {
           uid,
           score,
@@ -20671,6 +20685,9 @@ export const recommendationEngine = {
             sessionAffinity,
             sessionCoverage: num(sessionSimilarity?.coverage),
             confirmedAffinity,
+            favoriteAffinity,
+            discovery,
+            saturationPenalty,
             completion,
             skipPenalty,
             authority: source.authority,
