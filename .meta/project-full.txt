@@ -17436,6 +17436,11 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/intel/track/track-similarity.js', 'loudnessLufs');
   contains('scripts/intel/track/track-similarity.js', 'dynamicRange');
   contains('scripts/intel/track/track-similarity.js', 'technicalConfidence');
+  contains('scripts/intel/track/track-similarity.js', 'scoreTonalitySimilarity');
+  contains('scripts/intel/track/track-similarity.js', 'TRACK_SIMILARITY_WEIGHTS');
+  contains('scripts/intel/recs/recommendation-engine.js', 'sessionAffinity');
+  contains('scripts/intel/recs/recommendation-engine.js', 'scoreTrackSimilarity');
+  assert(!fs.existsSync(path.join(root, 'scripts/intel/track/track-presentation.js')), 'Лишний TrackPresentation adapter удалён');
   contains('scripts/ci/generate-track-profiles-index.mjs', 'track-profiles-index-v4');
   contains('scripts/ci/normalize-track-profile.mjs', 'resolveAlias');
   contains('data/track-profiles/FINALIZE-PROMPT.txt', 'ПРИОРИТЕТ ИСТОЧНИКОВ');
