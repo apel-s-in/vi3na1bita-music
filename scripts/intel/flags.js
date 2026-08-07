@@ -11,7 +11,6 @@ export function getIntelFlags(rawConfig = window.APP_CONFIG || {}) {
   return {
     enabled,
     recommendationsEnabled: enabled && cfg.INTEL_RECOMMENDATIONS_ENABLED !== false,
-    testProfilesEnabled: enabled && cfg.INTEL_TEST_PROFILES_ENABLED === true,
     bootMode: String(cfg.INTEL_LAYER_BOOT_MODE || 'soft'),
     disableKey,
     profileIndexUrl: String(cfg.INTEL_LAYER_PROFILE_INDEX_URL || './data/track-profiles-index.json'),
