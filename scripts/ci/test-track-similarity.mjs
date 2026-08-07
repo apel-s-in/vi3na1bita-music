@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { scoreTrackSimilarity } from '../intel/track/track-similarity.js';
+import { scoreTonalitySimilarity, scoreTrackSimilarity, TRACK_SIMILARITY_WEIGHTS } from '../intel/track/track-similarity.js';
 
 const profile = ({ loudnessLufs, dynamicRange, confidence, bpmConfidence = 0.9, keyConfidence = 0.9 }) => ({
   musicAnalysis: {
@@ -55,4 +55,19 @@ assert.equal('bpm' in uncertainTempo.breakdown, false);
 assert.equal('tonality' in uncertainTempo.breakdown, false);
 assert.ok(trusted.coverage > uncertainTempo.coverage);
 
-console.log('✅ Technical TrackProfile similarity confidence gate passed');
+const tonal = (key, mode, confidence = 1) => ({
+  musicAnalysis: {
+    key,
+    mode,
+    technicalConfidence: { key: confidence }
+  }
+});
+
+assert.ok(Math.abs(Object.values(TRACK_SIMILARITY_WEIGHTS).reduce((sum, weight) => sum + weight, 0) - 1) < 1e-12);
+assert.equal(scoreTonalitySimilarity(tonal('A', 'minor'), tonal('A', 'minor')), 1);
+assert.equal(scoreTonalitySimilarity(tonal('A', 'minor'), tonal('C', 'major')), 0.9);
+assert.equal(scoreTonalitySimilarity(tonal('A', 'minor'), tonal('A', 'major')), 0.78);
+assert.equal(scoreTonalitySimilarity(tonal('A', 'minor'), tonal('E', 'minor')), 0.72);
+assert.equal(scoreTonalitySimilarity(tonal('A', 'minor', 0.4), tonal('A', 'minor')), null);
+
+console.log('✅ Technical and harmonic TrackProfile similarity passed');
