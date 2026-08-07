@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const fail = message => {
   console.error(`❌ ${message}`);
@@ -102,6 +103,21 @@ Object.entries(vocabulary.aliases || {}).forEach(([group, aliases]) => {
 const items = index.items || {};
 if (!Object.keys(items).length) fail('TrackProfile index пуст');
 
+const indexedPaths = new Set(Object.values(items).map(item => safe(item?.profilePath)).filter(Boolean));
+const diskPaths = [];
+for (const entry of fs.readdirSync('data/track-profiles', { withFileTypes: true })) {
+  if (!entry.isDirectory()) continue;
+  const directory = path.join('data/track-profiles', entry.name);
+  for (const file of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (!file.isFile() || !file.name.endsWith('.json')) continue;
+    const relative = `${entry.name}/${file.name}`;
+    const profile = read(path.join(directory, file.name));
+    if (profile.status !== 'analyzed' || profile.testData !== false) fail(`${relative}: fixture или непроверенный профиль запрещён`);
+    diskPaths.push(relative);
+  }
+}
+if (diskPaths.length !== indexedPaths.size || diskPaths.some(relative => !indexedPaths.has(relative))) fail('TrackProfile index не соответствует production-файлам на диске');
+
 for (const [uid, preview] of Object.entries(items)) {
   if (!catalogByUid.has(uid)) fail(`${uid}: отсутствует в listening catalog`);
   if (preview.uid !== uid) fail(`${uid}: preview uid mismatch`);
@@ -115,16 +131,18 @@ for (const [uid, preview] of Object.entries(items)) {
 
   const file = path.join('data/track-profiles', expectedPath);
   if (!fs.existsSync(file)) fail(`${uid}: отсутствует ${file}`);
-  const profile = read(file);
+  const source = fs.readFileSync(file, 'utf8');
+  const expectedHash = crypto.createHash('sha256').update(source).digest('hex').slice(0, 16);
+  if (preview.profileHash !== expectedHash) fail(`${uid}: profileHash не соответствует полному профилю`);
+  const profile = JSON.parse(source);
 
   if (profile.uid !== uid) fail(`${uid}: full profile uid mismatch`);
   if (profile.version !== 'track-profile-v4') fail(`${uid}: требуется track-profile-v4`);
   if (profile.taxonomyVersion !== taxonomy.taxonomyVersion) fail(`${uid}: taxonomy version mismatch`);
   if (profile.vocabularyVersion !== vocabulary.version) fail(`${uid}: vocabulary version mismatch`);
-  if (![...allowedTopKeys].every(key => key in profile) || Object.keys(profile).some(key => !allowedTopKeys.has(key))) fail(`${uid}: top-level структура не совпадает с v3`);
-  if (!['analyzed', 'test_fixture'].includes(profile.status)) fail(`${uid}: недопустимый status`);
-  if (profile.status === 'test_fixture' && profile.testData !== true) fail(`${uid}: fixture должен иметь testData=true`);
-  if (profile.status === 'analyzed' && profile.testData !== false) fail(`${uid}: analyzed должен иметь testData=false`);
+  if (![...allowedTopKeys].every(key => key in profile) || Object.keys(profile).some(key => !allowedTopKeys.has(key))) fail(`${uid}: top-level структура не совпадает с v4`);
+  if (profile.status !== 'analyzed') fail(`${uid}: допускается только production status=analyzed`);
+  if (profile.testData !== false) fail(`${uid}: production-профиль должен иметь testData=false`);
 
   walkBanned(uid, profile);
 
