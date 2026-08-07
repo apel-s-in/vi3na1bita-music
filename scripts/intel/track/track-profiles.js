@@ -15,12 +15,18 @@ export const trackProfiles = {
     if (st.idx) return st.idx;
     try {
       const loaded = await fetchJ(getUrl(), 'intel:track-profiles-index:v4');
-      const value = loaded && typeof loaded === 'object' ? loaded : { items: {} };
+      const valid = loaded?.version === 'track-profiles-index-v4'
+        && loaded?.taxonomyVersion === 'taxonomy-v3'
+        && loaded?.vocabularyVersion === 'track-profile-vocabulary-v2'
+        && loaded?.items
+        && typeof loaded.items === 'object'
+        && !Array.isArray(loaded.items);
+      const value = valid ? loaded : { items: {} };
       st.idx = {
-        version: value.version || 'track-profiles-index-v4',
-        taxonomyVersion: value.taxonomyVersion || 'taxonomy-v3',
-        vocabularyVersion: value.vocabularyVersion || 'track-profile-vocabulary-v2',
-        items: value.items && typeof value.items === 'object' ? value.items : {}
+        version: 'track-profiles-index-v4',
+        taxonomyVersion: 'taxonomy-v3',
+        vocabularyVersion: 'track-profile-vocabulary-v2',
+        items: value.items || {}
       };
       st.idxLoadedAt = Date.now();
       window.dispatchEvent(new CustomEvent('intel:track-profiles:index-ready', { detail: { count: Object.keys(st.idx.items).length } }));
