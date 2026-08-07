@@ -232,7 +232,7 @@ export const buildGalleryRecommendationCards = async () => {
       album: weeklyAlbum,
       emptyText: 'Альбом недели пока недоступен'
     })
-  ];
+  ].filter(card => card.album || card.items.length);
 };
 
 const recommendationContext = card => `gallery:${safe(card?.id || 'generic')}`;
