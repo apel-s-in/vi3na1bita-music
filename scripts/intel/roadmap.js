@@ -1,4 +1,4 @@
-export const INTEL_ROADMAP_VERSION = '2026-08-04.3';
+export const INTEL_ROADMAP_VERSION = '2026-08-07.1';
 
 export const INTEL_ROADMAP_TEXT = String.raw`
 INTEL — опциональная локальная интеллектуальная надстройка.
@@ -16,10 +16,14 @@ INTEL — опциональная локальная интеллектуаль
 - Stats являются rebuildable-проекцией.
 - TrackProfile и ListenerProfile являются производными данными.
 
-ТЕКУЩЕЕ ТЕСТОВОЕ СОСТОЯНИЕ
+ТЕКУЩЕЕ PRODUCTION-СОСТОЯНИЕ
 
-- TrackProfile test fixtures VS-01–VS-10.
-- Альбомная структура full profiles и компактный profilePath index.
+- TrackProfile создаются только из трёх независимых анализов, точного текста и авторских уточнений.
+- Фиктивные TrackProfile и их автоматическая генерация запрещены.
+- Каталог TrackProfile может быть заполнен частично.
+- Каждый доступный production-профиль сразу участвует в рекомендациях и сходстве.
+- Отсутствие профилей других альбомов не блокирует уже заполненные треки.
+- Альбомная структура full profiles и компактный производный profilePath index.
 - Локальный ListenerProfile.
 - Детерминированный Recommendation Engine.
 - Серверная статистика как необязательная корректировка.
@@ -30,18 +34,16 @@ INTEL — опциональная локальная интеллектуаль
 - Восемь общих рекомендательных карточек галереи.
 - Никаких праздничных, календарных или сезонных подборок.
 
-ДЛЯ ПЕРЕХОДА В PRODUCTION
+ДАЛЬНЕЙШЕЕ ЗАПОЛНЕНИЕ
 
-1. Заменить VS-01–VS-10 правдивыми профилями.
-2. Создать TrackProfile для остальных UID.
-3. Добавить проверенные канонические audio features.
-4. Добавить проверенный lyric analysis.
-5. Заполнить genres, styles, moods, themes, use_cases, time_of_day, axes и warnings.
-6. Заполнить instrumentation, vocalRoles, vocalDelivery, arrangementTags и productionTags.
-7. Проверять производное сходство по всему каталогу без хранения UID-связей.
-8. Убрать testData после редакторской проверки.
-9. Включить semantic filters только после заполнения всего каталога.
-10. Добавить versioned semantic projection для долгосрочного rebuild.
+1. Последовательно заполнить production TrackProfile альбома «В Ссоре».
+2. После каждого нового профиля пересобирать производный индекс.
+3. Проверять канонические audio features и lyric analysis.
+4. Проверять genres, styles, moods, themes, use_cases, time_of_day, axes и warnings.
+5. Проверять instrumentation, vocalRoles, vocalDelivery, arrangementTags и productionTags.
+6. Вычислять сходство по всем доступным production-профилям без хранения UID-связей.
+7. После завершения альбома перейти к следующему альбому без изменения уже проверенных профилей.
+8. Добавить versioned semantic projection для долгосрочного rebuild.
 
 ОСКОЛКИ
 
