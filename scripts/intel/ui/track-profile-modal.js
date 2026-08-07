@@ -49,13 +49,12 @@ export const trackProfileModal = {
 
     const presentation = await trackPresentation.getPresentation(cleanUid);
     const track = window.TrackRegistry?.getTrackByUid?.(cleanUid);
-    const testData = profile.testData === true || profile.status === 'test_fixture';
     const music = profile.musicAnalysis || {};
     const lyrics = profile.lyricAnalysis || {};
     const finalProfile = profile.finalProfile || {};
 
     window.Modals.open({
-      title: `Паспорт трека${testData ? ' · TEST' : ''}`,
+      title: 'Паспорт трека',
       maxWidth: 460,
       bodyHtml: `
         <div class="sm-center sm-mb20">
@@ -63,7 +62,6 @@ export const trackProfileModal = {
           <div class="sm-sub">${esc(track?.album || window.TrackRegistry?.getAlbumTitle?.(track?.sourceAlbum) || '')}</div>
           <div class="sm-note">${esc(presentation.one_liner_ru || presentation.tagline_ru || 'Смысловой профиль загружен')}</div>
         </div>
-        ${testData ? '<div class="stat-card"><div class="stat-sub">Демонстрационные данные. Не являются фактическим анализом трека.</div></div>' : ''}
         ${renderTechnical(music)}
         ${renderWeights('Инструменты', music.instrumentation)}
         ${renderWeights('Вокальные роли', music.vocalRoles)}
