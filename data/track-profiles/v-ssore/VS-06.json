@@ -1,84 +1,179 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-06",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
-    "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "confidence": 0.95,
+    "bpm": 128,
+    "tempoClass": "fast",
+    "key": "D",
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -9.5,
+    "dynamicRange": 8,
+    "technicalConfidence": {
+      "bpm": 0.82,
+      "key": 0,
+      "loudnessLufs": 0.82,
+      "dynamicRange": 0.88
+    },
+    "instrumentation": {
+      "accordion": 0.9,
+      "acoustic_guitar": 0.68,
+      "upright_bass": 0.68,
+      "drum_kit": 0.78,
+      "percussion": 0.5,
+      "brass_section": 0.55
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.9,
+      "female_lead": 0.95,
+      "mixed_duet": 0.95,
+      "group_vocals": 0.85,
+      "spoken_word": 0.62,
+      "character_vocals": 0.9
+    },
+    "vocalDelivery": {
+      "theatrical": 0.92,
+      "expressive": 0.85,
+      "melodic": 0.8,
+      "conversational": 0.9,
+      "dramatic": 0.72,
+      "spoken": 0.62
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.9,
+      "repetitive_form": 0.72,
+      "vocal_dialogue": 0.95,
+      "call_and_response": 0.88,
+      "dynamic_contrast": 0.72,
+      "brass_lead": 0.5,
+      "layered_arrangement": 0.75
+    },
+    "productionTags": {
+      "live_feel": 0.95,
+      "polished": 0.8,
+      "organic": 0.82,
+      "acoustic": 0.72,
+      "bright_timbre": 0.85,
+      "punchy": 0.75,
+      "vocal_forward": 0.82,
+      "brass_forward": 0.52,
+      "wide_stereo": 0.7,
+      "dynamic": 0.65
+    },
+    "arrangementDescription_ru": "Концертная аранжировка соединяет французское кабаре, шансон и лёгкую эстрадную подачу. Ведущий аккордеон, ритмичная акустическая гитара, контрабас, ударные, перкуссия и духовые акценты сопровождают театральный диалог мужского и женского вокала. В припевных фрагментах к ведущим партиям присоединяются групповые подпевки всех музыкантов.",
+    "productionDescription_ru": "Яркое и тёплое концертное звучание сохраняет естественную энергию живого исполнения. Мужской и женский голоса отчётливо разделены в диалоге, а групповые подпевки, аккордеон и духовые расширяют сценическое пространство. Упругая ритм-секция поддерживает танцевальный характер без чрезмерной жёсткости."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
-    "entities_ru": [],
-    "scenes_ru": [],
+    "confidence": 0.99,
+    "language": "mixed",
+    "summary_ru": "Ироничная театральная история показывает гастрономический роман героини с галантным Месье Жором. Его ухаживания выражаются через пельмени, банкеты, багеты, десерты и приглашения в ресторан, а героиня после недолгих сомнений о фигуре признаёт, что аппетит сильнее диет и условностей. Финальная шутка переносит ожидаемое ночное свидание к холодильнику.",
+    "keywords_ru": [
+      "месье",
+      "аппетит",
+      "еда",
+      "банкет",
+      "ресторан",
+      "десерт",
+      "фигура",
+      "флирт",
+      "кабаре",
+      "холодильник"
+    ],
+    "entities_ru": [
+      "Месье Жор"
+    ],
+    "scenes_ru": [
+      "Месье Жор представляется героине и сразу вызывает её шутливое возмущение",
+      "Героиня рассказывает, как галантный кавалер готовит пельмени и устраивает богатые банкеты",
+      "В диалоге обсуждаются десерты, аппетит и опасения за талию",
+      "Героиня у зеркала замечает тесное платье, но отказывается подчиняться требованиям моды",
+      "Французская вставка превращает любовь к блюдам в театральное признание",
+      "Героиня требует котлету, торт, омлет, рассольник и признаёт победу аппетита",
+      "В финале обещанное ночное свидание оказывается встречей с холодильником"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "Знакомство с галантным Месье Жором превращается в гастрономическое ухаживание. Героиня сначала вспоминает о фигуре и тесном платье, затем отбрасывает ограничения и открыто выбирает удовольствие от еды. История завершается комической развязкой, в которой романтическое ожидание уступает ночному визиту к холодильнику.",
+      "characters_ru": [
+        "Героиня — женщина с хорошим аппетитом, которая шутливо спорит с требованиями моды и отказывается от строгих ограничений",
+        "Месье Жор — галантный кавалер и кулинарный соблазнитель, выражающий внимание через угощения и богатые застолья"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "rock": 0.85
+      "chanson": 0.85,
+      "pop": 0.78
     },
-    "styles": {},
+    "styles": {
+      "live": 0.95,
+      "story_song": 0.85,
+      "acoustic": 0.72
+    },
     "moods": {
-      "funny": 0.85,
-      "ironic": 0.7
+      "playful": 0.95,
+      "funny": 0.9,
+      "ironic": 0.85,
+      "happy": 0.82,
+      "joyful": 0.8,
+      "energetic": 0.8,
+      "whimsical": 0.65,
+      "romantic": 0.55,
+      "dramatic": 0.6
     },
     "themes": {
-      "humor": 0.85,
-      "satire": 0.7
+      "humor": 0.95,
+      "flirting": 0.85,
+      "storytelling": 0.85,
+      "romance": 0.6,
+      "love": 0.48,
+      "satire": 0.45
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "party": 0.8,
+      "karaoke": 0.78,
+      "driving": 0.68,
+      "walking": 0.62,
+      "dance_floor": 0.65,
+      "family_evening": 0.62
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "day": 0.72,
+      "evening": 0.82
+    },
     "axes": {
-      "energy": 0.7,
-      "valence": 0.68,
-      "arousal": 0,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0,
-      "romance_intensity": 0,
-      "humor": 0.9,
-      "socialness": 0,
-      "epicness": 0,
-      "warmth": 0,
-      "brightness": 0,
-      "tension": 0,
-      "storytelling": 0.55,
+      "energy": 0.8,
+      "valence": 0.88,
+      "arousal": 0.75,
+      "danceability": 0.8,
+      "acousticness": 0.55,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.15,
+      "melancholy": 0.05,
+      "romance_intensity": 0.6,
+      "humor": 0.95,
+      "socialness": 0.4,
+      "epicness": 0.4,
+      "warmth": 0.8,
+      "brightness": 0.85,
+      "tension": 0.1,
+      "storytelling": 0.85,
       "spookiness": 0,
-      "family_friendly": 0.72
+      "family_friendly": 0.9
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Концертное французское кабаре о флирте, застолье и победе аппетита.",
+    "one_liner_ru": "Театральный мужской и женский дуэт с аккордеоном, духовыми и групповыми подпевками превращает гастрономические ухаживания Месье Жора в яркую концертную комедию.",
+    "mini_description_ru": "Галантный Месье Жор покоряет героиню не бриллиантами, а пельменями, банкетами и десертами. Она недолго сомневается из-за фигуры, но выбирает аппетит, удовольствие и самоиронию. Французские вставки, аккордеон и подпевки всей группы усиливают атмосферу живого кабаре."
   }
 }
