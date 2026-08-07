@@ -108,7 +108,6 @@ export const recommendationEngine = {
     const source = resolveRecommendationDataSource(stats);
     const index = await trackProfiles.ensureIndex().catch(() => ({
       version: 'track-profiles-index-v4',
-      testData: false,
       items: {}
     }));
     const listener = source.fullIntel
@@ -128,7 +127,7 @@ export const recommendationEngine = {
       .filter(uid => !fullyPlayed.has(uid))
       .map(uid => {
         const preview = index?.items?.[uid] || trackProfiles.getPreview(uid);
-        if (preview && blockedByControls(preview, controls)) return null;
+        if (!preview || blockedByControls(preview, controls)) return null;
         const semantic = semanticScore(preview, listener);
         const canonical = source.canonicalByUid.get(uid) || {};
         const local = source.localByUid.get(uid) || {};
@@ -137,24 +136,21 @@ export const recommendationEngine = {
         const confirmedAffinity = source.serverAvailable
           ? Math.min(1, (num(canonical.globalValidListenCount) + num(canonical.globalListenSeconds) / 1800) / 8)
           : 0;
-        const profileCoverage = preview ? 1 : 0;
         const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
-        const score = semantic.total * 100 + profileCoverage * 2 + confirmedAffinity * 5 + completion * 4 - skipPenalty * 8 + deterministicTie;
-        const reasonCode = semantic.total >= 0.12 ? 'taste_fit' : preview ? 'semantic_preview' : 'discovery_unplayed';
+        const score = semantic.total * 100 + confirmedAffinity * 5 + completion * 4 - skipPenalty * 8 + deterministicTie;
+        const reasonCode = semantic.total >= 0.12 ? 'taste_fit' : 'semantic_preview';
         return {
           uid,
           score,
           reasonCode,
           breakdown: {
             semantic: semantic.total,
-            profileCoverage,
             confirmedAffinity,
             completion,
             skipPenalty,
             authority: source.authority,
             ...semantic.breakdown
-          },
-          testProfile: preview?.testData === true || preview?.status === 'test_fixture'
+          }
         };
       })
       .filter(Boolean)
@@ -177,7 +173,6 @@ export const recommendationEngine = {
       fullIntel: source.fullIntel,
       serverAvailable: source.serverAvailable,
       serverCorrected: source.serverCorrected === true,
-      testData: index?.testData === true,
       items
     };
     window.dispatchEvent(new CustomEvent('intel:recommendations:updated', { detail: state.lastResult }));
