@@ -1,84 +1,177 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-02",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
-    "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "confidence": 0.93,
+    "bpm": 135,
+    "tempoClass": "fast",
+    "key": "G",
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -8.5,
+    "dynamicRange": 6.2,
+    "technicalConfidence": {
+      "bpm": 0.45,
+      "key": 0,
+      "loudnessLufs": 0.65,
+      "dynamicRange": 0.85
+    },
+    "instrumentation": {
+      "electric_guitar": 0.85,
+      "synthesizer": 0.78,
+      "synth_bass": 0.82,
+      "drum_kit": 0.85
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.9,
+      "female_lead": 0.95,
+      "mixed_duet": 0.92,
+      "character_vocals": 0.95,
+      "spoken_word": 0.45
+    },
+    "vocalDelivery": {
+      "melodic": 0.85,
+      "conversational": 0.9,
+      "theatrical": 0.82,
+      "aggressive": 0.75,
+      "whispered": 0.55,
+      "spoken": 0.45,
+      "screamed": 0.62
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.85,
+      "vocal_dialogue": 0.95,
+      "dynamic_contrast": 0.85,
+      "gradual_build": 0.8,
+      "heavy_chorus": 0.85,
+      "explosive_chorus": 0.8,
+      "heavy_riffs": 0.82,
+      "climactic_ending": 0.85,
+      "layered_arrangement": 0.82
+    },
+    "productionTags": {
+      "modern": 0.88,
+      "dense": 0.85,
+      "compressed": 0.85,
+      "distorted": 0.88,
+      "electronic": 0.85,
+      "synth_driven": 0.72,
+      "guitar_driven": 0.82,
+      "bass_heavy": 0.8,
+      "punchy": 0.82,
+      "vocal_forward": 0.78
+    },
+    "arrangementDescription_ru": "Композиция построена как напряжённый ролевой диалог: женская партия воплощает Клаустрофобию, а мужская отвечает от лица человека, сопротивляющегося страху. Тревожные куплеты с шёпотом, речевыми фрагментами и электронными пульсациями переходят в тяжёлые гитарные припевы и нарастающую кульминацию.",
+    "productionDescription_ru": "Плотное современное звучание соединяет альтернативный рок с синтезаторным басом и электронными эффектами. Искажение женского голоса подчёркивает нечеловеческий образ Клаустрофобии, а перегруженные гитары, компрессированные ударные и вокальные контрасты усиливают ощущение давления."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.99,
+    "language": "ru",
+    "summary_ru": "Песня изображает прямой диалог человека с персонифицированной Клаустрофобией. Женский голос страха пытается захватить сознание героя, сжимает пространство и провоцирует панику, а герой постепенно собирается, считает удары сердца и в финале отказывается подчиняться.",
+    "keywords_ru": [
+      "клаустрофобия",
+      "замкнутое пространство",
+      "страх",
+      "паника",
+      "стены",
+      "темнота",
+      "сердце",
+      "сознание",
+      "сопротивление",
+      "воля"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "Клаустрофобия вторгается в сознание человека в тесном и тёмном пространстве",
+      "Потолок словно опускается, воздух режет горло, а стены превращаются в угрозу",
+      "Герой считает удары сердца и напоминает себе, что приступ пройдёт",
+      "Женский голос страха продолжает давить и заявляет о власти над человеком",
+      "В финале герой отказывается быть игрушкой Клаустрофобии и защищает свою волю"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "Нарастающий приступ и психологическое давление переходят в прямое противостояние, после чего герой возвращает контроль и открыто отвергает власть страха.",
+      "characters_ru": [
+        "Клаустрофобия — персонифицированный страх, звучащий женским голосом",
+        "Человек, переживающий приступ и сопротивляющийся ему мужским голосом"
+      ]
     },
-    "sensitiveContentNotes_ru": []
+    "sensitiveContentNotes_ru": [
+      "Изображены паническое состояние, ощущение удушья и сильное психологическое давление"
+    ]
   },
   "finalProfile": {
     "genres": {
-      "alternative_rock": 0.85
+      "alternative_rock": 0.9,
+      "indie_rock": 0.85,
+      "electronic": 0.55
     },
-    "styles": {},
+    "styles": {
+      "story_song": 0.78,
+      "anthemic": 0.72,
+      "cinematic": 0.6
+    },
     "moods": {
+      "tense": 0.9,
       "anxious": 0.85,
-      "tense": 0.7
+      "dark": 0.8,
+      "aggressive": 0.75,
+      "energetic": 0.85,
+      "rebellious": 0.75,
+      "dramatic": 0.88,
+      "confident": 0.7,
+      "fearful": 0.65
     },
     "themes": {
-      "mental_health": 0.85,
-      "self_reflection": 0.7
+      "mental_health": 0.92,
+      "conflict": 0.85,
+      "self_reflection": 0.7,
+      "storytelling": 0.78
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "gym": 0.75,
+      "running": 0.7,
+      "training_motivation": 0.75,
+      "concert_moshpit": 0.68,
+      "driving": 0.65
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "night": 0.82,
+      "evening": 0.6
+    },
     "axes": {
-      "energy": 0.62,
-      "valence": 0.22,
-      "arousal": 0.8,
-      "danceability": 0,
-      "acousticness": 0,
+      "energy": 0.85,
+      "valence": 0.2,
+      "arousal": 0.85,
+      "danceability": 0.45,
+      "acousticness": 0.05,
       "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0,
+      "aggressiveness": 0.8,
+      "melancholy": 0.4,
       "romance_intensity": 0,
       "humor": 0,
-      "socialness": 0,
-      "epicness": 0,
-      "warmth": 0,
-      "brightness": 0,
-      "tension": 0.88,
-      "storytelling": 0,
-      "spookiness": 0,
-      "family_friendly": 0.55
+      "socialness": 0.2,
+      "epicness": 0.75,
+      "warmth": 0.1,
+      "brightness": 0.3,
+      "tension": 0.9,
+      "storytelling": 0.75,
+      "spookiness": 0.6,
+      "family_friendly": 0.4
     },
-    "warnings": {}
+    "warnings": {
+      "psychological_distress": 0.7
+    }
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Напряжённый рок-диалог человека с ожившим страхом замкнутого пространства.",
+    "one_liner_ru": "Альтернативный и инди-рок с электронными эффектами превращает мужской и женский вокал в противостояние человека и персонифицированной Клаустрофобии.",
+    "mini_description_ru": "Женская партия воплощает Клаустрофобию, которая вторгается в сознание и сжимает пространство вокруг героя. Мужской голос проходит от паники к сопротивлению, а тяжёлые гитары, синтезаторный бас и искажённый вокал усиливают психологическое давление."
   }
 }
