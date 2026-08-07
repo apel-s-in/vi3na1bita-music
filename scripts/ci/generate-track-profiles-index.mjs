@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const ROOT = path.resolve('data/track-profiles');
 const OUTPUT = path.resolve('data/track-profiles-index.json');
