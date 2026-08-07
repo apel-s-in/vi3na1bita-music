@@ -1,7 +1,6 @@
 // Детерминированные объяснения Recommendation Engine.
 const REASON_TEXTS_RU = Object.freeze({
   taste_fit: 'похож на то, что вы слушаете чаще',
-  audio_similarity: 'похож по звучанию',
   lyric_theme_similarity: 'близок по смыслу и теме',
   mood_fit: 'совпадает по настроению',
   use_case_fit: 'подходит под выбранную ситуацию',
