@@ -17830,14 +17830,14 @@ const catalog = read('data/listen-track-catalog.json');
 const catalogByUid = new Map((catalog.tracks || []).map(track => [safe(track.uid), track]));
 const threshold = Number(taxonomy.defaults?.threshold_store || 0.05);
 const semanticGroups = ['genres', 'styles', 'moods', 'themes', 'use_cases', 'time_of_day'];
-const bannedKeys = new Set(['trackVersion', 'title', 'album', 'albumTitle', 'durationSec', 'source', 'analyzer', 'analyzedAt', 'generatedAt', 'updatedAt', 'provenance', 'verified', 'loudnessLufs', 'dynamicRange', 'dynamicRangeLra', 'relations', 'embedding']);
+const bannedKeys = new Set(['trackVersion', 'title', 'album', 'albumTitle', 'durationSec', 'source', 'analyzer', 'analyzedAt', 'generatedAt', 'updatedAt', 'provenance', 'verified', 'dynamicRangeLra', 'relations', 'embedding']);
 const machinePattern = /^[a-z][a-z0-9_]*$/;
 const allowedTopKeys = new Set(['version', 'taxonomyVersion', 'vocabularyVersion', 'uid', 'status', 'testData', 'musicAnalysis', 'lyricAnalysis', 'finalProfile', 'presentation']);
 
-if (template.version !== 'track-profile-v3' || template.uid !== '__TEMPLATE__' || template.status !== 'template') fail('Некорректный TrackProfile template v3');
+if (template.version !== 'track-profile-v4' || template.uid !== '__TEMPLATE__' || template.status !== 'template') fail('Некорректный TrackProfile template v4');
 if (taxonomy.taxonomyVersion !== 'taxonomy-v3') fail('Требуется taxonomy-v3');
-if (vocabulary.version !== 'track-profile-vocabulary-v1') fail('Некорректный audio vocabulary');
-if (index.version !== 'track-profiles-index-v3') fail('Требуется track-profiles-index-v3');
+if (vocabulary.version !== 'track-profile-vocabulary-v2') fail('Некорректный audio vocabulary');
+if (index.version !== 'track-profiles-index-v4') fail('Требуется track-profiles-index-v4');
 if (index.taxonomyVersion !== taxonomy.taxonomyVersion) fail('Index taxonomy version mismatch');
 if (index.vocabularyVersion !== vocabulary.version) fail('Index vocabulary version mismatch');
 
@@ -17887,6 +17887,26 @@ const validateNullableEnum = (uid, name, value, allowed) => {
   if (!allowed.has(String(value))) fail(`${uid}: неизвестное значение ${name}=${value}`);
 };
 
+const aliasTargets = {
+  instrumentation: vocabulary.instrumentation,
+  vocalRoles: vocabulary.vocalRoles,
+  vocalDelivery: vocabulary.vocalDelivery,
+  arrangementTags: vocabulary.arrangementTags,
+  productionTags: vocabulary.productionTags,
+  keys: vocabulary.keys,
+  timeSignatures: vocabulary.timeSignatures,
+  languages: vocabulary.languages,
+  narrativePerspectives: vocabulary.narrativePerspectives
+};
+
+Object.entries(vocabulary.aliases || {}).forEach(([group, aliases]) => {
+  const allowed = new Set(Object.keys(aliasTargets[group] || {}));
+  if (!object(aliases) || !allowed.size) fail(`Некорректная alias-группа ${group}`);
+  Object.entries(aliases).forEach(([alias, target]) => {
+    if (!safe(alias) || !allowed.has(safe(target))) fail(`Alias ${group}.${alias} ссылается на неизвестный ${target}`);
+  });
+});
+
 const items = index.items || {};
 if (!Object.keys(items).length) fail('TrackProfile index пуст');
 
@@ -17906,7 +17926,7 @@ for (const [uid, preview] of Object.entries(items)) {
   const profile = read(file);
 
   if (profile.uid !== uid) fail(`${uid}: full profile uid mismatch`);
-  if (profile.version !== 'track-profile-v3') fail(`${uid}: требуется track-profile-v3`);
+  if (profile.version !== 'track-profile-v4') fail(`${uid}: требуется track-profile-v4`);
   if (profile.taxonomyVersion !== taxonomy.taxonomyVersion) fail(`${uid}: taxonomy version mismatch`);
   if (profile.vocabularyVersion !== vocabulary.version) fail(`${uid}: vocabulary version mismatch`);
   if (![...allowedTopKeys].every(key => key in profile) || Object.keys(profile).some(key => !allowedTopKeys.has(key))) fail(`${uid}: top-level структура не совпадает с v3`);
@@ -17923,6 +17943,16 @@ for (const [uid, preview] of Object.entries(items)) {
 
   if (!Number.isFinite(Number(music.confidence)) || Number(music.confidence) < 0 || Number(music.confidence) > 1) fail(`${uid}: music confidence вне 0..1`);
   if (music.bpm != null && (!Number.isFinite(Number(music.bpm)) || Number(music.bpm) < 30 || Number(music.bpm) > 260)) fail(`${uid}: BPM вне допустимого диапазона`);
+  if (music.loudnessLufs != null && (!Number.isFinite(Number(music.loudnessLufs)) || Number(music.loudnessLufs) < -40 || Number(music.loudnessLufs) > 0)) fail(`${uid}: loudnessLufs вне диапазона -40..0`);
+  if (music.dynamicRange != null && (!Number.isFinite(Number(music.dynamicRange)) || Number(music.dynamicRange) < 0 || Number(music.dynamicRange) > 30)) fail(`${uid}: dynamicRange вне диапазона 0..30`);
+  if (!object(music.technicalConfidence)) fail(`${uid}: отсутствует technicalConfidence`);
+
+  ['bpm', 'key', 'loudnessLufs', 'dynamicRange'].forEach(field => {
+    const confidence = Number(music.technicalConfidence[field]);
+    if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) fail(`${uid}: technicalConfidence.${field} вне 0..1`);
+    if (music[field] == null && confidence !== 0) fail(`${uid}: technicalConfidence.${field} должен быть 0 для null`);
+  });
+
   validateNullableEnum(uid, 'tempoClass', music.tempoClass, keys(vocabulary.tempoClasses));
   validateNullableEnum(uid, 'key', music.key, keys(vocabulary.keys));
   validateNullableEnum(uid, 'mode', music.mode, keys(vocabulary.modes));
@@ -17966,7 +17996,7 @@ for (const [uid, preview] of Object.entries(items)) {
   validateRussianText(uid, 'presentation.mini_description_ru', profile.presentation?.mini_description_ru);
 }
 
-console.log(`✅ Validated ${Object.keys(items).length} TrackProfiles v3`);
+console.log(`✅ Validated ${Object.keys(items).length} TrackProfiles v4`);
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
