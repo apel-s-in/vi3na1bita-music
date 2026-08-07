@@ -9,7 +9,7 @@ const RECOMMENDATION_EVENT_IDS_LIMIT = 256;
 const SHOWN_DEDUP_MS = 6 * 60 * 60 * 1000;
 const ACCEPT_WINDOW_MS = 15000;
 const SAFE_GAME_KEYS = new Set(['presets', 'uiSettings', 'matchDraft']);
-const SAFE_CONTROL_KEYS = new Set(['familyMode', 'sleepMode', 'noExplicit', 'noHorror', 'noPolitics', 'preferredEnergy', 'preferredLanguage']);
+const SAFE_CONTROL_KEYS = new Set(['familyMode', 'noExplicit', 'noHorror', 'noPolitics']);
 const SAFE_UI_KEYS = new Set(['hiddenBlocks', 'statsCardOrder', 'preferredCharts', 'expandedGroups']);
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -119,9 +119,7 @@ const normalizeControls = raw => {
   const controls = {};
   Object.entries(plain(raw?.controls) ? raw.controls : plain(raw) ? raw : {}).forEach(([key, value]) => {
     if (!SAFE_CONTROL_KEYS.has(key)) return;
-    if (['preferredEnergy'].includes(key)) controls[key] = Math.max(0, Math.min(1, Number(value) || 0));
-    else if (key === 'preferredLanguage') controls[key] = safe(value).slice(0, 20);
-    else controls[key] = value === true;
+    controls[key] = value === true;
   });
   return { version: 1, controls, updatedAt: num(raw?.updatedAt), eventId: safe(raw?.eventId) };
 };
