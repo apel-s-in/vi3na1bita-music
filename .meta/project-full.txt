@@ -10780,8 +10780,8 @@ export default { mountFriendsBlock };
 // Модуль только вычисляет и отображает данные: playback изменяет GalleryManager
 // исключительно после явного пользовательского нажатия.
 import { metaDB } from '../analytics/meta-db.js';
-import { getConfirmedListeningStats } from '../analytics/confirmed-listening-stats.js';
 import { listenerProfile } from '../intel/listener/listener-profile.js';
+import { resolveRecommendationDataSource } from '../intel/recs/recommendation-data-source.js';
 import { trackProfiles } from '../intel/track/track-profiles.js';
 import { trackSimilarity } from '../intel/track/track-similarity.js';
 import { getIntelFlags } from '../intel/flags.js';
@@ -10817,27 +10817,6 @@ const trackCover = uid => {
     || 'img/logo.png';
 };
 
-const canonicalStats = localRows => {
-  const local = new Map((localRows || []).filter(row => row?.uid && row.uid !== 'global').map(row => [safe(row.uid), row]));
-  const serverSnapshot = getConfirmedListeningStats();
-  const serverAvailable = serverSnapshot.available === true;
-  const server = new Map((serverSnapshot.tracks || []).map(row => [safe(row.uid), {
-    uid: safe(row.uid),
-    globalListenSeconds: num(row.listenMs) / 1000,
-    globalValidListenCount: num(row.validPlays),
-    globalFullListenCount: num(row.fullPlays)
-  }]));
-  return {
-    authority: serverAvailable ? 'server_confirmed' : 'local_rebuildable',
-    serverAvailable,
-    local,
-    canonical: serverAvailable ? server : local,
-    row(uid) {
-      return (serverAvailable ? server.get(uid) : local.get(uid)) || {};
-    }
-  };
-};
-
 const previewItems = index => Object.entries(index?.items || {})
   .map(([uid, preview]) => ({ uid, preview }))
   .filter(item => track(item.uid));
@@ -10851,9 +10830,9 @@ const cardItems = (items, limit = 3) => items.slice(0, limit).map(item => {
   const row = track(item.uid);
   return {
     uid: item.uid,
-    title: row?.title || item.preview?.title || item.uid,
-    albumKey: row?.sourceAlbum || item.preview?.album || '',
-    albumTitle: albumTitle(row?.sourceAlbum || item.preview?.album || ''),
+    title: row?.title || item.uid,
+    albumKey: row?.sourceAlbum || '',
+    albumTitle: albumTitle(row?.sourceAlbum || ''),
     cover: trackCover(item.uid),
     score: num(item.score)
   };
@@ -10884,7 +10863,7 @@ const albumOfWeek = source => {
 
   const scores = albums.map(album => ({
     ...album,
-    seconds: (window.TrackRegistry?.getTracksForAlbum?.(album.key) || []).reduce((sum, row) => sum + num(source.row(row.uid).globalListenSeconds), 0)
+    seconds: (window.TrackRegistry?.getTracksForAlbum?.(album.key) || []).reduce((sum, row) => sum + num(source.canonicalByUid.get(row.uid)?.globalListenSeconds), 0)
   }));
   const active = scores.filter(item => item.seconds > 0).sort((left, right) => right.seconds - left.seconds || left.key.localeCompare(right.key));
   const week = Math.floor(Date.now() / (7 * DAY_MS));
@@ -10912,11 +10891,11 @@ export const buildGalleryRecommendationCards = async () => {
     listenerProfile.get().catch(() => null)
   ]);
 
-  const source = canonicalStats(localRows);
+  const source = resolveRecommendationDataSource(localRows);
   const previews = previewItems(index);
   const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
 
-  const forgotten = [...source.local.entries()]
+  const forgotten = [...source.localByUid.entries()]
     .map(([uid, row]) => ({ uid, preview: index?.items?.[uid] || null, row }))
     .filter(item => num(item.row.globalListenSeconds) > 0 && num(item.row.lastPlayedAt) > 0 && Date.now() - num(item.row.lastPlayedAt) >= FORGOTTEN_AFTER_MS)
     .sort((left, right) => num(right.row.globalListenSeconds) - num(left.row.globalListenSeconds) || num(left.row.lastPlayedAt) - num(right.row.lastPlayedAt));
@@ -10937,7 +10916,7 @@ export const buildGalleryRecommendationCards = async () => {
   const mood = dominantMood(listener);
   const favoriteMood = mood ? sortCandidates(previews, item => num(section(item.preview, 'moods')[mood]) * 10) : [];
 
-  const unfinished = [...source.local.entries()]
+  const unfinished = [...source.localByUid.entries()]
     .map(([uid, row]) => ({ uid, preview: index?.items?.[uid] || null, row }))
     .filter(item => {
       const attempts = num(item.row.analysisEligibleSessions) + num(item.row.earlySkips) + num(item.row.partialEnds);
