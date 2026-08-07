@@ -103,7 +103,7 @@ F всегда относится к playing-context, а не к просто о
 СТРУКТУРА ПРОЕКТА (компактная):
 [/] .gitignore, albums.json, generate-context.js, index.html, manifest.json, oauth-callback.html, service-worker.js
 [/.git/] (пусто)
-[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-intel-test-profiles.yml, generate-listen-catalog.yml, generate-lyrics-index.yml, generate-track-profiles-index.yml, probe-ydb-sdk.yml, release-version.yml, validate.yml
+[/.github/workflows/] deploy.yml, e2e.yml, generate-context.yml, generate-intel-test-profiles.yml, generate-listen-catalog.yml, generate-lyrics-index.yml, generate-track-profile-review.yml, generate-track-profiles-index.yml, probe-ydb-sdk.yml, release-version.yml, validate.yml
 [/.meta/] (пусто)
 [/.release/] version.json
 [/albums/] .gitkeep
@@ -744,6 +744,68 @@ jobs:
           commit_message: "CI: update lyrics index"
           branch: ${{ github.ref_name }}
           file_pattern: "data/lyrics-index-v1.json"
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+
+//=================================================
+// FILE: /.github/workflows/generate-track-profile-review.yml
+name: Generate TrackProfile review context
+
+on:
+  workflow_dispatch:
+    inputs:
+      uid:
+        description: 'UID трека, например VS-01'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: track-profile-review-${{ github.ref }}-${{ inputs.uid }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TRACK_UID: ${{ inputs.uid }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Generate focused context
+        run: node scripts/ci/generate-track-profile-review-context.mjs --uid="$TRACK_UID"
+
+      - name: Validate generated context
+        run: |
+          test -s ".meta/track-profile-review/$TRACK_UID.txt"
+          grep -q "run-1.json" ".meta/track-profile-review/$TRACK_UID.txt"
+          grep -q "run-2.json" ".meta/track-profile-review/$TRACK_UID.txt"
+          grep -q "run-3.json" ".meta/track-profile-review/$TRACK_UID.txt"
+          grep -q "lyrics.txt" ".meta/track-profile-review/$TRACK_UID.txt"
+          grep -q "FINALIZE-PROMPT.txt" ".meta/track-profile-review/$TRACK_UID.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: track-profile-review-${{ inputs.uid }}
+          path: .meta/track-profile-review/${{ inputs.uid }}.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Intel: generate review context for ${{ inputs.uid }}"
+          branch: ${{ github.ref_name }}
+          file_pattern: ".meta/track-profile-review/*.txt"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
 
