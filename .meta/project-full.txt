@@ -14006,11 +14006,11 @@ export const renderProfileRecs = async ({ container } = {}) => {
       : result.mode === 'local_compatible'
         ? '<div class="stat-card"><div class="stat-sub">Локальная semantic-модель. После входа серверная статистика сможет уточнить результат.</div></div>'
         : '';
-    root.innerHTML = `${sourceNote}${result.testData ? '<div class="stat-card"><div class="stat-sub">Тестовый режим: смысловые профили пока демонстрационные.</div></div>' : ''}${
+    root.innerHTML = `${sourceNote}${
       result.items.length
         ? result.items.map(item => {
             const track = window.TrackRegistry?.getTrackByUid?.(item.uid);
-            return `<div class="profile-list-item" data-uid="${esc(item.uid)}"><div class="log-info"><div class="log-title">${esc(track?.title || item.uid)}${item.testProfile ? ' · TEST' : ''}</div><div class="log-desc">${esc(item.reasonText)}</div></div><button class="rec-play-btn" data-playuid="${esc(item.uid)}" data-rec-context="${CONTEXT}" data-rec-reason="${esc(item.reasonCode)}">▶</button><button class="rec-dismiss-btn" type="button" data-rec-dismiss="${esc(item.uid)}" aria-label="Скрыть рекомендацию">×</button></div>`;
+            return `<div class="profile-list-item" data-uid="${esc(item.uid)}"><div class="log-info"><div class="log-title">${esc(track?.title || item.uid)}</div><div class="log-desc">${esc(item.reasonText)}</div></div><button class="rec-play-btn" data-playuid="${esc(item.uid)}" data-rec-context="${CONTEXT}" data-rec-reason="${esc(item.reasonCode)}">▶</button><button class="rec-dismiss-btn" type="button" data-rec-dismiss="${esc(item.uid)}" aria-label="Скрыть рекомендацию">×</button></div>`;
           }).join('')
         : '<div class="fav-empty">Новых рекомендаций сейчас нет</div>'
     }`;
