@@ -116,7 +116,7 @@ F всегда относится к playing-context, а не к просто о
 [/albums/gallery/06/] 06-cover-01.jpg, 06-cover-01.png, 06-cover-01.webp, 06-cover-02.jpg, 06-cover-02.png, 06-cover-02.webp, 06-cover-03.jpg, 06-cover-03.png, 06-cover-03.webp, 06-cover-04.jpg, 06-cover-04.png, 06-cover-04.webp, index.json
 [/audio/] silence.mp3
 [/data/] custom_achievements.json, listen-track-catalog.env.json, listen-track-catalog.function-env.json, listen-track-catalog.json, taxonomy.json, track-profile-vocabulary.json, track-profiles-index.json
-[/data/track-profiles/] PROMPT.txt, README.txt, track-profile.template.json
+[/data/track-profiles/] FINALIZE-PROMPT.txt, PROMPT.txt, README.txt, track-profile.template.json
 [/data/track-profiles/v-ssore/] VS-01.json, VS-02.json, VS-03.json, VS-04.json, VS-05.json, VS-06.json, VS-07.json, VS-08.json, VS-09.json, VS-10.json
 [/icons/] .gitkeep, apple-touch-icon.png, favicon-16.png, favicon-32.png, icon-192.png, icon-512.png, ui-sprite.svg
 [/img/] .gitkeep, bg-in.webp, Fav_logo.png, icon_game.png, logo.png, vitrina-crack-01.svg
@@ -26084,6 +26084,205 @@ body.news-view #cover-wrap{display:none!important}
 .playback-return-banner__button:disabled{opacity:.55;cursor:wait}
 .playback-return-banner__close{width:28px;height:28px;border:0;background:transparent;color:#7f93b5;font-size:20px;cursor:pointer}
 @media(max-width:380px){.playback-return-banner{grid-template-columns:34px 1fr 28px}.playback-return-banner__button{grid-column:1/-1;width:100%}}
+
+//=================================================
+// FILE: /data/track-profiles/FINALIZE-PROMPT.txt
+Ты подготавливаешь один финальный production TrackProfile из трёх независимых анализов одного трека.
+
+Тебе переданы:
+
+1. Канонические метаданные трека.
+2. run-1.json.
+3. run-2.json.
+4. run-3.json.
+5. Точный текст песни.
+6. Авторские уточнения владельца музыки.
+7. taxonomy.json.
+8. track-profile-vocabulary.json.
+9. track-profile.template.json.
+10. Код similarity и validator.
+
+ПРИОРИТЕТ ИСТОЧНИКОВ
+
+При конфликте используй следующий приоритет:
+
+1. Явные авторские уточнения владельца трека.
+2. Точный текст песни для смыслов, сюжета, персонажей и warnings.
+3. Совпадение трёх независимых анализов.
+4. Совпадение двух из трёх анализов.
+5. Один анализ только при наличии явного подтверждения в аудио, тексте или авторских уточнениях.
+6. Неопределённое значение.
+
+Не копируй один из трёх JSON целиком.
+Сопоставь все три результата по каждому полю.
+
+ALIASES
+
+Перед сравнением мысленно нормализуй входные ID через track-profile-vocabulary.json.aliases.
+
+В финальный JSON записывай только canonical ID.
+
+Примеры:
+
+drums → drum_kit
+drum_set → drum_kit
+lead_male → male_lead
+lead_female → female_lead
+duet → mixed_duet
+shouting → shouted
+screaming → screamed
+dynamic_shifts → dynamic_contrast
+climax → climactic_ending
+wide_stereo → wide_stereo
+stereo_wide → wide_stereo
+russian → ru
+F# → F_sharp
+4/4 → 4_4
+
+ЧИСЛОВЫЕ ЗНАЧЕНИЯ
+
+Для axes используй медиану трёх значений.
+
+Если одно значение явно противоречит двум другим, считай его выбросом.
+
+Для sparse-весов:
+
+- признак, присутствующий в трёх анализах, получает медиану трёх весов;
+- признак, присутствующий в двух анализах, получает среднее этих двух весов;
+- признак из одного анализа сохраняй только при подтверждении текстом, аудио или авторским уточнением;
+- несущественные признаки удаляй;
+- не сохраняй вес ниже taxonomy.defaults.threshold_store.
+
+BPM
+
+- если все три оценки отличаются не более чем на 4 BPM, используй медиану и confidence 0.9–1;
+- если две оценки отличаются не более чем на 4 BPM, используй их среднее и confidence 0.7–0.85;
+- если значения могут быть half-time/double-time вариантами, нормализуй их к наиболее правдоподобному темпу композиции;
+- при полном расхождении сохрани медиану только как предварительную оценку с confidence 0.3–0.5;
+- если определить невозможно, используй null и confidence 0.
+
+ТОНАЛЬНОСТЬ
+
+- одинаковые key и mode в трёх анализах: confidence 0.9–1;
+- одинаковые key и mode в двух анализах: confidence 0.7–0.85;
+- разные тональности без авторского подтверждения: выбери наиболее обоснованную по аудио, но confidence не выше 0.5;
+- key хранит только высотный класс;
+- mode хранит major или minor;
+- неизвестное значение: key=null, mode=null, technicalConfidence.key=0.
+
+LOUDNESS LUFS
+
+loudnessLufs является оценкой интегральной громкости.
+
+- используй медиану всех доступных значений;
+- три значения в диапазоне 2 LUFS: confidence 0.75–0.9;
+- два близких значения в диапазоне 2 LUFS: confidence 0.6–0.75;
+- сильное расхождение: сохрани медиану, но confidence 0.2–0.5;
+- значение должно быть в диапазоне -40..0;
+- не выдавай его за инструментально измеренное.
+
+DYNAMIC RANGE
+
+dynamicRange является оценкой динамического диапазона в децибелах.
+
+- используй медиану доступных значений;
+- три значения в диапазоне 2.5 дБ: confidence 0.75–0.9;
+- два близких значения в диапазоне 2.5 дБ: confidence 0.6–0.75;
+- сильное расхождение: сохрани медиану, но confidence 0.2–0.5;
+- значение должно быть в диапазоне 0..30.
+
+ИНСТРУМЕНТЫ
+
+- объединяй только подтверждённые инструменты;
+- вокал не входит в instrumentation;
+- не сохраняй общий и частный дубль без необходимости;
+- если явно слышна одиночная trumpet, не добавляй brass_section автоматически;
+- brass_section допустим, если реально слышна секция;
+- synth_bass и bass_guitar могут сосуществовать только при фактическом присутствии обоих;
+- неизвестный инструмент не придумывай.
+
+ВОКАЛ
+
+Используй vocalRoles для состава партий.
+Используй vocalDelivery для манеры исполнения.
+
+Если пол основного вокала известен, предпочитай male_lead или female_lead.
+lead_vocals используй только при невозможности надёжно определить роль по полу.
+mixed_duet используй при полноценном взаимодействии мужской и женской партий.
+
+ТЕКСТ И АВТОРСКИЕ УТОЧНЕНИЯ
+
+Точный текст является главным источником для:
+
+- themes;
+- summary_ru;
+- keywords_ru;
+- entities_ru;
+- scenes_ru;
+- narrative;
+- warnings;
+- storytelling;
+- socialness;
+- romance_intensity;
+- family_friendly.
+
+Не расширяй конфликт до breakup или heartbreak, если в тексте нет расставания или любовной боли.
+
+Не расширяй личный протест до politics или rebellion_uprising без соответствующего содержания.
+
+Авторские уточнения имеют приоритет над предположением модели.
+
+PRESENTATION
+
+Создай новый согласованный русский текст.
+Не копируй грамматические ошибки из исходных анализов.
+Не смешивай русский и английский.
+Не используй рекламные обещания и оценку популярности.
+
+ФОРМАТ РЕЗУЛЬТАТА
+
+Верни ровно один JSON object.
+
+version = "track-profile-v4"
+taxonomyVersion = "taxonomy-v3"
+vocabularyVersion = "track-profile-vocabulary-v2"
+uid = фактический UID
+status = "analyzed"
+testData = false
+
+Не добавляй:
+
+title
+album
+albumTitle
+durationSec
+trackVersion
+source
+analyzer
+analyzedAt
+generatedAt
+updatedAt
+provenance
+verified
+relations
+similar_tracks
+embedding
+
+ФИНАЛЬНАЯ ПРОВЕРКА
+
+1. Структура полностью совпадает с track-profile.template.json.
+2. Использованы только canonical taxonomy и vocabulary ID.
+3. Все aliases устранены.
+4. Все sparse-веса находятся в диапазоне threshold_store..1.
+5. Все axes заполнены числами 0..1.
+6. loudnessLufs находится в диапазоне -40..0 или равен null.
+7. dynamicRange находится в диапазоне 0..30 или равен null.
+8. technicalConfidence содержит bpm, key, loudnessLufs и dynamicRange.
+9. Каждая confidence находится в диапазоне 0..1.
+10. Для null технического значения соответствующая confidence равна 0.
+11. Свободный текст написан грамотно и только по-русски.
+12. Нет ссылок на другие UID.
+13. Ответ содержит только один JSON object.
 
 //=================================================
 // FILE: /data/track-profiles/PROMPT.txt
