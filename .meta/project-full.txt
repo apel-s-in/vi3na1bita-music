@@ -8839,6 +8839,7 @@ const cloneRun = raw => raw ? {
   lastCompletedAt: count(raw.lastCompletedAt)
 } : null;
 const emptyRepeat = () => ({ runs3: 0, completionsInRuns3: 0, maxRun: 0 });
+const emptyFocus = () => ({ maxRun: 0 });
 const emptyCell = () => ({ listenMs: 0, uniqueCoveredMs: 0, sessions: 0, analysisEligibleSessions: 0, validPlays: 0, fullPlays: 0, microSkips: 0, earlySkips: 0, validSkips: 0, partialEnds: 0, completionBasisPointsSum: 0 });
 const cubeKey = values => JSON.stringify(values.map(value => safe(value || 'unknown')));
 const addRun = (summary, run, direction = 1) => {
@@ -8855,6 +8856,11 @@ const sameRun = (left, right) => !!left &&
   left.chainKey === right.chainKey &&
   right.firstStartedAt >= left.lastCompletedAt &&
   right.firstStartedAt - left.lastCompletedAt <= REPEAT_GAP_MS;
+const sameFocusRun = (left, right) => !!left &&
+  !!right &&
+  left.uid === right.uid &&
+  left.deviceId === right.deviceId &&
+  left.chainKey === right.chainKey;
 const joinRun = (left, right) => ({
   uid: left.uid,
   deviceId: left.deviceId,
@@ -8900,7 +8906,9 @@ const normalizeCube = raw => Object.fromEntries(Object.entries(raw && typeof raw
 export const emptyStatsV4 = () => ({
   cube: {},
   repeat: {},
-  boundary: { chainKey: '', firstRun: null, lastRun: null, singleRun: false }
+  focus: {},
+  boundary: { chainKey: '', firstRun: null, lastRun: null, singleRun: false },
+  focusBoundary: { chainKey: '', firstRun: null, lastRun: null, singleRun: false }
 });
 
 export const buildStatsV4 = (events = []) => {
@@ -8910,8 +8918,16 @@ export const buildStatsV4 = (events = []) => {
     .sort((left, right) => count(left?.timestamp) - count(right?.timestamp) || count(left?.deviceSeq) - count(right?.deviceSeq));
 
   const runs = [];
+  const focusRuns = [];
   completions.forEach(event => {
     const data = event.data || {};
+    const listenedMs = count(data.listenedMs || num(data.listenedSeconds) * 1000);
+    if (data.analysisEligible === true || listenedMs >= 3000) {
+      const nextFocus = runFromEvent(event);
+      const previousFocus = focusRuns[focusRuns.length - 1];
+      if (sameFocusRun(previousFocus, nextFocus)) focusRuns[focusRuns.length - 1] = joinRun(previousFocus, nextFocus);
+      else focusRuns.push(nextFocus);
+    }
     if (data.isValidListen === true && data.isFullListen === true && data.skipClass === 'full') {
       const next = runFromEvent(event);
       const previous = runs[runs.length - 1];
@@ -8922,7 +8938,6 @@ export const buildStatsV4 = (events = []) => {
     }
     const parts = temporalPartsFromListenEvent(event);
     const totalTemporalMs = parts.reduce((sum, part) => sum + count(part.creditedMs), 0);
-    const listenMs = count(data.listenedMs || num(data.listenedSeconds) * 1000);
     const uniqueCoveredMs = count(data.uniqueCoveredMs || num(data.uniqueCoveredSeconds) * 1000);
     const firstPart = parts[0] || { hour: 0, weekday: 0, creditedMs: listenMs };
     const dimensions = [event.uid, event.deviceStableId, event.deviceOs || event.platform, firstPart.hour, firstPart.weekday, data.quality || 'unknown', data.launchSource || 'unknown'];
@@ -8952,12 +8967,23 @@ export const buildStatsV4 = (events = []) => {
 
   const completedRuns = runs.filter(Boolean);
   completedRuns.forEach(run => addRun(output.repeat, run));
+  focusRuns.forEach(run => {
+    const row = output.focus[run.uid] ||= emptyFocus();
+    row.maxRun = Math.max(row.maxRun, run.count);
+  });
   const chainKeys = [...new Set(completions.map(eventChainKey).filter(key => key !== ':'))];
+  const chainKey = chainKeys.length === 1 ? chainKeys[0] : '';
   output.boundary = {
-    chainKey: chainKeys.length === 1 ? chainKeys[0] : '',
+    chainKey,
     firstRun: cloneRun(runs[0]),
     lastRun: cloneRun(runs[runs.length - 1]),
     singleRun: runs.length === 1 && completedRuns.length === 1
+  };
+  output.focusBoundary = {
+    chainKey,
+    firstRun: cloneRun(focusRuns[0]),
+    lastRun: cloneRun(focusRuns[focusRuns.length - 1]),
+    singleRun: focusRuns.length === 1
   };
   return output;
 };
@@ -8965,11 +8991,18 @@ export const buildStatsV4 = (events = []) => {
 export const normalizeStatsV4 = raw => ({
   cube: normalizeCube(raw?.cube),
   repeat: normalizeRepeat(raw?.repeat),
+  focus: Object.fromEntries(Object.entries(raw?.focus && typeof raw.focus === 'object' ? raw.focus : {}).map(([uid, row]) => [safe(uid), { maxRun: count(row?.maxRun) }]).filter(([uid]) => uid)),
   boundary: {
     chainKey: safe(raw?.boundary?.chainKey),
     firstRun: cloneRun(raw?.boundary?.firstRun),
     lastRun: cloneRun(raw?.boundary?.lastRun),
     singleRun: raw?.boundary?.singleRun === true
+  },
+  focusBoundary: {
+    chainKey: safe(raw?.focusBoundary?.chainKey),
+    firstRun: cloneRun(raw?.focusBoundary?.firstRun),
+    lastRun: cloneRun(raw?.focusBoundary?.lastRun),
+    singleRun: raw?.focusBoundary?.singleRun === true
   }
 });
 
@@ -8983,6 +9016,22 @@ export const mergeStatsV4 = (targetRaw, sourceRaw) => {
     current.completionsInRuns3 += row.completionsInRuns3;
     current.maxRun = Math.max(current.maxRun, row.maxRun);
   });
+  Object.entries(source.focus).forEach(([uid, row]) => {
+    const current = target.focus[uid] ||= emptyFocus();
+    current.maxRun = Math.max(current.maxRun, row.maxRun);
+  });
+
+  const focusLeft = target.focusBoundary.lastRun;
+  const focusRight = source.focusBoundary.firstRun;
+  const focusCombined = target.focusBoundary.chainKey &&
+    target.focusBoundary.chainKey === source.focusBoundary.chainKey &&
+    sameFocusRun(focusLeft, focusRight)
+      ? joinRun(focusLeft, focusRight)
+      : null;
+  if (focusCombined) {
+    const current = target.focus[focusCombined.uid] ||= emptyFocus();
+    current.maxRun = Math.max(current.maxRun, focusCombined.count);
+  }
 
   const left = target.boundary.lastRun;
   const right = source.boundary.firstRun;
@@ -9007,6 +9056,16 @@ export const mergeStatsV4 = (targetRaw, sourceRaw) => {
     firstRun: cloneRun(firstRun),
     lastRun: cloneRun(lastRun),
     singleRun: target.boundary.singleRun && source.boundary.singleRun && !!combined
+  };
+  target.focusBoundary = {
+    chainKey: source.focusBoundary.chainKey || target.focusBoundary.chainKey,
+    firstRun: cloneRun(target.focusBoundary.firstRun
+      ? target.focusBoundary.singleRun && focusCombined ? focusCombined : target.focusBoundary.firstRun
+      : source.focusBoundary.firstRun),
+    lastRun: cloneRun(source.focusBoundary.lastRun
+      ? source.focusBoundary.singleRun && focusCombined ? focusCombined : source.focusBoundary.lastRun
+      : target.focusBoundary.lastRun),
+    singleRun: target.focusBoundary.singleRun && source.focusBoundary.singleRun && !!focusCombined
   };
   return normalizeStatsV4(target);
 };
