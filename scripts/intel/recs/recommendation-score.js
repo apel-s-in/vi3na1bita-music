@@ -6,6 +6,7 @@ const clamp = value => Math.max(0, Math.min(1, num(value)));
 export const RECOMMENDATION_SCORE_WEIGHTS = Object.freeze({
   semantic: 100,
   sessionAffinity: 10,
+  tasteDiscoveryAffinity: 12,
   confirmedAffinity: 4,
   favoriteAffinity: 4,
   feedbackAffinity: 5,
@@ -56,6 +57,7 @@ export const getRecommendationFeedbackSignals = ({
 export const composeRecommendationScore = ({
   semantic = 0,
   sessionAffinity = 0,
+  tasteDiscoveryAffinity = 0,
   confirmedAffinity = 0,
   favoriteAffinity = 0,
   feedbackAffinity = 0,
@@ -66,7 +68,7 @@ export const composeRecommendationScore = ({
   exposurePenalty = 0,
   deterministicTie = 0
 } = {}) => {
-  const values = { semantic, sessionAffinity, confirmedAffinity, favoriteAffinity, feedbackAffinity, discovery, completion, skipPenalty, saturationPenalty, exposurePenalty };
+  const values = { semantic, sessionAffinity, tasteDiscoveryAffinity, confirmedAffinity, favoriteAffinity, feedbackAffinity, discovery, completion, skipPenalty, saturationPenalty, exposurePenalty };
   return Object.entries(RECOMMENDATION_SCORE_WEIGHTS).reduce((sum, [key, weight]) => sum + clamp(values[key]) * weight, num(deterministicTie));
 };
 
