@@ -8,10 +8,12 @@ export const RECOMMENDATION_SCORE_WEIGHTS = Object.freeze({
   sessionAffinity: 10,
   confirmedAffinity: 4,
   favoriteAffinity: 4,
+  feedbackAffinity: 5,
   discovery: 2,
   completion: 2,
   skipPenalty: -8,
-  saturationPenalty: -6
+  saturationPenalty: -6,
+  exposurePenalty: -3
 });
 
 export const getRecommendationBehaviorSignals = ({
@@ -37,19 +39,35 @@ export const getRecommendationBehaviorSignals = ({
   };
 };
 
+export const getRecommendationFeedbackSignals = ({
+  shown = 0,
+  clicked = 0,
+  accepted = 0
+} = {}) => {
+  const views = num(shown);
+  const clicks = num(clicked);
+  const accepts = num(accepted);
+  return {
+    feedbackAffinity: clamp((accepts * 2 + clicks * 0.5) / 5),
+    exposurePenalty: clamp(Math.max(0, views - clicks - accepts) / 8)
+  };
+};
+
 export const composeRecommendationScore = ({
   semantic = 0,
   sessionAffinity = 0,
   confirmedAffinity = 0,
   favoriteAffinity = 0,
+  feedbackAffinity = 0,
   discovery = 0,
   completion = 0,
   skipPenalty = 0,
   saturationPenalty = 0,
+  exposurePenalty = 0,
   deterministicTie = 0
 } = {}) => {
-  const values = { semantic, sessionAffinity, confirmedAffinity, favoriteAffinity, discovery, completion, skipPenalty, saturationPenalty };
+  const values = { semantic, sessionAffinity, confirmedAffinity, favoriteAffinity, feedbackAffinity, discovery, completion, skipPenalty, saturationPenalty, exposurePenalty };
   return Object.entries(RECOMMENDATION_SCORE_WEIGHTS).reduce((sum, [key, weight]) => sum + clamp(values[key]) * weight, num(deterministicTie));
 };
 
-export default { RECOMMENDATION_SCORE_WEIGHTS, getRecommendationBehaviorSignals, composeRecommendationScore };
+export default { RECOMMENDATION_SCORE_WEIGHTS, getRecommendationBehaviorSignals, getRecommendationFeedbackSignals, composeRecommendationScore };
