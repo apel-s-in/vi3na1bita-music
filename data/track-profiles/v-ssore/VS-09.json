@@ -1,84 +1,181 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-09",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
+    "confidence": 0.95,
+    "bpm": 87,
+    "tempoClass": "moderate",
     "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -11.5,
+    "dynamicRange": 9,
+    "technicalConfidence": {
+      "bpm": 0.82,
+      "key": 0,
+      "loudnessLufs": 0.8,
+      "dynamicRange": 0.88
+    },
+    "instrumentation": {
+      "acoustic_guitar": 0.88,
+      "electric_guitar": 0.57,
+      "bass_guitar": 0.58,
+      "drum_kit": 0.6,
+      "strings": 0.45,
+      "percussion": 0.35
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.95,
+      "female_lead": 0.9,
+      "mixed_duet": 0.92,
+      "character_vocals": 0.95,
+      "backing_vocals": 0.55
+    },
+    "vocalDelivery": {
+      "clean": 0.92,
+      "melodic": 0.88,
+      "emotional": 0.88,
+      "intimate": 0.78,
+      "soft": 0.62,
+      "expressive": 0.72,
+      "conversational": 0.78
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.9,
+      "acoustic_intro": 0.78,
+      "acoustic_verse": 0.82,
+      "vocal_dialogue": 0.92,
+      "call_and_response": 0.8,
+      "gradual_build": 0.72,
+      "dynamic_contrast": 0.65,
+      "climactic_ending": 0.62,
+      "layered_arrangement": 0.58
+    },
+    "productionTags": {
+      "acoustic": 0.85,
+      "organic": 0.78,
+      "clean": 0.85,
+      "polished": 0.8,
+      "spacious": 0.65,
+      "vocal_forward": 0.82
+    },
+    "arrangementDescription_ru": "Спокойная инди-роковая баллада начинается с камерного акустического вступления и доверительного диалога Героя с персонифицированной Печалью. Переборы и гитарный бой постепенно дополняются мягкими ударными, басом, электрогитарой, перкуссией и ненавязчивой струнной подложкой. Нарастание остаётся сдержанным и приводит к светлой рассветной кульминации.",
+    "productionDescription_ru": "Чистое и естественное звучание сосредоточено на акустической гитаре и близких мужской и женской вокальных партиях. Умеренная пространственная обработка сохраняет ощущение ночной комнаты, а мягкое расширение аранжировки подчёркивает переход от тревоги к спокойному принятию."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.99,
+    "language": "ru",
+    "summary_ru": "Герой приглашает персонифицированную Печаль остаться с ним до рассвета, чтобы не убегать от боли, тревоги и памяти. Размышляя о чужом равнодушии и собственной почти приобретённой чёрствости, он понимает, что способность печалиться помогает сохранить человечность и не потерять себя. С наступлением утра гроза отступает, но Печаль остаётся важным внутренним голосом, который вернётся, когда снова понадобится сердцу.",
+    "keywords_ru": [
+      "печаль",
+      "боль",
+      "тревога",
+      "память",
+      "чёрствость",
+      "сочувствие",
+      "дождь",
+      "гроза",
+      "рассвет",
+      "сохранить себя"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "Печаль без приглашения входит в ночную комнату Героя",
+      "Герой просит её остаться под гитарный бой до рассвета и не судить его слишком строго",
+      "Он вспоминает, как легко люди отворачиваются от чужой беды и растворяют её следы в толпе",
+      "Герой признаёт, что почти научился быть чёрствым, но внутренний голос ещё продолжает петь",
+      "Дождь, струна и гроза сопровождают молчаливое проживание боли",
+      "Герой пытается спрятать тревогу и выключить боль, но понимает, что память и душу нельзя отключить",
+      "Печаль обещает уйти с рассветом и вернуться, когда снова понадобится сердцу",
+      "Просыпающийся город и отступившая гроза обозначают не исчезновение Печали, а завершение очередного этапа осмысления"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "Ночной приход Печали заставляет Героя остановиться и прожить накопившуюся боль без попытки немедленно её подавить. Через размышления о равнодушии, тревоге, памяти и чёрствости он осознаёт ценность этого чувства для сохранения себя. Рассвет приносит облегчение, но не отменяет Печаль: она остаётся необходимой частью его внутренней жизни.",
+      "characters_ru": [
+        "Герой — мужчина, который боится потерять себя, пытаясь стать нечувствительным к боли и чужой беде",
+        "Печаль — персонифицированное чувство, звучащее женским голосом и помогающее Герою пройти внутреннее осмысление"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "ballad_pop": 0.85
+      "indie_rock": 0.92,
+      "rock": 0.65,
+      "alternative_rock": 0.52
     },
-    "styles": {},
+    "styles": {
+      "ballad": 0.92,
+      "acoustic": 0.85,
+      "story_song": 0.82
+    },
     "moods": {
-      "sad": 0.85,
-      "melancholic": 0.7
+      "melancholic": 0.92,
+      "sad": 0.82,
+      "bittersweet": 0.8,
+      "compassionate": 0.85,
+      "tender": 0.68,
+      "calm": 0.58,
+      "dramatic": 0.62,
+      "hopeful": 0.52,
+      "lonely": 0.48,
+      "anxious": 0.45
     },
     "themes": {
-      "loss_grief": 0.85,
-      "self_reflection": 0.7
+      "self_reflection": 0.95,
+      "mental_health": 0.78,
+      "communication": 0.82,
+      "kindness_morality": 0.88,
+      "storytelling": 0.82,
+      "ballad_form": 0.9,
+      "time_fate": 0.45,
+      "city_life": 0.25
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "crying": 0.82,
+      "memorial_reflection": 0.8,
+      "relax": 0.65,
+      "walking": 0.55,
+      "driving": 0.48,
+      "family_evening": 0.45
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "night": 0.95,
+      "evening": 0.72,
+      "morning": 0.52
+    },
     "axes": {
-      "energy": 0.24,
-      "valence": 0.14,
-      "arousal": 0,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0.94,
-      "romance_intensity": 0,
+      "energy": 0.4,
+      "valence": 0.3,
+      "arousal": 0.35,
+      "danceability": 0.3,
+      "acousticness": 0.82,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.1,
+      "melancholy": 0.85,
+      "romance_intensity": 0.05,
       "humor": 0,
-      "socialness": 0,
-      "epicness": 0,
-      "warmth": 0.42,
-      "brightness": 0,
-      "tension": 0,
-      "storytelling": 0,
+      "socialness": 0.2,
+      "epicness": 0.35,
+      "warmth": 0.78,
+      "brightness": 0.4,
+      "tension": 0.3,
+      "storytelling": 0.75,
       "spookiness": 0,
-      "family_friendly": 0.85
+      "family_friendly": 0.9
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Спокойная инди-роковая баллада о Печали как необходимом голосе внутреннего осмысления.",
+    "one_liner_ru": "Мужской голос Героя и женский голос персонифицированной Печали ведут тихий ночной диалог о боли, сочувствии и сохранении человечности.",
+    "mini_description_ru": "Герой просит Печаль остаться до рассвета, чтобы не прятаться от тревоги, памяти и чужой боли. Камерная акустика постепенно раскрывается в мягкую инди-роковую кульминацию. Рассвет приносит облегчение, но Печаль остаётся важной частью способности понимать себя и других."
   }
 }
