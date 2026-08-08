@@ -1,85 +1,206 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-08",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
+    "confidence": 0.95,
+    "bpm": 129,
+    "tempoClass": "fast",
     "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -8.5,
+    "dynamicRange": 8,
+    "technicalConfidence": {
+      "bpm": 0.8,
+      "key": 0,
+      "loudnessLufs": 0.82,
+      "dynamicRange": 0.85
+    },
+    "instrumentation": {
+      "electric_guitar": 0.85,
+      "bass_guitar": 0.78,
+      "drum_kit": 0.85,
+      "synthesizer": 0.68,
+      "violin": 0.63,
+      "acoustic_guitar": 0.5,
+      "brass_section": 0.6
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.9,
+      "female_lead": 0.9,
+      "mixed_duet": 0.92,
+      "backing_vocals": 0.6,
+      "character_vocals": 0.92,
+      "spoken_word": 0.45
+    },
+    "vocalDelivery": {
+      "dramatic": 0.85,
+      "theatrical": 0.9,
+      "expressive": 0.85,
+      "conversational": 0.92,
+      "melodic": 0.85,
+      "belting": 0.72,
+      "spoken": 0.45,
+      "shouted": 0.55,
+      "whispered": 0.3
+    },
+    "arrangementTags": {
+      "verse_chorus": 0.9,
+      "vocal_dialogue": 0.95,
+      "call_and_response": 0.9,
+      "dynamic_contrast": 0.85,
+      "gradual_build": 0.8,
+      "heavy_chorus": 0.8,
+      "heavy_riffs": 0.78,
+      "dramatic_bridge": 0.75,
+      "solo_section": 0.6,
+      "climactic_ending": 0.8,
+      "layered_arrangement": 0.8
+    },
+    "productionTags": {
+      "modern_clean": 0.85,
+      "modern": 0.88,
+      "polished": 0.85,
+      "dense": 0.78,
+      "compressed": 0.8,
+      "punchy": 0.82,
+      "bright_timbre": 0.8,
+      "wide_stereo": 0.78,
+      "guitar_driven": 0.78,
+      "synth_driven": 0.62,
+      "vocal_forward": 0.85
+    },
+    "arrangementDescription_ru": "Энергичная инди-роковая аранжировка построена как театральный спор мужского и женского голосов. Плотная ритм-секция, электрогитары и синтезаторы поддерживают резкие взаимные реплики, а скрипичные, духовые и акустические фрагменты добавляют тонкий сказочный оттенок. Контрастные секции постепенно приводят к замедленной драматической кульминации и камерному финалу.",
+    "productionDescription_ru": "Современное плотное сведение подчёркивает равноправный вокальный диалог и сатирическую резкость текста. Яркие электрогитары, упругие ударные, синтезаторы и широкая стереобаза создают энергичный роковый план, который в финале уступает более камерному акустическому звучанию."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
-    "entities_ru": [],
-    "scenes_ru": [],
+    "confidence": 0.99,
+    "language": "ru",
+    "summary_ru": "Песня сатирически изображает конфликт между избалованной девушкой, считающей финансовое содержание обязательным доказательством любви, и мужчиной, который отвергает её требования и разоблачает потребительский подход к отношениям. Героиня требует оплатить красоту, развлечения, путешествия и статусную жизнь, прикрывая шантаж модными психологическими словами. Финал лишает её сказочной короны и оставляет у разбитого корыта с кредитами, телефоном и несбывшимся ожиданием принца.",
+    "keywords_ru": [
+      "царевна",
+      "содержание",
+      "деньги",
+      "капризы",
+      "шантаж",
+      "роскошь",
+      "кредит",
+      "расчёт",
+      "отношения",
+      "разбитое корыто"
+    ],
+    "entities_ru": [
+      "Бали",
+      "Мальдивы",
+      "МКАД",
+      "Картье"
+    ],
+    "scenes_ru": [
+      "На яхте разгорается громкий конфликт из-за требований героини",
+      "Царевна требует оплатить телефон, салон, психолога, астролога, цветы и рестораны",
+      "Мужчина сравнивает современные требования с прежним сказочным представлением о царевне",
+      "Героиня объявляет себя подарком судьбы и требует постоянного содержания",
+      "В коротком вопросно-ответном споре любое сомнение мужчины заканчивается требованием стереть чувства или уйти",
+      "Царевна мечтает о Мальдивах, замке, шейхе и бриллиантах",
+      "Мужчина называет её ресурс страхом одиночества и раскрывает холодный расчёт",
+      "Героиня требует поездку на Бали и новое украшение ради зависти окружающих",
+      "В финале исчезают загар, корона и сказочные иллюзии, а царевна остаётся у разбитого корыта перед экраном телефона"
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "dual",
+      "arc_ru": "Сатирический конфликт начинается с бытовых и финансовых требований героини, затем перерастает в спор о любви, границах, статусе и взаимных обязанностях. Мужчина последовательно разоблачает подмену близости расчётом, а царевна всё сильнее настаивает на праве быть содержанкой. Финал разрушает её сказочный образ и показывает одиночество, долги и несбывшееся ожидание обещанного принца.",
+      "characters_ru": [
+        "Царевна — избалованная девушка, воспринимающая любовь как обязанность мужчины оплачивать её внешность, развлечения, путешествия и статус",
+        "Мужчина — партнёр, который отказывается принимать финансовый шантаж за любовь и разоблачает потребительскую модель отношений"
+      ]
     },
     "sensitiveContentNotes_ru": []
   },
   "finalProfile": {
     "genres": {
-      "orchestral_pop": 0.85,
-      "rock": 0.7
+      "indie_rock": 0.92,
+      "rock": 0.8,
+      "alternative_rock": 0.68,
+      "pop": 0.55,
+      "ska_punk": 0.35,
+      "orchestral_pop": 0.3
     },
-    "styles": {},
+    "styles": {
+      "story_song": 0.92,
+      "anthemic": 0.58,
+      "cinematic": 0.42,
+      "fairytale": 0.35
+    },
     "moods": {
-      "whimsical": 0.85,
-      "epic": 0.7
+      "ironic": 0.92,
+      "sarcastic": 0.9,
+      "energetic": 0.85,
+      "dramatic": 0.8,
+      "bitter": 0.65,
+      "playful": 0.72,
+      "funny": 0.72,
+      "tense": 0.7,
+      "angry": 0.55,
+      "rebellious": 0.5
     },
     "themes": {
-      "magic_fantasy": 0.85,
-      "storytelling": 0.7
+      "consumerism": 0.95,
+      "conflict": 0.92,
+      "satire": 0.92,
+      "social_critique": 0.82,
+      "success_money": 0.85,
+      "storytelling": 0.9,
+      "humor": 0.82,
+      "communication": 0.72,
+      "romance": 0.3,
+      "breakup": 0.35,
+      "parody": 0.38
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "karaoke": 0.82,
+      "driving": 0.75,
+      "party": 0.68,
+      "walking": 0.62,
+      "gym": 0.62,
+      "training_motivation": 0.52,
+      "fairytale_mood": 0.25
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "day": 0.72,
+      "evening": 0.82,
+      "night": 0.65
+    },
     "axes": {
-      "energy": 0.64,
-      "valence": 0.62,
-      "arousal": 0,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0,
-      "romance_intensity": 0,
-      "humor": 0,
-      "socialness": 0,
-      "epicness": 0.86,
-      "warmth": 0,
-      "brightness": 0,
-      "tension": 0,
+      "energy": 0.82,
+      "valence": 0.45,
+      "arousal": 0.78,
+      "danceability": 0.7,
+      "acousticness": 0.25,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.55,
+      "melancholy": 0.35,
+      "romance_intensity": 0.2,
+      "humor": 0.85,
+      "socialness": 0.7,
+      "epicness": 0.55,
+      "warmth": 0.3,
+      "brightness": 0.75,
+      "tension": 0.65,
       "storytelling": 0.9,
-      "spookiness": 0,
-      "family_friendly": 0.88
+      "spookiness": 0.1,
+      "family_friendly": 0.55
     },
     "warnings": {}
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Сатирический инди-роковый дуэт о любви, подменённой финансовыми требованиями.",
+    "one_liner_ru": "Мужской и женский вокал превращают спор об обязательном содержании, роскоши и статусе в энергичную инди-роковую сатиру с тонким сказочным оттенком.",
+    "mini_description_ru": "Современная царевна требует оплатить красоту, рестораны, путешествия и роскошную жизнь, называя это доказательством любви. Мужчина отвергает финансовый шантаж и постепенно разрушает её сказочный образ. Финал оставляет героиню без короны, у разбитого корыта и перед молчащим экраном телефона."
   }
 }
