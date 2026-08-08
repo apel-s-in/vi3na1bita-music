@@ -20324,7 +20324,7 @@ const add = (map, key, value) => {
   if (clean && amount > 0) map.set(clean, num(map.get(clean)) + amount);
 };
 const top = (map, limit = 8) => [...map.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])).slice(0, limit).map(([key, weight]) => ({ key, weight }));
-const profileMap = (preview, key) => preview?.finalProfile?.[key] || preview?.[key] || preview?.preferences?.[key] || {};
+const profileMap = (preview, key) => preview?.finalProfile?.[key] || {};
 const rowsOfMap = raw => raw && typeof raw === 'object' && !Array.isArray(raw) ? Object.entries(raw) : [];
 const dayparts = byHour => ({
   night: byHour.slice(0, 6).reduce((sum, value) => sum + num(value), 0),
