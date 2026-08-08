@@ -5,7 +5,7 @@ import { isV7SyncEvent } from './event-contract.js';
 import { temporalPartsFromListenEvent } from './temporal-buckets.js';
 import { buildStatsV4, emptyStatsV4, mergeStatsV4, normalizeStatsV4 } from './stats-v4-projection.js';
 
-export const STATS_SHARD_VERSION = 5;
+export const STATS_SHARD_VERSION = 6;
 const safe = value => String(value == null ? '' : value).trim();
 const safeRangeId = value => safe(value).replace(/[^A-Za-z0-9._-]/g, '').slice(0, 160);
 const buildRangeKey = ({ deviceId = '', chainId = '', branchId = '', fromSeq = 0, toSeq = 0, hash = '' } = {}) =>
@@ -410,6 +410,8 @@ export const projectionToStatsRows = raw => {
     statsV4: normalizeStatsV4(projection.v4),
     sparseCube: { ...projection.v4.cube },
     repeatRuns: { ...projection.v4.repeat },
+    focusRuns: { ...projection.v4.focus },
+    focusBoundary: structuredClone(projection.v4.focusBoundary),
     transitions: { ...projection.transitions },
     dimensions: structuredClone(projection.dimensions)
   });
@@ -467,6 +469,8 @@ export const mergeProjectedStatsRow = (leftRaw = {}, rightRaw = {}) => {
       statsV4,
       sparseCube: { ...statsV4.cube },
       repeatRuns: { ...statsV4.repeat },
+      focusRuns: { ...statsV4.focus },
+      focusBoundary: structuredClone(statsV4.focusBoundary),
       transitions: mergeCountMaps(leftRaw.transitions, rightRaw.transitions),
       dimensions
     };
