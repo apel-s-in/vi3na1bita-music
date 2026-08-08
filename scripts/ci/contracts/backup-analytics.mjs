@@ -64,8 +64,10 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
   ].forEach(marker => contains(scheduler, marker));
 
   [
-    'STATS_SHARD_VERSION = 5',
+    'STATS_SHARD_VERSION = 6',
     'uniqueCoveredMs',
+    'focusRuns',
+    'focusBoundary',
     'completionBasisPointsSum',
     'analysisEligibleSessions',
     'microSkips',
@@ -79,6 +81,8 @@ export const validateBackupAnalytics = ({ contains, excludes, assertNoMatch, lis
 
   [
     'REPEAT_GAP_MS = 60000',
+    'sameFocusRun',
+    'focusBoundary',
     'chainKey',
     "data.skipClass === 'full'",
     'completionsInRuns3',
