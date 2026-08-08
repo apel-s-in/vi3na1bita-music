@@ -8,7 +8,7 @@ import { trackProfiles } from '../track/track-profiles.js';
 import { scoreTrackSimilarity } from '../track/track-similarity.js';
 import { getRecommendationReasonText } from './recommendation-reasons.js';
 import { resolveRecommendationDataSource } from './recommendation-data-source.js';
-import { composeRecommendationScore, getRecommendationBehaviorSignals } from './recommendation-score.js';
+import { composeRecommendationScore, getRecommendationBehaviorSignals, getRecommendationFeedbackSignals } from './recommendation-score.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -50,14 +50,10 @@ const similarity = (preferences, candidate) => {
   return left > 0 && right > 0 ? dot / Math.sqrt(left * right) : 0;
 };
 
-const profileSection = (preview, key) =>
-  preview?.finalProfile?.[key] || preview?.[key] || {};
+const profileSection = (preview, key) => preview?.finalProfile?.[key] || {};
 
 const blockedByControls = (preview, controls) => {
-  const warnings = new Set([
-    ...Object.keys(vector(profileSection(preview, 'warnings'))),
-    ...(Array.isArray(preview?.contentWarnings) ? preview.contentWarnings.map(safe) : [])
-  ]);
+  const warnings = new Set(Object.keys(vector(profileSection(preview, 'warnings'))));
   const themes = vector(profileSection(preview, 'themes'));
   const axes = vector(profileSection(preview, 'axes'));
 
@@ -133,10 +129,15 @@ export const recommendationEngine = {
     const controls = getRecommendationControls();
     const seed = new Date().toISOString().slice(0, 10);
     const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
-    const currentPreview = currentUid ? index?.items?.[currentUid] || trackProfiles.getPreview(currentUid) : null;
+    const currentPreview = currentUid ? index?.items?.[currentUid] || null : null;
+    const recommendationState = await recommendationMemory.getContextSnapshot(cleanContext);
+    const at = Date.now();
 
     const candidates = Object.entries(index?.items || {})
-      .filter(([uid]) => safe(uid) && uid !== currentUid)
+      .filter(([uid]) => {
+        const row = recommendationState.get(uid);
+        return safe(uid) && uid !== currentUid && (!row?.dismissedAt || row.cooldownUntil <= at);
+      })
       .map(([uid, preview]) => {
         if (blockedByControls(preview, controls)) return null;
         const semantic = semanticScore(preview, listenerVectors);
@@ -153,10 +154,11 @@ export const recommendationEngine = {
           favorite: window.FavoritesManager?.isLiked?.(uid),
           serverAvailable: source.serverAvailable
         });
+        const feedback = getRecommendationFeedbackSignals(recommendationState.get(uid));
         const sessionSimilarity = currentPreview ? scoreTrackSimilarity(currentPreview, preview) : null;
         const sessionAffinity = sessionSimilarity?.coverage >= 0.5 ? num(sessionSimilarity.score) : 0;
         const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
-        const score = composeRecommendationScore({ semantic: semantic.total, sessionAffinity, ...behavior, deterministicTie });
+        const score = composeRecommendationScore({ semantic: semantic.total, sessionAffinity, ...behavior, ...feedback, deterministicTie });
         const reasonCode = sessionAffinity >= 0.72
           ? 'session_next'
           : semantic.total >= 0.12
@@ -173,6 +175,7 @@ export const recommendationEngine = {
             sessionAffinity,
             sessionCoverage: num(sessionSimilarity?.coverage),
             ...behavior,
+            ...feedback,
             authority: source.authority,
             ...semantic.breakdown
           }
@@ -181,12 +184,9 @@ export const recommendationEngine = {
       .filter(Boolean)
       .sort((left, right) => right.score - left.score || left.uid.localeCompare(right.uid));
 
-    const items = [];
-    for (const candidate of candidates) {
-      if (items.length >= Math.max(1, Number(limit) || 12)) break;
-      if (!(await recommendationMemory.canShow(candidate.uid, cleanContext))) continue;
-      items.push({ ...candidate, reasonText: getRecommendationReasonText(candidate.reasonCode) });
-    }
+    const items = candidates
+      .slice(0, Math.max(1, Number(limit) || 12))
+      .map(candidate => ({ ...candidate, reasonText: getRecommendationReasonText(candidate.reasonCode) }));
 
     state.lastResult = {
       version: 'recommendation-result-v3',
