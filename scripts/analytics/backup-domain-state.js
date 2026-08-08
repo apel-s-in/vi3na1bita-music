@@ -217,6 +217,14 @@ export const recommendationMemory = {
   async get(uid, context = 'generic') {
     return readRecommendation(context, uid);
   },
+  async getContextSnapshot(context = 'generic') {
+    const cleanContext = safe(context || 'generic');
+    const rows = await metaDB.getStoreAll('recommendation_state').catch(() => []);
+    return new Map(rows
+      .map(row => normalizeRecommendation(row?.value || row))
+      .filter(row => row.uid && row.context === cleanContext)
+      .map(row => [row.uid, row]));
+  },
   async canShow(uid, context = 'generic', at = Date.now()) {
     const row = await readRecommendation(context, uid);
     return !row.dismissedAt || row.cooldownUntil <= at;
