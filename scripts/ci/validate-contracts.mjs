@@ -188,6 +188,10 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/intel/recs/recommendation-score.js', 'feedbackAffinity');
   contains('scripts/intel/recs/recommendation-score.js', 'exposurePenalty');
   contains('scripts/intel/recs/recommendation-score.js', 'RECOMMENDATION_SCORE_WEIGHTS');
+  contains('scripts/intel/recs/taste-discovery.js', 'PERSONAL_POPULARITY_WEIGHTS');
+  contains('scripts/intel/recs/taste-discovery.js', 'tasteDiscoveryAffinity');
+  contains('scripts/intel/recs/recommendation-engine.js', 'buildPersonalTasteAnchors');
+  contains('scripts/intel/recs/recommendation-engine.js', 'focusRunMax');
   contains('scripts/analytics/backup-domain-state.js', 'getContextSnapshot');
   contains('scripts/intel/recs/recommendation-data-source.js', "'account_hybrid'");
   contains('scripts/intel/recs/recommendation-data-source.js', "'local_compatible'");
