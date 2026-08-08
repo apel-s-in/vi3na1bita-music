@@ -37,6 +37,13 @@ const second = buildStatsV4([
 
 const merged = mergeStatsV4(first, second);
 assert.deepEqual(merged.repeat['GD-01'], { runs3: 1, completionsInRuns3: 3, maxRun: 3 });
+assert.equal(merged.focus['GD-01'].maxRun, 3);
+
+const nextDay = buildStatsV4([
+  completion({ id: 'e-next-day', startedAt: 86400000 + 300000, completedAt: 86400000 + 340000 })
+]);
+const crossDay = mergeStatsV4(merged, nextDay);
+assert.equal(crossDay.focus['GD-01'].maxRun, 4);
 
 const otherDevice = buildStatsV4([
   completion({ id: 'e4', deviceId: 'dst_other', startedAt: 223000, completedAt: 263000 })
