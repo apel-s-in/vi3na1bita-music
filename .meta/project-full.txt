@@ -17428,7 +17428,10 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/intel/recs/recommendation-engine.js', 'source.canonicalByUid');
   contains('scripts/intel/recs/recommendation-score.js', 'confirmedAffinity');
   contains('scripts/intel/recs/recommendation-score.js', 'saturationPenalty');
+  contains('scripts/intel/recs/recommendation-score.js', 'feedbackAffinity');
+  contains('scripts/intel/recs/recommendation-score.js', 'exposurePenalty');
   contains('scripts/intel/recs/recommendation-score.js', 'RECOMMENDATION_SCORE_WEIGHTS');
+  contains('scripts/analytics/backup-domain-state.js', 'getContextSnapshot');
   contains('scripts/intel/recs/recommendation-data-source.js', "'account_hybrid'");
   contains('scripts/intel/recs/recommendation-data-source.js', "'local_compatible'");
   contains('scripts/intel/recs/recommendation-data-source.js', "'account_server_pending'");
@@ -17457,7 +17460,9 @@ const validateRecommendationsAndStats = () => {
   contains('scripts/app/gallery.js', 'getItemsSnapshot');
   contains('scripts/app/recommendation-playback.js', 'playRecommendedTrack');
   contains('scripts/app/recommendation-playback.js', 'openRecommendedTrack');
-  excludes('scripts/intel/recs/recommendation-engine.js', /profileCoverage|testProfile|test_fixture/, 'Recommendation Engine снова использует тестовые TrackProfile');
+  excludes('scripts/intel/recs/recommendation-engine.js', /profileCoverage|testProfile|test_fixture|preview\?\.\[key\]|contentWarnings/, 'Recommendation Engine снова использует тестовые или переходные TrackProfile');
+  excludes('scripts/intel/listener/listener-profile.js', /preview\?\.\[key\]|preview\?\.preferences/, 'ListenerProfile снова поддерживает переходную форму TrackProfile');
+  excludes('scripts/app/gallery-recommendation-cards.js', /preview\?\.\[key\]/, 'Gallery снова поддерживает переходную форму TrackProfile');
   contains('scripts/intel/roadmap.js', 'Transient queue и действие «Играть следующей» не реализуются');
   contains('scripts/intel/roadmap.js', 'Никаких праздничных, календарных или сезонных подборок');
   contains('scripts/ci/validate-intel-profiles.mjs', 'track-profile.template.json');
