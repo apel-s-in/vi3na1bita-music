@@ -36,7 +36,7 @@ const weightedMap = raw => raw && typeof raw === 'object' && !Array.isArray(raw)
   ? Object.fromEntries(Object.entries(raw).map(([key, value]) => [safe(key), num(value)]).filter(([key, value]) => key && value > 0))
   : {};
 
-const section = (preview, key) => weightedMap(preview?.finalProfile?.[key] || preview?.[key] || {});
+const section = (preview, key) => weightedMap(preview?.finalProfile?.[key] || {});
 const track = uid => window.TrackRegistry?.getTrackByUid?.(uid) || null;
 const albumTitle = key => window.TrackRegistry?.getAlbumTitle?.(key) || window.albumsIndex?.find(album => album.key === key)?.title || key;
 const trackCover = uid => {
