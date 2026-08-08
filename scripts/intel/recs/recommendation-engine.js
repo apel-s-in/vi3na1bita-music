@@ -9,6 +9,7 @@ import { scoreTrackSimilarity } from '../track/track-similarity.js';
 import { getRecommendationReasonText } from './recommendation-reasons.js';
 import { resolveRecommendationDataSource } from './recommendation-data-source.js';
 import { composeRecommendationScore, getRecommendationBehaviorSignals, getRecommendationFeedbackSignals } from './recommendation-score.js';
+import { buildPersonalTasteAnchors, getTasteDiscoverySignals } from './taste-discovery.js';
 
 const safe = value => String(value == null ? '' : value).trim();
 const num = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -130,6 +131,20 @@ export const recommendationEngine = {
     const seed = new Date().toISOString().slice(0, 10);
     const currentUid = safe(window.playerCore?.getCurrentTrackUid?.());
     const currentPreview = currentUid ? index?.items?.[currentUid] || null : null;
+    const globalStats = stats.find(row => row?.uid === 'global') || {};
+    const focusRuns = globalStats.statsV4?.focus || globalStats.focusRuns || {};
+    const tasteAnchors = buildPersonalTasteAnchors(Object.keys(index?.items || {}).map(uid => {
+      const canonical = source.canonicalByUid.get(uid) || {};
+      const local = source.localByUid.get(uid) || {};
+      return {
+        uid,
+        listenSeconds: canonical.globalListenSeconds,
+        fullListens: canonical.globalFullListenCount,
+        averageCompletionRate: local.averageCompletionRate,
+        focusRunMax: focusRuns[uid]?.maxRun,
+        favorite: window.FavoritesManager?.isLiked?.(uid)
+      };
+    }));
     const recommendationState = await recommendationMemory.getContextSnapshot(cleanContext);
     const at = Date.now();
 
@@ -157,12 +172,30 @@ export const recommendationEngine = {
         const feedback = getRecommendationFeedbackSignals(recommendationState.get(uid));
         const sessionSimilarity = currentPreview ? scoreTrackSimilarity(currentPreview, preview) : null;
         const sessionAffinity = sessionSimilarity?.coverage >= 0.5 ? num(sessionSimilarity.score) : 0;
+        const anchorSimilarity = tasteAnchors.reduce((best, anchor) => {
+          if (anchor.uid === uid) return best;
+          const anchorProfile = index.items?.[anchor.uid];
+          if (!anchorProfile) return best;
+          const similarity = scoreTrackSimilarity(anchorProfile, preview);
+          return similarity.coverage >= 0.5 ? Math.max(best, num(similarity.score)) : best;
+        }, 0);
+        const tasteDiscovery = getTasteDiscoverySignals({
+          candidate: {
+            listenSeconds: canonical.globalListenSeconds,
+            fullListens: canonical.globalFullListenCount,
+            focusRunMax: focusRuns[uid]?.maxRun
+          },
+          anchors: tasteAnchors,
+          anchorSimilarity
+        });
         const deterministicTie = scoreUid(uid, seed) / 0xffffffff;
-        const score = composeRecommendationScore({ semantic: semantic.total, sessionAffinity, ...behavior, ...feedback, deterministicTie });
+        const score = composeRecommendationScore({ semantic: semantic.total, sessionAffinity, ...behavior, ...feedback, ...tasteDiscovery, deterministicTie });
         const reasonCode = sessionAffinity >= 0.72
           ? 'session_next'
-          : semantic.total >= 0.12
-            ? semanticReason(semantic.breakdown)
+          : tasteDiscovery.tasteDiscoveryAffinity >= 0.65
+            ? 'taste_discovery'
+            : semantic.total >= 0.12
+              ? semanticReason(semantic.breakdown)
             : behavior.discovery
               ? 'discovery_unplayed'
               : 'semantic_preview';
@@ -176,6 +209,8 @@ export const recommendationEngine = {
             sessionCoverage: num(sessionSimilarity?.coverage),
             ...behavior,
             ...feedback,
+            ...tasteDiscovery,
+            focusRunMax: num(focusRuns[uid]?.maxRun),
             authority: source.authority,
             ...semantic.breakdown
           }
