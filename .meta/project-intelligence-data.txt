@@ -339,6 +339,8 @@ jobs:
 
           rm -f \
             .meta/project-adaptive.txt \
+            .meta/project-intelligence.txt \
+            .meta/project-analytics.txt \
             .meta/vi3-signaling.txt \
             .meta/vi3-webpush.txt \
             .meta/vi3na1bita-backup-proxy.txt \
@@ -348,12 +350,15 @@ jobs:
 
           test -s .meta/project-full.txt
           test -s .meta/project-music-games.txt
+          test -s .meta/project-intelligence-data.txt
           test -s .meta/functions/vi3-signaling.txt
           test -s .meta/functions/vi3-webpush.txt
           test -s .meta/functions/vi3na1bita-backup-proxy.txt
           test -s .meta/functions/vi3-loyalty-reminder.txt
 
           test ! -e .meta/project-adaptive.txt
+          test ! -e .meta/project-intelligence.txt
+          test ! -e .meta/project-analytics.txt
           test ! -e .meta/vi3-signaling.txt
           test ! -e .meta/vi3-webpush.txt
           test ! -e .meta/vi3na1bita-backup-proxy.txt
@@ -387,6 +392,36 @@ jobs:
           fi
 
           grep -q 'track-profile.template.json' .meta/project-full.txt
+
+          focused=.meta/project-intelligence-data.txt
+          grep -Fq '// FILE: /scripts/intel/recs/recommendation-engine.js' "$focused"
+          grep -Fq '// FILE: /scripts/intel/recs/taste-discovery.js' "$focused"
+          grep -Fq '// FILE: /scripts/analytics/stats-shard-contract.js' "$focused"
+          grep -Fq '// FILE: /scripts/analytics/achievement-engine.js' "$focused"
+          grep -Fq '// FILE: /scripts/analytics/backup-v7-sync.js' "$focused"
+          grep -Fq '// FILE: /scripts/core/social-session.js' "$focused"
+          grep -Fq '// FILE: /src/PlayerCore.js' "$focused"
+          grep -Fq '// FILE: /src/player-core/ios-audio-keeper.js' "$focused"
+          grep -Fq '// FILE: /data/taxonomy.json' "$focused"
+          grep -Fq '// FILE: /data/track-profile-vocabulary.json' "$focused"
+          grep -Fq '// FILE: /cloud-functions/vi3-signaling/index.js' "$focused"
+          grep -Fq '// FILE: /cloud-functions/vi3-signaling/backup-coordinator.js' "$focused"
+          grep -Fq '// FILE: /cloud-functions/vi3na1bita-backup-proxy/index.js' "$focused"
+          grep -Fq '// FILE: /cloud-functions/vi3-webpush/index.js' "$focused"
+          grep -Fq '// FILE: /cloud-functions/vi3-loyalty-reminder/index.js' "$focused"
+
+          if grep -Eq '^// FILE: /data/track-profiles/[^/]+/[^/]+\.json$' "$focused"; then
+            echo "Full TrackProfile contents leaked into focused context"
+            exit 2
+          fi
+
+          while IFS= read -r source_file; do
+            relative="${source_file#./}"
+            grep -Fq "// FILE: /$relative" "$focused" || {
+              echo "Cloud Function source missing from focused context: $relative"
+              exit 2
+            }
+          done < <(find cloud-functions -type f \( -name '*.js' -o -name 'package.json' \) | sort)
 
           while IFS= read -r profile; do
             name="$(basename "$profile")"
