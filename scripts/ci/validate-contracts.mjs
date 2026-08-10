@@ -533,6 +533,24 @@ const validateRemovedRuntimeFiles = () => {
   });
 };
 
+const validateContextGenerator = () => {
+  const generator = 'generate-context.js';
+  const workflow = '.github/workflows/generate-context.yml';
+  [
+    'project-intelligence-data.txt',
+    'INTELLIGENCE_DATA_FILES',
+    'FUNCTION_CLIENT_MARKERS',
+    'findFunctionClientFiles',
+    'generateIntelligenceData',
+    "listTextFilesUnder('scripts/analytics')",
+    "listTextFilesUnder('scripts/intel')",
+    "listTextFilesUnder(`cloud-functions/${name}`)"
+  ].forEach(marker => contains(generator, marker));
+  contains(workflow, 'test -s .meta/project-intelligence-data.txt');
+  contains(workflow, 'Cloud Function source missing from focused context');
+  contains(workflow, 'Full TrackProfile contents leaked into focused context');
+};
+
 const validateWorkflows = () => {
   const workflows = listFiles('.github/workflows');
   assertNoMatch(workflows, /node-version:\s*['"]?20['"]?/g, 'Workflow с Node.js 20 отсутствуют');
@@ -617,6 +635,7 @@ const main = async () => {
   excludes('scripts/core/cloud-usage-meter.js', /\.(play|pause|stop|seek|next|prev|setVolume|setMuted)\s*\(/, 'Cloud usage meter управляет playback');
   validateRemovedRuntimeFiles();
   validateCloudFunctionFiles();
+  validateContextGenerator();
   validateWorkflows();
   if (failures.length) {
     console.error('\n❌ Нарушения контрактов:\n');
