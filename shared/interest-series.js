@@ -2,12 +2,12 @@
  * Focused-interest series calculator.
  *
  * This is deliberately independent from achievements, rewards, devotion,
- * shards and server-side streaks. It is a pure projection of already
- * synchronized listening events and is safe to recompute after a Backup V7
- * rebuild.
+ * shards and server-side streaks. It is a pure projection of synchronized
+ * LISTEN_COMPLETE events and is safe to recompute after a Backup V7 rebuild.
  */
 
 const MIN_VALID_LISTEN_SECONDS = 25;
+const MIN_VALID_LISTEN_MS = MIN_VALID_LISTEN_SECONDS * 1000;
 
 function toTimestamp(value) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -18,29 +18,30 @@ function toTimestamp(value) {
   return NaN;
 }
 
-function toListenSeconds(event) {
-  const candidates = [
-    event?.listenSeconds,
-    event?.playedSeconds,
-    event?.durationPlayed,
-    event?.validSeconds,
-  ];
-  for (const value of candidates) {
-    const number = Number(value);
-    if (Number.isFinite(number)) return number;
-  }
+function toListenMs(event) {
+  const data = event?.data || {};
+  const listenedMs = Number(data.listenedMs);
+  if (Number.isFinite(listenedMs)) return listenedMs;
+
+  const listenedSeconds = Number(data.listenedSeconds);
+  if (Number.isFinite(listenedSeconds)) return listenedSeconds * 1000;
+
   return NaN;
 }
 
 function isValidInterestEvent(event) {
   if (!event || typeof event !== 'object') return false;
+  if (event.type !== 'LISTEN_COMPLETE') return false;
+
   const uid = typeof event.uid === 'string' ? event.uid.trim() : '';
   if (!uid) return false;
-  return toListenSeconds(event) >= MIN_VALID_LISTEN_SECONDS;
+
+  const listenedMs = toListenMs(event);
+  return event.data?.isValidListen === true && listenedMs >= MIN_VALID_LISTEN_MS;
 }
 
 /**
- * Builds consecutive UID runs from valid listening events.
+ * Builds consecutive UID runs from valid LISTEN_COMPLETE events.
  *
  * Only absolute event order matters. Gaps, calendar days, pauses, app closes
  * and device changes are intentionally ignored. Invalid/micro-listens are
@@ -60,7 +61,7 @@ function buildInterestSeries(events) {
     .filter(isValidInterestEvent)
     .map((event, index) => ({
       uid: event.uid.trim(),
-      timestamp: toTimestamp(event.timestamp ?? event.ts ?? event.createdAt),
+      timestamp: toTimestamp(event.timestamp),
       index,
     }))
     .filter((event) => Number.isFinite(event.timestamp))
@@ -98,6 +99,7 @@ function buildInterestSeries(events) {
 
 module.exports = {
   MIN_VALID_LISTEN_SECONDS,
+  MIN_VALID_LISTEN_MS,
   isValidInterestEvent,
   buildInterestSeries,
 };
