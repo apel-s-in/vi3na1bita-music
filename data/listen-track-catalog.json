@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-30T14:37:32.422Z",
+  "generatedAt": "2026-08-19T13:10:55.725Z",
   "tracks": [
     {"uid":"GD-01","trackVersion":"193ece9d41cef5e1c538490bcd3df337","title":"Волна","album":"golos-dushi","albumTitle":"Голос Души","duration":217.056,"hi":{"duration":217.032,"bytes":8875762,"url":"https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/01.mp3"},"lo":{"duration":217.056,"bytes":5401883,"url":"https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/01.mp3"}},
     {"uid":"GD-02","trackVersion":"99d2c9dcdab70816c570920eb357f96f","title":"Цена Счастья","album":"golos-dushi","albumTitle":"Голос Души","duration":249.048,"hi":{"duration":249.024,"bytes":10155674,"url":"https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio/02.mp3"},"lo":{"duration":249.048,"bytes":6169904,"url":"https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/audio_low/02.mp3"}},
