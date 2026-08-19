@@ -1,85 +1,172 @@
 {
-  "version": "track-profile-v3",
+  "version": "track-profile-v4",
   "taxonomyVersion": "taxonomy-v3",
-  "vocabularyVersion": "track-profile-vocabulary-v1",
+  "vocabularyVersion": "track-profile-vocabulary-v2",
   "uid": "VS-10",
-  "status": "test_fixture",
-  "testData": true,
+  "status": "analyzed",
+  "testData": false,
   "musicAnalysis": {
-    "confidence": 0,
-    "bpm": null,
-    "tempoClass": null,
+    "confidence": 0.91,
+    "bpm": 135,
+    "tempoClass": "fast",
     "key": null,
-    "mode": null,
-    "timeSignature": null,
-    "instrumentation": {},
-    "vocalPresence": null,
-    "vocalRoles": {},
-    "vocalDelivery": {},
-    "arrangementTags": {},
-    "productionTags": {},
-    "arrangementDescription_ru": "",
-    "productionDescription_ru": ""
+    "mode": "minor",
+    "timeSignature": "4_4",
+    "loudnessLufs": -9.5,
+    "dynamicRange": 9.0,
+    "technicalConfidence": {
+      "bpm": 0.9,
+      "key": 0,
+      "loudnessLufs": 0.85,
+      "dynamicRange": 0.8
+    },
+    "instrumentation": {
+      "electric_guitar": 0.85,
+      "acoustic_guitar": 0.6,
+      "drum_kit": 0.83,
+      "bass_guitar": 0.78,
+      "string_section": 0.75,
+      "synthesizer": 0.55,
+      "piano": 0.4,
+      "violin": 0.7
+    },
+    "vocalPresence": 0.85,
+    "vocalRoles": {
+      "male_lead": 0.88,
+      "female_lead": 0.85,
+      "mixed_duet": 0.82,
+      "backing_vocals": 0.6
+    },
+    "vocalDelivery": {
+      "clean": 0.9,
+      "dramatic": 0.88,
+      "emotional": 0.87,
+      "belting": 0.8,
+      "spoken_word": 0.45
+    },
+    "arrangementTags": {
+      "building": 0.82,
+      "contrast": 0.85,
+      "dramatic_structure": 0.9,
+      "spoken_intro": 0.6,
+      "guitar_solo": 0.75,
+      "climax": 0.8
+    },
+    "productionTags": {
+      "modern_clean": 0.83,
+      "dynamic": 0.8,
+      "reverb_heavy": 0.68,
+      "layered_vocals": 0.8,
+      "punchy_drums": 0.8,
+      "wall_of_sound": 0.75
+    },
+    "arrangementDescription_ru": "Композиция строится на контрасте между атмосферным акустическим вступлением и напряжёнными диалоговыми эпизодами, после которых разворачиваются плотные рок-припевы с перегруженными гитарами и струнной секцией. К кульминации аранжировка последовательно наращивает плотность и эмоциональное напряжение, а разговорная секция усиливает драматургию.",
+    "productionDescription_ru": "Плотное современное рок-звучание с выраженной ритм-секцией, перегруженными электрогитарами, объёмными струнными и пространственной обработкой вокала. Мужская и женская партии разведены по роли и взаимодействуют как драматический диалог."
   },
   "lyricAnalysis": {
-    "confidence": 0,
-    "language": "unknown",
-    "summary_ru": "Демонстрационный профиль без фактического анализа.",
-    "keywords_ru": [],
+    "confidence": 0.95,
+    "language": "ru",
+    "summary_ru": "Эмоциональный диалог двух бывших возлюбленных после измены: любовь, доверие и обида постепенно превращаются в ненависть, но финальный выбор героев — не мстить, а жить дальше.",
+    "keywords_ru": [
+      "любовь",
+      "ненависть",
+      "измена",
+      "прощение",
+      "боль",
+      "слёзы",
+      "предательство",
+      "прошлое"
+    ],
     "entities_ru": [],
-    "scenes_ru": [],
+    "scenes_ru": [
+      "Воспоминание о прошлом и дождливом дне, когда за красивыми словами скрывалась ложь.",
+      "Эмоциональное столкновение героев, взаимные упрёки и попытка понять, кого винить.",
+      "Разговор о мести, боли и превращении любви в ненависть.",
+      "Отказ от мести и решение выбрать дальнейшую жизнь вместо разрушения себя."
+    ],
     "narrative": {
-      "type": "none",
-      "perspective": "unspecified",
-      "arc_ru": "",
-      "characters_ru": []
+      "type": "dialogue",
+      "perspective": "duet",
+      "arc_ru": "От воспоминаний и осознания предательства через взаимные упрёки и эмоциональную кульминацию к отказу от мести и решению жить дальше, несмотря на разрушенные отношения.",
+      "characters_ru": [
+        "Два бывших возлюбленных, связанных общей историей измены, боли и утраты доверия.",
+        "Мужская и женская партии ведут взаимный эмоциональный диалог, в котором любовь и ненависть постоянно сталкиваются."
+      ]
     },
-    "sensitiveContentNotes_ru": []
+    "sensitiveContentNotes_ru": [
+      "Темы измены, эмоциональной травмы, сильной обиды и психологического переживания распада отношений."
+    ]
   },
   "finalProfile": {
     "genres": {
-      "rock": 0.85,
-      "alternative_rock": 0.7
+      "rock": 0.8,
+      "alternative_rock": 0.8,
+      "pop": 0.6,
+      "orchestral_pop": 0.5
     },
-    "styles": {},
+    "styles": {
+      "ballad": 0.85,
+      "cinematic": 0.75,
+      "orchestral": 0.63,
+      "story_song": 0.8
+    },
     "moods": {
+      "dramatic": 0.95,
       "heartbroken": 0.85,
-      "angry": 0.7
+      "bitter": 0.85,
+      "tense": 0.8,
+      "sad": 0.8,
+      "melancholic": 0.7,
+      "angry": 0.7,
+      "energetic": 0.7,
+      "bittersweet": 0.65
     },
     "themes": {
-      "love": 0.85,
-      "heartbreak": 0.7
+      "breakup": 0.9,
+      "heartbreak": 0.9,
+      "conflict": 0.85,
+      "love": 0.8,
+      "storytelling": 0.8,
+      "forgiveness": 0.75,
+      "self_reflection": 0.65
     },
     "use_cases": {
-      "background": 0.55,
-      "walking": 0.5
+      "crying": 0.83,
+      "healing_after_breakup": 0.8,
+      "driving": 0.6,
+      "karaoke": 0.7
     },
-    "time_of_day": {},
+    "time_of_day": {
+      "evening": 0.7,
+      "night": 0.85
+    },
     "axes": {
-      "energy": 0.76,
-      "valence": 0.2,
+      "energy": 0.75,
+      "valence": 0.15,
       "arousal": 0.8,
-      "danceability": 0,
-      "acousticness": 0,
-      "instrumentalness": 0,
-      "aggressiveness": 0,
-      "melancholy": 0,
-      "romance_intensity": 0.9,
-      "humor": 0,
-      "socialness": 0,
-      "epicness": 0,
-      "warmth": 0,
-      "brightness": 0,
-      "tension": 0.74,
-      "storytelling": 0,
-      "spookiness": 0,
-      "family_friendly": 0
+      "danceability": 0.33,
+      "acousticness": 0.32,
+      "instrumentalness": 0.05,
+      "aggressiveness": 0.65,
+      "melancholy": 0.85,
+      "romance_intensity": 0.7,
+      "humor": 0.0,
+      "socialness": 0.1,
+      "epicness": 0.8,
+      "warmth": 0.2,
+      "brightness": 0.3,
+      "tension": 0.85,
+      "storytelling": 0.85,
+      "spookiness": 0.05,
+      "family_friendly": 0.7
     },
-    "warnings": {}
+    "warnings": {
+      "psychological_distress": 0.5
+    }
   },
   "presentation": {
-    "tagline_ru": "Временный демонстрационный профиль.",
-    "one_liner_ru": "Произвольные данные только для проверки технической работы интеллектуального слоя.",
-    "mini_description_ru": "Не является фактическим анализом музыки или текста."
+    "tagline_ru": "Драматический рок-дуэт о предательстве, боли и выборе жить, когда любовь превращается в ненависть.",
+    "one_liner_ru": "Напряжённая рок-баллада в форме диалога двух бывших возлюбленных, где боль измены и взаимные упрёки приводят не к мести, а к решению идти дальше.",
+    "mini_description_ru": "Композиция соединяет атмосферное вступление, плотные рок-риффы, струнную драматургию и эмоциональный мужской и женский вокал. История проходит через воспоминания, предательство, конфликт и превращение любви в ненависть, но завершается отказом от мести и выбором жить дальше."
   }
 }
