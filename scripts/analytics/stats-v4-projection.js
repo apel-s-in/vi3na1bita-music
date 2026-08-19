@@ -98,7 +98,7 @@ export const buildStatsV4 = (events = []) => {
   completions.forEach(event => {
     const data = event.data || {};
     const listenedMs = count(data.listenedMs || num(data.listenedSeconds) * 1000);
-    if (data.analysisEligible === true || listenedMs >= 3000) {
+    if (data.isValidListen === true && listenedMs >= 25000) {
       const nextFocus = runFromEvent(event);
       const previousFocus = focusRuns[focusRuns.length - 1];
       if (sameFocusRun(previousFocus, nextFocus)) focusRuns[focusRuns.length - 1] = joinRun(previousFocus, nextFocus);
@@ -158,7 +158,7 @@ export const buildStatsV4 = (events = []) => {
   output.focusBoundary = {
     chainKey,
     firstRun: cloneRun(focusRuns[0]),
-    lastRun: cloneRun(focusRuns[focusRuns.length - 1]),
+    lastRun: cloneRun(focusRuns[runs.length - 1]),
     singleRun: focusRuns.length === 1
   };
   return output;
