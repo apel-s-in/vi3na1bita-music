@@ -94,6 +94,30 @@ const skipped = buildStatsV4([
 ]);
 
 assert.equal(skipped.repeat['GD-01']?.runs3 || 0, 0);
+assert.equal(skipped.focus['GD-01']?.maxRun || 0, 0);
+
+const invalidLong = buildStatsV4([
+  {
+    ...completion({ id: 'invalid-long', startedAt: 400000, completedAt: 430000 }),
+    data: {
+      ...completion({ id: 'invalid-long', startedAt: 400000, completedAt: 430000 }).data,
+      isValidListen: false,
+      isFullListen: false,
+      skipClass: 'early_skip'
+    }
+  }
+]);
+assert.equal(invalidLong.focus['GD-01']?.maxRun || 0, 0);
+
+const belowThreshold = buildStatsV4([
+  completion({ id: 'short', startedAt: 500000, completedAt: 524999 })
+]);
+assert.equal(belowThreshold.focus['GD-01']?.maxRun || 0, 0);
+
+const exactThreshold = buildStatsV4([
+  completion({ id: 'exact-25', startedAt: 600000, completedAt: 625000 })
+]);
+assert.equal(exactThreshold.focus['GD-01']?.maxRun || 0, 1);
 
 const leadingBreak = buildStatsV4([
   {
@@ -112,4 +136,4 @@ const leadingBreak = buildStatsV4([
 const brokenAcrossBoundary = mergeStatsV4(first, leadingBreak);
 assert.equal(brokenAcrossBoundary.repeat['GD-01']?.runs3 || 0, 0);
 
-console.log('✅ Stats v5 full-repeat boundary and sparse cube contract passed');
+console.log('✅ Stats v5 full-repeat boundary and focused-interest threshold contract passed');
