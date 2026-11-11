@@ -20698,7 +20698,7 @@ const $ = id => D.getElementById(id);
 const BASE = './albums/gallery/';
 const LOGO = 'img/logo.png';
 const C404 = 'gallery_404_cache:v2';
-const MAP = { krevetochka: '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04', neizvestniy: '05', 'v-ssore': '06' };
+const MAP = { krevetochka: '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04', neizvestniy: '05', 'v-ssore': '06', 'byt-igrushkoy': '07' };
 const ss = (key, value) => value === undefined ? JSON.parse(sessionStorage.getItem(key) || '{}') : sessionStorage.setItem(key, JSON.stringify(value));
 
 class GalleryManager {
