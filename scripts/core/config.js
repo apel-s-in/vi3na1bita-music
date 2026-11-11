@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
-  APP_VERSION: '9.3.4',
-  BUILD_DATE: '2026-08-04',
+  APP_VERSION: '9.3.5',
+  BUILD_DATE: '2026-11-11',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
     { key: 'byt-igrushkoy', title: 'Быть Игрушкой', icon: 'img/icon_album/icon-album-07.png', row: 'albums' },
