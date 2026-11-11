@@ -19154,6 +19154,7 @@ export const APP_CONFIG = {
   BUILD_DATE: '2026-08-04',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
+    { key: 'byt-igrushkoy', title: 'Быть Игрушкой', icon: 'img/icon_album/icon-album-07.png', row: 'albums' },
     { key: 'v-ssore', title: 'В Ссоре', icon: 'img/icon_album/icon-album-06.png', row: 'albums' },
     { key: 'neizvestniy', title: 'Неизвестный', icon: 'img/icon_album/icon-album-05.png', row: 'albums' },
     { key: 'ne-vse-ravno', title: 'Не всё равно', icon: 'img/icon_album/icon-album-04.png', row: 'albums' },
