@@ -1437,7 +1437,7 @@ jobs:
       "key": "byt-igrushkoy",
       "title": "Быть Игрушкой",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/byt-igrushkoy/",
-      "github_base": "https://github.com/apel-s-in/vi3na1bita-byt-igrushkoy/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-byt-igrushkoy/"
     },
     {
       "key": "krevetochka",
