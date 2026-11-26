@@ -121,7 +121,6 @@ export class AchievementEngine {
         totalSec: Number(progress.totalSec || 0),
         uniqueTracks: Number(progress.uniqueTracks || 0),
         maxOneTrackFull: Number(progress.maxOneTrackFull || 0),
-        hiPlays: Number(progress.hiFullPlays || 0),
         earlyPlays: Number(progress.earlyFullPlays || 0),
         nightPlays: Number(progress.nightFullPlays || 0),
         weekendPlays: Number(progress.weekendValidPlays || 0),
@@ -226,6 +225,7 @@ export class AchievementEngine {
       });
     };
     for (const [k, r] of Object.entries(this.dict)) {
+      if (k === 'quality_snob' || r.id === 'quality_snob') continue;
       if (r.type === 'static') add(k, r, null, !!this.unlocked[k], this.unlocked[k], agg[r.trigger.conditions[0].metric] || 0, r.trigger.conditions[0].target);
       else if (r.type === 'scalable') {
         let level = 1;
