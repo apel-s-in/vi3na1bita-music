@@ -1,4 +1,4 @@
-const SW_VERSION = '9.3.9';
+const SW_VERSION = '9.4.0';
 const SW_CACHE_REVISION = 'audio-sources-3-config-revision';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}-${SW_CACHE_REVISION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}-${SW_CACHE_REVISION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}-${SW_CACHE_REVISION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}-${SW_CACHE_REVISION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}-${SW_CACHE_REVISION}`;
 let isAirplaneMode = false;
