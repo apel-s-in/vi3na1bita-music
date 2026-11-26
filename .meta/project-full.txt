@@ -140,7 +140,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
 [/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-audio-sources.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-recommendation-score.mjs, test-stats-v5.mjs, test-track-similarity.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-jsdelivr.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
-[/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
+[/scripts/core/] app-activity.js, audio-source-policy.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/listener/] listener-profile.js
@@ -18669,6 +18669,39 @@ window.AppActivity = {
 };
 
 export default window.AppActivity;
+
+//=================================================
+// FILE: /scripts/core/audio-source-policy.js
+// Audio transport preferences only; album JSON, artwork and lyrics use their own transport.
+export const AUDIO_SOURCE_KEY = 'audio:sources:v1';
+export const AUDIO_SOURCE_ORDER = Object.freeze(['archive', 'jsdelivr', 'github', 'yandex']);
+export const AUDIO_SOURCE_LABELS = Object.freeze({ archive: 'Архив', jsdelivr: 'CDN · jsDelivr', github: 'GitHub Pages', yandex: 'Яндекс' });
+const defaults = () => ({ version: 1, mode: 'auto', order: [...AUDIO_SOURCE_ORDER], enabled: [...AUDIO_SOURCE_ORDER], bypassCache: false });
+export const normalizeAudioSourcePolicy = value => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return defaults();
+  const clean = input => [...new Set((Array.isArray(input) ? input : []).filter(id => AUDIO_SOURCE_ORDER.includes(id)))];
+  const order = clean(value.order);
+  return { version: 1, mode: value.mode === 'manual' ? 'manual' : 'auto', order: [...order, ...AUDIO_SOURCE_ORDER.filter(id => !order.includes(id))], enabled: Array.isArray(value.enabled) ? clean(value.enabled) : [...AUDIO_SOURCE_ORDER], bypassCache: value.bypassCache === true };
+};
+export const getAudioSourcePolicy = () => {
+  try { return normalizeAudioSourcePolicy(JSON.parse(localStorage.getItem(AUDIO_SOURCE_KEY))); }
+  catch { return defaults(); }
+};
+export const getAudioSourceOrder = () => {
+  const policy = getAudioSourcePolicy();
+  return policy.mode === 'auto' ? [...AUDIO_SOURCE_ORDER] : policy.order.filter(id => policy.enabled.includes(id));
+};
+export const shouldUseAudioCache = () => !getAudioSourcePolicy().bypassCache;
+export const setAudioSourcePolicy = value => {
+  const policy = normalizeAudioSourcePolicy(value);
+  if (policy.mode === 'manual' && !policy.enabled.length) throw new Error('audio_source_required');
+  // Do not report success if the browser refused to persist the preference.
+  localStorage.setItem(AUDIO_SOURCE_KEY, JSON.stringify(policy));
+  window.dispatchEvent(new CustomEvent('audioSources:changed', { detail: { policy } }));
+  return policy;
+};
+// Classic-script download helpers share the same cache policy as the ESM resolver.
+window.AudioSourcePolicy = { getAudioSourcePolicy, getAudioSourceOrder, shouldUseAudioCache };
 
 //=================================================
 // FILE: /scripts/core/bootstrap.js
