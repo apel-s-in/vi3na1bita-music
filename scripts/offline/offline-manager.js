@@ -1,3 +1,4 @@
+import { shouldUseAudioCache } from '../core/audio-source-policy.js';
 import * as DB from './cache-db.js';
 import { markDeviceSettingsDirty } from '../analytics/sync-dirty-events.js';
 const W = window, LS = { MODE: 'offline:mode:v1', QUAL: 'qualityMode:v1', CQ: 'offline:cacheQuality:v1', CN: 'cloud:listenThreshold', CD: 'cloud:ttlDays' }, DEF = { N: 5, D: 31, MIN_MB: 60, R2_DYN_MB: 80 }, G = { MRU: 'r2:mru:list:v1', DYN_MB: 'r2:dynamicLimitMB:v1' }, PRIO = { CUR: 100, NEXT: 90, PIN: 80, UPD: 70, FILL: 60, DYN: 50 };
@@ -7,7 +8,7 @@ class OfflineManager { constructor() { this.queue = new DownloadQueue(this); thi
     if (!(u = sUid(u))) return { source: 'none' };
     try {
       await DB.openDB();
-      if (!options.skipCache) {
+      if (!options.skipCache && shouldUseAudioCache()) {
         for (const quality of ['lo', 'hi']) {
           const blob = await DB.getAudioBlob(u, quality).catch(() => null);
           if (blob?.size) {
