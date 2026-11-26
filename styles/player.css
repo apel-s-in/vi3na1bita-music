@@ -112,6 +112,8 @@
 .source-indicator.si-yandex::after{content:'Я'}
 .source-indicator.si-archive{background:radial-gradient(circle,#22c55e 0,#15803d 100%);color:#fff;border:1px solid #86efac}
 .source-indicator.si-archive::after{content:'A';font-size:22px;font-weight:900}
+.source-indicator.si-jsdelivr{background:radial-gradient(circle,#a855f7 0,#6d28d9 100%);color:#fff;border:1px solid #d8b4fe}
+.source-indicator.si-jsdelivr::after{content:'CDN';font-size:11px;font-weight:900}
 .source-indicator.si-github{background:radial-gradient(circle,#444 0,#000 100%);color:#fff;border:1px solid #666}
 .source-indicator.si-github::after{content:'GH';font-size:13px}
 .source-indicator.si-cache{background:radial-gradient(circle,#4caf50 0,#2e7d32 100%);color:#fff;border:1px solid #81c784}
