@@ -1,0 +1,78 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const store = new Map();
+let blocked = false, count = 0;
+const listeners = new Map();
+const context = vm.createContext({ console, URL, Blob, DOMException, AbortController, setTimeout, clearTimeout,
+  navigator: { onLine: true },
+  localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => { if (blocked) throw new Error('quota'); store.set(key, value); } },
+  CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } }
+});
+context.window = { location: { hostname: 'example.org' }, dispatchEvent: event => (listeners.get(event.type) || []).forEach(fn => fn(event)), NetPolicy: { isNetworkAllowed: () => true }, Utils: { func: { memoAsyncOnce: (_key, fn) => fn() } } };
+const load = path => fs.readFileSync(path, 'utf8').replace(/^import .*;\n/gm, '').replace(/export default .*;?\s*$/gm, '').replace(/export /g, '');
+vm.runInContext(load('scripts/core/audio-source-policy.js'), context);
+vm.runInContext(load('scripts/app/track-registry.js'), context);
+const run = expression => vm.runInContext(expression, context);
+const equal = (expression, expected) => { assert.deepEqual(JSON.parse(JSON.stringify(run(expression))), expected); count++; };
+const order = ['archive', 'jsdelivr', 'github', 'yandex'];
+equal('getAudioSourceOrder()', order);
+store.set('sourcePref', 'yandex');
+equal('getAudioSourceOrder()', order);
+store.set('audio:sources:v1', '{broken');
+equal('getAudioSourceOrder()', order);
+equal(`normalizeAudioSourcePolicy({mode:'manual',order:['yandex','unknown','yandex'],enabled:['archive','bad','archive']})`, { version: 1, mode: 'manual', order: ['yandex', 'archive', 'jsdelivr', 'github'], enabled: ['archive'], bypassCache: false });
+run(`setAudioSourcePolicy({mode:'manual',order:['yandex','archive'],enabled:['archive','yandex']})`);
+equal('getAudioSourceOrder()', ['yandex', 'archive']);
+assert.throws(() => run(`setAudioSourcePolicy({mode:'manual',enabled:[]})`), /audio_source_required/); count++;
+equal('getAudioSourceOrder()', ['yandex', 'archive']);
+run(`setAudioSourcePolicy({...getAudioSourcePolicy(),mode:'auto'})`);
+equal('getAudioSourceOrder()', order);
+run(`setAudioSourcePolicy({...getAudioSourcePolicy(),mode:'manual'})`);
+equal('getAudioSourceOrder()', ['yandex', 'archive']);
+equal('shouldUseAudioCache()', true);
+run(`setAudioSourcePolicy({...getAudioSourcePolicy(),bypassCache:true})`);
+equal('shouldUseAudioCache()', false);
+blocked = true;
+assert.throws(() => run(`setAudioSourcePolicy({mode:'auto'})`), /quota/); count++;
+blocked = false;
+// Populate the real registry through an album config, not a fake candidate resolver.
+context.window.albumsIndex = [{ key: 'demo', title: 'Demo', github_base: 'https://github.test/', yandex_base: 'https://yandex.test/', archive_base: 'https://archive.test/', archive_flat: true, jsdelivr_repo: 'owner/repo', jsdelivr_commit: 'a'.repeat(40) }];
+context.fetch = async () => ({ ok: true, json: async () => ({ tracks: [{ uid: 'DEMO-01', title: 'Demo', audio: 'audio/01.mp3', audio_low: 'audio_low/01.mp3' }] }) });
+await run('ensurePopulated()');
+run(`setAudioSourcePolicy({mode:'auto'})`);
+equal(`getAudioCandidates('DEMO-01').map(item=>item.provider)`, order);
+equal(`getAudioCandidates('DEMO-01')[0].url`, 'https://archive.test/01.mp3');
+equal(`getAudioCandidates('DEMO-01')[1].url`, `https://cdn.jsdelivr.net/gh/owner/repo@${'a'.repeat(40)}/audio_low/01.mp3`);
+run(`setAudioSourcePolicy({mode:'manual',enabled:['jsdelivr']})`);
+equal(`getAudioCandidates('DEMO-01').map(item=>item.provider)`, ['jsdelivr']);
+run(`window.albumsIndex[0].jsdelivr_commit='main'`);
+equal(`getAudioCandidates('DEMO-01')`, []);
+run(`window.albumsIndex[0].jsdelivr_commit='a'.repeat(40)`);
+let calls = [];
+context.fetch = async url => { calls.push(url); return { ok: true, headers: new Headers({ 'content-type': 'audio/mpeg' }), blob: async () => new Blob([new Uint8Array(2048)]) }; };
+assert.equal((await run(`fetchAudioBlob('DEMO-01')`)).provider, 'jsdelivr'); count++;
+assert.equal(calls.length, 1); count++;
+run(`setAudioSourcePolicy({mode:'manual',order:['archive','yandex'],enabled:['archive','yandex']})`);
+calls = [];
+context.fetch = async url => { calls.push(url); return { ok: true, headers: new Headers({ 'content-type': 'audio/mpeg' }), blob: async () => new Blob([new Uint8Array(url.includes('archive') ? 2 : 2048)]) }; };
+assert.equal((await run(`fetchAudioBlob('DEMO-01')`)).provider, 'yandex'); count++;
+assert.deepEqual(calls, ['https://archive.test/01.mp3', 'https://yandex.test/audio_low/01.mp3']); count++;
+run(`setAudioSourcePolicy({mode:'manual',enabled:['jsdelivr']})`);
+calls = [];
+context.fetch = async url => { calls.push(url); throw new Error('HTTP 503'); };
+await assert.rejects(run(`fetchAudioBlob('DEMO-01')`), /503/); count++;
+assert.equal(calls.length, 1); count++;
+run(`setAudioSourcePolicy({mode:'auto'})`);
+calls = [];
+context.fetch = async url => { calls.push(url); if (calls.length === 1) { run(`setAudioSourcePolicy({mode:'manual',enabled:['yandex']})`); throw new Error('fail'); } return { ok: true, headers: new Headers({ 'content-type': 'audio/mpeg' }), blob: async () => new Blob([new Uint8Array(2048)]) }; };
+assert.equal((await run(`fetchAudioBlob('DEMO-01')`)).provider, 'yandex'); count++;
+assert.equal(calls.length, 2); count++;
+context.controller = new AbortController(); context.controller.abort(); calls = [];
+await assert.rejects(run(`fetchAudioBlob('DEMO-01',{signal:controller.signal})`), error => error.name === 'AbortError'); count++;
+assert.equal(calls.length, 0); count++;
+context.window.NetPolicy.isNetworkAllowed = () => false;
+await assert.rejects(run(`fetchAudioBlob('DEMO-01')`), /network_not_allowed/); count++;
+assert.equal(calls.length, 0); count++;
+console.log(`Audio sources: ${count} behavioral assertions passed`);
