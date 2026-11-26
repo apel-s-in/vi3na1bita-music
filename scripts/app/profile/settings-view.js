@@ -1,3 +1,4 @@
+import { bindAudioSourcesSettingsSection } from './settings-sources-section.js';
 import { renderDownloadSettingsSection, bindDownloadSettingsSection } from './settings-download-section.js';
 import { renderInterfaceSettingsSection, bindInterfaceSettingsSection } from './settings-interface-section.js';
 import { renderDataSettingsSection } from './settings-data-section.js';
@@ -19,6 +20,7 @@ export const renderProfileSettings = root => {
   bindTabStripPhysics(root);
   bindInterfaceSettingsSection(root);
   bindDownloadSettingsSection(root);
+  bindAudioSourcesSettingsSection(root);
   bindConsoleSettingsSection(root);
 };
 
