@@ -7990,6 +7990,8 @@ export class SessionTracker {
     if (!uid) return;
     if (this.s?.uid === uid && this.s?.variant === type) {
       this.s.lastUpdate = Date.now();
+      this.s.lastPos = Number(window.playerCore?.getPosition?.() || 0);
+      this._recordSourceStart();
       return;
     }
     this._end(false);
@@ -7998,7 +8000,10 @@ export class SessionTracker {
     this.s = {
       uid,
       variant: type,
-      quality: player?.qMode || 'hi',
+      quality: player?.qMode || 'lo',
+      sourceStarts: {},
+      sourceListenMs: {},
+      sourceTransport: null,
       shuffle: !!player?.isShuffle?.(),
       repeat: !!player?.isRepeat?.(),
       launchSource: String(window.AlbumsManager?.getPlayingAlbum?.() || ''),
@@ -8012,7 +8017,17 @@ export class SessionTracker {
       lastPos: Number(player?.getPosition?.() || 0),
       lastUpdate: startedAt
     };
+    this._recordSourceStart();
     eventLogger.log('LISTEN_START', uid, { variant: type, quality: this.s.quality, shuffle: this.s.shuffle, repeat: this.s.repeat, launchSource: this.s.launchSource, favoritesOnly: this.s.favoritesOnly, favoriteAtStart: this.s.favoriteAtStart, timezoneOffsetMin: this.s.timezoneOffsetMin });
+  }
+  _recordSourceStart() {
+    if (!this.s) return;
+    const player = window.playerCore;
+    const provider = ['cache', 'archive', 'github', 'yandex'].includes(player?.currentProvider) ? player.currentProvider : 'unknown';
+    const token = `${player?._tok || 0}:${provider}`;
+    if (this.s.sourceTransport === token) return;
+    this.s.sourceTransport = token;
+    this.s.sourceStarts[provider] = (this.s.sourceStarts[provider] || 0) + 1;
   }
   _tick({ currentTime, volume, muted }) {
     if (!this.s) return;
@@ -8023,6 +8038,8 @@ export class SessionTracker {
     const creditedMs = getCreditedPlaybackDeltaMs({ deltaMs: rt.deltaMs, prevTime: rt.prevPos, currentTime: rt.currentTime, volume: rt.volume, muted: rt.muted });
     if (creditedMs > 0) {
       this.s.accumulatedMs += creditedMs;
+      const provider = ['cache', 'archive', 'github', 'yandex'].includes(window.playerCore?.currentProvider) ? window.playerCore.currentProvider : 'unknown';
+      this.s.sourceListenMs[provider] = (this.s.sourceListenMs[provider] || 0) + creditedMs;
       const last = this.s.creditedSegments[this.s.creditedSegments.length - 1];
       const contiguous = last && Math.abs(Number(last.endedAt || 0) - Number(rt.prevTickAt || 0)) <= 1500 && Math.abs(Number(last.toPosition || 0) - Number(rt.prevPos || 0)) <= 1.5;
       if (contiguous) {
@@ -8053,7 +8070,7 @@ export class SessionTracker {
     if (!this.s) return;
     const targetPosition = endedNaturally && this.s.duration > 0 ? this.s.duration : Number(window.playerCore?.getPosition?.() || this.s.lastPos || 0);
     this._tick({ currentTime: targetPosition, volume: window.playerCore?.getVolume?.() ?? 100, muted: window.playerCore?.isMuted?.() ?? false });
-    const { uid, variant, quality, shuffle, repeat, launchSource, favoritesOnly, favoriteAtStart, timezoneOffsetMin, startedAt, accumulatedMs, creditedSegments, duration } = this.s;
+    const { uid, variant, quality, shuffle, repeat, launchSource, favoritesOnly, favoriteAtStart, timezoneOffsetMin, startedAt, accumulatedMs, creditedSegments, duration, sourceStarts, sourceListenMs } = this.s;
     this.s = null;
     if (duration <= 0 && !endedNaturally) return;
     const listenedSeconds = Math.max(0, accumulatedMs / 1000);
@@ -8084,6 +8101,9 @@ export class SessionTracker {
       startedAt,
       listenedSeconds: Math.floor(listenedSeconds),
       listenedMs: Math.floor(accumulatedMs),
+      sourceStatsVersion: 1,
+      sourceStarts,
+      sourceListenMs,
       uniqueCoveredSeconds,
       uniqueCoveredMs: Math.floor(uniqueCoveredSeconds * 1000),
       creditedSegments,
