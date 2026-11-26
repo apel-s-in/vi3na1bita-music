@@ -1281,6 +1281,9 @@ jobs:
       - name: Validate Service Worker contract
         run: node scripts/ci/lint-sw.mjs
 
+      - name: Validate jsDelivr source contract
+        run: node scripts/ci/validate-jsdelivr.mjs
+
       - name: Validate local content indexes
         run: |
           node scripts/ci/validate-content.mjs
