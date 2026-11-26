@@ -343,3 +343,19 @@ input:checked + .set-slider:before{transform:translateX(20px);background:#fff}
 .stats-source-tab{min-height:38px;padding:7px 9px;border-radius:9px;border:1px solid transparent;background:transparent;color:#7185a5;font-size:10.5px;font-weight:900;line-height:1.2;cursor:pointer}
 .stats-source-tab.is-active{border-color:rgba(77,170,255,.3);background:rgba(77,170,255,.14);color:#eaf2ff}
 .stats-source-tab:disabled{opacity:.38;cursor:not-allowed}
+
+/* Audio source preferences: compact touch/keyboard controls, no drag-only actions. */
+.audio-source-modes{border:0;padding:0;margin:0 0 12px;display:grid;gap:10px;min-width:0}
+.audio-source-modes legend{font-weight:700;margin-bottom:10px}
+.audio-source-modes label,.audio-source-cache{display:flex;align-items:center;gap:8px;min-height:32px;cursor:pointer}
+.audio-source-list{list-style:none;padding:0;margin:12px 0;display:grid;gap:8px}
+.audio-source-row{display:flex;align-items:center;gap:6px;padding:7px;border:1px solid #ffffff20;border-radius:10px;background:#ffffff06;min-width:0}
+.audio-source-row label{display:flex;align-items:center;gap:7px;flex:1;min-width:0;cursor:pointer;font-size:13px}
+.audio-source-row label span{overflow-wrap:anywhere}
+.audio-source-rank{width:17px;text-align:center;color:#9ecbff;font-size:12px;flex-shrink:0}
+.audio-source-row .dl-arr{width:32px;min-width:32px;height:36px;flex-shrink:0}
+.audio-source-row.is-disabled label,.audio-source-row.is-disabled .audio-source-rank{opacity:.45}
+.audio-source-row button:disabled{opacity:.25;cursor:default}
+#audio-source-settings input{accent-color:#a855f7;flex-shrink:0}
+#audio-source-settings :focus-visible{outline:2px solid #c4b5fd;outline-offset:3px}
+.audio-source-summary{overflow-wrap:anywhere;line-height:1.5}
