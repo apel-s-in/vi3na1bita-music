@@ -233,7 +233,6 @@ export const buildStatsProjection = events => {
       const minute = localMinute(event);
       if (minute >= 120 && minute <= 270) bump(track.features, 'nightPlay');
       if (minute >= 300 && minute <= 539) bump(track.features, 'earlyPlay');
-      if (data.quality === 'hi') bump(track.features, 'hiQuality');
       if (data.shuffle === true) bump(track.features, 'shufflePlay');
     }
 
