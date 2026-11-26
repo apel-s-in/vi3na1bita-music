@@ -21535,35 +21535,9 @@ export default { initPlaybackReturnUi, getPlaybackReturnUiState };
     ['shuffle', 'repeat', 'mute'].forEach(k => U.setBtnActive(`${k}-btn`, c[`is${k.charAt(0).toUpperCase() + k.slice(1)}`]?.()));
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`; if (e.favI) W.IconUtils?.setFavoriteStarState?.(e.favI, f);
     const v = c.getVolume(); e.vF.style.width = `${v}%`; e.vH.style.left = `${U.math.clamp(v, 2, 98)}%`; e.vS.value = v;
-    if (e.pq) { e.pq.hidden = true; e.pq.disabled = true; e.pq.setAttribute('aria-hidden', 'true'); }
     U.download.applyDownloadLink(e.dl, t);
     if (e.srcInd) { const prv = { archive: ['si-archive', 'Internet Archive'], yandex: ['si-yandex', 'Yandex Cloud'], github: ['si-github', 'GitHub Pages'], cache: ['si-cache', 'Офлайн Кэш'] }[st.provider]; e.srcInd.className = `source-indicator ${prv ? prv[0] : ''}`; e.srcInd.style.opacity = prv ? '' : '0.3'; e.srcInd.title = prv ? `Источник: ${prv[1]}` : 'Определение источника...'; }
     if (st.isMini && dom.mini) { if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—'; if (e.mSr) W.IconUtils?.setFavoriteStarState?.(e.mSr, U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t })); }
-  };
-
-  const onPQClick = async () => {
-    const m = W.OfflineManager, c = PC(), r = U.pq.getState();
-    if (m?.getMode?.() === 'R2') return W.Modals?.openOfflineModal?.();
-    if (!r.netOk) return U.ui.toast('Нет доступа к сети', 'warning');
-    if (!r.canToggleByTrack) return U.ui.toast('Низкое качество недоступно', 'warning');
-    const nq = r.mode === 'hi' ? 'lo' : 'hi', nds = m ? await m.countNeedsReCache(nq) : 0, apply = () => { c.switchQuality(nq); syncUI(); };
-    if (nds <= 5) {
-      apply();
-      return;
-    }
-
-    if (!W.Modals?.confirm) {
-      U.ui.toast('Система подтверждений недоступна', 'error');
-      return;
-    }
-
-    W.Modals.confirm({
-      title: 'Смена качества',
-      textHtml: `Затронет ${nds} файлов. Перекачать?`,
-      confirmText: 'Перекачать',
-      cancelText: 'Отмена',
-      onConfirm: apply
-    });
   };
 
   const ensureBlock = (idx, uInit) => {
@@ -21571,7 +21545,7 @@ export default { initPlaybackReturnUi, getPlaybackReturnUiState };
       const tpl = D.getElementById('player-template'); if (!tpl?.content) return;
       dom.blk = tpl.content.cloneNode(true).querySelector('#lyricsplayerblock'); dom.now = D.getElementById('now-playing'); if (!dom.blk || !dom.now) return;
       const q = s => dom.blk?.querySelector(s);
-      dom.el = { srcInd: q('#source-indicator'), fill: q('#player-progress-fill'), bar: q('#player-progress-bar'), tE: q('#time-elapsed'), tR: q('#time-remaining'), vF: q('#volume-fill'), vH: q('#volume-handle'), vS: q('#volume-slider'), ico: q('#play-pause-icon'), pq: q('#pq-btn'), pqL: q('#pq-btn-label'), fav: q('#favorites-btn'), favI: q('#favorites-btn-icon'), dl: q('#track-download-btn') };
+      dom.el = { srcInd: q('#source-indicator'), fill: q('#player-progress-fill'), bar: q('#player-progress-bar'), tE: q('#time-elapsed'), tR: q('#time-remaining'), vF: q('#volume-fill'), vH: q('#volume-handle'), vS: q('#volume-slider'), ico: q('#play-pause-icon'), fav: q('#favorites-btn'), favI: q('#favorites-btn-icon'), dl: q('#track-download-btn') };
       dom.blk.addEventListener('click', e => {
         const b = e.target.closest('button, a, .source-indicator'); if (!b || b.tagName === 'A') return;
         if (b.id === 'track-download-btn' && !b.getAttribute('href')) return e.preventDefault(), U.ui.toast('Скачивание недоступно', 'error');
@@ -21580,7 +21554,7 @@ export default { initPlaybackReturnUi, getPlaybackReturnUiState };
           'play-pause-btn': () => c.isPlaying() ? c.pause() : c.play(), 'prev-btn': () => c.prev(), 'next-btn': () => c.next(), 'stop-btn': () => c.stop(),
           'shuffle-btn': () => { c.toggleShuffle(); syncUI(); }, 'repeat-btn': () => { c.toggleRepeat(); syncUI(); },
           'mute-btn': () => { c.setMuted(!c.isMuted()); syncUI(); }, 'sleep-timer-btn': () => W.SleepTimer?.show?.(),
-          'pq-btn': onPQClick, 'lyrics-text-btn': () => W.LyricsModal?.show?.(), 'pulse-btn': () => W.LogoPulse?.toggle?.(), 'stats-btn': () => W.StatisticsModal?.openStatisticsModal?.(),
+          'lyrics-text-btn': () => W.LyricsModal?.show?.(), 'pulse-btn': () => W.LogoPulse?.toggle?.(), 'stats-btn': () => W.StatisticsModal?.openStatisticsModal?.(),
           'lyrics-toggle-btn': () => {
             W.LyricsController?.toggleLyricsView?.();
             W.eventLogger?.log('FEATURE_USED', c.getCurrentTrackUid(), { feature: 'lyrics' });
