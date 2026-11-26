@@ -1401,7 +1401,9 @@ jobs:
       "key": "mezhdu-zlom-i-dobrom",
       "title": "Между Злом и Добром",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/mezhdu-zlom-i-dobrom/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-mezhdu-zlom-i-dobrom/",
+      "archive_base": "https://archive.org/download/mezhdu-zlom-i-dobrom/",
+      "archive_flat": true
     },
     {
       "key": "golos-dushi",
