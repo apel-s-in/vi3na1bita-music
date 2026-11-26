@@ -1119,7 +1119,6 @@ try {
         <span class="time-in-controls" id="time-remaining">--:--</span>
       </div>
       <div class="player-controls-row">
-        <button class="player-control-btn" id="pq-btn" title="Качество (Hi/Lo)"><span class="pq-btn-label" id="pq-btn-label">Hi</span></button>
         <button class="player-control-btn" id="mute-btn" title="Без звука (M)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-mute"></use></svg></button>
         <button class="player-control-btn" id="shuffle-btn" title="Случайный порядок (U)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-shuffle"></use></svg></button>
         <button class="player-control-btn" id="repeat-btn" title="Повтор трека (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="icons/ui-sprite.svg#icon-repeat"></use></svg></button>
