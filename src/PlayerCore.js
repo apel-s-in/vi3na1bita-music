@@ -1,4 +1,5 @@
 import { getTrackByUid } from '../scripts/app/track-registry.js';
+import { resolve as resolveAudio } from '../scripts/offline/track-resolver.js';
 import { Favorites } from '../scripts/core/favorites-manager.js';
 import { ensureMediaSession } from './player-core/media-session.js';
 import { resolveFavoritesOnlyState } from '../scripts/app/player/favorites-only-resolver.js';
@@ -12,7 +13,7 @@ import { getDeviceId } from '../scripts/core/device-context.js';
   const W = window, ls = localStorage, LS_VOL = 'playerVolume', LS_PQ = 'qualityMode:v1';
   const clamp = (n, a, b) => Math.min(Math.max(Number(n) || 0, a), b);
   const sUid = v => (v == null ? '' : String(v)).trim() || null;
-  const qNorm = v => String(v || '').toLowerCase() === 'lo' ? 'lo' : 'hi';
+  const qNorm = () => 'lo';
   const emitG = (n, d) => W.dispatchEvent(new CustomEvent(n, d ? { detail: d } : undefined));
   const isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
@@ -306,23 +307,18 @@ import { getDeviceId } from '../scripts/core/device-context.js';
       const reason = String(opts.reason || (opts.isAutoSkip ? 'auto_skip' : (opts._forceReload ? 'transport_reload' : 'selection')));
       opts = { ...opts, autoPlay, reason };
 
-      if (!opts.isAutoSkip) this._skips = 0;
+      if (!opts.isAutoSkip && opts.reason !== 'source_fallback') this._skips = 0;
 
-      let resolved = await W.TrackResolver?.resolve?.(uid, this.qMode).catch(() => null);
+      const sourceOptions = opts._sourceUid === uid ? (opts._sourceOptions || {}) : {};
+      const resolved = await resolveAudio(uid, 'lo', sourceOptions).catch(error => {
+        console.warn('[PlayerCore] resolve failed:', error);
+        return null;
+      });
       if (req !== this._loadReq) return false;
 
       const netOk = W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine;
       let url = resolved?.url || null;
       let provider = resolved?.provider || 'unknown';
-
-      if (!url && !resolved?.blob) {
-        const smart = await W.TrackRegistry?.getSmartUrlInfo?.(uid, 'audio', this.qMode).catch(() => null);
-        if (req !== this._loadReq) return false;
-        if (smart?.url) {
-          url = smart.url;
-          provider = smart.provider || provider;
-        }
-      }
 
       if (!url && !resolved?.blob) {
         if (this._skips >= this.playlist.length) {
@@ -342,6 +338,9 @@ import { getDeviceId } from '../scripts/core/device-context.js';
             ...opts,
             autoPlay,
             isAutoSkip: true,
+            resumePosition: 0,
+            _sourceUid: null,
+            _sourceOptions: {},
             dir,
             reason: 'auto_skip'
           });
@@ -387,6 +386,8 @@ import { getDeviceId } from '../scripts/core/device-context.js';
       }
 
       this.currentProvider = provider;
+      this._currentAudioUrl = resolved?.url || null;
+      this._currentSourceOptions = sourceOptions;
       const sameUidReload = hadSound && previousUid === uid;
       const sf = fn => (...args) => tok === this._tok && fn(...args);
 
@@ -406,17 +407,19 @@ import { getDeviceId } from '../scripts/core/device-context.js';
         xhr: { withCredentials: false },
         autoplay: false,
         onload: sf(() => {
+          clearTimeout(this._sourceTimer);
           if (position) this.seek(position);
           this._updMedia();
           this._syncMediaSessionPosition(true);
         }),
         onplay: sf(() => {
+          clearTimeout(this._sourceTimer);
           this._startT();
           this._persistPlaybackState(true);
           this._emit('onPlay', t, commitIndex);
           this._updMedia();
           this._syncMediaSessionPosition(true);
-          emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider });
+          emitG('player:play', { uid, duration: this.getDuration(), type: 'audio', provider, transportGeneration: tok });
           emitG('player:providerChanged', { provider });
         }),
         onpause: sf(() => {
@@ -435,8 +438,16 @@ import { getDeviceId } from '../scripts/core/device-context.js';
           this.flags.rep ? this.play(this.currentIndex) : this.next();
         }),
         onloaderror: sf(() => this._err(commitIndex, retry, opts, dir)),
-        onplayerror: sf(() => this._err(commitIndex, retry, opts, dir))
+        onplayerror: sf(() => {
+          if (this.sound?._sounds?.[0]?._node?.error) return this._err(commitIndex, retry, opts, dir);
+          this.sound?.once('unlock', sf(() => this.sound?.play()));
+          this._emit('onPlaybackError', { reason: 'playback_blocked', uid });
+        })
       });
+
+      if (this.sound?.state?.() !== 'loaded') {
+        this._sourceTimer = setTimeout(sf(() => this._err(commitIndex, retry, opts, dir)), 15000);
+      }
 
       if (sameUidReload) {
         emitG('player:transportReloaded', {
@@ -454,62 +465,36 @@ import { getDeviceId } from '../scripts/core/device-context.js';
     }
 
     _err(idx, retry, opts, dir) {
-      const tok = this._tok;
-      const req = this._loadReq;
-      const autoPlay = opts.autoPlay !== false;
-
-      this._emit('onPlaybackError', {
-        reason: 'error',
-        uid: this.getCurrentTrackUid()
-      });
-
-      if (
-        (W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine) &&
-        retry < 2
-      ) {
-        setTimeout(() => {
-          if (tok !== this._tok || req !== this._loadReq) return;
-          this.load(idx, {
-            ...opts,
-            autoPlay,
-            _retryN: retry + 1,
-            dir,
-            reason: 'retry'
-          });
-        }, 250 + retry * 500);
-        return;
-      }
-
-      this._skips = Math.min(
-        this.playlist.length,
-        this._skips + 1
-      );
-
+      const tok = this._tok, req = this._loadReq;
+      if (this._failedSourceToken === tok) return;
+      this._failedSourceToken = tok;
+      clearTimeout(this._sourceTimer);
+      const uid = this.getCurrentTrackUid();
+      const previous = this._currentSourceOptions || {};
+      const excludedUrls = [...new Set([...(previous.excludedUrls || []), this._currentAudioUrl].filter(Boolean))];
+      const position = Number(this.getPosition()) || Number(opts.resumePosition) || 0;
+      this._stopT();
+      this.sound?.pause();
+      this._emit('onPlaybackError', { reason: 'source_failed', uid, provider: this.currentProvider });
       setTimeout(() => {
-        if (
-          tok !== this._tok ||
-          req !== this._loadReq ||
-          !this.playlist.length
-        ) return;
-
-        this.load(
-          (idx + dir + this.playlist.length) % this.playlist.length,
-          {
-            ...opts,
-            autoPlay,
-            isAutoSkip: true,
-            dir,
-            reason: 'error_skip'
-          }
-        );
-      }, 120);
+        if (tok !== this._tok || req !== this._loadReq) return;
+        this.load(idx, {
+          ...opts,
+          _forceReload: true,
+          _sourceUid: uid,
+          _sourceOptions: { excludedUrls, skipCache: previous.skipCache || this.currentProvider === 'cache' },
+          resumePosition: position,
+          dir,
+          reason: 'source_fallback'
+        });
+      }, 0);
     }
 
     _unload({
       emitStop = true,
       clearPersistedState = emitStop,
-      revokeBlob = true
     } = {}) {
+      clearTimeout(this._sourceTimer);
       if (this.sound) {
         try {
           this.sound.stop();
@@ -604,36 +589,8 @@ import { getDeviceId } from '../scripts/core/device-context.js';
     _stopT() { if (this._tick) clearInterval(this._tick); this._tick = null; }
     _updMedia() { try { this._ms?.updateMetadata?.({ title: this.getCurrentTrack()?.title, artist: this.getCurrentTrack()?.artist, album: this.getCurrentTrack()?.album, artworkUrl: this.getCurrentTrack()?.cover, playing: this.isPlaying() }); } catch {} }
 
-    canToggleQualityForCurrentTrack() { return !!this.getCurrentTrack() && !!(getTrackByUid(this.getCurrentTrackUid())?.audio_low || this.getCurrentTrack()?.sources?.audio?.lo); }
-    switchQuality(m) {
-      const nq = qNorm(m);
-      if (this.qMode === nq) return false;
-
-      const wasPlaying = this.isPlaying();
-      const position = this.getPosition();
-
-      this.qMode = nq;
-      ls.setItem(LS_PQ, nq);
-      markDeviceSettingsDirty();
-      emitG('quality:changed', { quality: nq });
-      emitG('offline:uiChanged');
-
-      if (this.currentIndex >= 0 && this.sound) {
-        this.load(this.currentIndex, {
-          autoPlay: wasPlaying,
-          resumePosition: position,
-          dir: 1,
-          _forceReload: true,
-          reason: 'quality_change'
-        });
-      }
-
-      W.NotificationSystem?.show?.(
-        `Качество переключено на ${nq === 'hi' ? 'Hi' : 'Lo'}`,
-        'info'
-      );
-      return true;
-    }
+    canToggleQualityForCurrentTrack() { return false; }
+    switchQuality() { this.qMode = 'lo'; return false; }
 
     isFavorite(uid) { return Favorites.isLiked(sUid(uid)); }
     toggleFavorite(uid, opts = {}) {
