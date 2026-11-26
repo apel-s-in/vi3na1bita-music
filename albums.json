@@ -12,43 +12,57 @@
       "key": "golos-dushi",
       "title": "Голос Души",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/golos-dushi/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-golos-dushi/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-golos-dushi/",
+      "archive_base": "https://archive.org/download/golos-dushi/",
+      "archive_flat": true
     },
     {
       "key": "odnazhdy-v-skazke",
       "title": "Однажды в Сказке",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/odnazhdy-v-skazke/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-odnazhdy-v-skazke/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-odnazhdy-v-skazke/",
+      "archive_base": "https://archive.org/download/odnazhdy-v-skazke/",
+      "archive_flat": true
     },
     {
       "key": "ne-vse-ravno",
       "title": "Не всё равно",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/ne-vse-ravno/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-ne-vse-ravno/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-ne-vse-ravno/",
+      "archive_base": "https://archive.org/download/ne-vse-ravno/",
+      "archive_flat": true
     },
     {
       "key": "neizvestniy",
       "title": "Неизвестный",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/neizvestniy/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-neizvestniy/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-neizvestniy/",
+      "archive_base": "https://archive.org/download/neizvestniy/",
+      "archive_flat": true
     },
     {
       "key": "v-ssore",
       "title": "В Ссоре",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/v-ssore/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-v-ssore/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-v-ssore/",
+      "archive_base": "https://archive.org/download/v-ssore/",
+      "archive_flat": true
     },
     {
       "key": "byt-igrushkoy",
       "title": "Быть Игрушкой",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/byt-igrushkoy/",
-      "github_base": "https://apel-s-in.github.io/vi3na1bita-byt-igrushkoy/"
+      "github_base": "https://apel-s-in.github.io/vi3na1bita-byt-igrushkoy/",
+      "archive_base": "https://archive.org/download/byt-igrushkoy/",
+      "archive_flat": true
     },
     {
       "key": "krevetochka",
       "title": "КРЕВЕツTOCHKA",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/",
-      "github_base": "https://apel-s-in.github.io/krevetochka/"
+      "github_base": "https://apel-s-in.github.io/krevetochka/",
+      "archive_base": "https://archive.org/download/krevetochka/",
+      "archive_flat": true
     }
   ]
 }
