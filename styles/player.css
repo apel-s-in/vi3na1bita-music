@@ -58,11 +58,6 @@
 #favorites-btn{position:relative}
 #favorites-btn.favorites-active{background:rgba(77,170,255,.2);border-color:var(--secondary-color)}
 #favorites-btn.favorites-active #favorites-btn-icon{transform:scale(1.2)}
-#pq-btn{position:relative}
-#pq-btn .pq-btn-label{font-weight:900;font-size:14px;letter-spacing:.02em}
-#pq-btn.pq-hi{background:rgba(39,179,76,.16);border-color:rgba(39,179,76,.35);color:#b8ffd0}
-#pq-btn.pq-lo{background:rgba(255,152,0,.16);border-color:rgba(255,152,0,.35);color:#ffe0b2}
-#pq-btn.disabled{background:rgba(30,30,30,.6)!important;border-color:rgba(255,255,255,.06)!important;color:rgba(255,255,255,.25)!important;box-shadow:none!important;cursor:not-allowed!important;opacity:.6}
 
 /* --- МИНИ-ПЛЕЕР --- */
 #now-playing{background:#11141a!important;border-radius:16px!important;padding:0!important;border:none!important;border-bottom:2px solid rgba(77,170,255,.3)!important;box-shadow:0 12px 32px rgba(0,0,0,.6)!important;margin:0 16px 24px!important;width:auto!important;bottom:calc(var(--nav-height,60px) + env(safe-area-inset-bottom))!important;overflow:hidden!important}
@@ -117,7 +112,6 @@
 .source-indicator.si-yandex::after{content:'Я'}
 .source-indicator.si-archive{background:radial-gradient(circle,#22c55e 0,#15803d 100%);color:#fff;border:1px solid #86efac}
 .source-indicator.si-archive::after{content:'A';font-size:22px;font-weight:900}
-#pq-btn{display:none!important}
 .source-indicator.si-github{background:radial-gradient(circle,#444 0,#000 100%);color:#fff;border:1px solid #666}
 .source-indicator.si-github::after{content:'GH';font-size:13px}
 .source-indicator.si-cache{background:radial-gradient(circle,#4caf50 0,#2e7d32 100%);color:#fff;border:1px solid #81c784}
