@@ -16239,6 +16239,13 @@ export default { createShowcaseStore };
 const _tr=new Map(),_alb=new Map(),_cfg=new Map(),_albTr=new Map(),_pHlth=new Map();
 const toUrl=(b,r)=>{try{const cB=String(b).replace(/\/+$/,'')+'/';return/^https?:\/\//i.test(cB)&&r?new URL(String(r).replace(/^(\.\/|\/)+/,''),cB).toString():null;}catch{return null;}};
 const getSrcOrd=()=>((localStorage.getItem('sourcePref')||(window.location?.hostname.includes('yandexcloud.net')?'yandex':'github'))==='github'?['github','yandex']:['yandex','github']);
+const getJsDelivrBase = album => {
+  const repo = String(album?.jsdelivr_repo || '').trim();
+  const commit = String(album?.jsdelivr_commit || '').trim();
+  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) && /^[a-f0-9]{40}$/i.test(commit)
+    ? `https://cdn.jsdelivr.net/gh/${repo}@${commit}/`
+    : '';
+};
 const isHlthy=s=>!_pHlth.has(s)||(Date.now()-_pHlth.get(s).at>(_pHlth.get(s).ok?36e5:3e4))||_pHlth.get(s).ok;
 const mark=(s,ok)=>_pHlth.set(s,{ok,at:Date.now()});
 async function fetchFall(bs,p,t=6e3){for(const s of getSrcOrd()){if(!isHlthy(s)||!bs[s])continue;try{const c=new AbortController(),id=setTimeout(()=>c.abort(),t),r=await(window.NetPolicy?.guardedFetch?.(bs[s].replace(/\/+$/,'')+'/'+p.replace(/^\/+/,''),{cache:'force-cache',signal:c.signal})||fetch(bs[s].replace(/\/+$/,'')+'/'+p.replace(/^\/+/,''),{cache:'force-cache',signal:c.signal}));clearTimeout(id);if(!r.ok)throw new Error(`HTTP ${r.status}`);mark(s,true);return{json:await r.json(),src:s,base:bs[s]};}catch{mark(s,false);}}return null;}
@@ -16249,8 +16256,10 @@ export const getAudioCandidates = uid => {
   const album = (window.albumsIndex || []).find(item => item.key === track.sourceAlbum);
   const path = track.rel_audio_low;
   const archivePath = album?.archive_flat ? path.split('/').pop() : path;
+  const jsdelivrBase = getJsDelivrBase(album);
   return [
     { provider: 'archive', url: album?.archive_base ? toUrl(album.archive_base, archivePath) : null },
+    { provider: 'jsdelivr', url: jsdelivrBase ? toUrl(jsdelivrBase, path) : null },
     { provider: 'github', url: toUrl(config.bases.github || '', path) },
     { provider: 'yandex', url: toUrl(config.bases.yandex || '', path) }
   ].filter(item => item.url);
@@ -16271,7 +16280,7 @@ export const fetchAudioBlob = async (uid, { signal, timeoutMs = 45000 } = {}) =>
       const type = (response.headers.get('content-type') || '').toLowerCase();
       if (type.includes('text/html') || type.includes('application/json')) throw new Error('invalid_audio_response');
       const blob = await response.blob();
-      if (!blob.size) throw new Error('empty_audio');
+      if (blob.size < 1024) throw new Error('invalid_audio_size');
       return { ...candidate, blob, quality: 'lo' };
     } catch (error) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
