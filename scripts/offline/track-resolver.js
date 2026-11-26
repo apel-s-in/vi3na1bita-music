@@ -1,4 +1,20 @@
+import { getOfflineManager } from './offline-manager.js';
+
 let _mgr = null;
-export const initTrackResolver = m => { _mgr = m; window.TrackResolver = { resolve }; };
-export const resolve = async (uid, q) => { if (!_mgr) return { source: 'stream', url: null, blob: null, quality: q, localKind: 'none' }; try { const r = await _mgr.resolveTrackSource(uid, q); return { source: r.source || 'stream', url: r.url || null, blob: r.blob || null, quality: r.quality || q, localKind: r.source === 'local' ? 'cache' : 'none', provider: r.source === 'local' ? 'cache' : (r.provider || 'unknown') }; } catch (e) { console.warn('[TrackResolver] resolve failed:', e); return { source: 'stream', url: null, blob: null, quality: q, localKind: 'none' }; } };
+
+export const initTrackResolver = manager => {
+  _mgr = manager;
+  window.TrackResolver = { resolve };
+};
+
+export const resolve = async (uid, quality = 'lo', options = {}) => {
+  const manager = _mgr || getOfflineManager();
+  const result = await manager.resolveTrackSource(uid, 'lo', options);
+  return {
+    ...result,
+    localKind: result.source === 'local' ? 'cache' : 'none',
+    provider: result.source === 'local' ? 'cache' : (result.provider || 'unknown')
+  };
+};
+
 export default { initTrackResolver, resolve };
