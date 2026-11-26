@@ -19804,7 +19804,7 @@ import { getSocialServerBackoffState, getSocialSession, invalidateSocialSession 
 const W = window;
 const D = document;
 const BASE_FRIENDS = 'https://vi3na1bita.website.yandexcloud.net/Friends';
-const FRIENDS_BUILD = '9.3.6';
+const FRIENDS_BUILD = '9.3.7';
 const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
 const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js?v=${FRIENDS_BUILD}`;
 let _socialSessionRetryAt = 0;
@@ -20972,7 +20972,7 @@ export default W.GalleryManager;
 import { requestSocialAction } from '../../core/social-session.js';
 import { getConfirmedListeningStats } from '../../analytics/confirmed-listening-stats.js';
 import { getLoyaltyState } from '../../analytics/loyalty-state.js';
-import { getEmbeddedFriendsRpcMethod } from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.3.6';
+import { getEmbeddedFriendsRpcMethod } from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.3.7';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -27015,7 +27015,7 @@ export default window.CloudUsageMeter;
 //=================================================
 // FILE: /scripts/core/config.js
 export const APP_CONFIG = {
-  APP_VERSION: '9.3.6',
+  APP_VERSION: '9.3.7',
   BUILD_DATE: '2026-11-26',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -29682,7 +29682,7 @@ export default { openTrackStatisticsModal };
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '9.3.6';
+const SW_VERSION = '9.3.7';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
 let isAirplaneMode = false;
 
