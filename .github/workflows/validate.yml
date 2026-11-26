@@ -38,6 +38,9 @@ jobs:
       - name: Validate jsDelivr source contract
         run: node scripts/ci/validate-jsdelivr.mjs
 
+      - name: Test audio source preferences and strict fallback
+        run: node scripts/ci/test-audio-sources.mjs
+
       - name: Validate local content indexes
         run: |
           node scripts/ci/validate-content.mjs
