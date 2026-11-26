@@ -3468,7 +3468,8 @@ if (typeof window !== 'undefined') {
 //=================================================
 // FILE: /service-worker.js
 const SW_VERSION = '9.3.7';
-const CORE_CACHE = `vitrina-core-v${SW_VERSION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}`;
+const SW_CACHE_REVISION = 'jsdelivr-1';
+const CORE_CACHE = `vitrina-core-v${SW_VERSION}-${SW_CACHE_REVISION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}-${SW_CACHE_REVISION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}-${SW_CACHE_REVISION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}-${SW_CACHE_REVISION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}-${SW_CACHE_REVISION}`;
 let isAirplaneMode = false;
 
 const CORE_ASSETS = ['./','./index.html','./oauth-callback.html','./manifest.json','./albums.json','./audio/silence.mp3','./data/lyrics-index-v1.json','./data/track-profiles-index.json','./styles/base.css','./styles/ui-core.css','./styles/main.css','./styles/album-carousel.css','./styles/player.css','./styles/showcase.css','./styles/offline.css','./styles/profile.css','./styles/shards.css','./styles/games.css','./img/logo.png','./icons/ui-sprite.svg','./icons/favicon-32.png','./icons/favicon-16.png','./icons/apple-touch-icon.png','./scripts/vendor/howler.min.js','./scripts/core/bootstrap.js','./scripts/core/config.js','./scripts/core/utils.js','./scripts/core/app-activity.js','./scripts/core/cloud-usage-meter.js','./scripts/core/favorites-manager.js','./scripts/core/device-identity.js','./scripts/core/device-context.js','./scripts/core/device-profile.js','./scripts/core/device-linking.js','./scripts/core/yandex-auth.js','./scripts/core/social-session.js','./scripts/core/timezone-policy.js','./scripts/core/yandex-backup-v7.js','./src/PlayerCore.js','./src/player-core/media-session.js','./src/player-core/ios-audio-keeper.js'];
