@@ -20,7 +20,7 @@
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`; if (e.favI) W.IconUtils?.setFavoriteStarState?.(e.favI, f);
     const v = c.getVolume(); e.vF.style.width = `${v}%`; e.vH.style.left = `${U.math.clamp(v, 2, 98)}%`; e.vS.value = v;
     U.download.applyDownloadLink(e.dl, t);
-    if (e.srcInd) { const prv = { archive: ['si-archive', 'Internet Archive'], yandex: ['si-yandex', 'Yandex Cloud'], github: ['si-github', 'GitHub Pages'], cache: ['si-cache', 'Офлайн Кэш'] }[st.provider]; e.srcInd.className = `source-indicator ${prv ? prv[0] : ''}`; e.srcInd.style.opacity = prv ? '' : '0.3'; e.srcInd.title = prv ? `Источник: ${prv[1]}` : 'Определение источника...'; }
+    if (e.srcInd) { const prv = { archive: ['si-archive', 'Internet Archive'], jsdelivr: ['si-jsdelivr', 'CDN · jsDelivr'], yandex: ['si-yandex', 'Yandex Cloud'], github: ['si-github', 'GitHub Pages'], cache: ['si-cache', 'Офлайн Кэш'] }[st.provider]; e.srcInd.className = `source-indicator ${prv ? prv[0] : ''}`; e.srcInd.style.opacity = prv ? '' : '0.3'; e.srcInd.setAttribute('aria-label', prv ? `Источник: ${prv[1]}` : 'Определение источника'); e.srcInd.title = prv ? `Источник: ${prv[1]}` : 'Определение источника...'; }
     if (st.isMini && dom.mini) { if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—'; if (e.mSr) W.IconUtils?.setFavoriteStarState?.(e.mSr, U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t })); }
   };
 
@@ -46,7 +46,7 @@
               trackUid: c.getCurrentTrackUid()
             });
           },
-          'animation-btn': () => W.LyricsController?.toggleAnimation?.(), 'source-indicator': () => U.ui.toast(`Источник музыки: ${{archive:'Internet Archive', yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'}`, 'info'),
+          'animation-btn': () => W.LyricsController?.toggleAnimation?.(), 'source-indicator': () => U.ui.toast(`Источник музыки: ${{archive:'Internet Archive', jsdelivr:'CDN · jsDelivr', yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'}`, 'info'),
           'favorites-btn': () => { const res = W.FavoritesOnlyActions?.toggleFavoritesOnlyMode?.({ player: c, storage: localStorage, syncUi: syncUI }) || { ok: false, enabled: U.lsGetBool01('favoritesOnlyMode'), reason: 'missing_action' }; if (!res.ok) return U.ui.toast(res.reason === 'empty' ? 'Отметьте понравившийся трек ⭐' : 'Ошибка режима избранного', res.reason === 'empty' ? 'info' : 'error'); U.ui.toast(res.enabled ? '⭐ Только избранные' : 'Играют все треки', res.enabled ? 'success' : 'info'); }
         })[b.id]?.();
       });
