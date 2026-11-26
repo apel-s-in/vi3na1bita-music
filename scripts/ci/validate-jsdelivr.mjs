@@ -18,6 +18,7 @@ const jsdelivr = registry.indexOf("provider: 'jsdelivr'");
 const github = registry.indexOf("provider: 'github'");
 const yandex = registry.indexOf("provider: 'yandex'");
 if (!(archive >= 0 && archive < jsdelivr && jsdelivr < github && github < yandex)) fail('audio_provider_order_must_be_archive_jsdelivr_github_yandex');
+if (!registry.includes('return getAudioSourceOrder().map(')) fail('audio_source_policy_not_applied');
 if (!registry.includes('blob.size < 1024')) fail('tiny_audio_payload_guard_missing');
 const html = fs.readFileSync('index.html', 'utf8');
 for (const directive of ['media-src', 'connect-src']) {
