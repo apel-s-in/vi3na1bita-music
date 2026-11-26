@@ -1618,7 +1618,7 @@ jobs:
 <link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
 <link rel="stylesheet" href="styles/album-carousel.css"><link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
 <link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/shards.css"><link rel="stylesheet" href="styles/games.css">
-<link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=9.3.9">
+<link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=9.4.0">
 <link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -1705,7 +1705,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '9.3.9'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-11-26');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '9.4.0'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-11-26');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -1717,7 +1717,7 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '9.3.9';
+const SW_VERSION = '9.4.0';
 const SW_CACHE_REVISION = 'audio-sources-3-config-revision';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}-${SW_CACHE_REVISION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}-${SW_CACHE_REVISION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}-${SW_CACHE_REVISION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}-${SW_CACHE_REVISION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}-${SW_CACHE_REVISION}`;
 let isAirplaneMode = false;
@@ -10371,7 +10371,7 @@ import { getSocialServerBackoffState, getSocialSession, invalidateSocialSession 
 const W = window;
 const D = document;
 const BASE_FRIENDS = 'https://vi3na1bita.website.yandexcloud.net/Friends';
-const FRIENDS_BUILD = '9.3.9';
+const FRIENDS_BUILD = '9.4.0';
 const FRIENDS_CORE_URL = `${BASE_FRIENDS}/friends-core.js?v=${FRIENDS_BUILD}`;
 const FRIENDS_UI_URL = `${BASE_FRIENDS}/friends-ui.js?v=${FRIENDS_BUILD}`;
 let _socialSessionRetryAt = 0;
@@ -11539,7 +11539,7 @@ export default W.GalleryManager;
 import { requestSocialAction } from '../../core/social-session.js';
 import { getConfirmedListeningStats } from '../../analytics/confirmed-listening-stats.js';
 import { getLoyaltyState } from '../../analytics/loyalty-state.js';
-import { getEmbeddedFriendsRpcMethod } from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.3.9';
+import { getEmbeddedFriendsRpcMethod } from 'https://vi3na1bita.website.yandexcloud.net/Friends/embedded-rpc-contract.js?v=9.4.0';
 const W = window;
 const safe = v => String(v == null ? '' : v).trim();
 const n = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -19477,7 +19477,7 @@ export default window.CloudUsageMeter;
 //=================================================
 // FILE: /scripts/core/config.js
 export const APP_CONFIG = {
-  APP_VERSION: '9.3.9',
+  APP_VERSION: '9.4.0',
   BUILD_DATE: '2026-11-26',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
@@ -23072,11 +23072,11 @@ export default { openTrackStatisticsModal };
 //=================================================
 // FILE: /.release/version.json
 {
-  "appVersion": "9.3.9",
+  "appVersion": "9.4.0",
   "buildDate": "2026-11-26",
-  "friendsBuild": "9.3.9",
-  "gamesBuild": "9.3.9",
-  "warHeartsBuild": "9.3.9"
+  "friendsBuild": "9.4.0",
+  "gamesBuild": "9.4.0",
+  "warHeartsBuild": "9.4.0"
 }
 
 //=================================================
