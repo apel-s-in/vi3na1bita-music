@@ -1475,6 +1475,8 @@ jobs:
     },
     {
       "key": "krevetochka",
+      "jsdelivr_repo": "apel-s-in/krevetochka",
+      "jsdelivr_commit": "c0cec00b4f9f3b72be01afc98f5747c0dde53183",
       "title": "КРЕВЕツTOCHKA",
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/",
       "github_base": "https://apel-s-in.github.io/krevetochka/",
