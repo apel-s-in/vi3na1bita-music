@@ -18461,7 +18461,7 @@ import { isV7SyncEvent } from './event-contract.js';
 import { temporalPartsFromListenEvent } from './temporal-buckets.js';
 import { buildStatsV4, emptyStatsV4, mergeStatsV4, normalizeStatsV4 } from './stats-v4-projection.js';
 
-export const STATS_SHARD_VERSION = 6;
+export const STATS_SHARD_VERSION = 7;
 const safe = value => String(value == null ? '' : value).trim();
 const safeRangeId = value => safe(value).replace(/[^A-Za-z0-9._-]/g, '').slice(0, 160);
 const buildRangeKey = ({ deviceId = '', chainId = '', branchId = '', fromSeq = 0, toSeq = 0, hash = '' } = {}) =>
@@ -18625,6 +18625,18 @@ export const buildStatsProjection = events => {
 
     const track = ensureTrack(projection, uid);
     const listenMs = Math.max(0, Math.floor(num(data.listenedMs || num(data.listenedSeconds) * 1000)));
+    if (data.sourceStatsVersion === 1) {
+      let remainingMs = listenMs;
+      for (const provider of ['cache', 'archive', 'github', 'yandex', 'unknown']) {
+        const starts = Math.floor(num(data.sourceStarts?.[provider]));
+        const milliseconds = Math.min(remainingMs, Math.floor(num(data.sourceListenMs?.[provider])));
+        remainingMs -= milliseconds;
+        bump(track.features, `audio_source_starts_${provider}`, starts);
+        bump(track.features, `audio_source_ms_${provider}`, milliseconds);
+        bump(projection.globalFeatures, `audio_source_starts_${provider}`, starts);
+        bump(projection.globalFeatures, `audio_source_ms_${provider}`, milliseconds);
+      }
+    }
     const uniqueCoveredMs = Math.max(0, Math.min(listenMs, Math.floor(num(data.uniqueCoveredMs || num(data.uniqueCoveredSeconds) * 1000))));
     const completionBasisPoints = Math.max(0, Math.min(10000, Math.floor(num(data.completionBasisPoints || num(data.completionRatio) * 10000))));
     const analysisEligible = data.analysisEligible === true || listenMs >= 3000;
