@@ -2869,12 +2869,6 @@ export const AchievementDictionary = {
   // ==========================================
   // 2. СТАТИЧНЫЕ: ВРЕМЯ И ФИЧИ
   // ==========================================
-  "quality_snob": {
-    id: "quality_snob", type: "static", category: "features",
-    ui: { name: "Качество звука", short: "10 полных прослушиваний в качестве Hi.", desc: "Сервер учитывает только полные прослушивания, начатые в качестве Hi.", howTo: "Установите качество Hi и дослушивайте треки полностью.", icon: "💎", color: "#4fc3f7" },
-    reward: { xp: 30, tier: 2 },
-    trigger: { conditions: [{ metric: "hiPlays", operator: "gte", target: 10 }] }
-  },
   "early_bird": {
     id: "early_bird", type: "static", category: "time",
     ui: { name: "Ранняя пташка", short: "10 полных утренних прослушиваний.", desc: "Старт трека с 05:00 до 08:59 по времени, зафиксированному при начале сессии.", howTo: "Запускайте утром и дослушивайте треки полностью.", icon: "🌅", color: "#ffd54f" },
