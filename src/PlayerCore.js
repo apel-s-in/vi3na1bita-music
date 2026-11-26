@@ -398,6 +398,7 @@ import { getDeviceId } from '../scripts/core/device-context.js';
       });
       this._playingUid = uid;
       this._oK = blobKey;
+      this._oU = blobKey ? url : null;
       this._oKTok = blobKey ? tok : 0;
 
       this.sound = new Howl({
@@ -493,6 +494,7 @@ import { getDeviceId } from '../scripts/core/device-context.js';
     _unload({
       emitStop = true,
       clearPersistedState = emitStop,
+      revokeBlob = true
     } = {}) {
       clearTimeout(this._sourceTimer);
       if (this.sound) {
@@ -505,11 +507,13 @@ import { getDeviceId } from '../scripts/core/device-context.js';
 
       this._playingUid = null;
 
-      if (revokeBlob && this._oK) {
+      if (revokeBlob && (this._oK || this._oU)) {
         try {
-          W.Utils?.blob?.revokeUrl?.(this._oK);
+          const revoked = this._oK && W.Utils?.blob?.revokeUrl?.(this._oK);
+          if (!revoked && this._oU) URL.revokeObjectURL(this._oU);
         } catch {}
         this._oK = null;
+        this._oU = null;
         this._oKTok = 0;
       }
 
@@ -546,7 +550,7 @@ import { getDeviceId } from '../scripts/core/device-context.js';
         wasPlaying: !!this.isPlaying(),
         repeat: !!this.flags.rep,
         shuffle: !!this.flags.shuf,
-        quality: this.qMode || 'hi',
+        quality: 'lo',
         ts: Date.now()
       };
     }
