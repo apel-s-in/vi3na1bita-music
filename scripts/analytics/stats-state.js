@@ -76,6 +76,24 @@ export const buildStatsViewModel = (rows = []) => {
 };
 
 export const readStatsSummary = async (db = defaultMetaDB) => getStatsSummary(await db.getAllStats().catch(() => []));
+
+export const readAudioSourceStats = async (db = defaultMetaDB) => {
+  const global = await db.getStat('global').catch(() => null);
+  const features = global?.featuresUsed || {};
+  const rows = ['cache', 'archive', 'github', 'yandex', 'unknown'].map(provider => ({
+    provider,
+    starts: num(features[`audio_source_starts_${provider}`]),
+    listenedMs: num(features[`audio_source_ms_${provider}`])
+  }));
+  const totalMs = rows.reduce((sum, row) => sum + row.listenedMs, 0);
+  const networkMs = rows.filter(row => ['archive', 'github', 'yandex'].includes(row.provider)).reduce((sum, row) => sum + row.listenedMs, 0);
+  return rows.map(row => ({
+    ...row,
+    listenedSeconds: row.listenedMs / 1000,
+    sharePercent: totalMs ? row.listenedMs * 100 / totalMs : 0,
+    networkSharePercent: ['archive', 'github', 'yandex'].includes(row.provider) && networkMs ? row.listenedMs * 100 / networkMs : 0
+  }));
+};
 export const readStatsViewModel = async (db = defaultMetaDB) => buildStatsViewModel(await db.getAllStats().catch(() => []));
 
 export default { getStatsSummary, buildStatsViewModel, readStatsSummary, readStatsViewModel };
