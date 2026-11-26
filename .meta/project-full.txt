@@ -138,7 +138,7 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-recommendation-score.mjs, test-stats-v5.mjs, test-track-similarity.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-recommendation-score.mjs, test-stats-v5.mjs, test-track-similarity.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-jsdelivr.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
 [/scripts/core/] app-activity.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
@@ -18385,6 +18385,36 @@ for (const [uid, preview] of Object.entries(items)) {
 }
 
 console.log(`✅ Validated ${Object.keys(items).length} TrackProfiles v4`);
+
+//=================================================
+// FILE: /scripts/ci/validate-jsdelivr.mjs
+#!/usr/bin/env node
+import fs from 'node:fs';
+
+const fail = message => { console.error(message); process.exit(2); };
+const albums = JSON.parse(fs.readFileSync('albums.json', 'utf8')).albums;
+const seen = new Set();
+for (const album of albums) {
+  if (!album.key || seen.has(album.key)) fail(`invalid_or_duplicate_album:${album.key || 'missing'}`);
+  seen.add(album.key);
+  if (album.jsdelivr_repo || album.jsdelivr_commit) {
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(album.jsdelivr_repo || '')) fail(`invalid_jsdelivr_repo:${album.key}`);
+    if (!/^[a-f0-9]{40}$/i.test(album.jsdelivr_commit || '')) fail(`invalid_immutable_jsdelivr_commit:${album.key}`);
+  }
+}
+const registry = fs.readFileSync('scripts/app/track-registry.js', 'utf8');
+const archive = registry.indexOf("provider: 'archive'");
+const jsdelivr = registry.indexOf("provider: 'jsdelivr'");
+const github = registry.indexOf("provider: 'github'");
+const yandex = registry.indexOf("provider: 'yandex'");
+if (!(archive >= 0 && archive < jsdelivr && jsdelivr < github && github < yandex)) fail('audio_provider_order_must_be_archive_jsdelivr_github_yandex');
+if (!registry.includes('blob.size < 1024')) fail('tiny_audio_payload_guard_missing');
+const html = fs.readFileSync('index.html', 'utf8');
+for (const directive of ['media-src', 'connect-src']) {
+  const value = html.match(new RegExp(`${directive}\\s+([^;]+)`))?.[1] || '';
+  if (!value.includes('https://cdn.jsdelivr.net')) fail(`csp_missing_jsdelivr:${directive}`);
+}
+console.log(`jsDelivr contract: OK (${albums.length} albums, immutable pins validated)`);
 
 //=================================================
 // FILE: /scripts/ci/validate-manifest.mjs
