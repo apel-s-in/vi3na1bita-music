@@ -1475,6 +1475,7 @@ jobs:
     },
     {
       "key": "krevetochka",
+      "config_revision": "tracks-01-02-v1",
       "jsdelivr_repo": "apel-s-in/krevetochka",
       "jsdelivr_commit": "c0cec00b4f9f3b72be01afc98f5747c0dde53183",
       "title": "КРЕВЕツTOCHKA",
@@ -1717,7 +1718,7 @@ jobs:
 //=================================================
 // FILE: /service-worker.js
 const SW_VERSION = '9.3.9';
-const SW_CACHE_REVISION = 'audio-sources-2';
+const SW_CACHE_REVISION = 'audio-sources-3-config-revision';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}-${SW_CACHE_REVISION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}-${SW_CACHE_REVISION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}-${SW_CACHE_REVISION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}-${SW_CACHE_REVISION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}-${SW_CACHE_REVISION}`;
 let isAirplaneMode = false;
 
