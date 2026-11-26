@@ -16298,6 +16298,8 @@ export default { createShowcaseStore };
 
 //=================================================
 // FILE: /scripts/app/track-registry.js
+import { getAudioSourceOrder } from '../core/audio-source-policy.js';
+
 const _tr=new Map(),_alb=new Map(),_cfg=new Map(),_albTr=new Map(),_pHlth=new Map();
 const toUrl=(b,r)=>{try{const cB=String(b).replace(/\/+$/,'')+'/';return/^https?:\/\//i.test(cB)&&r?new URL(String(r).replace(/^(\.\/|\/)+/,''),cB).toString():null;}catch{return null;}};
 const getSrcOrd=()=>((localStorage.getItem('sourcePref')||(window.location?.hostname.includes('yandexcloud.net')?'yandex':'github'))==='github'?['github','yandex']:['yandex','github']);
@@ -16319,16 +16321,21 @@ export const getAudioCandidates = uid => {
   const path = track.rel_audio_low;
   const archivePath = album?.archive_flat ? path.split('/').pop() : path;
   const jsdelivrBase = getJsDelivrBase(album);
-  return [
+  const candidates = [
     { provider: 'archive', url: album?.archive_base ? toUrl(album.archive_base, archivePath) : null },
     { provider: 'jsdelivr', url: jsdelivrBase ? toUrl(jsdelivrBase, path) : null },
     { provider: 'github', url: toUrl(config.bases.github || '', path) },
     { provider: 'yandex', url: toUrl(config.bases.yandex || '', path) }
   ].filter(item => item.url);
+  return getAudioSourceOrder().map(provider => candidates.find(item => item.provider === provider)).filter(Boolean);
 };
 export const fetchAudioBlob = async (uid, { signal, timeoutMs = 45000 } = {}) => {
   let lastError = new Error('audio_source_unavailable');
-  for (const candidate of getAudioCandidates(uid)) {
+  const attempted = new Set();
+  while (true) {
+    const candidate = getAudioCandidates(uid).find(item => !attempted.has(item.url));
+    if (!candidate) break;
+    attempted.add(candidate.url);
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     if (!(window.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) throw new Error('network_not_allowed');
     const controller = new AbortController();
