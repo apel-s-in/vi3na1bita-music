@@ -138,9 +138,9 @@ F всегда относится к playing-context, а не к просто о
 [/scripts/app/push/] loyalty-reminders.js, web-push.js
 [/scripts/app/shards/] reward-notifier.js, view.js, wallet-service.js
 [/scripts/app/showcase/] actions.js, edit.js, index.js, lyrics-search.js, modals.js, playlists.js, render.js, search.js, store.js
-[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-audio-sources.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-recommendation-score.mjs, test-stats-v5.mjs, test-track-similarity.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-jsdelivr.mjs, validate-manifest.mjs
+[/scripts/ci/] generate-listen-catalog.mjs, generate-lyrics-index.mjs, generate-track-profiles-index.mjs, lint-sw.mjs, normalize-track-profile.mjs, sync-version.mjs, test-audio-sources.mjs, test-backup-coordinator.mjs, test-backup-scheduler.mjs, test-cloudru-worker.mjs, test-recommendation-score.mjs, test-stats-v5.mjs, test-track-similarity.mjs, validate-content.mjs, validate-contracts.mjs, validate-intel-profiles.mjs, validate-jsdelivr.mjs, validate-manifest.mjs
 [/scripts/ci/contracts/] backup-analytics.mjs
-[/scripts/core/] app-activity.js, audio-source-policy.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
+[/scripts/core/] app-activity.js, audio-source-policy.js, bootstrap.js, cloud-usage-meter.js, config.js, device-context.js, device-identity.js, device-linking.js, device-profile.js, favorites-manager.js, social-session.js, static-media.js, timezone-policy.js, utils.js, yandex-auth.js, yandex-backup-v7.js
 [/scripts/e2e/] favorites.spec.js, player.spec.js, playwright.config.js, utils.js
 [/scripts/intel/] bootstrap.js, flags.js, roadmap.js
 [/scripts/intel/listener/] listener-profile.js
@@ -1411,7 +1411,8 @@ jobs:
       "archive_base": "https://archive.org/download/mezhdu-zlom-i-dobrom/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-mezhdu-zlom-i-dobrom",
-      "jsdelivr_commit": "1fe7ac33af602f0aaafa8eaacfb87ccd411c5711"
+      "jsdelivr_commit": "1fe7ac33af602f0aaafa8eaacfb87ccd411c5711",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/mezhdu-zlom-i-dobrom/"
     },
     {
       "key": "golos-dushi",
@@ -1421,7 +1422,8 @@ jobs:
       "archive_base": "https://archive.org/download/golos-dushi/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-golos-dushi",
-      "jsdelivr_commit": "c8b0b2b421b9713a3f792d71a2151fbb5c267dbd"
+      "jsdelivr_commit": "c8b0b2b421b9713a3f792d71a2151fbb5c267dbd",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/golos-dushi/"
     },
     {
       "key": "odnazhdy-v-skazke",
@@ -1431,7 +1433,8 @@ jobs:
       "archive_base": "https://archive.org/download/odnazhdy-v-skazke/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-odnazhdy-v-skazke",
-      "jsdelivr_commit": "aedd1b291373a785edafbd9b96ee0154f307acaa"
+      "jsdelivr_commit": "aedd1b291373a785edafbd9b96ee0154f307acaa",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/odnazhdy-v-skazke/"
     },
     {
       "key": "ne-vse-ravno",
@@ -1441,7 +1444,8 @@ jobs:
       "archive_base": "https://archive.org/download/ne-vse-ravno/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-ne-vse-ravno",
-      "jsdelivr_commit": "a694714da01b726a1153f1b590101980570bf345"
+      "jsdelivr_commit": "a694714da01b726a1153f1b590101980570bf345",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/ne-vse-ravno/"
     },
     {
       "key": "neizvestniy",
@@ -1451,7 +1455,8 @@ jobs:
       "archive_base": "https://archive.org/download/neizvestniy/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-neizvestniy",
-      "jsdelivr_commit": "5bbef9b919a6bbf71e8792a2e1c7b9b2deffcb1a"
+      "jsdelivr_commit": "5bbef9b919a6bbf71e8792a2e1c7b9b2deffcb1a",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/neizvestniy/"
     },
     {
       "key": "v-ssore",
@@ -1461,7 +1466,8 @@ jobs:
       "archive_base": "https://archive.org/download/v-ssore/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-v-ssore",
-      "jsdelivr_commit": "02a9874e2ee19c36981b76c2150c97c5dbd7862d"
+      "jsdelivr_commit": "02a9874e2ee19c36981b76c2150c97c5dbd7862d",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/v-ssore/"
     },
     {
       "key": "byt-igrushkoy",
@@ -1471,7 +1477,8 @@ jobs:
       "archive_base": "https://archive.org/download/byt-igrushkoy/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-byt-igrushkoy",
-      "jsdelivr_commit": "f72a10e8cfb533028179909ace09bccea3038522"
+      "jsdelivr_commit": "f72a10e8cfb533028179909ace09bccea3038522",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/byt-igrushkoy/"
     },
     {
       "key": "krevetochka",
@@ -1482,7 +1489,8 @@ jobs:
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/",
       "github_base": "https://apel-s-in.github.io/krevetochka/",
       "archive_base": "https://archive.org/download/krevetochka/",
-      "archive_flat": true
+      "archive_flat": true,
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/krevetochka/"
     }
   ]
 }
@@ -1605,7 +1613,7 @@ jobs:
 // FILE: /index.html
 <!DOCTYPE html><html lang="ru"><head>
 <meta charset="UTF-8"><title>Витрина Разбита</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://vi3na1bita.website.yandexcloud.net; style-src 'self' 'unsafe-inline' https://vi3na1bita.website.yandexcloud.net; img-src 'self' data: blob: https://storage.yandexcloud.net https://apel-s-in.github.io https://avatars.yandex.net https://vi3na1bita.website.yandexcloud.net; media-src 'self' data: blob: https://storage.yandexcloud.net https://apel-s-in.github.io https://archive.org https://*.archive.org https://cdn.jsdelivr.net; connect-src 'self' https://functions.yandexcloud.net https://login.yandex.ru https://cloud-api.yandex.net https://storage.yandexcloud.net https://apel-s-in.github.io https://vi3na1bita.website.yandexcloud.net https://archive.org https://*.archive.org https://cdn.jsdelivr.net; frame-src 'self' https://vi3na1bita.website.yandexcloud.net; worker-src 'self'; manifest-src 'self'; font-src 'self' data:; form-action 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://vi3na1bita.website.yandexcloud.net; style-src 'self' 'unsafe-inline' https://vi3na1bita.website.yandexcloud.net; img-src https://vi3na1bita.s3.cloud.ru 'self' data: blob: https://storage.yandexcloud.net https://apel-s-in.github.io https://avatars.yandex.net https://vi3na1bita.website.yandexcloud.net; media-src https://vi3na1bita.s3.cloud.ru 'self' data: blob: https://storage.yandexcloud.net https://apel-s-in.github.io https://archive.org https://*.archive.org https://cdn.jsdelivr.net; connect-src https://vi3na1bita.s3.cloud.ru 'self' https://functions.yandexcloud.net https://login.yandex.ru https://cloud-api.yandex.net https://storage.yandexcloud.net https://apel-s-in.github.io https://vi3na1bita.website.yandexcloud.net https://archive.org https://*.archive.org https://cdn.jsdelivr.net; frame-src 'self' https://vi3na1bita.website.yandexcloud.net; worker-src 'self'; manifest-src 'self'; font-src 'self' data:; form-action 'self'; upgrade-insecure-requests">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Официальные альбомы группы Витрина Разбита. Слушайте онлайн и офлайн.">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#181818">
@@ -1614,15 +1622,16 @@ jobs:
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png">
-<link rel="preload" href="img/logo.png" as="image">
+<link rel="preload" href="https://vi3na1bita.s3.cloud.ru/img/logo.png" as="image">
 <link rel="stylesheet" href="styles/base.css"><link rel="stylesheet" href="styles/ui-core.css"><link rel="stylesheet" href="styles/main.css">
 <link rel="stylesheet" href="styles/album-carousel.css"><link rel="stylesheet" href="styles/player.css"><link rel="stylesheet" href="styles/showcase.css"><link rel="stylesheet" href="styles/offline.css">
 <link rel="stylesheet" href="styles/profile.css"><link rel="stylesheet" href="styles/shards.css"><link rel="stylesheet" href="styles/games.css">
 <link rel="stylesheet" href="https://vi3na1bita.website.yandexcloud.net/Friends/styles.css?v=9.4.0">
-<link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
+<link rel="preconnect" href="https://vi3na1bita.s3.cloud.ru" crossorigin><link rel="preconnect" href="https://storage.yandexcloud.net" crossorigin><link rel="preconnect" href="https://apel-s-in.github.io" crossorigin>
 <link rel="dns-prefetch" href="https://storage.yandexcloud.net"><link rel="dns-prefetch" href="https://apel-s-in.github.io">
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="./scripts/vendor/howler.min.js"></script><script>window.Howler||document.write('<script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"><\\/script>')</script>
+<script src="./scripts/core/static-media.js"></script>
 <script src="./scripts/core/utils.js"></script><script src="./scripts/core/bootstrap.js"></script>
 <script src="./scripts/core/config.js" type="module"></script><script src="./scripts/utils/sw-manager.js" defer></script>
 <script src="./src/PlayerCore.js" type="module"></script><script src="./scripts/ui/icon-utils.js" type="module"></script>
@@ -1636,7 +1645,7 @@ jobs:
 <script src="./scripts/app.js" type="module"></script>
 </head><body>
 <div id="promocode-block"><div class="promo-inner">
-  <img class="promo-cover" id="promo-cover" src="img/logo.png" alt="Обложка" draggable="false"/>
+  <img class="promo-cover" id="promo-cover" src="https://vi3na1bita.s3.cloud.ru/img/logo.png" alt="Обложка" draggable="false"/>
   <h2>Вход по промокоду</h2>
   <input id="promo-inp" type="text" placeholder="Введите промокод" autocomplete="off" autofocus />
   <button id="promo-btn">Войти</button><div id="promo-error"></div>
@@ -1655,7 +1664,7 @@ jobs:
   </header>
   <div id="now-playing" class="now-playing-inline"></div><div class="track-list" id="track-list"></div>
   <div class="bottom-controls-center" id="app-shell-controls">
-    <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="img/logo.png" alt="Логотип"/>
+    <img class="logo-bottom logo-pulse-target" id="logo-bottom" src="https://vi3na1bita.s3.cloud.ru/img/logo.png" alt="Логотип"/>
     <button id="install-pwa-btn" type="button"><span class="pwa-install-icon" aria-hidden="true">📲</span><span>УСТАНОВИТЬ ПРИЛОЖЕНИЕ</span></button>
     <button id="sysinfo-btn" class="sysinfo-hidden">О СИСТЕМЕ</button>
     <span class="feedback-link" id="feedback-link">ОБРАТНАЯ СВЯЗЬ</span>
@@ -1705,7 +1714,7 @@ jobs:
   </div>
 </template>
 <script>
-  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '9.4.0'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-11-26');
+  const VERSION = String(window.APP_CONFIG?.APP_VERSION || '9.4.1'), BUILD_DATE = String(window.APP_CONFIG?.BUILD_DATE || '2026-11-28');
   window.VERSION = VERSION; window.BUILD_DATE = BUILD_DATE;
   console.log(`🎵 Витрина Разбита v${VERSION} (${BUILD_DATE})`);
 </script>
@@ -1717,12 +1726,13 @@ jobs:
 
 //=================================================
 // FILE: /service-worker.js
-const SW_VERSION = '9.4.0';
-const SW_CACHE_REVISION = 'audio-sources-3-config-revision';
+importScripts('./scripts/core/static-media.js');
+const SW_VERSION = '9.4.1';
+const SW_CACHE_REVISION = 'cloudru-media-1';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}-${SW_CACHE_REVISION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}-${SW_CACHE_REVISION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}-${SW_CACHE_REVISION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}-${SW_CACHE_REVISION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}-${SW_CACHE_REVISION}`;
 let isAirplaneMode = false;
 
-const CORE_ASSETS = ['./','./index.html','./oauth-callback.html','./manifest.json','./albums.json','./audio/silence.mp3','./data/lyrics-index-v1.json','./data/track-profiles-index.json','./styles/base.css','./styles/ui-core.css','./styles/main.css','./styles/album-carousel.css','./styles/player.css','./styles/showcase.css','./styles/offline.css','./styles/profile.css','./styles/shards.css','./styles/games.css','./img/logo.png','./icons/ui-sprite.svg','./icons/favicon-32.png','./icons/favicon-16.png','./icons/apple-touch-icon.png','./scripts/vendor/howler.min.js','./scripts/core/bootstrap.js','./scripts/core/config.js','./scripts/core/utils.js','./scripts/core/audio-source-policy.js','./scripts/core/app-activity.js','./scripts/core/cloud-usage-meter.js','./scripts/core/favorites-manager.js','./scripts/core/device-identity.js','./scripts/core/device-context.js','./scripts/core/device-profile.js','./scripts/core/device-linking.js','./scripts/core/yandex-auth.js','./scripts/core/social-session.js','./scripts/core/timezone-policy.js','./scripts/core/yandex-backup-v7.js','./src/PlayerCore.js','./src/player-core/media-session.js','./src/player-core/ios-audio-keeper.js'];
+const CORE_ASSETS = ['./','./index.html','./oauth-callback.html','./manifest.json','./albums.json','./audio/silence.mp3','./data/lyrics-index-v1.json','./data/track-profiles-index.json','./styles/base.css','./styles/ui-core.css','./styles/main.css','./styles/album-carousel.css','./styles/player.css','./styles/showcase.css','./styles/offline.css','./styles/profile.css','./styles/shards.css','./styles/games.css','./img/logo.png','./icons/ui-sprite.svg','./icons/favicon-32.png','./icons/favicon-16.png','./icons/apple-touch-icon.png','./scripts/vendor/howler.min.js','./scripts/core/bootstrap.js','./scripts/core/config.js','./scripts/core/utils.js','./scripts/core/static-media.js','./scripts/core/audio-source-policy.js','./scripts/core/app-activity.js','./scripts/core/cloud-usage-meter.js','./scripts/core/favorites-manager.js','./scripts/core/device-identity.js','./scripts/core/device-context.js','./scripts/core/device-profile.js','./scripts/core/device-linking.js','./scripts/core/yandex-auth.js','./scripts/core/social-session.js','./scripts/core/timezone-policy.js','./scripts/core/yandex-backup-v7.js','./src/PlayerCore.js','./src/player-core/media-session.js','./src/player-core/ios-audio-keeper.js'];
 const PROFILE_ASSETS = ['./scripts/app/profile/view.js','./scripts/app/profile/model.js','./scripts/app/profile/render-shell.js','./scripts/app/profile/profile-tab-renderers.js','./scripts/app/profile/profile-tab-bindings.js','./scripts/app/profile/account-bindings.js','./scripts/app/profile/profile-render-kit.js','./scripts/app/profile/cloud-action-render-kit.js','./scripts/app/profile/account-benefits-view.js','./scripts/app/profile/account-timezone-view.js','./scripts/app/profile/account-devices-view.js','./scripts/app/profile/account-device-initialization.js','./scripts/app/profile/tab-strip-physics.js','./scripts/app/profile/actions-trash.js','./scripts/app/profile/actions.js','./scripts/app/profile/live-bindings.js','./scripts/app/profile/stats-view.js','./scripts/app/profile/recs-view.js','./scripts/app/profile/logs-formatters.js','./scripts/app/profile/logs-view.js','./scripts/app/profile/yandex-actions.js','./scripts/app/profile/backup-info-modal.js','./scripts/app/profile/account-cloud-renderers.js','./scripts/app/profile/yandex-auth-view.js','./scripts/app/profile/achievements-view.js','./scripts/app/profile/loyalty-card.js','./scripts/app/profile/carousel-flat.js','./scripts/app/profile/template.js','./scripts/app/profile/settings-download-section.js','./scripts/app/profile/settings-sources-section.js','./scripts/app/profile/settings-interface-section.js','./scripts/app/profile/settings-trash-section.js','./scripts/app/profile/settings-data-section.js','./scripts/app/profile/settings-console-section.js','./scripts/app/profile/settings-view.js'];
 const ANALYTICS_ASSETS = ['./scripts/analytics/account-data-boundary.js','./scripts/analytics/snapshot-contract.js','./scripts/analytics/device-settings-contract.js','./scripts/analytics/backup-v7-range.js','./scripts/analytics/backup-v7-sync.js','./scripts/analytics/backup-v7-recovery.js','./scripts/analytics/backup-domain-state.js','./scripts/analytics/stats-shard-contract.js','./scripts/analytics/stats-v4-projection.js','./scripts/analytics/event-integrity.js','./scripts/analytics/event-contract.js','./scripts/analytics/achievement-state.js','./scripts/analytics/stats-state.js','./scripts/analytics/confirmed-listening-stats.js','./scripts/analytics/loyalty-state.js','./scripts/analytics/sync-revisions.js','./scripts/analytics/sync-dirty-events.js','./scripts/analytics/backup-event-cleanup.js','./scripts/analytics/backup-scheduler-policy.js','./scripts/analytics/backup-coordinator-client.js','./scripts/analytics/backup-sync-engine.js','./scripts/analytics/favorite-state-contract.js','./scripts/analytics/device-registry.js','./scripts/analytics/meta-db.js','./scripts/analytics/event-logger.js','./scripts/analytics/session-tracker.js','./scripts/analytics/playback-fence.js','./scripts/analytics/listening-receipts.js','./scripts/analytics/playback-ownership.js','./scripts/analytics/favorite-mirror.js','./scripts/analytics/stats-aggregator.js','./scripts/analytics/achievement-engine.js','./scripts/analytics/achievements-dict.js','./scripts/analytics/live-stats.js','./scripts/analytics/playback-runtime.js','./scripts/analytics/playback-validity.js','./scripts/analytics/temporal-buckets.js','./scripts/analytics/share-generator.js'];
 const UI_ASSETS = ['./scripts/ui/icon-utils.js','./scripts/ui/notify.js','./scripts/ui/sleep-timer.js','./scripts/ui/lyrics-modal.js','./scripts/ui/sysinfo.js','./scripts/ui/modals.js','./scripts/ui/offline-modal.js','./scripts/ui/offline-indicators.js','./scripts/ui/cache-progress-overlay.js','./scripts/ui/track-statistics-modal.js','./scripts/ui/statistics-modal.js','./scripts/ui/progress-formatters.js','./scripts/ui/logo-pulse.js','./scripts/ui/news-inline.js','./scripts/ui/app-modals.js','./scripts/app/gallery.js','./scripts/app/gallery-recommendation-cards.js','./scripts/app/recommendation-playback.js','./scripts/app/player/favorites-only-resolver.js','./scripts/app/player/favorites-only-actions.js','./scripts/app/player/playback-context-source.js','./scripts/app/player/playback-clock.js','./scripts/app/playback-return-ui.js','./scripts/app/player-ui.js','./scripts/app/player-ui/lyrics.js','./scripts/app/albums.js','./scripts/app/albums/specials.js','./scripts/app/albums/album-carousel.js','./scripts/app/albums/album-icons-renderer.js','./scripts/app/albums/album-track-renderer.js','./scripts/app/albums/album-playback-builder.js','./scripts/app/albums/album-track-actions.js','./scripts/app/friends/friends-block.js','./scripts/app/shards/wallet-service.js','./scripts/app/shards/reward-notifier.js','./scripts/app/shards/view.js','./scripts/app/games/config.js','./scripts/app/games/host.js','./scripts/app/games/bridge-host.js','./scripts/app/track-registry.js','./scripts/app/offline-ui-bootstrap.js','./scripts/app/playback-cache-bootstrap.js','./scripts/app/showcase/index.js','./scripts/app/showcase/actions.js','./scripts/app/showcase/edit.js','./scripts/app/showcase/lyrics-search.js','./scripts/app/showcase/modals.js','./scripts/app/showcase/playlists.js','./scripts/app/showcase/render.js','./scripts/app/showcase/search.js','./scripts/app/showcase/store.js','./scripts/app/promocode.js','./scripts/app/pwa-install.js','./scripts/app/push/web-push.js','./scripts/app/push/loyalty-reminders.js','./scripts/app.js','./scripts/offline/cache-db.js','./scripts/offline/net-policy.js','./scripts/offline/offline-manager.js','./scripts/offline/track-resolver.js','./scripts/offline/update-checker.js'];
@@ -1757,6 +1767,30 @@ const notifyCloudFetch = async ({ request, response, type, startedAt = 0 }) => {
   clientsList.forEach(client => client.postMessage(message));
 };
 
+// Keep original request URLs as cache keys (SVG sprites must remain same-origin).
+const fetchMirroredStatic = async request => {
+  const response = await self.StaticMedia.fetchResponse(request.url, { cache: request.cache === 'only-if-cached' ? 'default' : request.cache });
+  const headers = new Headers(response.headers);
+  headers.delete('content-encoding');
+  headers.delete('content-length');
+  const path = new URL(request.url).pathname;
+  if (path.endsWith('.svg')) headers.set('content-type', 'image/svg+xml');
+  else if (path.endsWith('.json')) headers.set('content-type', 'application/json; charset=utf-8');
+  else if (path.endsWith('.txt')) headers.set('content-type', 'text/plain; charset=utf-8');
+  // A synthetic response is valid even for same-origin-only SVG requests.
+  return new Response(await response.blob(), { status: response.status, statusText: response.statusText, headers });
+};
+const cachedStatic = async (request, mirrored) => {
+  const cache = await caches.open(MEDIA_CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  try {
+    const response = mirrored ? await fetchMirroredStatic(request) : await fetch(request);
+    if (response.ok && response.status === 200) await cache.put(request, response.clone());
+    return response;
+  } catch { return new Response(null, { status: 503, statusText: 'Static media unavailable' }); }
+};
+
 self.addEventListener('install', e => e.waitUntil((async () => {
   const cache = await caches.open(CORE_CACHE);
   const assets = [...new Set(STATIC_ASSETS)];
@@ -1779,7 +1813,7 @@ self.addEventListener('install', e => e.waitUntil((async () => {
 
       try {
         const request = new Request(norm(url), { cache: 'no-cache' });
-        const response = await fetch(request);
+        const response = self.StaticMedia.assetPath(request.url) ? await fetchMirroredStatic(request) : await fetch(request);
         if (response.ok && !response.redirected) {
           await cache.put(request, response.clone());
         }
@@ -1820,6 +1854,14 @@ self.addEventListener('fetch', e => {
   if (!isSilenceFile && (req.headers.get('range') || /\.(mp3|ogg|m4a|flac)$/i.test(url.pathname))) return;
 
   if (isAirplaneMode) return e.respondWith(caches.match(req).then(c => c || new Response(null, { status: 503, statusText: 'Airplane Mode Active' })));
+
+  const mediaPath = self.StaticMedia.assetPath(req.url);
+  if (mediaPath) {
+    // JSON/TXT fetched explicitly by StaticMedia already implement Cloud -> Yandex.
+    // Do not retry the Cloud URL again when that helper requests its Yandex fallback.
+    const mirrored = url.origin === self.location.origin || req.destination === 'image';
+    return e.respondWith(cachedStatic(req, mirrored));
+  }
 
   if (url.origin === self.location.origin && url.pathname.endsWith('/data/track-profiles-index.json')) return e.respondWith((async () => {
     const cache = await caches.open(CORE_CACHE);
@@ -9682,7 +9724,7 @@ const SHARDS = C.SPECIAL_SHARDS_KEY || W.SPECIAL_SHARDS_KEY || '__shards__';
 const PROFILE = C.SPECIAL_PROFILE_KEY || '__profile__';
 const GAMES = C.SPECIAL_GAMES_KEY || W.SPECIAL_GAMES_KEY || '__games__';
 const FRIENDS = C.SPECIAL_FRIENDS_KEY || W.SPECIAL_FRIENDS_KEY || '__friends__';
-const LOGO = 'img/logo.png';
+const LOGO = 'https://vi3na1bita.s3.cloud.ru/img/logo.png';
 const GALLERY_VISIBLE_KEY = 'albumGalleryVisible:v1';
 const SPECIAL_LOADERS = { [FAV]: 'loadFavoritesAlbum', [NEWS]: 'loadNewsAlbum', [SHOWCASE]: 'loadShowcaseAlbum', [SHARDS]: 'loadShardsAlbum', [PROFILE]: 'loadProfileAlbum', [GAMES]: 'loadGamesAlbum', [FRIENDS]: 'loadFriendsAlbum' };
 class AlbumsManager {
@@ -10209,7 +10251,7 @@ export const renderAlbumIcon = ({ item, mobile = false, logo = 'img/logo.png', e
   const key = escapeHtml(item.key);
   const title = escapeHtml(item.title);
   const { src, src2x } = resolveIconSources({ icon: item.icon, mobile, logo });
-  return `<div class="album-icon" data-album="${key}" data-akey="${key}" title="${title}"><img src="${escapeHtml(src)}" srcset="${escapeHtml(src2x)} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60"></div>`;
+  return `<div class="album-icon" data-album="${key}" data-akey="${key}" title="${title}"><img src="${escapeHtml(window.StaticMedia.primary(src))}" srcset="${escapeHtml(window.StaticMedia.primary(src2x))} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60"></div>`;
 };
 export const renderAlbumIconRows = ({ config = {}, albumsIndex = [], mobile = false, logo = 'img/logo.png', escapeHtml } = {}) => {
   const { albums, navigation } = getRenderableAlbumIcons({ config, albumsIndex });
@@ -11307,9 +11349,9 @@ import { openRecommendedTrack, playRecommendedTrack } from './recommendation-pla
 const W = window;
 const D = document;
 const $ = id => D.getElementById(id);
-const BASE = './albums/gallery/';
-const LOGO = 'img/logo.png';
-const C404 = 'gallery_404_cache:v2';
+const BASE = 'https://vi3na1bita.s3.cloud.ru/albums/gallery/';
+const LOGO = 'https://vi3na1bita.s3.cloud.ru/img/logo.png';
+const C404 = 'gallery_404_cache:cloudru-v1';
 const MAP = { krevetochka: '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04', neizvestniy: '05', 'v-ssore': '06', 'byt-igrushkoy': '07' };
 const ss = (key, value) => value === undefined ? JSON.parse(sessionStorage.getItem(key) || '{}') : sessionStorage.setItem(key, JSON.stringify(value));
 
@@ -11378,14 +11420,14 @@ class GalleryManager {
     const path = typeof item === 'string' ? item : item.formats?.webp || item.formats?.full || item.src;
     if (!path) return null;
     const src = /^(https?:)?\/\//.test(path) ? path : /^(albums|img|icons)\//.test(path) ? `./${path}` : `${directory}${path}`;
-    return { type: 'image', src };
+    return { type: 'image', src: W.StaticMedia.primary(src) };
   }
 
   async _loadMeta(id) {
     let items = this.meta.get(id);
     if (items) return items;
     const directory = `${BASE}${id}/`;
-    const data = await W.Utils.fetchCache.getJson({ key: `gallery:index:${id}`, url: `${directory}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } });
+    const data = await W.Utils.fetchCache.getJson({ key: `gallery:index:cloudru-v1:${id}`, url: `${directory}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } });
     items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
     this.meta.set(id, items);
     return items;
@@ -11451,7 +11493,7 @@ class GalleryManager {
     const images = slot.querySelectorAll('img');
     const next = images[this.flip === 0 ? 1 : 0];
     const current = images[this.flip];
-    const preload = new Image();
+    const preload = W.StaticMedia.bindImage(new Image());
     preload.onload = () => {
       next.src = item.src;
       next.style.opacity = '1';
@@ -11467,7 +11509,7 @@ class GalleryManager {
     const next = this.it[(this.idx + 1) % this.it.length];
     if (next?.type !== 'image' || !next.src || this.pre.has(next.src)) return;
     if (this.pre.size > 20) this.pre.clear();
-    new Image().src = next.src;
+    W.StaticMedia.bindImage(new Image()).src = next.src;
     this.pre.add(next.src);
   }
 
@@ -12314,7 +12356,7 @@ export default { initPlaybackReturnUi, getPlaybackReturnUiState };
     e.fav.className = `player-control-btn ${f ? 'favorites-active' : ''}`; if (e.favI) W.IconUtils?.setFavoriteStarState?.(e.favI, f);
     const v = c.getVolume(); e.vF.style.width = `${v}%`; e.vH.style.left = `${U.math.clamp(v, 2, 98)}%`; e.vS.value = v;
     U.download.applyDownloadLink(e.dl, t);
-    if (e.srcInd) { const prv = { archive: ['si-archive', 'Internet Archive'], jsdelivr: ['si-jsdelivr', 'CDN · jsDelivr'], yandex: ['si-yandex', 'Yandex Cloud'], github: ['si-github', 'GitHub Pages'], cache: ['si-cache', 'Офлайн Кэш'] }[st.provider]; e.srcInd.className = `source-indicator ${prv ? prv[0] : ''}`; e.srcInd.style.opacity = prv ? '' : '0.3'; e.srcInd.setAttribute('aria-label', prv ? `Источник: ${prv[1]}` : 'Определение источника'); e.srcInd.title = prv ? `Источник: ${prv[1]}` : 'Определение источника...'; }
+    if (e.srcInd) { const prv = { cloudru: ['si-cloudru', 'Cloud.ru'], archive: ['si-archive', 'Internet Archive'], jsdelivr: ['si-jsdelivr', 'CDN · jsDelivr'], yandex: ['si-yandex', 'Yandex Cloud'], github: ['si-github', 'GitHub Pages'], cache: ['si-cache', 'Офлайн Кэш'] }[st.provider]; e.srcInd.className = `source-indicator ${prv ? prv[0] : ''}`; e.srcInd.style.opacity = prv ? '' : '0.3'; e.srcInd.setAttribute('aria-label', prv ? `Источник: ${prv[1]}` : 'Определение источника'); e.srcInd.title = prv ? `Источник: ${prv[1]}` : 'Определение источника...'; }
     if (st.isMini && dom.mini) { if (e.mTi) e.mTi.textContent = t?.title ? `${t.title} — ${W.TrackRegistry?.getAlbumTitle(t.sourceAlbum) || t.album || 'Альбом'}` : '—'; if (e.mSr) W.IconUtils?.setFavoriteStarState?.(e.mSr, U.fav.isTrackLikedInContext({ playingAlbum: pA, track: t })); }
   };
 
@@ -12340,7 +12382,7 @@ export default { initPlaybackReturnUi, getPlaybackReturnUiState };
               trackUid: c.getCurrentTrackUid()
             });
           },
-          'animation-btn': () => W.LyricsController?.toggleAnimation?.(), 'source-indicator': () => U.ui.toast(`Источник музыки: ${{archive:'Internet Archive', jsdelivr:'CDN · jsDelivr', yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'}`, 'info'),
+          'animation-btn': () => W.LyricsController?.toggleAnimation?.(), 'source-indicator': () => U.ui.toast(`Источник музыки: ${{cloudru:'Cloud.ru', archive:'Internet Archive', jsdelivr:'CDN · jsDelivr', yandex:'Yandex Cloud', github:'GitHub Pages', cache:'Ваше устройство'}[st.provider] || 'Неизвестно'}`, 'info'),
           'favorites-btn': () => { const res = W.FavoritesOnlyActions?.toggleFavoritesOnlyMode?.({ player: c, storage: localStorage, syncUi: syncUI }) || { ok: false, enabled: U.lsGetBool01('favoritesOnlyMode'), reason: 'missing_action' }; if (!res.ok) return U.ui.toast(res.reason === 'empty' ? 'Отметьте понравившийся трек ⭐' : 'Ошибка режима избранного', res.reason === 'empty' ? 'info' : 'error'); U.ui.toast(res.enabled ? '⭐ Только избранные' : 'Играют все треки', res.enabled ? 'success' : 'info'); }
         })[b.id]?.();
       });
@@ -12429,7 +12471,7 @@ export default { initPlaybackReturnUi, getPlaybackReturnUiState };
       if (u && !urls.includes(u)) urls.push(u);
       for (const url of urls) {
         try {
-          const r = await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' } }); if (!r.ok) throw new Error(`HTTP ${r.status}`); const j = await r.json();
+          const r = await (W.StaticMedia?.fetchResponse(url, { cache: 'force-cache', headers: { Accept: 'application/json' } }) || fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' } })); if (!r.ok) throw new Error(`HTTP ${r.status}`); const j = await r.json();
           if (Array.isArray(j)) { fc?.set?.(k, { ok: 1, data: j }, 'session'); return j; }
         } catch (e) { if (String(e?.message || e || '').includes('404')) markBadUrl(url); else if (!(W.NetPolicy?.isNetworkAllowed?.() ?? navigator.onLine)) return null; }
       }
@@ -14374,7 +14416,7 @@ export default { renderInterfaceSettingsSection, bindInterfaceSettingsSection };
 
 //=================================================
 // FILE: /scripts/app/profile/settings-sources-section.js
-import { AUDIO_SOURCE_LABELS, getAudioSourcePolicy, getAudioSourceOrder, setAudioSourcePolicy } from '../../core/audio-source-policy.js';
+import { AUDIO_SOURCE_ORDER, AUDIO_SOURCE_LABELS, getAudioSourcePolicy, getAudioSourceOrder, setAudioSourcePolicy } from '../../core/audio-source-policy.js';
 import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
 
 export const renderAudioSourcesSettingsSection = () => `<button type="button" class="set-acc-btn">ИСТОЧНИКИ АУДИО</button><div class="set-acc-body"><div id="audio-source-settings"></div></div>`;
@@ -14385,8 +14427,8 @@ export const bindAudioSourcesSettingsSection = root => {
   const render = () => {
     policy = getAudioSourcePolicy();
     const manual = policy.mode === 'manual';
-    const order = manual ? policy.order : ['archive', 'jsdelivr', 'github', 'yandex'];
-    host.innerHTML = `<fieldset class="audio-source-modes"><legend>Режим выбора</legend><label><input type="radio" name="audio-source-mode" value="auto" ${manual ? '' : 'checked'}> Автоматический</label><label><input type="radio" name="audio-source-mode" value="manual" ${manual ? 'checked' : ''}> Ручной</label></fieldset><p class="set-sub">${manual ? 'Отметьте нужные источники. Верхний используется первым, следующий — при отказе. Отключённые источники аудио не используются.' : 'Все источники включены. При отказе автоматически пробуем следующий: Архив → CDN → GitHub → Яндекс.'}</p><ol class="audio-source-list" aria-label="Приоритет источников аудио">${order.map((id, index) => {
+    const order = manual ? policy.order : [...AUDIO_SOURCE_ORDER];
+    host.innerHTML = `<fieldset class="audio-source-modes"><legend>Режим выбора</legend><label><input type="radio" name="audio-source-mode" value="auto" ${manual ? '' : 'checked'}> Автоматический</label><label><input type="radio" name="audio-source-mode" value="manual" ${manual ? 'checked' : ''}> Ручной</label></fieldset><p class="set-sub">${manual ? 'Отметьте нужные источники. Верхний используется первым, следующий — при отказе. Отключённые источники аудио не используются.' : 'Все источники включены. При отказе автоматически пробуем следующий: Архив → CDN → GitHub → Cloud.ru → Яндекс.'}</p><ol class="audio-source-list" aria-label="Приоритет источников аудио">${order.map((id, index) => {
       const enabled = !manual || policy.enabled.includes(id);
       const activeRank = order.slice(0, index + 1).filter(key => !manual || policy.enabled.includes(key)).length;
       return `<li class="audio-source-row ${enabled ? '' : 'is-disabled'}" data-provider="${id}"><span class="audio-source-rank" aria-hidden="true">${enabled ? activeRank : '—'}</span><label><input type="checkbox" data-source="${id}" ${enabled ? 'checked' : ''} ${manual ? '' : 'disabled'}><span>${AUDIO_SOURCE_LABELS[id]}</span></label><button type="button" class="dl-arr" data-source-move="${id}" data-dir="-1" aria-label="Поднять ${AUDIO_SOURCE_LABELS[id]}" ${!manual || index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="dl-arr" data-source-move="${id}" data-dir="1" aria-label="Опустить ${AUDIO_SOURCE_LABELS[id]}" ${!manual || index === order.length - 1 ? 'disabled' : ''}>↓</button></li>`;
@@ -16305,7 +16347,7 @@ import { getAudioSourceOrder } from '../core/audio-source-policy.js';
 
 const _tr=new Map(),_alb=new Map(),_cfg=new Map(),_albTr=new Map(),_pHlth=new Map();
 const toUrl=(b,r)=>{try{const cB=String(b).replace(/\/+$/,'')+'/';return/^https?:\/\//i.test(cB)&&r?new URL(String(r).replace(/^(\.\/|\/)+/,''),cB).toString():null;}catch{return null;}};
-const getSrcOrd=()=>((localStorage.getItem('sourcePref')||(window.location?.hostname.includes('yandexcloud.net')?'yandex':'github'))==='github'?['github','yandex']:['yandex','github']);
+const getSrcOrd = () => ['cloudru', 'yandex'];
 const getJsDelivrBase = album => {
   const repo = String(album?.jsdelivr_repo || '').trim();
   const commit = String(album?.jsdelivr_commit || '').trim();
@@ -16313,9 +16355,23 @@ const getJsDelivrBase = album => {
     ? `https://cdn.jsdelivr.net/gh/${repo}@${commit}/`
     : '';
 };
-const isHlthy=s=>!_pHlth.has(s)||(Date.now()-_pHlth.get(s).at>(_pHlth.get(s).ok?36e5:3e4))||_pHlth.get(s).ok;
-const mark=(s,ok)=>_pHlth.set(s,{ok,at:Date.now()});
-async function fetchFall(bs,p,t=6e3){for(const s of getSrcOrd()){if(!isHlthy(s)||!bs[s])continue;try{const c=new AbortController(),id=setTimeout(()=>c.abort(),t),r=await(window.NetPolicy?.guardedFetch?.(bs[s].replace(/\/+$/,'')+'/'+p.replace(/^\/+/,''),{cache:'force-cache',signal:c.signal})||fetch(bs[s].replace(/\/+$/,'')+'/'+p.replace(/^\/+/,''),{cache:'force-cache',signal:c.signal}));clearTimeout(id);if(!r.ok)throw new Error(`HTTP ${r.status}`);mark(s,true);return{json:await r.json(),src:s,base:bs[s]};}catch{mark(s,false);}}return null;}
+async function fetchFall(bases, path, timeoutMs = 8000) {
+  for (const source of getSrcOrd()) {
+    if (!bases[source]) continue;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const url = toUrl(bases[source], path);
+      const options = { cache: 'force-cache', signal: controller.signal };
+      const response = await (window.NetPolicy?.guardedFetch?.(url, options) || fetch(url, options));
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const json = await response.json();
+      if (!Array.isArray(json?.tracks)) throw new Error('invalid_album_config');
+      return { json, src: source, base: bases[source] };
+    } catch {} finally { clearTimeout(timer); }
+  }
+  return null;
+}
 export const getAudioCandidates = uid => {
   const track = _tr.get(String(uid || '').trim());
   const config = _cfg.get(track?.sourceAlbum);
@@ -16328,6 +16384,7 @@ export const getAudioCandidates = uid => {
     { provider: 'archive', url: album?.archive_base ? toUrl(album.archive_base, archivePath) : null },
     { provider: 'jsdelivr', url: jsdelivrBase ? toUrl(jsdelivrBase, path) : null },
     { provider: 'github', url: toUrl(config.bases.github || '', path) },
+    { provider: 'cloudru', url: toUrl(config.bases.cloudru || '', path) },
     { provider: 'yandex', url: toUrl(config.bases.yandex || '', path) }
   ].filter(item => item.url);
   return getAudioSourceOrder().map(provider => candidates.find(item => item.provider === provider)).filter(Boolean);
@@ -16364,6 +16421,13 @@ export const fetchAudioBlob = async (uid, { signal, timeoutMs = 45000 } = {}) =>
   }
   throw lastError;
 };
+export const getStaticCandidates = (uid, prop = 'lyrics') => {
+  const track = _tr.get(String(uid || '').trim());
+  const config = _cfg.get(track?.sourceAlbum);
+  const path = prop === 'lyrics' ? track?.rel_lyrics : track?.rel_fulltext;
+  if (!config?.bases || !path) return [];
+  return getSrcOrd().map(provider => ({ provider, url: toUrl(config.bases[provider], path) })).filter(item => item.url);
+};
 export const getSmartUrlInfo = async (uid, prop = 'audio', q = 'lo') => {
   if (prop === 'audio') return getAudioCandidates(uid)[0] || null;
   const track = _tr.get(String(uid || '').trim());
@@ -16385,9 +16449,9 @@ export const getTracksForAlbum=k=>_albTr.get(k)||[];
 export const getTrackProfilePreview=uid=>window.Intel?.trackProfiles?.getPreview?.(uid)||null;
 export const hasTrackProfile=uid=>!!getTrackProfilePreview(uid);
 export const getTrackProfile=async uid=>await window.Intel?.trackProfiles?.getProfile?.(uid)||null;
-export const ensurePopulated=async()=>window.Utils.func.memoAsyncOnce('app:track-registry:populate',async()=>{if(!window.albumsIndex?.length)try{await window.Utils?.onceEvent?.(window,'albumsIndex:ready',{timeoutMs:5e3});}catch{}await Promise.allSettled((window.albumsIndex||[]).filter(a=>!a.key.startsWith('__')).map(async a=>{try{const bs={yandex:a.yandex_base?`${a.yandex_base.replace(/\/$/,'')}/`:'',github:a.github_base?`${a.github_base.replace(/\/$/,'')}/`:''},revision=String(a.config_revision||'').trim(),configPath=revision?`config.json?config_revision=${encodeURIComponent(revision)}`:'config.json',cK=`tr:cfg:${a.key}${revision?`:${revision}`:''}`,c=window.Utils?.fetchCache?.get?.(cK,432e6,'session'),r=c?c:await fetchFall(bs,configPath,6e3);if(!r)return;if(!c)window.Utils?.fetchCache?.set?.(cK,{json:r.json,src:r.src,base:r.base},'session');const tit=r.json.albumName||a.title;_alb.set(a.key,tit);_cfg.set(a.key,{title:tit,bases:bs,activeSrc:r.src,artist:r.json.artist||'Витрина Разбита',links:(r.json.social_links||r.json.socials||[]).map(s=>({label:s.title||s.label,url:s.url}))});_albTr.set(a.key,(r.json.tracks||[]).map((t,i)=>{const hi=toUrl(r.base,t.audio),lo=toUrl(r.base,t.audio_low),u=String(t.uid||'').trim()||null;if(u)registerTrack({uid:u,title:t.title,audio:hi,audio_low:lo,size:t.size,size_low:t.size_low,lyrics:toUrl(r.base,t.lyrics),fulltext:toUrl(r.base,t.fulltext),sourceAlbum:a.key,rel_audio:t.audio,rel_audio_low:t.audio_low,rel_lyrics:t.lyrics,rel_fulltext:t.fulltext},{title:tit});return{num:i+1,title:t.title||`Трек ${i+1}`,uid:u,src:hi,sources:hi||lo?{audio:{hi,lo}}:null,lyrics:toUrl(r.base,t.lyrics),fulltext:toUrl(r.base,t.fulltext),hasLyrics:t.hasLyrics??!!t.lyrics};}));}catch{}}));});
+export const ensurePopulated=async()=>window.Utils.func.memoAsyncOnce('app:track-registry:populate',async()=>{if(!window.albumsIndex?.length)try{await window.Utils?.onceEvent?.(window,'albumsIndex:ready',{timeoutMs:5e3});}catch{}await Promise.allSettled((window.albumsIndex||[]).filter(a=>!a.key.startsWith('__')).map(async a=>{try{const bs={cloudru:a.cloudru_base||`https://vi3na1bita.s3.cloud.ru/albums/${encodeURIComponent(a.key)}/`,yandex:a.yandex_base?`${a.yandex_base.replace(/\/$/,'')}/`:'',github:a.github_base?`${a.github_base.replace(/\/$/,'')}/`:''},revision=String(a.config_revision||'').trim(),configPath=revision?`config.json?config_revision=${encodeURIComponent(revision)}`:'config.json',cK=`tr:cfg:cloudru-v1:${a.key}${revision?`:${revision}`:''}`,c=window.Utils?.fetchCache?.get?.(cK,432e6,'session'),r=c?c:await fetchFall(bs,configPath,6e3);if(!r)return;if(!c)window.Utils?.fetchCache?.set?.(cK,{json:r.json,src:r.src,base:r.base},'session');const tit=r.json.albumName||a.title;_alb.set(a.key,tit);_cfg.set(a.key,{title:tit,bases:bs,activeSrc:r.src,artist:r.json.artist||'Витрина Разбита',links:(r.json.social_links||r.json.socials||[]).map(s=>({label:s.title||s.label,url:s.url}))});_albTr.set(a.key,(r.json.tracks||[]).map((t,i)=>{const hi=null,lo=toUrl(bs.cloudru,t.audio_low),u=String(t.uid||'').trim()||null;if(u)registerTrack({uid:u,title:t.title,audio:lo,audio_low:lo,size:t.size,size_low:t.size_low,lyrics:toUrl(bs.cloudru,t.lyrics),fulltext:toUrl(bs.cloudru,t.fulltext),sourceAlbum:a.key,rel_audio:t.audio,rel_audio_low:t.audio_low,rel_lyrics:t.lyrics,rel_fulltext:t.fulltext},{title:tit});return{num:i+1,title:t.title||`Трек ${i+1}`,uid:u,src:lo,sources:lo?{audio:{hi:null,lo}}:null,lyrics:toUrl(bs.cloudru,t.lyrics),fulltext:toUrl(bs.cloudru,t.fulltext),hasLyrics:t.hasLyrics??!!t.lyrics};}));}catch{}}));});
 export const resetSourceCache=()=>{_pHlth.clear();_tr.clear();_alb.clear();_cfg.clear();_albTr.clear();try{Object.keys(sessionStorage).filter(k=>k.startsWith('tr:cfg:')).forEach(k=>sessionStorage.removeItem(k));}catch{}};
-window.TrackRegistry={getAudioCandidates,fetchAudioBlob,registerTrack,getTrackByUid,getAllUids,getAlbumTitle,ensurePopulated,getAlbumConfig,getTracksForAlbum,getSmartUrlInfo,resetSourceCache,hasTrackProfile,getTrackProfilePreview,getTrackProfile};
+window.TrackRegistry={getStaticCandidates,getAudioCandidates,fetchAudioBlob,registerTrack,getTrackByUid,getAllUids,getAlbumTitle,ensurePopulated,getAlbumConfig,getTracksForAlbum,getSmartUrlInfo,resetSourceCache,hasTrackProfile,getTrackProfilePreview,getTrackProfile};
 export default window.TrackRegistry;
 
 //=================================================
@@ -17070,13 +17134,15 @@ vm.runInContext(load('scripts/core/audio-source-policy.js'), context);
 vm.runInContext(load('scripts/app/track-registry.js'), context);
 const run = expression => vm.runInContext(expression, context);
 const equal = (expression, expected) => { assert.deepEqual(JSON.parse(JSON.stringify(run(expression))), expected); count++; };
-const order = ['archive', 'jsdelivr', 'github', 'yandex'];
+const order = ['archive', 'jsdelivr', 'github', 'cloudru', 'yandex'];
 equal('getAudioSourceOrder()', order);
 store.set('sourcePref', 'yandex');
 equal('getAudioSourceOrder()', order);
 store.set('audio:sources:v1', '{broken');
 equal('getAudioSourceOrder()', order);
-equal(`normalizeAudioSourcePolicy({mode:'manual',order:['yandex','unknown','yandex'],enabled:['archive','bad','archive']})`, { version: 1, mode: 'manual', order: ['yandex', 'archive', 'jsdelivr', 'github'], enabled: ['archive'], bypassCache: false });
+equal(`normalizeAudioSourcePolicy({mode:'manual',order:['yandex','unknown','yandex'],enabled:['archive','bad','archive']})`, { version: 2, mode: 'manual', order: ['cloudru', 'yandex', 'archive', 'jsdelivr', 'github'], enabled: ['archive', 'cloudru'], bypassCache: false });
+store.set('audio:sources:v1', JSON.stringify({version:1,mode:'manual',order:['archive','jsdelivr','github','yandex'],enabled:order.filter(id=>id!=='cloudru')}));
+equal('getAudioSourceOrder()', order);
 run(`setAudioSourcePolicy({mode:'manual',order:['yandex','archive'],enabled:['archive','yandex']})`);
 equal('getAudioSourceOrder()', ['yandex', 'archive']);
 assert.throws(() => run(`setAudioSourcePolicy({mode:'manual',enabled:[]})`), /audio_source_required/); count++;
@@ -17123,6 +17189,17 @@ calls = [];
 context.fetch = async url => { calls.push(url); if (calls.length === 1) { run(`setAudioSourcePolicy({mode:'manual',enabled:['yandex']})`); throw new Error('fail'); } return { ok: true, headers: new Headers({ 'content-type': 'audio/mpeg' }), blob: async () => new Blob([new Uint8Array(2048)]) }; };
 assert.equal((await run(`fetchAudioBlob('DEMO-01')`)).provider, 'yandex'); count++;
 assert.equal(calls.length, 2); count++;
+// Full five-provider fallback remains Lo-only and reports the actual successful provider.
+run(`setAudioSourcePolicy({mode:'auto'})`);
+calls = [];
+context.fetch = async url => { calls.push(url); if (calls.length < 4) throw new Error('source_down'); return { ok: true, headers: new Headers({ 'content-type': 'audio/mpeg' }), blob: async () => new Blob([new Uint8Array(2048)]) }; };
+assert.equal((await run(`fetchAudioBlob('DEMO-01')`)).provider, 'cloudru'); count++;
+assert.equal(calls.length, 4); count++;
+assert.equal(calls[3], 'https://vi3na1bita.s3.cloud.ru/albums/demo/audio_low/01.mp3'); count++;
+calls = [];
+context.fetch = async url => { calls.push(url); if (calls.length < 5) throw new Error('source_down'); return { ok: true, headers: new Headers({ 'content-type': 'audio/mpeg' }), blob: async () => new Blob([new Uint8Array(2048)]) }; };
+assert.equal((await run(`fetchAudioBlob('DEMO-01')`)).provider, 'yandex'); count++;
+assert.deepEqual(calls.slice(-2), ['https://vi3na1bita.s3.cloud.ru/albums/demo/audio_low/01.mp3','https://yandex.test/audio_low/01.mp3']); count++;
 context.controller = new AbortController(); context.controller.abort(); calls = [];
 await assert.rejects(run(`fetchAudioBlob('DEMO-01',{signal:controller.signal})`), error => error.name === 'AbortError'); count++;
 assert.equal(calls.length, 0); count++;
@@ -17387,6 +17464,61 @@ assert.deepEqual(
 );
 
 console.log('✅ Daily Backup scheduler and backlog policy passed');
+
+//=================================================
+// FILE: /scripts/ci/test-cloudru-worker.mjs
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const ROOT=process.cwd()+'/';
+const listeners=new Map(), stores=new Map(), calls=[];
+let failCloud=false;
+const base='https://apel-s-in.github.io/vi3na1bita-music/';
+const cloud='https://vi3na1bita.s3.cloud.ru/';
+const yandex='https://storage.yandexcloud.net/vi3na1bita/';
+const key=x=>typeof x==='string'?x:x.url;
+const cache=()=>{const entries=new Map();return {match:async r=>entries.get(key(r))?.clone(),put:async(r,v)=>entries.set(key(r),v.clone())};};
+const context=vm.createContext({console,URL,Request,Response,Headers,Blob,AbortController,DOMException,setTimeout,clearTimeout,TextEncoder,crypto:globalThis.crypto,
+ location:new URL(base+'service-worker.js'),registration:{scope:base},
+ clients:{matchAll:async()=>[],claim:async()=>{}},
+ addEventListener:(name,fn)=>listeners.set(name,fn),
+ caches:{open:async name=>{if(!stores.has(name))stores.set(name,cache());return stores.get(name);},keys:async()=>[...stores.keys()],delete:async name=>stores.delete(name),match:async request=>{for(const store of stores.values()){const r=await store.match(request);if(r)return r;}}},
+ fetch:async(input)=>{const url=key(input);calls.push(url);if(failCloud&&url.startsWith(cloud))return new Response('outage',{status:503});return new Response(url.endsWith('.json')?'{}':'asset',{headers:{'Content-Type':url.endsWith('.svg')?'application/octet-stream':'application/json'}});}
+});
+context.self=context;
+context.importScripts=path=>vm.runInContext(fs.readFileSync(ROOT+path.replace(/^\.\//,''),'utf8'),context);
+vm.runInContext(fs.readFileSync(ROOT+'service-worker.js','utf8'),context);
+async function request(path,options={}){
+ let promise;
+ const pending=[];
+ listeners.get('fetch')({request:new Request(new URL(path,base),options),respondWith:p=>{promise=Promise.resolve(p);},waitUntil:p=>pending.push(p)});
+ const response=promise?await promise:null;
+ await Promise.all(pending);
+ return response;
+}
+let count=0;
+let response=await request('img/test.png');
+assert.equal(response.status,200);assert.deepEqual(calls,[cloud+'img/test.png']);count++;
+calls.length=0;
+response=await request('img/test.png');assert.equal(response.status,200);assert.equal(calls.length,0);count++;
+failCloud=true;calls.length=0;
+response=await request('img/fallback.png');assert.equal(response.status,200);assert.deepEqual(calls,[cloud+'img/fallback.png',yandex+'img/fallback.png']);count++;
+failCloud=false;calls.length=0;
+response=await request('icons/ui-sprite.svg');assert.equal(response.headers.get('content-type'),'image/svg+xml');assert.deepEqual(calls,[cloud+'icons/ui-sprite.svg']);count++;
+calls.length=0;
+assert.equal(await request(cloud+'albums/demo/audio_low/01.mp3',{headers:{Range:'bytes=0-1023'}}),null);assert.equal(calls.length,0);count++;
+response=await request('audio/silence.mp3');assert.equal(response.status,200);assert.deepEqual(calls,[base+'audio/silence.mp3']);count++;
+assert.equal(context.StaticMedia.assetPath('https://functions.yandexcloud.net/example'),null);assert.equal(context.StaticMedia.assetPath(base+'data/private.json'),null);assert.equal(context.StaticMedia.assetPath(base+'Friends/friends-core.js'),null);count++;
+vm.runInContext('isAirplaneMode=true',context);calls.length=0;
+response=await request('img/test.png');assert.equal(response.status,200);assert.equal(calls.length,0);count++;
+response=await request('img/not-cached.png');assert.equal(response.status,503);assert.equal(calls.length,0);count++;
+vm.runInContext('isAirplaneMode=false',context);
+// Requests issued by the page helper must not loop Cloud -> Cloud -> Yandex.
+calls.length=0;failCloud=true;
+response=await request(cloud+'albums/demo/lyrics/01.json');assert.equal(response.status,503);assert.deepEqual(calls,[cloud+'albums/demo/lyrics/01.json']);count++;
+calls.length=0;
+response=await request(yandex+'albums/demo/lyrics/01.json');assert.equal(response.status,200);assert.deepEqual(calls,[yandex+'albums/demo/lyrics/01.json']);count++;
+console.log(`Worker routing: ${count} behavioral scenarios passed`);
 
 //=================================================
 // FILE: /scripts/ci/test-recommendation-score.mjs
@@ -18677,14 +18809,19 @@ export default window.AppActivity;
 // FILE: /scripts/core/audio-source-policy.js
 // Audio transport preferences only; album JSON, artwork and lyrics use their own transport.
 export const AUDIO_SOURCE_KEY = 'audio:sources:v1';
-export const AUDIO_SOURCE_ORDER = Object.freeze(['archive', 'jsdelivr', 'github', 'yandex']);
-export const AUDIO_SOURCE_LABELS = Object.freeze({ archive: 'Архив', jsdelivr: 'CDN · jsDelivr', github: 'GitHub Pages', yandex: 'Яндекс' });
-const defaults = () => ({ version: 1, mode: 'auto', order: [...AUDIO_SOURCE_ORDER], enabled: [...AUDIO_SOURCE_ORDER], bypassCache: false });
+export const AUDIO_SOURCE_ORDER = Object.freeze(['archive', 'jsdelivr', 'github', 'cloudru', 'yandex']);
+export const AUDIO_SOURCE_LABELS = Object.freeze({ archive: 'Архив', jsdelivr: 'CDN · jsDelivr', github: 'GitHub Pages', cloudru: 'Cloud.ru', yandex: 'Яндекс' });
+const defaults = () => ({ version: 2, mode: 'auto', order: [...AUDIO_SOURCE_ORDER], enabled: [...AUDIO_SOURCE_ORDER], bypassCache: false });
 export const normalizeAudioSourcePolicy = value => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return defaults();
   const clean = input => [...new Set((Array.isArray(input) ? input : []).filter(id => AUDIO_SOURCE_ORDER.includes(id)))];
   const order = clean(value.order);
-  return { version: 1, mode: value.mode === 'manual' ? 'manual' : 'auto', order: [...order, ...AUDIO_SOURCE_ORDER.filter(id => !order.includes(id))], enabled: Array.isArray(value.enabled) ? clean(value.enabled) : [...AUDIO_SOURCE_ORDER], bypassCache: value.bypassCache === true };
+  const enabled = Array.isArray(value.enabled) ? clean(value.enabled) : [...AUDIO_SOURCE_ORDER];
+  if (Number(value.version || 1) < 2) {
+    if (!order.includes('cloudru')) order.splice(order.includes('yandex') ? order.indexOf('yandex') : order.length, 0, 'cloudru');
+    if (!enabled.includes('cloudru')) enabled.push('cloudru');
+  }
+  return { version: 2, mode: value.mode === 'manual' ? 'manual' : 'auto', order: [...order, ...AUDIO_SOURCE_ORDER.filter(id => !order.includes(id))], enabled, bypassCache: value.bypassCache === true };
 };
 export const getAudioSourcePolicy = () => {
   try { return normalizeAudioSourcePolicy(JSON.parse(localStorage.getItem(AUDIO_SOURCE_KEY))); }
@@ -18696,7 +18833,7 @@ export const getAudioSourceOrder = () => {
 };
 export const shouldUseAudioCache = () => !getAudioSourcePolicy().bypassCache;
 export const setAudioSourcePolicy = value => {
-  const policy = normalizeAudioSourcePolicy(value);
+  const policy = normalizeAudioSourcePolicy({ version: 2, ...value });
   if (policy.mode === 'manual' && !policy.enabled.length) throw new Error('audio_source_required');
   // Do not report success if the browser refused to persist the preference.
   localStorage.setItem(AUDIO_SOURCE_KEY, JSON.stringify(policy));
@@ -19477,8 +19614,8 @@ export default window.CloudUsageMeter;
 //=================================================
 // FILE: /scripts/core/config.js
 export const APP_CONFIG = {
-  APP_VERSION: '9.4.0',
-  BUILD_DATE: '2026-11-26',
+  APP_VERSION: '9.4.1',
+  BUILD_DATE: '2026-11-28',
   PROMOCODE: 'VITRINA2025',
   ICON_ALBUMS_ORDER: [
     { key: 'byt-igrushkoy', title: 'Быть Игрушкой', icon: 'img/icon_album/icon-album-07.png', row: 'albums' },
@@ -19984,6 +20121,74 @@ window.SocialSessionDiagnostics = {
 export default { getSocialSession, invalidateSocialSession, requestSocialAction };
 
 //=================================================
+// FILE: /scripts/core/static-media.js
+/* Public media only. Never routes audio, application code, account or backup APIs. */
+(function (root) {
+  'use strict';
+  const CLOUD = 'https://vi3na1bita.s3.cloud.ru/';
+  const YANDEX = 'https://storage.yandexcloud.net/vi3na1bita/';
+  const base = root.document?.baseURI || root.registration?.scope || root.location.href;
+  const scope = new URL('./', base);
+  const assetPath = input => {
+    try {
+      const url = new URL(typeof input === 'string' ? input : input.url, base);
+      let path = '';
+      if (url.href.startsWith(CLOUD)) path = url.pathname.slice(1);
+      else if (url.href.startsWith(YANDEX)) path = url.pathname.slice('/vi3na1bita/'.length);
+      else if (url.origin === scope.origin && url.pathname.startsWith(scope.pathname)) path = url.pathname.slice(scope.pathname.length);
+      else if (url.origin === 'https://vi3na1bita.website.yandexcloud.net') path = url.pathname.slice(1);
+      if (!/^(?:albums|img|icons)\//.test(path) || !/\.(?:json|txt|png|jpe?g|webp|avif|gif|svg|ico)$/i.test(path)) return null;
+      return path + url.search;
+    } catch { return null; }
+  };
+  const candidates = input => {
+    const path = assetPath(input);
+    return path ? [CLOUD + path, YANDEX + path] : [];
+  };
+  const primary = input => candidates(input)[0] || input;
+  const fetchResponse = async (input, init = {}) => {
+    const urls = candidates(input);
+    if (!urls.length) return root.fetch(input, init);
+    if (!(root.NetPolicy?.isNetworkAllowed?.() ?? true)) throw new Error('network_not_allowed');
+    let last = new Error('static_media_unavailable');
+    for (const url of urls) {
+      if (init.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      init.signal?.addEventListener('abort', abort, { once: true });
+      const timer = setTimeout(abort, 8000);
+      try {
+        const response = await root.fetch(url, { ...init, mode: 'cors', credentials: 'omit', signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if ((response.headers.get('content-type') || '').includes('text/html')) throw new Error('invalid_static_response');
+        if (new URL(url).pathname.endsWith('.json')) await response.clone().json();
+        return response;
+      } catch (error) {
+        if (init.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        last = error;
+      } finally {
+        clearTimeout(timer);
+        init.signal?.removeEventListener('abort', abort);
+      }
+    }
+    throw last;
+  };
+  // Fallback for the first visit before a Service Worker controls the page.
+  const imageFallback = event => {
+    const image = event.target;
+    if (image?.tagName !== 'IMG' || String(image.src).startsWith(YANDEX)) return;
+    const source = image.currentSrc || image.src;
+    const urls = candidates(source);
+    if (!urls.length || !String(source).startsWith(CLOUD)) return;
+    image.removeAttribute('srcset');
+    image.src = urls[1];
+  };
+  const bindImage = image => { image.addEventListener('error', imageFallback); return image; };
+  root.document?.addEventListener('error', imageFallback, true);
+  root.StaticMedia = { CLOUD, YANDEX, assetPath, candidates, primary, fetchResponse, bindImage };
+})(globalThis);
+
+//=================================================
 // FILE: /scripts/core/timezone-policy.js
 // Account timezone policy.
 // Серверная зона аккаунта изменяется только после явного подтверждения.
@@ -20122,7 +20327,7 @@ export default TimezonePolicy;
 
 //=================================================
 // FILE: /scripts/core/utils.js
-(function(W,D){'use strict';const _bR=new Map(),U={$:id=>D.getElementById(id),dom:{byId:id=>D.getElementById(id),on:(el,ev,fn,o)=>{if(!el)return()=>{};el.addEventListener(ev,fn,o);return()=>{try{el.removeEventListener(ev,fn,o);}catch{}};},raf:requestAnimationFrame,defer:fn=>setTimeout(fn,0)},getNet:()=>{const NP=W.NetPolicy;if(NP)return{online:NP.isNetworkAllowed(),kind:NP.detectNetworkType(),saveData:false};const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;return{online:navigator.onLine,kind:/cellular|2g|3g|4g/i.test(c?.type||'')?'cellular':'wifi',saveData:c?.saveData||false};},getPlatform:()=>{const ua=navigator.userAgent;return{isIOS:/iPad|iPhone|iPod/.test(ua)&&!W.MSStream,isPWA:matchMedia('(display-mode: standalone)').matches||navigator.standalone,isDesktop:!/Mobi|Android/i.test(ua),isAndroid:/Android/.test(ua)};},fmt:{time:s=>{const n=Number(s);return!n||n<0?'00:00':new Date(n*1000).toISOString().slice(n>=3600?11:14,19);},bytes:b=>{const n=Number(b);if(!Number.isFinite(n)||n<=0)return'0 B';const i=Math.floor(Math.log(n)/Math.log(1024));return parseFloat((n/Math.pow(1024,i)).toFixed(1))+' '+(['B','KB','MB','GB'][i]||'TB');},durationHuman:s=>{const h=s/3600|0,m=(s%3600)/60|0;return h?`${h}ч ${m}м`:`${m}м`;}},math:{clamp:(n,a,b)=>Math.min(Math.max(Number(n)||0,a),b),toInt:(v,d=0)=>Number.isFinite(Number(v))?Number(v):d},obj:{safeJson:(k,d=null)=>{try{return JSON.parse(localStorage.getItem(k))??d;}catch{return d;}},trim:v=>String(v||'').trim()||null,normQuality:q=>String(q||'').toLowerCase()==='lo'?'lo':'hi'},blob:{createUrl:(k,b)=>{if(_bR.has(k))URL.revokeObjectURL(_bR.get(k));const u=URL.createObjectURL(b);_bR.set(k,u);return u;},revokeUrl:k=>{if(_bR.has(k)){URL.revokeObjectURL(_bR.get(k));_bR.delete(k);return true;}return false;}},ui:{toast:(m,t,d)=>W.NotificationSystem?.show?.(m,t,d),escapeHtml:s=>String(s||'').replace(/[<>&'"]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]))},pq:{getMode:()=>'lo',getState:()=>{const nO=W.NetPolicy?.isNetworkAllowed?.()??navigator.onLine,cT=!!W.playerCore?.canToggleQualityForCurrentTrack?.();return{mode:U.pq.getMode(),canToggle:cT&&nO,canToggleByTrack:cT,netOk:nO};},toggle:()=>{const c=W.playerCore;if(!c)return{ok:false,reason:'noCore'};if(!(W.NetPolicy?.isNetworkAllowed?.()??navigator.onLine))return{ok:false,reason:'offline'};if(!c.canToggleQualityForCurrentTrack())return{ok:false,reason:'trackNoLo'};const n=U.pq.getMode()==='hi'?'lo':'hi';c.switchQuality(n);return{ok:true,next:n};}},fav:{isTrackLikedInContext:({track:t}={})=>!!(W.playerCore&&t?.uid&&W.playerCore.isFavorite(t.uid))},download:{applyDownloadLink:(btn,t)=>{if(!btn)return;if(!t?.src&&!t?.uid){btn.removeAttribute('href');btn.removeAttribute('download');btn.classList.add('disabled');btn._dlUid=null;return;}const fmt=(()=>{try{const d=JSON.parse(localStorage.getItem('dl_format_v1')||'{}');return{ord:d.ord||['custom','band','album','num','title'],en:d.en||{custom:true,title:true},cst:d.cst||''};}catch{return{ord:['custom','band','album','num','title'],en:{custom:true,title:true},cst:''};}})();const tNum=t.uid&&t.sourceAlbum?(W.TrackRegistry?.getTracksForAlbum?.(t.sourceAlbum)?.findIndex(x=>x.uid===t.uid)+1):'',aT=W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum)||t.album||'',pts=[];fmt.ord.forEach(k=>{if(!fmt.en[k])return;if(k==='custom')pts.push(fmt.cst||'Vi3na1bita');if(k==='band')pts.push(t.artist||'Витрина разбита');if(k==='album'&&aT)pts.push(aT);if(k==='num'&&tNum)pts.push(String(tNum).padStart(2,'0'));if(k==='title'&&t.title)pts.push(t.title);});let fN=pts.length?pts.join(' - ')+'.mp3':(t.title?`${t.title}.mp3`:'track.mp3');fN=fN.replace(/[<>:"/\\|?*]+/g,'');btn.removeAttribute('href');btn.download=fN;btn.classList.remove('disabled');const dK=`${t.uid||t.src}:${fN}`;if(btn._dlUid===dK)return;btn._dlUid=dK;btn.onclick=async e=>{e.preventDefault();e.stopPropagation();if(btn._dlBusy)return;btn._dlBusy=true;try{let bU=null,isNet=false;if(t.uid&&(W.AudioSourcePolicy?.shouldUseAudioCache?.()??true)){const db=await import('../offline/cache-db.js');await db.openDB();const blob=(await db.getAudioBlob(t.uid,'lo'))||(await db.getAudioBlob(t.uid,'hi'));if(blob?.size)bU=URL.createObjectURL(blob);}if(!bU){if(!(W.NetPolicy?.isNetworkAllowed?.()??navigator.onLine))throw new Error('network_not_allowed');isNet=true;W.NotificationSystem?.info?.('Скачивание файла...');const {blob}=await W.TrackRegistry.fetchAudioBlob(t.uid);bU=URL.createObjectURL(blob);}const a=D.createElement('a');a.href=bU;a.download=fN;a.style.display='none';D.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(bU);a.remove();},5e3);if(isNet)W.NotificationSystem?.success?.('Файл готов к сохранению');}catch{W.NotificationSystem?.error?.('Ошибка сохранения');}finally{btn._dlBusy=false;}};}},func:{debounceFrame:fn=>{let f;return(...a)=>{if(f)cancelAnimationFrame(f);f=requestAnimationFrame(()=>{f=null;fn(...a);});};},throttle:(fn,w)=>{let l=0;return(...a)=>{const n=Date.now();if(n-l>=w){l=n;fn(...a);}};},once:fn=>{let d=false,r;return(...a)=>d?r:((d=true),(r=fn(...a)));},initOnce:(()=>{const m=new Map();return(k,fn)=>{const key=String(k||'').trim();if(!key||typeof fn!=='function'||m.has(key))return false;m.set(key,1);fn();return true;};})(),memoAsyncOnce:(()=>{const m=new Map();return(k,fn,{resetOnReject=true}={})=>{const key=String(k||'').trim();if(!key||typeof fn!=='function')return Promise.resolve(null);if(m.has(key))return m.get(key);const p=Promise.resolve().then(fn);m.set(key,p);if(resetOnReject)p.catch(()=>m.delete(key));return p;};})()},isSpecialAlbumKey:k=>String(k||'').startsWith('__'),normalizeAlbumContextKey:k=>{const s=String(k||'').trim();return!s?'':(s.startsWith('__showcase__')?'__showcase__':(s.startsWith('__favorites__')?'__favorites__':s));},isShowcaseContext:k=>U.normalizeAlbumContextKey(k)==='__showcase__',isBrowsingOtherAlbum:()=>{const p=U.normalizeAlbumContextKey(W.AlbumsManager?.getPlayingAlbum?.()),c=U.normalizeAlbumContextKey(W.AlbumsManager?.getCurrentAlbum?.());return!!(p&&c&&p!==c);},setBtnActive:(id,a)=>D.getElementById(id)?.classList.toggle('active',!!a),setAriaDisabled:(el,d)=>{if(el){el.classList.toggle('disabled',!!d);el.setAttribute('aria-disabled',!!d);}},lsGet:(k,d)=>localStorage.getItem(k)??d,lsSet:(k,v)=>localStorage.setItem(k,v),lsGetBool01:(k,d=false)=>(localStorage.getItem(k)??(d?'1':'0'))==='1',lsSetBool01:(k,v)=>localStorage.setItem(k,v?'1':'0'),lsGetJson:(k,d=null)=>U.obj.safeJson(k,d),ssGetJson:(k,d=null)=>{try{const v=sessionStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},ssSetJson:(k,v)=>{try{sessionStorage.setItem(k,JSON.stringify(v));}catch{}},fetchCache:(()=>{const m=new Map(),p=new Map(),rd=(k,t,s='session')=>{const r=m.get(k);if(r&&(!t||Date.now()-r.ts<t))return r.val;try{const rw=(s==='local'?localStorage:sessionStorage).getItem(k);if(!rw)return null;const rc=JSON.parse(rw);if(t&&Date.now()-(rc.ts||0)>=t)return null;m.set(k,{ts:rc.ts||Date.now(),val:rc.val});return rc.val;}catch{return null;}};const wr=(k,v,s='session')=>{const rc={ts:Date.now(),val:v};m.set(k,rc);try{(s==='local'?localStorage:sessionStorage).setItem(k,JSON.stringify(rc));}catch{}return v;};const dl=(k,s='session')=>{m.delete(k);try{(s==='local'?localStorage:sessionStorage).removeItem(k);}catch{}};const ccd=async({key:k,url:u,ttlMs:t=0,type:y='json',store:s='session',fetchInit:fI={}})=>{const h=rd(k,t,s);if(h!=null)return h;if(p.has(k))return p.get(k);const pr=(async()=>{try{const r=await fetch(u,fI);if(!r.ok)throw 1;return wr(k,y==='text'?await r.text():await r.json(),s);}finally{p.delete(k);}})();p.set(k,pr);return pr;};return{getJson:o=>ccd({...o,type:'json'}),getText:o=>ccd({...o,type:'text'}),get:rd,set:wr,del:dl};})(),profileModals:{promptName:({title:t='',value:v='',btnText:bT='Сохранить',onSubmit:oS}={})=>{const m=W.Modals?.open?.({title:t,bodyHtml:`<input type="text" id="pm-name-inp" class="pm-name-inp" value="${U.ui.escapeHtml(v)}"><button class="showcase-btn pm-name-save" id="pm-name-save">${U.ui.escapeHtml(bT)}</button>`});if(!m)return null;setTimeout(()=>m.querySelector('#pm-name-inp')?.select(),50);m.querySelector('#pm-name-save')?.addEventListener('click',()=>{const vl=m.querySelector('#pm-name-inp')?.value.trim();if(vl){m.remove();oS?.(vl);}});return m;},palettePicker:({title:t='Выбор цвета',items:i=[],value:v='',resetText:rT='Сбросить цвет',onPick:oP}={})=>{const m=W.Modals?.open?.({title:t,bodyHtml:`<div class="pm-palette">${i.map(x=>`<div class="pm-palette__dot" style="background:${x};${v===(x==='transparent'?'':x)?'border-color:#fff;':''}" data-col="${U.ui.escapeHtml(x)}"></div>`).join('')}</div><button class="showcase-btn pm-palette__reset" data-col="transparent">${U.ui.escapeHtml(rT)}</button>`});if(!m)return null;m.addEventListener('click',ev=>{const b=ev.target.closest('[data-col]');if(b)oP?.(b.dataset.col==='transparent'?'':b.dataset.col,m);});return m;},failScreen:m=>`<div class="boot-fail"><div class="boot-fail__box"><h2 class="boot-fail__title">Ошибка запуска</h2><p class="boot-fail__text">${U.ui.escapeHtml(m)}</p></div></div>`,sysInfo:{row:(l,v)=>`<div class="sysinfo-row"><strong>${U.ui.escapeHtml(l)}:</strong> ${v}</div>`,group:(t,c)=>`<h3 class="sysinfo-group-title">${U.ui.escapeHtml(t)}</h3>${c}`,render:({appVersion:aV,buildDate:bD,isPwa:i,userAgent:uA,screenText:sT,online:o,audioText:aT,ramText:rT,swVersion:sV})=>`<div class="sysinfo-root">${U.profileModals.sysInfo.group('Приложение',U.profileModals.sysInfo.row('Версия',`${U.ui.escapeHtml(aV)} (${U.ui.escapeHtml(bD)})`)+U.profileModals.sysInfo.row('PWA',i?'✅':'❌')+`<div id="sw-ver-row" class="sysinfo-row"><strong>SW:</strong> ${U.ui.escapeHtml(sV)}</div>`)}${U.profileModals.sysInfo.group('Среда',U.profileModals.sysInfo.row('UA',U.ui.escapeHtml(uA).slice(0,45)+'...')+U.profileModals.sysInfo.row('Экран',sT)+U.profileModals.sysInfo.row('Online',o?'✅':'❌'))}${U.profileModals.sysInfo.group('Система',U.profileModals.sysInfo.row('Audio',aT)+U.profileModals.sysInfo.row('RAM',rT))}<div class="sysinfo-footer">Vi3na1bita © 2025</div></div>`},avatarPicker:({title:t='Аватар',items:i=[],onPick:oP}={})=>{const m=W.Modals?.open?.({title:t,bodyHtml:`<div class="prof-ava-grid">${i.map(a=>`<button class="showcase-color-dot prof-ava-btn" data-ava="${U.ui.escapeHtml(a)}">${U.ui.escapeHtml(a)}</button>`).join('')}</div>`});if(!m)return null;m.addEventListener('click',ev=>{const b=ev.target.closest('[data-ava]');if(b)oP?.(b.dataset.ava,m);});return m;}}};
+(function(W,D){'use strict';const _bR=new Map(),U={$:id=>D.getElementById(id),dom:{byId:id=>D.getElementById(id),on:(el,ev,fn,o)=>{if(!el)return()=>{};el.addEventListener(ev,fn,o);return()=>{try{el.removeEventListener(ev,fn,o);}catch{}};},raf:requestAnimationFrame,defer:fn=>setTimeout(fn,0)},getNet:()=>{const NP=W.NetPolicy;if(NP)return{online:NP.isNetworkAllowed(),kind:NP.detectNetworkType(),saveData:false};const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;return{online:navigator.onLine,kind:/cellular|2g|3g|4g/i.test(c?.type||'')?'cellular':'wifi',saveData:c?.saveData||false};},getPlatform:()=>{const ua=navigator.userAgent;return{isIOS:/iPad|iPhone|iPod/.test(ua)&&!W.MSStream,isPWA:matchMedia('(display-mode: standalone)').matches||navigator.standalone,isDesktop:!/Mobi|Android/i.test(ua),isAndroid:/Android/.test(ua)};},fmt:{time:s=>{const n=Number(s);return!n||n<0?'00:00':new Date(n*1000).toISOString().slice(n>=3600?11:14,19);},bytes:b=>{const n=Number(b);if(!Number.isFinite(n)||n<=0)return'0 B';const i=Math.floor(Math.log(n)/Math.log(1024));return parseFloat((n/Math.pow(1024,i)).toFixed(1))+' '+(['B','KB','MB','GB'][i]||'TB');},durationHuman:s=>{const h=s/3600|0,m=(s%3600)/60|0;return h?`${h}ч ${m}м`:`${m}м`;}},math:{clamp:(n,a,b)=>Math.min(Math.max(Number(n)||0,a),b),toInt:(v,d=0)=>Number.isFinite(Number(v))?Number(v):d},obj:{safeJson:(k,d=null)=>{try{return JSON.parse(localStorage.getItem(k))??d;}catch{return d;}},trim:v=>String(v||'').trim()||null,normQuality:q=>String(q||'').toLowerCase()==='lo'?'lo':'hi'},blob:{createUrl:(k,b)=>{if(_bR.has(k))URL.revokeObjectURL(_bR.get(k));const u=URL.createObjectURL(b);_bR.set(k,u);return u;},revokeUrl:k=>{if(_bR.has(k)){URL.revokeObjectURL(_bR.get(k));_bR.delete(k);return true;}return false;}},ui:{toast:(m,t,d)=>W.NotificationSystem?.show?.(m,t,d),escapeHtml:s=>String(s||'').replace(/[<>&'"]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[m]))},pq:{getMode:()=>'lo',getState:()=>{const nO=W.NetPolicy?.isNetworkAllowed?.()??navigator.onLine,cT=!!W.playerCore?.canToggleQualityForCurrentTrack?.();return{mode:U.pq.getMode(),canToggle:cT&&nO,canToggleByTrack:cT,netOk:nO};},toggle:()=>{const c=W.playerCore;if(!c)return{ok:false,reason:'noCore'};if(!(W.NetPolicy?.isNetworkAllowed?.()??navigator.onLine))return{ok:false,reason:'offline'};if(!c.canToggleQualityForCurrentTrack())return{ok:false,reason:'trackNoLo'};const n=U.pq.getMode()==='hi'?'lo':'hi';c.switchQuality(n);return{ok:true,next:n};}},fav:{isTrackLikedInContext:({track:t}={})=>!!(W.playerCore&&t?.uid&&W.playerCore.isFavorite(t.uid))},download:{applyDownloadLink:(btn,t)=>{if(!btn)return;if(!t?.src&&!t?.uid){btn.removeAttribute('href');btn.removeAttribute('download');btn.classList.add('disabled');btn._dlUid=null;return;}const fmt=(()=>{try{const d=JSON.parse(localStorage.getItem('dl_format_v1')||'{}');return{ord:d.ord||['custom','band','album','num','title'],en:d.en||{custom:true,title:true},cst:d.cst||''};}catch{return{ord:['custom','band','album','num','title'],en:{custom:true,title:true},cst:''};}})();const tNum=t.uid&&t.sourceAlbum?(W.TrackRegistry?.getTracksForAlbum?.(t.sourceAlbum)?.findIndex(x=>x.uid===t.uid)+1):'',aT=W.TrackRegistry?.getAlbumTitle?.(t.sourceAlbum)||t.album||'',pts=[];fmt.ord.forEach(k=>{if(!fmt.en[k])return;if(k==='custom')pts.push(fmt.cst||'Vi3na1bita');if(k==='band')pts.push(t.artist||'Витрина разбита');if(k==='album'&&aT)pts.push(aT);if(k==='num'&&tNum)pts.push(String(tNum).padStart(2,'0'));if(k==='title'&&t.title)pts.push(t.title);});let fN=pts.length?pts.join(' - ')+'.mp3':(t.title?`${t.title}.mp3`:'track.mp3');fN=fN.replace(/[<>:"/\\|?*]+/g,'');btn.removeAttribute('href');btn.download=fN;btn.classList.remove('disabled');const dK=`${t.uid||t.src}:${fN}`;if(btn._dlUid===dK)return;btn._dlUid=dK;btn.onclick=async e=>{e.preventDefault();e.stopPropagation();if(btn._dlBusy)return;btn._dlBusy=true;try{let bU=null,isNet=false;if(t.uid&&(W.AudioSourcePolicy?.shouldUseAudioCache?.()??true)){const db=await import('../offline/cache-db.js');await db.openDB();const blob=(await db.getAudioBlob(t.uid,'lo'));if(blob?.size)bU=URL.createObjectURL(blob);}if(!bU){if(!(W.NetPolicy?.isNetworkAllowed?.()??navigator.onLine))throw new Error('network_not_allowed');isNet=true;W.NotificationSystem?.info?.('Скачивание файла...');const {blob}=await W.TrackRegistry.fetchAudioBlob(t.uid);bU=URL.createObjectURL(blob);}const a=D.createElement('a');a.href=bU;a.download=fN;a.style.display='none';D.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(bU);a.remove();},5e3);if(isNet)W.NotificationSystem?.success?.('Файл готов к сохранению');}catch{W.NotificationSystem?.error?.('Ошибка сохранения');}finally{btn._dlBusy=false;}};}},func:{debounceFrame:fn=>{let f;return(...a)=>{if(f)cancelAnimationFrame(f);f=requestAnimationFrame(()=>{f=null;fn(...a);});};},throttle:(fn,w)=>{let l=0;return(...a)=>{const n=Date.now();if(n-l>=w){l=n;fn(...a);}};},once:fn=>{let d=false,r;return(...a)=>d?r:((d=true),(r=fn(...a)));},initOnce:(()=>{const m=new Map();return(k,fn)=>{const key=String(k||'').trim();if(!key||typeof fn!=='function'||m.has(key))return false;m.set(key,1);fn();return true;};})(),memoAsyncOnce:(()=>{const m=new Map();return(k,fn,{resetOnReject=true}={})=>{const key=String(k||'').trim();if(!key||typeof fn!=='function')return Promise.resolve(null);if(m.has(key))return m.get(key);const p=Promise.resolve().then(fn);m.set(key,p);if(resetOnReject)p.catch(()=>m.delete(key));return p;};})()},isSpecialAlbumKey:k=>String(k||'').startsWith('__'),normalizeAlbumContextKey:k=>{const s=String(k||'').trim();return!s?'':(s.startsWith('__showcase__')?'__showcase__':(s.startsWith('__favorites__')?'__favorites__':s));},isShowcaseContext:k=>U.normalizeAlbumContextKey(k)==='__showcase__',isBrowsingOtherAlbum:()=>{const p=U.normalizeAlbumContextKey(W.AlbumsManager?.getPlayingAlbum?.()),c=U.normalizeAlbumContextKey(W.AlbumsManager?.getCurrentAlbum?.());return!!(p&&c&&p!==c);},setBtnActive:(id,a)=>D.getElementById(id)?.classList.toggle('active',!!a),setAriaDisabled:(el,d)=>{if(el){el.classList.toggle('disabled',!!d);el.setAttribute('aria-disabled',!!d);}},lsGet:(k,d)=>localStorage.getItem(k)??d,lsSet:(k,v)=>localStorage.setItem(k,v),lsGetBool01:(k,d=false)=>(localStorage.getItem(k)??(d?'1':'0'))==='1',lsSetBool01:(k,v)=>localStorage.setItem(k,v?'1':'0'),lsGetJson:(k,d=null)=>U.obj.safeJson(k,d),ssGetJson:(k,d=null)=>{try{const v=sessionStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},ssSetJson:(k,v)=>{try{sessionStorage.setItem(k,JSON.stringify(v));}catch{}},fetchCache:(()=>{const m=new Map(),p=new Map(),rd=(k,t,s='session')=>{const r=m.get(k);if(r&&(!t||Date.now()-r.ts<t))return r.val;try{const rw=(s==='local'?localStorage:sessionStorage).getItem(k);if(!rw)return null;const rc=JSON.parse(rw);if(t&&Date.now()-(rc.ts||0)>=t)return null;m.set(k,{ts:rc.ts||Date.now(),val:rc.val});return rc.val;}catch{return null;}};const wr=(k,v,s='session')=>{const rc={ts:Date.now(),val:v};m.set(k,rc);try{(s==='local'?localStorage:sessionStorage).setItem(k,JSON.stringify(rc));}catch{}return v;};const dl=(k,s='session')=>{m.delete(k);try{(s==='local'?localStorage:sessionStorage).removeItem(k);}catch{}};const ccd=async({key:k,url:u,ttlMs:t=0,type:y='json',store:s='session',fetchInit:fI={}})=>{const h=rd(k,t,s);if(h!=null)return h;if(p.has(k))return p.get(k);const pr=(async()=>{try{const r=await (W.StaticMedia?.fetchResponse(u,fI)||fetch(u,fI));if(!r.ok)throw 1;return wr(k,y==='text'?await r.text():await r.json(),s);}finally{p.delete(k);}})();p.set(k,pr);return pr;};return{getJson:o=>ccd({...o,type:'json'}),getText:o=>ccd({...o,type:'text'}),get:rd,set:wr,del:dl};})(),profileModals:{promptName:({title:t='',value:v='',btnText:bT='Сохранить',onSubmit:oS}={})=>{const m=W.Modals?.open?.({title:t,bodyHtml:`<input type="text" id="pm-name-inp" class="pm-name-inp" value="${U.ui.escapeHtml(v)}"><button class="showcase-btn pm-name-save" id="pm-name-save">${U.ui.escapeHtml(bT)}</button>`});if(!m)return null;setTimeout(()=>m.querySelector('#pm-name-inp')?.select(),50);m.querySelector('#pm-name-save')?.addEventListener('click',()=>{const vl=m.querySelector('#pm-name-inp')?.value.trim();if(vl){m.remove();oS?.(vl);}});return m;},palettePicker:({title:t='Выбор цвета',items:i=[],value:v='',resetText:rT='Сбросить цвет',onPick:oP}={})=>{const m=W.Modals?.open?.({title:t,bodyHtml:`<div class="pm-palette">${i.map(x=>`<div class="pm-palette__dot" style="background:${x};${v===(x==='transparent'?'':x)?'border-color:#fff;':''}" data-col="${U.ui.escapeHtml(x)}"></div>`).join('')}</div><button class="showcase-btn pm-palette__reset" data-col="transparent">${U.ui.escapeHtml(rT)}</button>`});if(!m)return null;m.addEventListener('click',ev=>{const b=ev.target.closest('[data-col]');if(b)oP?.(b.dataset.col==='transparent'?'':b.dataset.col,m);});return m;},failScreen:m=>`<div class="boot-fail"><div class="boot-fail__box"><h2 class="boot-fail__title">Ошибка запуска</h2><p class="boot-fail__text">${U.ui.escapeHtml(m)}</p></div></div>`,sysInfo:{row:(l,v)=>`<div class="sysinfo-row"><strong>${U.ui.escapeHtml(l)}:</strong> ${v}</div>`,group:(t,c)=>`<h3 class="sysinfo-group-title">${U.ui.escapeHtml(t)}</h3>${c}`,render:({appVersion:aV,buildDate:bD,isPwa:i,userAgent:uA,screenText:sT,online:o,audioText:aT,ramText:rT,swVersion:sV})=>`<div class="sysinfo-root">${U.profileModals.sysInfo.group('Приложение',U.profileModals.sysInfo.row('Версия',`${U.ui.escapeHtml(aV)} (${U.ui.escapeHtml(bD)})`)+U.profileModals.sysInfo.row('PWA',i?'✅':'❌')+`<div id="sw-ver-row" class="sysinfo-row"><strong>SW:</strong> ${U.ui.escapeHtml(sV)}</div>`)}${U.profileModals.sysInfo.group('Среда',U.profileModals.sysInfo.row('UA',U.ui.escapeHtml(uA).slice(0,45)+'...')+U.profileModals.sysInfo.row('Экран',sT)+U.profileModals.sysInfo.row('Online',o?'✅':'❌'))}${U.profileModals.sysInfo.group('Система',U.profileModals.sysInfo.row('Audio',aT)+U.profileModals.sysInfo.row('RAM',rT))}<div class="sysinfo-footer">Vi3na1bita © 2025</div></div>`},avatarPicker:({title:t='Аватар',items:i=[],onPick:oP}={})=>{const m=W.Modals?.open?.({title:t,bodyHtml:`<div class="prof-ava-grid">${i.map(a=>`<button class="showcase-color-dot prof-ava-btn" data-ava="${U.ui.escapeHtml(a)}">${U.ui.escapeHtml(a)}</button>`).join('')}</div>`});if(!m)return null;m.addEventListener('click',ev=>{const b=ev.target.closest('[data-ava]');if(b)oP?.(b.dataset.ava,m);});return m;}}};
 U.escapeHtml=U.ui.escapeHtml;U.isMobile=()=>U.getPlatform().isIOS||U.getPlatform().isAndroid;
 W.AppUtils={$:U.$,toStr:v=>v==null?'':String(v),isMobileUA:()=>U.isMobile(),escHtml:s=>U.escapeHtml(s)};
 U.waitFor=async(fn,t=2e3)=>{for(let i=0;i<t/50;i++){if(fn())return true;await new Promise(r=>setTimeout(r,50));}return!!fn();};
@@ -26116,6 +26321,9 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 
 /* Lyrics Copy Helper */
 .lyrics-copy-helper{position:fixed;opacity:0;pointer-events:none;inset:-9999px auto auto -9999px}
+
+.source-indicator.si-cloudru{background:radial-gradient(circle,#38bdf8 0,#0369a1 100%);color:#fff;border:1px solid #bae6fd}
+.source-indicator.si-cloudru::after{content:'C.ru';font-size:12px;font-weight:900}
 
 //=================================================
 // FILE: /styles/profile.css
