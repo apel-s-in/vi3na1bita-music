@@ -15,7 +15,7 @@ const SHARDS = C.SPECIAL_SHARDS_KEY || W.SPECIAL_SHARDS_KEY || '__shards__';
 const PROFILE = C.SPECIAL_PROFILE_KEY || '__profile__';
 const GAMES = C.SPECIAL_GAMES_KEY || W.SPECIAL_GAMES_KEY || '__games__';
 const FRIENDS = C.SPECIAL_FRIENDS_KEY || W.SPECIAL_FRIENDS_KEY || '__friends__';
-const LOGO = 'img/logo.png';
+const LOGO = 'https://vi3na1bita.s3.cloud.ru/img/logo.png';
 const GALLERY_VISIBLE_KEY = 'albumGalleryVisible:v1';
 const SPECIAL_LOADERS = { [FAV]: 'loadFavoritesAlbum', [NEWS]: 'loadNewsAlbum', [SHOWCASE]: 'loadShowcaseAlbum', [SHARDS]: 'loadShardsAlbum', [PROFILE]: 'loadProfileAlbum', [GAMES]: 'loadGamesAlbum', [FRIENDS]: 'loadFriendsAlbum' };
 class AlbumsManager {

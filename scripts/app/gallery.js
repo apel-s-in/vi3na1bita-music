@@ -4,9 +4,9 @@ import { openRecommendedTrack, playRecommendedTrack } from './recommendation-pla
 const W = window;
 const D = document;
 const $ = id => D.getElementById(id);
-const BASE = './albums/gallery/';
-const LOGO = 'img/logo.png';
-const C404 = 'gallery_404_cache:v2';
+const BASE = 'https://vi3na1bita.s3.cloud.ru/albums/gallery/';
+const LOGO = 'https://vi3na1bita.s3.cloud.ru/img/logo.png';
+const C404 = 'gallery_404_cache:cloudru-v1';
 const MAP = { krevetochka: '00', 'mezhdu-zlom-i-dobrom': '01', 'golos-dushi': '02', 'odnazhdy-v-skazke': '03', 'ne-vse-ravno': '04', neizvestniy: '05', 'v-ssore': '06', 'byt-igrushkoy': '07' };
 const ss = (key, value) => value === undefined ? JSON.parse(sessionStorage.getItem(key) || '{}') : sessionStorage.setItem(key, JSON.stringify(value));
 
@@ -75,14 +75,14 @@ class GalleryManager {
     const path = typeof item === 'string' ? item : item.formats?.webp || item.formats?.full || item.src;
     if (!path) return null;
     const src = /^(https?:)?\/\//.test(path) ? path : /^(albums|img|icons)\//.test(path) ? `./${path}` : `${directory}${path}`;
-    return { type: 'image', src };
+    return { type: 'image', src: W.StaticMedia.primary(src) };
   }
 
   async _loadMeta(id) {
     let items = this.meta.get(id);
     if (items) return items;
     const directory = `${BASE}${id}/`;
-    const data = await W.Utils.fetchCache.getJson({ key: `gallery:index:${id}`, url: `${directory}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } });
+    const data = await W.Utils.fetchCache.getJson({ key: `gallery:index:cloudru-v1:${id}`, url: `${directory}index.json`, ttlMs: 43200000, store: 'session', fetchInit: { cache: 'force-cache' } });
     items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
     this.meta.set(id, items);
     return items;
@@ -148,7 +148,7 @@ class GalleryManager {
     const images = slot.querySelectorAll('img');
     const next = images[this.flip === 0 ? 1 : 0];
     const current = images[this.flip];
-    const preload = new Image();
+    const preload = W.StaticMedia.bindImage(new Image());
     preload.onload = () => {
       next.src = item.src;
       next.style.opacity = '1';
@@ -164,7 +164,7 @@ class GalleryManager {
     const next = this.it[(this.idx + 1) % this.it.length];
     if (next?.type !== 'image' || !next.src || this.pre.has(next.src)) return;
     if (this.pre.size > 20) this.pre.clear();
-    new Image().src = next.src;
+    W.StaticMedia.bindImage(new Image()).src = next.src;
     this.pre.add(next.src);
   }
 

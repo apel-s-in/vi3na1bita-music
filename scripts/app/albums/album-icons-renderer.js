@@ -18,7 +18,7 @@ export const renderAlbumIcon = ({ item, mobile = false, logo = 'img/logo.png', e
   const key = escapeHtml(item.key);
   const title = escapeHtml(item.title);
   const { src, src2x } = resolveIconSources({ icon: item.icon, mobile, logo });
-  return `<div class="album-icon" data-album="${key}" data-akey="${key}" title="${title}"><img src="${escapeHtml(src)}" srcset="${escapeHtml(src2x)} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60"></div>`;
+  return `<div class="album-icon" data-album="${key}" data-akey="${key}" title="${title}"><img src="${escapeHtml(window.StaticMedia.primary(src))}" srcset="${escapeHtml(window.StaticMedia.primary(src2x))} 2x" alt="${title}" draggable="false" loading="lazy" width="60" height="60"></div>`;
 };
 export const renderAlbumIconRows = ({ config = {}, albumsIndex = [], mobile = false, logo = 'img/logo.png', escapeHtml } = {}) => {
   const { albums, navigation } = getRenderableAlbumIcons({ config, albumsIndex });

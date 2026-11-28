@@ -8,7 +8,8 @@
       "archive_base": "https://archive.org/download/mezhdu-zlom-i-dobrom/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-mezhdu-zlom-i-dobrom",
-      "jsdelivr_commit": "1fe7ac33af602f0aaafa8eaacfb87ccd411c5711"
+      "jsdelivr_commit": "1fe7ac33af602f0aaafa8eaacfb87ccd411c5711",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/mezhdu-zlom-i-dobrom/"
     },
     {
       "key": "golos-dushi",
@@ -18,7 +19,8 @@
       "archive_base": "https://archive.org/download/golos-dushi/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-golos-dushi",
-      "jsdelivr_commit": "c8b0b2b421b9713a3f792d71a2151fbb5c267dbd"
+      "jsdelivr_commit": "c8b0b2b421b9713a3f792d71a2151fbb5c267dbd",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/golos-dushi/"
     },
     {
       "key": "odnazhdy-v-skazke",
@@ -28,7 +30,8 @@
       "archive_base": "https://archive.org/download/odnazhdy-v-skazke/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-odnazhdy-v-skazke",
-      "jsdelivr_commit": "aedd1b291373a785edafbd9b96ee0154f307acaa"
+      "jsdelivr_commit": "aedd1b291373a785edafbd9b96ee0154f307acaa",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/odnazhdy-v-skazke/"
     },
     {
       "key": "ne-vse-ravno",
@@ -38,7 +41,8 @@
       "archive_base": "https://archive.org/download/ne-vse-ravno/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-ne-vse-ravno",
-      "jsdelivr_commit": "a694714da01b726a1153f1b590101980570bf345"
+      "jsdelivr_commit": "a694714da01b726a1153f1b590101980570bf345",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/ne-vse-ravno/"
     },
     {
       "key": "neizvestniy",
@@ -48,7 +52,8 @@
       "archive_base": "https://archive.org/download/neizvestniy/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-neizvestniy",
-      "jsdelivr_commit": "5bbef9b919a6bbf71e8792a2e1c7b9b2deffcb1a"
+      "jsdelivr_commit": "5bbef9b919a6bbf71e8792a2e1c7b9b2deffcb1a",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/neizvestniy/"
     },
     {
       "key": "v-ssore",
@@ -58,7 +63,8 @@
       "archive_base": "https://archive.org/download/v-ssore/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-v-ssore",
-      "jsdelivr_commit": "02a9874e2ee19c36981b76c2150c97c5dbd7862d"
+      "jsdelivr_commit": "02a9874e2ee19c36981b76c2150c97c5dbd7862d",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/v-ssore/"
     },
     {
       "key": "byt-igrushkoy",
@@ -68,7 +74,8 @@
       "archive_base": "https://archive.org/download/byt-igrushkoy/",
       "archive_flat": true,
       "jsdelivr_repo": "apel-s-in/vi3na1bita-byt-igrushkoy",
-      "jsdelivr_commit": "f72a10e8cfb533028179909ace09bccea3038522"
+      "jsdelivr_commit": "f72a10e8cfb533028179909ace09bccea3038522",
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/byt-igrushkoy/"
     },
     {
       "key": "krevetochka",
@@ -79,7 +86,8 @@
       "yandex_base": "https://storage.yandexcloud.net/vi3na1bita/albums/krevetochka/",
       "github_base": "https://apel-s-in.github.io/krevetochka/",
       "archive_base": "https://archive.org/download/krevetochka/",
-      "archive_flat": true
+      "archive_flat": true,
+      "cloudru_base": "https://vi3na1bita.s3.cloud.ru/albums/krevetochka/"
     }
   ]
 }

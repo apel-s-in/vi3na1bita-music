@@ -1,4 +1,4 @@
-import { AUDIO_SOURCE_LABELS, getAudioSourcePolicy, getAudioSourceOrder, setAudioSourcePolicy } from '../../core/audio-source-policy.js';
+import { AUDIO_SOURCE_ORDER, AUDIO_SOURCE_LABELS, getAudioSourcePolicy, getAudioSourceOrder, setAudioSourcePolicy } from '../../core/audio-source-policy.js';
 import { markDeviceSettingsDirty } from '../../analytics/sync-dirty-events.js';
 
 export const renderAudioSourcesSettingsSection = () => `<button type="button" class="set-acc-btn">ИСТОЧНИКИ АУДИО</button><div class="set-acc-body"><div id="audio-source-settings"></div></div>`;
@@ -9,8 +9,8 @@ export const bindAudioSourcesSettingsSection = root => {
   const render = () => {
     policy = getAudioSourcePolicy();
     const manual = policy.mode === 'manual';
-    const order = manual ? policy.order : ['archive', 'jsdelivr', 'github', 'yandex'];
-    host.innerHTML = `<fieldset class="audio-source-modes"><legend>Режим выбора</legend><label><input type="radio" name="audio-source-mode" value="auto" ${manual ? '' : 'checked'}> Автоматический</label><label><input type="radio" name="audio-source-mode" value="manual" ${manual ? 'checked' : ''}> Ручной</label></fieldset><p class="set-sub">${manual ? 'Отметьте нужные источники. Верхний используется первым, следующий — при отказе. Отключённые источники аудио не используются.' : 'Все источники включены. При отказе автоматически пробуем следующий: Архив → CDN → GitHub → Яндекс.'}</p><ol class="audio-source-list" aria-label="Приоритет источников аудио">${order.map((id, index) => {
+    const order = manual ? policy.order : [...AUDIO_SOURCE_ORDER];
+    host.innerHTML = `<fieldset class="audio-source-modes"><legend>Режим выбора</legend><label><input type="radio" name="audio-source-mode" value="auto" ${manual ? '' : 'checked'}> Автоматический</label><label><input type="radio" name="audio-source-mode" value="manual" ${manual ? 'checked' : ''}> Ручной</label></fieldset><p class="set-sub">${manual ? 'Отметьте нужные источники. Верхний используется первым, следующий — при отказе. Отключённые источники аудио не используются.' : 'Все источники включены. При отказе автоматически пробуем следующий: Архив → CDN → GitHub → Cloud.ru → Яндекс.'}</p><ol class="audio-source-list" aria-label="Приоритет источников аудио">${order.map((id, index) => {
       const enabled = !manual || policy.enabled.includes(id);
       const activeRank = order.slice(0, index + 1).filter(key => !manual || policy.enabled.includes(key)).length;
       return `<li class="audio-source-row ${enabled ? '' : 'is-disabled'}" data-provider="${id}"><span class="audio-source-rank" aria-hidden="true">${enabled ? activeRank : '—'}</span><label><input type="checkbox" data-source="${id}" ${enabled ? 'checked' : ''} ${manual ? '' : 'disabled'}><span>${AUDIO_SOURCE_LABELS[id]}</span></label><button type="button" class="dl-arr" data-source-move="${id}" data-dir="-1" aria-label="Поднять ${AUDIO_SOURCE_LABELS[id]}" ${!manual || index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="dl-arr" data-source-move="${id}" data-dir="1" aria-label="Опустить ${AUDIO_SOURCE_LABELS[id]}" ${!manual || index === order.length - 1 ? 'disabled' : ''}>↓</button></li>`;

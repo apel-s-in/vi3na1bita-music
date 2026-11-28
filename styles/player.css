@@ -191,3 +191,6 @@ body.mobile-device .volume-control-wrapper,body.mobile-device #mute-btn{display:
 
 /* Lyrics Copy Helper */
 .lyrics-copy-helper{position:fixed;opacity:0;pointer-events:none;inset:-9999px auto auto -9999px}
+
+.source-indicator.si-cloudru{background:radial-gradient(circle,#38bdf8 0,#0369a1 100%);color:#fff;border:1px solid #bae6fd}
+.source-indicator.si-cloudru::after{content:'C.ru';font-size:12px;font-weight:900}
