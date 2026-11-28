@@ -1,5 +1,5 @@
 importScripts('./scripts/core/static-media.js');
-const SW_VERSION = '9.4.1';
+const SW_VERSION = '9.4.2';
 const SW_CACHE_REVISION = 'cloudru-media-1';
 const CORE_CACHE = `vitrina-core-v${SW_VERSION}-${SW_CACHE_REVISION}`, RUNTIME_CACHE = `vitrina-runtime-v${SW_VERSION}-${SW_CACHE_REVISION}`, MEDIA_CACHE = `vitrina-media-v${SW_VERSION}-${SW_CACHE_REVISION}`, OFFLINE_CACHE = `vitrina-offline-v${SW_VERSION}-${SW_CACHE_REVISION}`, META_CACHE = `vitrina-meta-v${SW_VERSION}-${SW_CACHE_REVISION}`;
 let isAirplaneMode = false;
